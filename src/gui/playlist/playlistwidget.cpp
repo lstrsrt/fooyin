@@ -432,9 +432,6 @@ void PlaylistWidgetPrivate::setupView() const
             m_playlistView->setLoadingText(tr("Loading playlist…"));
             break;
         case(PlaylistWidget::Mode::DetachedPlaylist):
-            m_playlistView->setEmptyText(tr("No results"));
-            m_playlistView->setLoadingText(tr("Searching…"));
-            break;
         case(PlaylistWidget::Mode::DetachedLibrary):
             m_playlistView->setEmptyText(tr("No results"));
             m_playlistView->setLoadingText(tr("Searching…"));
@@ -444,7 +441,7 @@ void PlaylistWidgetPrivate::setupView() const
 
 void PlaylistWidgetPrivate::onColumnChanged(const PlaylistColumn& changedColumn)
 {
-    auto existingIt = std::find_if(m_columns.begin(), m_columns.end(), [&changedColumn](const auto& column) {
+    auto existingIt = std::ranges::find_if(m_columns, [&changedColumn](const auto& column) {
         return (column.isDefault && changedColumn.isDefault && column.name == changedColumn.name)
             || column.id == changedColumn.id;
     });
@@ -1223,14 +1220,9 @@ void PlaylistWidgetPrivate::setReadOnly(bool readOnly, bool allowSorting) const
 
 void PlaylistWidgetPrivate::updateSpans()
 {
-    auto isPixmap = [](const QString& field) {
-        return field == QLatin1String(Constants::FrontCover) || field == QLatin1String(Constants::BackCover)
-            || field == QLatin1String(Constants::ArtistPicture);
-    };
-
     bool hasRating{false};
     for(int i{0}; const auto& column : m_columns) {
-        if(isPixmap(column.field)) {
+        if(column.isPixmap) {
             m_playlistView->setSpan(i, true);
         }
         else {
@@ -1441,23 +1433,23 @@ void PlaylistWidgetPrivate::sortTracks(const QString& script)
     }
 }
 
-void PlaylistWidgetPrivate::sortColumn(int column, Qt::SortOrder order)
+void PlaylistWidgetPrivate::sortColumn(int index, Qt::SortOrder order)
 {
-    if(!m_playlistController->currentPlaylist() || column < 0 || std::cmp_greater_equal(column, m_columns.size())) {
+    auto* currentPlaylist = m_playlistController->currentPlaylist();
+    if(!currentPlaylist || index < 0 || std::cmp_greater_equal(index, m_columns.size())) {
         return;
     }
 
     m_sorting       = true;
     m_sortingColumn = true;
 
-    auto* currentPlaylist = m_playlistController->currentPlaylist();
     const auto currentTracks
         = m_mode != PlaylistWidget::Mode::Playlist ? m_filteredTracks : currentPlaylist->playlistTracks();
-    const QString sortField = m_columns.at(column).field;
 
-    Utils::asyncExec([this, sortField, currentTracks, order]() {
-        auto tracks = m_sorter.calcSortTracks(sortField, currentTracks, PlaylistTrack::extractor,
-                                              PlaylistTrack::extractorConst, order);
+    Utils::asyncExec([this, index, currentTracks, order]() {
+        const auto& column = m_columns.at(index);
+        auto tracks        = m_sorter.calcSortTracks(column.field, currentTracks, PlaylistTrack::extractor,
+                                                     PlaylistTrack::extractorConst, order, column.isNumeric);
         return PlaylistTrack::updateIndexes(tracks);
     }).then(m_self, [this, currentPlaylist, currentTracks](const PlaylistTrackList& sortedTracks) {
         auto* sortCmd

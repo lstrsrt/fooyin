@@ -128,7 +128,7 @@ public:
 
     void cropSelection() const;
     void sortTracks(const QString& script);
-    void sortColumn(int column, Qt::SortOrder order);
+    void sortColumn(int index, Qt::SortOrder order);
     void resetSort(bool force = false);
 
     void addSortMenu(QMenu* parent, bool disabled);

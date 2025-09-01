@@ -128,10 +128,10 @@ public:
 
     template <typename Container, typename SortScript, typename SortExtractor, typename Extractor>
     Container calcSortTracks(const SortScript& sort, const Container& items, SortExtractor sortExtractor,
-                             Extractor extractor, Qt::SortOrder order = Qt::AscendingOrder)
+                             Extractor extractor, Qt::SortOrder order = Qt::AscendingOrder, bool isNumeric = false)
     {
         Container sortedTracks = calcSortFields(sort, items, sortExtractor);
-        sortTracks(sortedTracks, extractor, order);
+        sortTracks(sortedTracks, extractor, order, isNumeric);
         return sortedTracks;
     }
 
@@ -163,16 +163,46 @@ public:
 private:
     ParsedScript parseScript(const QString& sort);
 
-    template <typename Container, typename Extractor>
-    static void sortTracks(Container& tracks, Extractor extractor, Qt::SortOrder order = Qt::AscendingOrder)
+    static int naiveNumericSort(const QString& lhs, const QString& rhs)
     {
-        StringCollator collator;
+        if(rhs.size() > lhs.size()) {
+            return 1;
+        }
+        if(rhs.size() < lhs.size()) {
+            return -1;
+        }
 
-        std::ranges::stable_sort(tracks, [order, &collator, extractor](const auto& lhs, const auto& rhs) {
+        for(qsizetype i = 0; i < lhs.size(); ++i) {
+            QChar l = lhs.at(i);
+            QChar r = rhs.at(i);
+            // Ignore everything that isn't a digit
+            if(l.isDigit() && r.isDigit()) {
+                if(r > l) {
+                    return 1;
+                }
+                if(r < l) {
+                    return -1;
+                }
+            }
+        }
+        return 0;
+    }
+
+    template <typename Container, typename Extractor>
+    static void sortTracks(Container& tracks, Extractor extractor, Qt::SortOrder order = Qt::AscendingOrder,
+                           bool isNumeric = false)
+    {
+        std::ranges::stable_sort(tracks, [order, isNumeric, extractor](const auto& lhs, const auto& rhs) {
             const Track& leftTrack  = extractor(lhs);
             const Track& rightTrack = extractor(rhs);
 
-            const auto cmp = collator.compare(leftTrack.sort(), rightTrack.sort());
+            const auto cmp = [isNumeric, &leftTrack, &rightTrack]() -> int {
+                if(isNumeric) {
+                    return naiveNumericSort(leftTrack.sort(), rightTrack.sort());
+                }
+                StringCollator collator;
+                return collator.compare(leftTrack.sort(), rightTrack.sort());
+            }();
 
             if(cmp == 0) {
                 return false;

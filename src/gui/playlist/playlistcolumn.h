@@ -31,10 +31,12 @@ struct PlaylistColumn
     QString name;
     QString field;
     bool isPixmap{false};
+    bool isNumeric{false};
 
     bool operator==(const PlaylistColumn& other) const
     {
-        return std::tie(id, index, name, field) == std::tie(other.id, other.index, other.name, other.field);
+        return std::tie(id, index, name, field, isNumeric)
+            == std::tie(other.id, other.index, other.name, other.field, isNumeric);
     }
 
     [[nodiscard]] bool isValid() const
@@ -48,6 +50,7 @@ struct PlaylistColumn
         stream << column.index;
         stream << column.name;
         stream << column.field;
+        stream << column.isNumeric;
         return stream;
     }
 
@@ -57,6 +60,7 @@ struct PlaylistColumn
         stream >> column.index;
         stream >> column.name;
         stream >> column.field;
+        stream >> column.isNumeric;
         return stream;
     }
 };
