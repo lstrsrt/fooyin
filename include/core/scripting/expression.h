@@ -152,6 +152,7 @@ enum class VariableKind : uint8_t
     ListIndex,
     QueueIndex,
     QueueIndexes,
+    QueueTotal,
     PlayingIcon,
     FrontCover,
     BackCover,

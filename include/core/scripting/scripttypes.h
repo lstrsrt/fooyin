@@ -62,6 +62,10 @@ public:
     [[nodiscard]] virtual int playlistTrackCount() const                   = 0;
     [[nodiscard]] virtual int trackDepth() const                           = 0;
     [[nodiscard]] virtual std::span<const int> currentQueueIndexes() const = 0;
+    [[nodiscard]] virtual int currentQueueTotal() const
+    {
+        return 0;
+    }
 };
 
 /*!

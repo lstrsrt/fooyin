@@ -108,6 +108,24 @@ static constexpr auto QueueIndexesVariable = [](const ScriptContext& context, co
     return {.value = value, .cond = !value.isEmpty()};
 };
 
+static constexpr auto QueueIndexVariable = [](const ScriptContext& context, const QString&) -> ScriptResult {
+    const auto* environment = context.environment ? context.environment->playlistEnvironment() : nullptr;
+    if(!environment || environment->currentQueueIndexes().empty()) {
+        return {};
+    }
+
+    return {.value = QString::number(environment->currentQueueIndexes().front() + 1), .cond = true};
+};
+
+static constexpr auto QueueTotalVariable = [](const ScriptContext& context, const QString&) -> ScriptResult {
+    const auto* environment = context.environment ? context.environment->playlistEnvironment() : nullptr;
+    if(!environment || environment->currentQueueIndexes().empty()) {
+        return {};
+    }
+
+    return {.value = QString::number(environment->currentQueueTotal()), .cond = environment->currentQueueTotal() > 0};
+};
+
 static constexpr auto DepthVariable = [](const ScriptContext& context, const QString&) -> ScriptResult {
     const auto* environment = context.environment ? context.environment->playlistEnvironment() : nullptr;
     if(!environment) {
@@ -141,12 +159,14 @@ class TestPlaylistEnvironment : public ScriptEnvironment,
                                 public ScriptEvaluationEnvironment
 {
 public:
-    void setState(int playlistTrackIndex, int playlistTrackCount, int trackDepth, std::vector<int> queueIndexes)
+    void setState(int playlistTrackIndex, int playlistTrackCount, int trackDepth, std::vector<int> queueIndexes,
+                  int queueTotal = 0)
     {
         m_playlistTrackIndex = playlistTrackIndex;
         m_playlistTrackCount = playlistTrackCount;
         m_trackDepth         = trackDepth;
         m_queueIndexes       = std::move(queueIndexes);
+        m_queueTotal         = queueTotal;
     }
 
     void setTrackList(const TrackList* tracks)
@@ -223,6 +243,11 @@ public:
         return m_queueIndexes;
     }
 
+    [[nodiscard]] int currentQueueTotal() const override
+    {
+        return m_queueTotal;
+    }
+
     [[nodiscard]] const TrackList* trackList() const override
     {
         return m_tracks;
@@ -288,6 +313,7 @@ private:
     int m_playlistTrackCount{0};
     int m_trackDepth{0};
     std::vector<int> m_queueIndexes;
+    int m_queueTotal{0};
     const TrackList* m_tracks{nullptr};
     uint64_t m_currentPosition{0};
     uint64_t m_currentTrackDuration{0};
@@ -303,7 +329,12 @@ private:
 
 static const StaticScriptVariableProvider EnvironmentVariableProvider{
     makeScriptVariableDescriptor<ListIndexVariable>(VariableKind::ListIndex, u"LIST_INDEX"_s),
+    makeScriptVariableDescriptor<QueueIndexVariable>(VariableKind::QueueIndex, u"QUEUEINDEX"_s),
+    makeScriptVariableDescriptor<QueueIndexVariable>(VariableKind::QueueIndex, u"QUEUE_INDEX"_s),
     makeScriptVariableDescriptor<QueueIndexesVariable>(VariableKind::QueueIndexes, u"QUEUEINDEXES"_s),
+    makeScriptVariableDescriptor<QueueIndexesVariable>(VariableKind::QueueIndexes, u"QUEUE_INDEXES"_s),
+    makeScriptVariableDescriptor<QueueTotalVariable>(VariableKind::QueueTotal, u"QUEUETOTAL"_s),
+    makeScriptVariableDescriptor<QueueTotalVariable>(VariableKind::QueueTotal, u"QUEUE_TOTAL"_s),
     makeScriptVariableDescriptor<DepthVariable>(VariableKind::Depth, u"DEPTH"_s)};
 
 TEST_F(ScriptParserTest, BasicLiteral)
@@ -524,7 +555,7 @@ TEST_F(ScriptParserTest, ContextEnvironmentVariables)
     parser.addProvider(EnvironmentVariableProvider);
 
     TestPlaylistEnvironment environment;
-    environment.setState(4, 12, 2, {0, 2});
+    environment.setState(4, 12, 2, {0, 2}, 7);
 
     ScriptContext context;
     context.environment = &environment;
@@ -532,7 +563,28 @@ TEST_F(ScriptParserTest, ContextEnvironmentVariables)
 
     EXPECT_EQ(u"5", parser.evaluate(QStringLiteral("%list_index%"), track, context));
     EXPECT_EQ(u"2", parser.evaluate(QStringLiteral("%depth%"), track, context));
+    EXPECT_EQ(u"1", parser.evaluate(QStringLiteral("%queueindex%"), track, context));
+    EXPECT_EQ(u"1", parser.evaluate(QStringLiteral("%queue_index%"), track, context));
     EXPECT_EQ(u"1, 3", parser.evaluate(QStringLiteral("%queueindexes%"), track, context));
+    EXPECT_EQ(u"1, 3", parser.evaluate(QStringLiteral("%queue_indexes%"), track, context));
+    EXPECT_EQ(u"7", parser.evaluate(QStringLiteral("%queuetotal%"), track, context));
+    EXPECT_EQ(u"7", parser.evaluate(QStringLiteral("%queue_total%"), track, context));
+}
+
+TEST_F(ScriptParserTest, QueueTotalRequiresQueuedTrack)
+{
+    ScriptParser parser;
+    parser.addProvider(EnvironmentVariableProvider);
+
+    TestPlaylistEnvironment environment;
+    environment.setState(4, 12, 2, {}, 7);
+
+    ScriptContext context;
+    context.environment = &environment;
+    const Track track;
+
+    EXPECT_EQ(u"", parser.evaluate(QStringLiteral("%queuetotal%"), track, context));
+    EXPECT_EQ(u"", parser.evaluate(QStringLiteral("%queue_total%"), track, context));
 }
 
 TEST_F(ScriptParserTest, ContextEvaluationEnvironmentControlsPolicyAndEscaping)

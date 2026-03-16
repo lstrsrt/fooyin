@@ -18,7 +18,8 @@ public:
     PlaylistScriptEnvironment();
 
     void setPlaylistData(const Playlist* playlist, const PlaylistTrackIndexes* playlistQueue,
-                         const TrackList* tracks = nullptr);
+                         const TrackList* tracks = nullptr, int queueTotal = 0);
+    void setQueueState(std::span<const int> queueIndexes, int queueTotal);
     void setTrackState(int playlistTrackIndex, int currentPlayingTrackIndex, int currentPlayingTrackId, int trackDepth);
     void setPlaybackState(uint64_t currentPosition, uint64_t currentTrackDuration, int bitrate,
                           Player::PlayState playState);
@@ -36,6 +37,7 @@ public:
     [[nodiscard]] int playlistTrackCount() const override;
     [[nodiscard]] int trackDepth() const override;
     [[nodiscard]] std::span<const int> currentQueueIndexes() const override;
+    [[nodiscard]] int currentQueueTotal() const override;
     [[nodiscard]] const TrackList* trackList() const override;
     [[nodiscard]] uint64_t currentPosition() const override;
     [[nodiscard]] uint64_t currentTrackDuration() const override;
@@ -45,15 +47,18 @@ public:
     [[nodiscard]] QString trackListPlaceholder() const override;
     [[nodiscard]] bool escapeRichText() const override;
     [[nodiscard]] bool useVariousArtists() const override;
+    [[nodiscard]] bool hasDirectQueueState() const;
 
 private:
     const Playlist* m_playlist;
     const PlaylistTrackIndexes* m_playlistQueue;
     const TrackList* m_tracks;
+    std::vector<int> m_directQueueIndexes;
     int m_playlistTrackIndex;
     int m_currentPlayingTrackIndex;
     int m_currentPlayingTrackId;
     int m_trackDepth;
+    int m_queueTotal;
     uint64_t m_currentPosition;
     uint64_t m_currentTrackDuration;
     int m_bitrate;
@@ -62,6 +67,7 @@ private:
     QString m_trackListPlaceholder;
     bool m_escapeRichText;
     bool m_useVariousArtists;
+    bool m_hasDirectQueueState;
 };
 
 struct PlaybackScriptContextData

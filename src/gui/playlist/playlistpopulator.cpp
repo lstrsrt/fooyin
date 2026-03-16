@@ -227,7 +227,8 @@ const ScriptContext& PlaylistPopulatorPrivate::makeContext(int index, int depth)
         }
     }
 
-    m_scriptEnvironment.setPlaylistData(m_playlist, &m_playlistQueue);
+    m_scriptEnvironment.setPlaylistData(m_playlist, &m_playlistQueue, nullptr,
+                                        m_playerController ? m_playerController->queuedTracksCount() : 0);
     m_scriptEnvironment.setTrackState(index, currentPlayingTrackIndex, currentPlayingTrackId, depth);
     m_scriptEnvironment.setPlaybackState(m_playerController ? m_playerController->currentPosition() : 0,
                                          m_playerController ? m_playerController->currentTrack().duration() : 0,
