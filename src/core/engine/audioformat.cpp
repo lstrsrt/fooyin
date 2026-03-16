@@ -67,7 +67,6 @@ AudioFormat::AudioFormat(SampleFormat format, int sampleRate, int channelCount)
         m_channelCount = 0;
     }
 
-    m_channelLayout.fill(ChannelPosition::UnknownPosition);
     applyDefaultChannelLayout();
 }
 
@@ -175,10 +174,17 @@ bool AudioFormat::setChannelLayout(const ChannelLayout& layout)
         return false;
     }
 
-    m_channelLayout.fill(ChannelPosition::UnknownPosition);
+    const bool allUnknown
+        = std::ranges::all_of(layout, [](ChannelPosition pos) { return pos == ChannelPosition::UnknownPosition; });
 
-    std::copy_n(layout.begin(), n, m_channelLayout.begin());
+    if(allUnknown) {
+        applyDefaultChannelLayout();
+        return true;
+    }
+
     m_hasChannelLayout = true;
+    m_channelLayout.fill(ChannelPosition::UnknownPosition);
+    std::copy_n(layout.begin(), n, m_channelLayout.begin());
 
     return true;
 }
