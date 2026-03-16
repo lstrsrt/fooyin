@@ -23,6 +23,8 @@
 
 #include <functional>
 
+class QEvent;
+
 namespace Fooyin {
 class SettingsManager;
 class PlayerController;
@@ -60,6 +62,7 @@ signals:
     void clicked();
 
 protected:
+    void changeEvent(QEvent* event) override;
     void contextMenuEvent(QContextMenuEvent* event) override;
     void mouseDoubleClickEvent(QMouseEvent* event) override;
     void timerEvent(QTimerEvent* event) override;
