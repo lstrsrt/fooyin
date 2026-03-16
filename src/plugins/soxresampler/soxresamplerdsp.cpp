@@ -407,9 +407,8 @@ void SoxResamplerDSP::flush(ProcessingBufferList& chunks, FlushMode mode)
                                                       : nominalFrameDurationNs(stage.outRate);
         drained.clear();
 
-        static constexpr auto maxDrainIters = 32;
-
-        for(int iter{0}; iter < maxDrainIters; ++iter) {
+        bool hitDrainIterationCap{false};
+        for(int iter{0}; iter < MaxProcessIterationsCap; ++iter) {
             const size_t outCapacity
                 = std::max<size_t>(1, static_cast<size_t>(stage.latencyFrames + ProcessPaddingFrames));
             const size_t outSamples = outCapacity * static_cast<size_t>(m_channels);
@@ -444,6 +443,16 @@ void SoxResamplerDSP::flush(ProcessingBufferList& chunks, FlushMode mode)
             outBuffer->resizeSamples(odone * static_cast<size_t>(m_channels));
             outBuffer->setSourceFrameDurationNs(stageSourceFrameDurationNs);
             advanceSourceCursor(stageTime, stageRemainderNs, static_cast<int>(odone), stageSourceFrameDurationNs);
+
+            if(iter == (MaxProcessIterationsCap - 1)) {
+                hitDrainIterationCap = true;
+            }
+        }
+
+        if(hitDrainIterationCap && shouldLogWarning(m_warningCounter)) {
+            const double runtimeDelayFrames = stage.ctx ? soxr_delay(stage.ctx) : 0.0;
+            qCWarning(SOXR_RESAMPLER) << "SoXR flush hit drain iteration cap:" << "stageIn=" << stage.inRate
+                                      << "stageOut=" << stage.outRate << "runtimeDelayFrames=" << runtimeDelayFrames;
         }
 
         stage.nextOutTimeNs      = stageTime;
