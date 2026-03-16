@@ -24,6 +24,7 @@
 #include <core/player/playbackqueue.h>
 #include <core/scripting/scriptparser.h>
 #include <gui/coverprovider.h>
+#include <gui/scripting/scriptformatter.h>
 #include <utils/treemodel.h>
 
 #include <QIcon>
@@ -77,6 +78,7 @@ private:
 
     CoverProvider m_coverProvider;
     ScriptParser m_scriptParser;
+    ScriptFormatter m_scriptFormatter;
 
     std::vector<std::unique_ptr<QueueViewerItem>> m_trackItems;
     std::unordered_map<QString, std::vector<QueueViewerItem*>> m_trackParents;

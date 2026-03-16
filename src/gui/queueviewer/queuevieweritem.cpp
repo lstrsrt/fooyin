@@ -20,6 +20,8 @@
 #include "queuevieweritem.h"
 
 #include <core/scripting/scriptparser.h>
+#include <gui/scripting/richtextutils.h>
+#include <gui/scripting/scriptformatter.h>
 
 namespace Fooyin {
 QueueViewerItem::QueueViewerItem(PlaylistTrack track)
@@ -28,10 +30,20 @@ QueueViewerItem::QueueViewerItem(PlaylistTrack track)
 
 QString QueueViewerItem::title() const
 {
-    return m_title;
+    return m_title.joinedText();
 }
 
 QString QueueViewerItem::subtitle() const
+{
+    return m_subtitle.joinedText();
+}
+
+const RichText& QueueViewerItem::richTitle() const
+{
+    return m_title;
+}
+
+const RichText& QueueViewerItem::richSubtitle() const
 {
     return m_subtitle;
 }
@@ -41,13 +53,14 @@ PlaylistTrack QueueViewerItem::track() const
     return m_track;
 }
 
-void QueueViewerItem::generateTitle(ScriptParser* parser, const QString& leftScript, const QString& rightScript)
+void QueueViewerItem::generateTitle(ScriptParser* parser, ScriptFormatter* formatter, const QString& leftScript,
+                                    const QString& rightScript, const ScriptContext& context)
 {
-    if(!parser) {
+    if(!parser || !formatter) {
         return;
     }
 
-    m_title    = parser->evaluate(leftScript, m_track.track);
-    m_subtitle = parser->evaluate(rightScript, m_track.track);
+    m_title    = trimRichText(formatter->evaluate(parser->evaluate(leftScript, m_track.track, context)));
+    m_subtitle = trimRichText(formatter->evaluate(parser->evaluate(rightScript, m_track.track, context)));
 }
 } // namespace Fooyin
