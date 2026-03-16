@@ -36,12 +36,16 @@ LibraryTreeGroupRegistry::LibraryTreeGroupRegistry(SettingsManager* settings, QO
 
 void LibraryTreeGroupRegistry::loadDefaults()
 {
-    addDefaultItem({.id     = 0,
-                    .name   = tr("Artist/Album"),
-                    .script = u"[%albumartist%]||[%album%][ (%year%)]||[%disc%.][$num(%track%,2). ]%title%"_s});
+    addDefaultItem({.id         = 0,
+                    .name       = tr("Artist/Album"),
+                    .script     = u"[%albumartist%]||[%album%][ (%year%)]||[%disc%.][$num(%track%,2). ]%title%"_s,
+                    .sortScript = {}});
+    addDefaultItem({.id         = 1,
+                    .name       = tr("Album"),
+                    .script     = u"[%album%][ (%year%)]||[%disc%.][$num(%track%,2). ]%title%"_s,
+                    .sortScript = {}});
     addDefaultItem(
-        {.id = 1, .name = tr("Album"), .script = u"[%album%][ (%year%)]||[%disc%.][$num(%track%,2). ]%title%"_s});
-    addDefaultItem({.id = 2, .name = tr("Folder Structure"), .script = u"$replace(%relativepath%,/,||)"_s});
+        {.id = 2, .name = tr("Folder Structure"), .script = u"$replace(%relativepath%,/,||)"_s, .sortScript = {}});
 }
 } // namespace Fooyin
 

@@ -118,7 +118,9 @@ bool LibraryTreeSortModel::lessThan(const QModelIndex& left, const QModelIndex& 
         return sortOrder() != Qt::AscendingOrder;
     }
 
-    const auto cmp = m_collator.compare(leftItem->title(), rightItem->title());
+    const QString& leftTitle  = leftItem->sortTitle().isEmpty() ? leftItem->title() : leftItem->sortTitle();
+    const QString& rightTitle = rightItem->sortTitle().isEmpty() ? rightItem->title() : rightItem->sortTitle();
+    const auto cmp            = m_collator.compare(leftTitle, rightTitle);
 
     if(cmp == 0) {
         return false;
@@ -154,7 +156,7 @@ public:
 
     CoverProvider m_coverProvider;
 
-    QString m_grouping;
+    LibraryTreeGrouping m_grouping;
     bool m_loaded{false};
     bool m_resetting{false};
 
@@ -376,6 +378,13 @@ void LibraryTreeModelPrivate::populateModel(PendingTreeData& data)
             auto& node = m_nodes.at(key);
 
             node.setTitleSource(item.titleSource());
+
+            if(node.sortTitle() != item.sortTitle()) {
+                node.setSortTitle(item.sortTitle());
+                if(!node.pending()) {
+                    changedIndexes.emplace_back(m_self->indexOfItem(&node));
+                }
+            }
 
             if(node.richTitle() != item.richTitle()) {
                 node.setRichTitle(item.richTitle());
@@ -825,7 +834,7 @@ void LibraryTreeModel::removeTracks(const TrackList& tracks)
 
 void LibraryTreeModel::changeGrouping(const LibraryTreeGrouping& grouping)
 {
-    p->m_grouping = grouping.script;
+    p->m_grouping = grouping;
 }
 
 void LibraryTreeModel::reset(const TrackList& tracks)

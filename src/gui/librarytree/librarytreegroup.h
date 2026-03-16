@@ -30,11 +30,9 @@ struct LibraryTreeGrouping
     bool isDefault{false};
     QString name;
     QString script;
+    QString sortScript;
 
-    bool operator==(const LibraryTreeGrouping& other) const
-    {
-        return std::tie(id, index, name, script) == std::tie(other.id, other.index, other.name, other.script);
-    }
+    bool operator==(const LibraryTreeGrouping& other) const = default;
 
     [[nodiscard]] bool isValid() const
     {
@@ -47,6 +45,7 @@ struct LibraryTreeGrouping
         stream << group.index;
         stream << group.name;
         stream << group.script;
+        stream << group.sortScript;
         return stream;
     }
 
@@ -56,6 +55,15 @@ struct LibraryTreeGrouping
         stream >> group.index;
         stream >> group.name;
         stream >> group.script;
+
+        QString sort;
+
+        stream.startTransaction();
+        stream >> sort;
+        if(stream.commitTransaction()) {
+            group.sortScript = sort;
+        }
+
         return stream;
     }
 };

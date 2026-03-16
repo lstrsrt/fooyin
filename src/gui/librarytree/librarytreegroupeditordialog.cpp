@@ -27,12 +27,16 @@
 #include <gui/widgets/multilinedelegate.h>
 
 #include <QDialogButtonBox>
+#include <QFrame>
+#include <QHBoxLayout>
 #include <QHeaderView>
 #include <QLabel>
 #include <QPushButton>
 #include <QToolButton>
 #include <QVBoxLayout>
 #include <algorithm>
+
+using namespace Qt::StringLiterals;
 
 namespace Fooyin {
 class LibraryTreeGroupEditorWidget : public QWidget
@@ -53,6 +57,7 @@ private:
     ExtendableTableView* m_groupList;
     LibraryTreeGroupModel* m_model;
     QToolButton* m_openEditor;
+    QFrame* m_hintFrame;
 };
 
 LibraryTreeGroupEditorWidget::LibraryTreeGroupEditorWidget(ActionManager* actionManager,
@@ -62,20 +67,41 @@ LibraryTreeGroupEditorWidget::LibraryTreeGroupEditorWidget(ActionManager* action
     , m_groupList{new ExtendableTableView(actionManager, this)}
     , m_model{new LibraryTreeGroupModel(m_groupsRegistry, this)}
     , m_openEditor{new QToolButton(this)}
+    , m_hintFrame{new QFrame(this)}
 {
     m_groupList->setExtendableModel(m_model);
     m_groupList->setItemDelegateForColumn(2, new MultiLineEditDelegate(this));
+    m_groupList->setItemDelegateForColumn(3, new MultiLineEditDelegate(this));
     m_groupList->hideColumn(0);
     m_groupList->setExtendableColumn(1);
     m_groupList->verticalHeader()->hide();
     m_groupList->horizontalHeader()->setStretchLastSection(true);
     m_groupList->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
+    m_groupList->horizontalHeader()->setSectionResizeMode(2, QHeaderView::Stretch);
+    m_groupList->horizontalHeader()->setSectionResizeMode(3, QHeaderView::Stretch);
 
     m_openEditor->setText(tr("Script Editor"));
     m_groupList->addCustomTool(m_openEditor);
 
+    auto* hint = new QLabel(
+        u"🛈 "_s
+            + tr("Use <code>||</code> to split tree levels. <b>Sort Grouping</b> must use the same <code>||</code> "
+                 "level structure as <b>Display Grouping</b>; each sort level applies to the matching display level, "
+                 "and a sort level may be empty (for example <code>||%year%||</code>). Leave the whole sort grouping "
+                 "empty to use the display grouping for sorting."),
+        this);
+    hint->setWordWrap(true);
+    hint->setTextFormat(Qt::RichText);
+    m_hintFrame->setFrameShape(QFrame::StyledPanel);
+    m_hintFrame->setFrameShadow(QFrame::Plain);
+
+    auto* hintLayout = new QHBoxLayout(m_hintFrame);
+    hintLayout->setContentsMargins(10, 8, 10, 8);
+    hintLayout->addWidget(hint);
+
     auto* mainLayout = new QVBoxLayout(this);
     mainLayout->addWidget(m_groupList);
+    mainLayout->addWidget(m_hintFrame);
 
     QObject::connect(m_groupList->selectionModel(), &QItemSelectionModel::selectionChanged, this,
                      &LibraryTreeGroupEditorWidget::updateButtonState);
@@ -83,7 +109,7 @@ LibraryTreeGroupEditorWidget::LibraryTreeGroupEditorWidget(ActionManager* action
     QObject::connect(m_openEditor, &QToolButton::clicked, this, [this]() {
         const auto selection    = m_groupList->selectionModel()->selectedIndexes();
         const QModelIndex index = selection.front();
-        ScriptEditor::openEditor(index.data().toString(), [this, index](const QString& script) {
+        ScriptEditor::openEditor(index.data(Qt::EditRole).toString(), [this, index](const QString& script) {
             m_model->setData(index, script, Qt::EditRole);
         });
     });
@@ -120,7 +146,8 @@ void LibraryTreeGroupEditorWidget::updateButtonState()
     });
 
     m_groupList->removeRowAction()->setEnabled(hasCustom);
-    m_openEditor->setEnabled(selection.size() == 1 && selection.front().column() == 2);
+    m_openEditor->setEnabled(selection.size() == 1
+                             && (selection.front().column() == 2 || selection.front().column() == 3));
 }
 
 LibraryTreeGroupEditorDialog::LibraryTreeGroupEditorDialog(ActionManager* actionManager,
@@ -129,7 +156,7 @@ LibraryTreeGroupEditorDialog::LibraryTreeGroupEditorDialog(ActionManager* action
 {
     setAttribute(Qt::WA_DeleteOnClose);
     setWindowTitle(tr("Manage Library Tree Groupings"));
-    resize(700, 500);
+    resize(750, 500);
 
     auto* editor = new LibraryTreeGroupEditorWidget(actionManager, groupsRegistry, this);
     auto* info   = new QLabel(tr("Grouping presets are shared across all widgets."), this);

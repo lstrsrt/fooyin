@@ -29,6 +29,8 @@ Q_LOGGING_CATEGORY(LIBTREE_MOD, "fy.libtreegroupmodel")
 
 using namespace Qt::StringLiterals;
 
+constexpr auto DefaultSort = "<same as display grouping>";
+
 namespace Fooyin {
 LibraryTreeGroupItem::LibraryTreeGroupItem()
     : LibraryTreeGroupItem{{}, nullptr}
@@ -82,7 +84,7 @@ void LibraryTreeGroupModel::processQueue()
         const LibraryTreeGrouping group               = node.group();
 
         switch(status) {
-            case(LibraryTreeGroupItem::Added): {
+            case LibraryTreeGroupItem::Added: {
                 if(group.script.isEmpty()) {
                     break;
                 }
@@ -97,7 +99,7 @@ void LibraryTreeGroupModel::processQueue()
                 }
                 break;
             }
-            case(LibraryTreeGroupItem::Removed): {
+            case LibraryTreeGroupItem::Removed: {
                 if(m_groupsRegistry->removeById(group.id)) {
                     beginRemoveRows({}, node.row(), node.row());
                     m_root.removeChild(node.row());
@@ -109,7 +111,7 @@ void LibraryTreeGroupModel::processQueue()
                 }
                 break;
             }
-            case(LibraryTreeGroupItem::Changed): {
+            case LibraryTreeGroupItem::Changed: {
                 if(m_groupsRegistry->changeItem(group)) {
                     if(const auto updatedGroup = m_groupsRegistry->itemById(group.id)) {
                         node.changeGroup(updatedGroup.value());
@@ -121,7 +123,7 @@ void LibraryTreeGroupModel::processQueue()
                 }
                 break;
             }
-            case(LibraryTreeGroupItem::None):
+            case LibraryTreeGroupItem::None:
                 break;
         }
     }
@@ -153,12 +155,14 @@ QVariant LibraryTreeGroupModel::headerData(int section, Qt::Orientation orientat
     }
 
     switch(section) {
-        case(0):
+        case 0:
             return tr("Index");
-        case(1):
+        case 1:
             return tr("Name");
-        case(2):
-            return tr("Grouping");
+        case 2:
+            return tr("Display Grouping");
+        case 3:
+            return tr("Sort Grouping");
         default:
             break;
     }
@@ -184,15 +188,19 @@ QVariant LibraryTreeGroupModel::data(const QModelIndex& index, int role) const
 
     if(role == Qt::DisplayRole || role == Qt::EditRole) {
         switch(index.column()) {
-            case(0):
+            case 0:
                 return item->group().index;
-            case(1): {
+            case 1: {
                 const QString& name = item->group().name;
                 return !name.isEmpty() ? name : u"<enter name here>"_s;
             }
-            case(2): {
+            case 2: {
                 const QString& field = item->group().script;
                 return !field.isEmpty() ? field : u"<enter grouping here>"_s;
+            }
+            case 3: {
+                const QString& field = item->group().sortScript;
+                return !field.isEmpty() ? field : QLatin1String{DefaultSort};
             }
             default:
                 break;
@@ -212,7 +220,7 @@ bool LibraryTreeGroupModel::setData(const QModelIndex& index, const QVariant& va
     auto group = item->group();
 
     switch(index.column()) {
-        case(1): {
+        case 1: {
             if(value.toString() == u"<enter name here>"_s || group.name == value.toString()) {
                 if(item->status() == LibraryTreeGroupItem::Added) {
                     emit pendingRowCancelled();
@@ -222,11 +230,20 @@ bool LibraryTreeGroupModel::setData(const QModelIndex& index, const QVariant& va
             group.name = value.toString();
             break;
         }
-        case(2): {
+        case 2: {
             if(group.script == value.toString()) {
                 return false;
             }
             group.script = value.toString();
+            break;
+        }
+        case 3: {
+            const QString sortScript
+                = value.toString() == QLatin1StringView{DefaultSort} ? QString{} : value.toString();
+            if(group.sortScript == sortScript) {
+                return false;
+            }
+            group.sortScript = sortScript;
             break;
         }
         default:
@@ -261,7 +278,7 @@ int LibraryTreeGroupModel::rowCount(const QModelIndex& /*parent*/) const
 
 int LibraryTreeGroupModel::columnCount(const QModelIndex& /*parent*/) const
 {
-    return 3;
+    return 4;
 }
 
 bool LibraryTreeGroupModel::removeRows(int row, int count, const QModelIndex& /*parent*/)

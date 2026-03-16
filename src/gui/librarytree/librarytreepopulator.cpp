@@ -45,7 +45,7 @@ public:
     }
 
     LibraryTreeItem* getOrInsertItem(const Md5Hash& key, const LibraryTreeItem* parent, const QString& title,
-                                     const RichText& richTitle, int level);
+                                     const RichText& richTitle, const QString& sortTitle, int level);
     void iterateTrack(const Track& track);
     bool runBatch(int size);
 
@@ -56,8 +56,9 @@ public:
     LibraryScriptEnvironment m_scriptEnvironment;
     ScriptContext m_scriptContext;
 
-    QString m_currentGrouping;
-    ParsedScript m_script;
+    LibraryTreeGrouping m_currentGrouping;
+    ParsedScript m_displayScript;
+    ParsedScript m_sortScript;
 
     LibraryTreeItem m_root;
     PendingTreeData m_data;
@@ -67,15 +68,20 @@ public:
 
 LibraryTreeItem* LibraryTreePopulatorPrivate::getOrInsertItem(const Md5Hash& key, const LibraryTreeItem* parent,
                                                               const QString& title, const RichText& richTitle,
-                                                              int level)
+                                                              const QString& sortTitle, int level)
 {
     auto [node, inserted] = m_data.items.try_emplace(key, LibraryTreeItem{title, nullptr, level});
     if(inserted) {
         node->second.setKey(key);
         node->second.setTitleSource(title);
         node->second.setRichTitle(richTitle);
+        node->second.setSortTitle(sortTitle);
     }
     LibraryTreeItem* child = &node->second;
+
+    if(child->sortTitle().isEmpty() && !sortTitle.isEmpty()) {
+        child->setSortTitle(sortTitle);
+    }
 
     if(!child->pending()) {
         child->setPending(true);
@@ -86,21 +92,28 @@ LibraryTreeItem* LibraryTreePopulatorPrivate::getOrInsertItem(const Md5Hash& key
 
 void LibraryTreePopulatorPrivate::iterateTrack(const Track& track)
 {
-    const QString field = m_parser.evaluate(m_script, track, m_scriptContext);
-    if(field.isNull()) {
+    const QString displayField = m_parser.evaluate(m_displayScript, track, m_scriptContext);
+    if(displayField.isNull()) {
         return;
     }
+    const QString sortField
+        = m_sortScript.input.isEmpty() ? displayField : m_parser.evaluate(m_sortScript, track, m_scriptContext);
 
-    const QStringList values = field.split(QLatin1String{Constants::UnitSeparator}, Qt::SkipEmptyParts);
-    for(const QString& value : values) {
-        if(value.isNull()) {
+    const QStringList displayValues = displayField.split(QLatin1String{Constants::UnitSeparator}, Qt::SkipEmptyParts);
+    const QStringList sortValues    = sortField.split(QLatin1String{Constants::UnitSeparator}, Qt::SkipEmptyParts);
+    const bool pairSortValues       = displayValues.size() == sortValues.size();
+
+    for(int valueIndex{0}; const QString& displayValue : displayValues) {
+        if(displayValue.isNull()) {
             continue;
         }
 
-        LibraryTreeItem* parent = &m_root;
-        const QStringList items = value.split(u"||"_s);
+        LibraryTreeItem* parent        = &m_root;
+        const QStringList displayItems = displayValue.split(u"||"_s);
+        const QStringList sortItems    = pairSortValues ? sortValues.value(valueIndex).split(u"||"_s) : QStringList{};
+        const bool pairSortItems       = displayItems.size() == sortItems.size();
 
-        for(int level{0}; const QString& item : items) {
+        for(int level{0}; const QString& item : displayItems) {
             const RichText richTitle = trimRichText(m_formatter.evaluate(item));
             const QString title      = richTitle.joinedText();
             if(title.isEmpty()) {
@@ -108,8 +121,10 @@ void LibraryTreePopulatorPrivate::iterateTrack(const Track& track)
             }
 
             const auto key = Utils::generateMd5Hash(parent->key(), title);
+            const QString sortTitle
+                = pairSortItems ? trimRichText(m_formatter.evaluate(sortItems.value(level))).joinedText() : title;
 
-            auto* node = getOrInsertItem(key, parent, title, richTitle, level);
+            auto* node = getOrInsertItem(key, parent, title, richTitle, sortTitle.isEmpty() ? title : sortTitle, level);
             node->setTitleSource(item);
 
             node->addTrack(track);
@@ -118,6 +133,7 @@ void LibraryTreePopulatorPrivate::iterateTrack(const Track& track)
             parent = node;
             ++level;
         }
+        ++valueIndex;
     }
 }
 
@@ -170,7 +186,7 @@ void LibraryTreePopulator::setColour(const QColor& colour)
     p->m_formatter.setBaseColour(colour);
 }
 
-void LibraryTreePopulator::run(const QString& grouping, const TrackList& tracks, bool useVarious)
+void LibraryTreePopulator::run(const LibraryTreeGrouping& grouping, const TrackList& tracks, bool useVarious)
 {
     setState(Running);
 
@@ -179,7 +195,10 @@ void LibraryTreePopulator::run(const QString& grouping, const TrackList& tracks,
     p->m_scriptEnvironment.setEvaluationPolicy(TrackListContextPolicy::Unresolved, {}, true, useVarious);
 
     if(std::exchange(p->m_currentGrouping, grouping) != grouping) {
-        p->m_script = p->m_parser.parse(p->m_currentGrouping);
+        p->m_displayScript = p->m_parser.parse(p->m_currentGrouping.script);
+        p->m_sortScript    = p->m_currentGrouping.sortScript.isEmpty()
+                               ? ParsedScript{}
+                               : p->m_parser.parse(p->m_currentGrouping.sortScript);
     }
 
     p->m_pendingTracks     = tracks;

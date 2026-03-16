@@ -19,6 +19,7 @@
 
 #pragma once
 
+#include "librarytreegroup.h"
 #include "librarytreeitem.h"
 
 #include <utils/crypto.h>
@@ -64,7 +65,7 @@ public:
     void setFont(const QFont& font);
     void setColour(const QColor& colour);
 
-    void run(const QString& grouping, const TrackList& tracks, bool useVarious);
+    void run(const LibraryTreeGrouping& grouping, const TrackList& tracks, bool useVarious);
 
 signals:
     void populated(Fooyin::PendingTreeDataPtr data);

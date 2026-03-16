@@ -50,6 +50,7 @@ public:
     [[nodiscard]] bool pending() const;
     [[nodiscard]] int level() const;
     [[nodiscard]] const QString& title() const;
+    [[nodiscard]] const QString& sortTitle() const;
     [[nodiscard]] const QString& titleSource() const;
     [[nodiscard]] const RichText& richTitle() const;
     [[nodiscard]] const TrackList& tracks() const;
@@ -60,6 +61,7 @@ public:
 
     void setPending(bool pending);
     void setTitle(const QString& title);
+    void setSortTitle(const QString& title);
     void setTitleSource(const QString& title);
     void setRichTitle(const RichText& title);
     void setKey(const Md5Hash& key);
@@ -75,6 +77,7 @@ private:
     int m_level;
     Md5Hash m_key;
     QString m_title;
+    QString m_sortTitle;
     QString m_titleSource;
     RichText m_richTitle;
     std::optional<Track::Cover> m_coverType;

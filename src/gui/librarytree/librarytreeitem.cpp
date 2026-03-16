@@ -56,6 +56,14 @@ QStyleOptionViewItem::Position getCoverPosition(const QString& text, const char*
 
     return QStyleOptionViewItem::Right;
 }
+
+QString normaliseTitle(QString text)
+{
+    text.remove(QLatin1String{Fooyin::Constants::FrontCover});
+    text.remove(QLatin1String{Fooyin::Constants::BackCover});
+    text.remove(QLatin1String{Fooyin::Constants::ArtistPicture});
+    return text;
+}
 } // namespace
 
 namespace Fooyin {
@@ -68,6 +76,7 @@ LibraryTreeItem::LibraryTreeItem(QString title, LibraryTreeItem* parent, int lev
     , m_pending{false}
     , m_level{level}
     , m_title{std::move(title)}
+    , m_sortTitle{m_title}
     , m_titleSource{m_title}
     , m_richTitle{plainTextToRichText(m_title)}
     , m_coverPosition{QStyleOptionViewItem::Left}
@@ -90,6 +99,8 @@ LibraryTreeItem::LibraryTreeItem(QString title, LibraryTreeItem* parent, int lev
         m_title.remove(QLatin1String{Constants::ArtistPicture});
         removeCoverMarker(m_richTitle, Constants::ArtistPicture);
     }
+
+    m_sortTitle = normaliseTitle(std::move(m_sortTitle));
 }
 
 bool LibraryTreeItem::pending() const
@@ -105,6 +116,11 @@ int LibraryTreeItem::level() const
 const QString& LibraryTreeItem::title() const
 {
     return m_title;
+}
+
+const QString& LibraryTreeItem::sortTitle() const
+{
+    return m_sortTitle;
 }
 
 const QString& LibraryTreeItem::titleSource() const
@@ -150,8 +166,14 @@ void LibraryTreeItem::setPending(bool pending)
 void LibraryTreeItem::setTitle(const QString& title)
 {
     m_title       = title;
+    m_sortTitle   = normaliseTitle(title);
     m_titleSource = m_title;
     m_richTitle   = plainTextToRichText(m_title);
+}
+
+void LibraryTreeItem::setSortTitle(const QString& title)
+{
+    m_sortTitle = normaliseTitle(title);
 }
 
 void LibraryTreeItem::setTitleSource(const QString& title)
