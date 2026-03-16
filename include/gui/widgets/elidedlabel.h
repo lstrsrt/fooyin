@@ -21,6 +21,8 @@
 
 #include "fygui_export.h"
 
+#include <gui/scripting/richtext.h>
+
 #include <QLabel>
 
 namespace Fooyin {
@@ -38,11 +40,15 @@ public:
 
     [[nodiscard]] QString text() const;
     void setText(const QString& text);
+    [[nodiscard]] const RichText& richText() const;
+    void setRichText(const RichText& text);
+    void clear();
 
     [[nodiscard]] QSize sizeHint() const override;
     [[nodiscard]] QSize minimumSizeHint() const override;
 
 protected:
+    void paintEvent(QPaintEvent* event) override;
     void resizeEvent(QResizeEvent* event) override;
 
 private:
@@ -50,6 +56,7 @@ private:
 
     Qt::TextElideMode m_elideMode;
     QString m_text;
+    RichText m_richText;
     bool m_isElided;
 };
 } // namespace Fooyin
