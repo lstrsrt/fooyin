@@ -95,8 +95,8 @@ LibraryTreeConfigDialog::LibraryTreeConfigDialog(LibraryTreeWidget* libraryTree,
     auto* iconGroup       = new QGroupBox(tr("Icon"), this);
     auto* iconGroupLayout = new QGridLayout(iconGroup);
 
-    m_iconWidth->setSuffix(u"px"_s);
-    m_iconHeight->setSuffix(u"px"_s);
+    m_iconWidth->setSuffix(u" px"_s);
+    m_iconHeight->setSuffix(u" px"_s);
     m_iconWidth->setMaximum(512);
     m_iconHeight->setMaximum(512);
     m_iconWidth->setSingleStep(5);

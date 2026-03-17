@@ -90,17 +90,17 @@ FilterConfigDialog::FilterConfigDialog(FilterWidget* filterWidget, ActionManager
     auto* artworkMode   = new QGroupBox(tr("Artwork Mode"), this);
     auto* artworkLayout = new QGridLayout(artworkMode);
 
-    m_iconWidth->setSuffix(u"px"_s);
-    m_iconHeight->setSuffix(u"px"_s);
+    m_iconWidth->setSuffix(u" px"_s);
+    m_iconHeight->setSuffix(u" px"_s);
     m_iconWidth->setMaximum(2048);
     m_iconHeight->setMaximum(2048);
     m_iconWidth->setSingleStep(20);
     m_iconHeight->setSingleStep(20);
     m_iconHorizontalGap->setRange(-1, 256);
     m_iconHorizontalGap->setSpecialValueText(tr("Auto"));
-    m_iconHorizontalGap->setSuffix(u"px"_s);
+    m_iconHorizontalGap->setSuffix(u" px"_s);
     m_iconVerticalGap->setRange(0, 256);
-    m_iconVerticalGap->setSuffix(u"px"_s);
+    m_iconVerticalGap->setSuffix(u" px"_s);
 
     auto* iconSizeHint = new QLabel(u"🛈 "_s + tr("Use <b>Ctrl+Scroll</b> in the widget to resize icons."), this);
 

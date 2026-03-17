@@ -111,7 +111,7 @@ PlaylistGeneralPageWidget::PlaylistGeneralPageWidget(const QStringList& playlist
     auto* behaviour       = new QGroupBox(tr("Behaviour"), this);
     auto* behaviourLayout = new QGridLayout(behaviour);
 
-    auto* preloadCountLabel = new QLabel(tr("Preload count") + ":"_L1, this);
+    auto* preloadCountLabel = new QLabel(tr("Tracks to preload") + ":"_L1, this);
     const auto preloadTooltip
         = tr("Number of tracks used to preload the playlist before loading the rest of the playlist");
     preloadCountLabel->setToolTip(preloadTooltip);
@@ -119,7 +119,6 @@ PlaylistGeneralPageWidget::PlaylistGeneralPageWidget(const QStringList& playlist
 
     m_preloadCount->setMinimum(0);
     m_preloadCount->setMaximum(10000);
-    m_preloadCount->setSuffix(tr(" tracks"));
 
     int row{0};
     behaviourLayout->addWidget(preloadCountLabel, row, 0);
@@ -139,11 +138,11 @@ PlaylistGeneralPageWidget::PlaylistGeneralPageWidget(const QStringList& playlist
 
     m_imagePadding->setMinimum(0);
     m_imagePadding->setMaximum(100);
-    m_imagePadding->setSuffix(u"px"_s);
+    m_imagePadding->setSuffix(u" px"_s);
 
     m_imagePaddingTop->setMinimum(0);
     m_imagePaddingTop->setMaximum(100);
-    m_imagePaddingTop->setSuffix(u"px"_s);
+    m_imagePaddingTop->setSuffix(u" px"_s);
 
     m_skipMissing->setToolTip(tr("Skip unavailable tracks when loading playlists"));
 

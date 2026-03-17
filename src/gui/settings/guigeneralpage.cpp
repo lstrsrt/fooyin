@@ -171,10 +171,10 @@ GuiGeneralPageWidget::GuiGeneralPageWidget(LayoutProvider* layoutProvider, Edita
     layoutGroupLayout->setColumnStretch(2, 1);
 
     m_editableLayoutMargin->setRange(0, 20);
-    m_editableLayoutMargin->setSuffix(u"px"_s);
+    m_editableLayoutMargin->setSuffix(u" px"_s);
 
     m_splitterHandleGap->setRange(0, 20);
-    m_splitterHandleGap->setSuffix(u"px"_s);
+    m_splitterHandleGap->setSuffix(u" px"_s);
 
     auto* toolButtonGroup       = new QGroupBox(tr("Tool Buttons"), this);
     auto* toolButtonGroupLayout = new QVBoxLayout(toolButtonGroup);
@@ -225,7 +225,7 @@ GuiGeneralPageWidget::GuiGeneralPageWidget(LayoutProvider* layoutProvider, Edita
     auto* ratingGroupLayout = new QGridLayout(ratingGroupBox);
 
     m_starRatingSize->setRange(5, 30);
-    m_starRatingSize->setSuffix(u"px"_s);
+    m_starRatingSize->setSuffix(u" px"_s);
 
     ratingGroupLayout->addWidget(new QLabel(tr("Star size"), this), 0, 0);
     ratingGroupLayout->addWidget(m_starRatingSize, 0, 1);

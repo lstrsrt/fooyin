@@ -57,19 +57,17 @@ GmeSettings::GmeSettings(QWidget* parent)
 
     m_maxLength->setRange(1.0, 60.0);
     m_maxLength->setSingleStep(0.5);
-    m_maxLength->setSuffix(u" "_s + tr("minutes"));
+    m_maxLength->setSuffix(u" min"_s);
 
     auto* loopLabel = new QLabel(tr("Loop count") + u":"_s, this);
 
     m_loopCount->setRange(1, 16);
     m_loopCount->setSingleStep(1);
-    m_loopCount->setSuffix(u" "_s + tr("times"));
-
     auto* fadeLabel = new QLabel(tr("Fade length") + u":"_s, this);
 
     m_fadeLength->setRange(0, 10000);
     m_fadeLength->setSingleStep(500);
-    m_fadeLength->setSuffix(u" "_s + tr("ms"));
+    m_fadeLength->setSuffix(u" ms"_s);
 
     int row{0};
     lengthLayout->addWidget(maxLengthLabel, row, 0);

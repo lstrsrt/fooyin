@@ -57,9 +57,9 @@ VuMeterConfigDialog::VuMeterConfigDialog(VuMeter::VuMeterWidget* vuMeter, QWidge
     auto* generalLayout = new QGridLayout(generalGroup);
 
     m_peakHold->setRange(0.1, 30.0);
-    m_peakHold->setSuffix(" "_L1 + tr("seconds"));
+    m_peakHold->setSuffix(u" s"_s);
     m_falloff->setRange(0.1, 96.0);
-    m_falloff->setSuffix(" "_L1 + tr("dB per second"));
+    m_falloff->setSuffix(u" dB/s"_s);
 
     for(const auto preset : Gui::FrameRate::Presets) {
         const int fps = Gui::FrameRate::toFps(preset);

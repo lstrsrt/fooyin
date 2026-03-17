@@ -109,18 +109,18 @@ FadingPageWidget::FadingPageWidget(SettingsManager* settings)
     auto* fadingLayout = new QGridLayout(m_fadingBox);
     m_fadingBox->setCheckable(true);
 
-    m_fadingPauseIn->setSuffix(u"ms"_s);
-    m_fadingPauseOut->setSuffix(u"ms"_s);
-    m_fadingStopIn->setSuffix(u"ms"_s);
-    m_fadingStopOut->setSuffix(u"ms"_s);
-    m_fadingBoundaryIn->setSuffix(u"ms"_s);
-    m_fadingBoundaryOut->setSuffix(u"ms"_s);
-    m_crossfadeManualIn->setSuffix(u"ms"_s);
-    m_crossfadeManualOut->setSuffix(u"ms"_s);
-    m_crossfadeAutoIn->setSuffix(u"ms"_s);
-    m_crossfadeAutoOut->setSuffix(u"ms"_s);
-    m_crossfadeSeekIn->setSuffix(u"ms"_s);
-    m_crossfadeSeekOut->setSuffix(u"ms"_s);
+    m_fadingPauseIn->setSuffix(u" ms"_s);
+    m_fadingPauseOut->setSuffix(u" ms"_s);
+    m_fadingStopIn->setSuffix(u" ms"_s);
+    m_fadingStopOut->setSuffix(u" ms"_s);
+    m_fadingBoundaryIn->setSuffix(u" ms"_s);
+    m_fadingBoundaryOut->setSuffix(u" ms"_s);
+    m_crossfadeManualIn->setSuffix(u" ms"_s);
+    m_crossfadeManualOut->setSuffix(u" ms"_s);
+    m_crossfadeAutoIn->setSuffix(u" ms"_s);
+    m_crossfadeAutoOut->setSuffix(u" ms"_s);
+    m_crossfadeSeekIn->setSuffix(u" ms"_s);
+    m_crossfadeSeekOut->setSuffix(u" ms"_s);
 
     m_fadingPauseIn->setMaximum(10000);
     m_fadingPauseOut->setMaximum(10000);

@@ -86,7 +86,7 @@ ArtworkSearchingPageWidget::ArtworkSearchingPageWidget(SettingsManager* settings
 
     m_finderThumbSize->setMinimum(10);
     m_finderThumbSize->setMaximum(1000);
-    m_finderThumbSize->setSuffix(u"px"_s);
+    m_finderThumbSize->setSuffix(u" px"_s);
 
     const auto thumbTooltip = tr("Size of thumbnails in Artwork Finder when searching for artwork");
 
