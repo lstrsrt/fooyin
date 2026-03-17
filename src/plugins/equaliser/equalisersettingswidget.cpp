@@ -47,10 +47,12 @@
 #include <cmath>
 #include <utility>
 
-constexpr auto SliderScale           = 10;
-constexpr quint32 PresetStoreVersion = 1;
-constexpr auto PresetsSettingKey     = "DSP/EqualiserPresets";
-constexpr auto LastPresetPathKey     = "DSP/EqualiserLastPresetPath";
+using namespace Qt::StringLiterals;
+
+constexpr auto SliderScale        = 10;
+constexpr auto PresetStoreVersion = 1;
+constexpr auto PresetsSettingKey  = "DSP/EqualiserPresets";
+constexpr auto LastPresetPathKey  = "DSP/EqualiserLastPresetPath";
 
 namespace {
 constexpr std::array<const char*, 18> BandLabels = {
@@ -494,9 +496,9 @@ void EqualiserSettingsWidget::importPreset()
         const int value = trimmed.toInt(&ok);
         if(!ok) {
             QMessageBox::warning(this, tr("Import Equaliser Preset"),
-                                 tr("Invalid value on line %1. The first %2 non-empty lines must be integers.")
-                                     .arg(lineNumber)
-                                     .arg(EqualiserDsp::BandCount));
+                                 tr("Invalid value on line %L1.").arg(lineNumber) + u"\n"_s
+                                     + tr("The first %Ln non-empty line(s) must contain integer values.", nullptr,
+                                          EqualiserDsp::BandCount));
             return;
         }
 
@@ -506,9 +508,8 @@ void EqualiserSettingsWidget::importPreset()
 
     if(parsedBands < EqualiserDsp::BandCount) {
         QMessageBox::warning(this, tr("Import Equaliser Preset"),
-                             tr("Preset file has %1 band values. %2 values are required.")
-                                 .arg(parsedBands)
-                                 .arg(EqualiserDsp::BandCount));
+                             tr("The preset file contains %Ln band value(s).", nullptr, parsedBands) + u"\n"_s
+                                 + tr("Expected %Ln band value(s).", nullptr, EqualiserDsp::BandCount));
         return;
     }
 

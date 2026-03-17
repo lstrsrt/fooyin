@@ -43,7 +43,7 @@ GmeSettings::GmeSettings(QWidget* parent)
     , m_loopCount{new QSpinBox(this)}
     , m_fadeLength{new QSpinBox(this)}
 {
-    setWindowTitle(tr("%1 Settings").arg(u"GME"_s));
+    setWindowTitle(tr("GME Settings"));
     setModal(true);
 
     auto* buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this);

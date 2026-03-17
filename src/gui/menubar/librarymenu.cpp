@@ -111,8 +111,8 @@ LibraryMenu::LibraryMenu(Application* core, ActionManager* actionManager, QObjec
 
         if(activeLibraryScan) {
             m_activeLibraryScanId = progress.id;
-            cancelScan->setText(tr("Cancel scan for %1").arg(progress.info.name));
-            cancelScan->setStatusTip(tr("Cancel the current scan for %1").arg(progress.info.name));
+            cancelScan->setText(tr("Cancel current scan"));
+            cancelScan->setStatusTip(tr("Cancel the current scan"));
             cancelScan->setVisible(true);
         }
         else {

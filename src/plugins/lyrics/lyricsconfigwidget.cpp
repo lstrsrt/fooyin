@@ -40,7 +40,7 @@ using namespace Qt::StringLiterals;
 
 namespace Fooyin::Lyrics {
 LyricsConfigDialog::LyricsConfigDialog(LyricsWidget* lyricsWidget, QWidget* parent)
-    : WidgetConfigDialog{lyricsWidget, LyricsWidget::tr("Configure %1").arg(lyricsWidget->name()), parent}
+    : WidgetConfigDialog{lyricsWidget, LyricsWidget::tr("Lyrics Settings"), parent}
     , m_tabs{new QTabWidget(this)}
     , m_seekOnClick{new QCheckBox(tr("Seek on click"), this)}
     , m_noLyricsScript{new ScriptLineEdit(this)}

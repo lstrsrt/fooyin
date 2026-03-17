@@ -22,12 +22,12 @@
 #include <QMainWindow>
 #include <QPointer>
 
-#include <functional>
-
 namespace Fooyin {
 class ActionManager;
 class MainMenuBar;
+class MusicLibrary;
 class SettingsManager;
+struct ScanProgress;
 class StatusWidget;
 class Track;
 
@@ -53,8 +53,8 @@ public:
     };
     Q_ENUM(WindowState)
 
-    explicit MainWindow(ActionManager* actionManager, MainMenuBar* menubar, SettingsManager* settings,
-                        QWidget* parent = nullptr);
+    explicit MainWindow(ActionManager* actionManager, MainMenuBar* menubar, MusicLibrary* library,
+                        SettingsManager* settings, QWidget* parent = nullptr);
     ~MainWindow() override;
 
     void open();
@@ -66,7 +66,6 @@ public:
     void resetTitle();
 
     void installStatusWidget(StatusWidget* statusWidget);
-    void setScanProgress(const QString& message, std::function<void()> cancel = {});
 
     [[nodiscard]] QSize sizeHint() const override;
 
@@ -76,6 +75,7 @@ protected:
     void closeEvent(QCloseEvent* event) override;
 
 private:
+    void showScanProgress(const ScanProgress& progress);
     WindowState currentState();
     void saveWindowGeometry();
     void restoreWindowGeometry();
@@ -83,6 +83,7 @@ private:
     void hideToTray(bool hide);
 
     MainMenuBar* m_mainMenu;
+    MusicLibrary* m_library;
     SettingsManager* m_settings;
     QPointer<StatusWidget> m_statusWidget;
 

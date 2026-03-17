@@ -198,7 +198,7 @@ LibraryTreeModelPrivate::LibraryTreeModelPrivate(LibraryTreeModel* self, Library
 
 void LibraryTreeModelPrivate::updateSummary()
 {
-    m_summaryNode.setTitle(u"All Music (%1)"_s.arg(m_self->rootItem()->childCount() - 1));
+    m_summaryNode.setTitle(LibraryTreeModel::tr("All Music") + u" (%L1)"_s.arg(m_self->rootItem()->childCount() - 1));
 }
 
 void LibraryTreeModelPrivate::removeTracks(const TrackList& tracks)
@@ -436,7 +436,7 @@ void LibraryTreeModelPrivate::beginReset()
     m_pendingNodes.clear();
     m_addedNodes.clear();
 
-    m_summaryNode = LibraryTreeItem{u"All Music"_s, m_self->rootItem(), -1};
+    m_summaryNode = LibraryTreeItem{LibraryTreeModel::tr("All Music"), m_self->rootItem(), -1};
     m_self->rootItem()->appendChild(&m_summaryNode);
     updateSummary();
 }

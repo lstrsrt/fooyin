@@ -69,8 +69,8 @@ void EditableTabBar::showEditor()
         const QString currentText = tabText(currIndex);
 
         bool ok{false};
-        const QString text = QInputDialog::getText(Utils::getMainWindow(), tr("Edit %1 Name").arg(m_title),
-                                                   tr("%1 name:").arg(m_title), QLineEdit::Normal, currentText, &ok);
+        const QString text = QInputDialog::getText(Utils::getMainWindow(), tr("Rename Tab"), tr("Name:"),
+                                                   QLineEdit::Normal, currentText, &ok);
 
         if(ok && !text.isEmpty() && text != currentText) {
             setTabText(currIndex, text);

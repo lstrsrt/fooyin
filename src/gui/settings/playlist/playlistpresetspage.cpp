@@ -432,6 +432,7 @@ void PlaylistPresetsPageWidget::clonePreset()
     }
 
     PlaylistPreset clonedPreset{regPreset.value()};
+    //: %1 refers to the name of a playlist preset.
     clonedPreset.name                = tr("Copy of %1").arg(clonedPreset.name);
     clonedPreset.isDefault           = false;
     const PlaylistPreset addedPreset = m_presetRegistry->addItem(clonedPreset);

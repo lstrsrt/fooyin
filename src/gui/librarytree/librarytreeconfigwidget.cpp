@@ -37,7 +37,7 @@ using namespace Qt::StringLiterals;
 namespace Fooyin {
 LibraryTreeConfigDialog::LibraryTreeConfigDialog(LibraryTreeWidget* libraryTree, ActionManager* actionManager,
                                                  LibraryTreeGroupRegistry* groupsRegistry, QWidget* parent)
-    : WidgetConfigDialog{libraryTree, tr("Configure %1").arg(libraryTree->name()), parent}
+    : WidgetConfigDialog{libraryTree, tr("Library Tree Settings"), parent}
     , m_actionManager{actionManager}
     , m_groupsRegistry{groupsRegistry}
     , m_middleClick{new QComboBox(this)}
@@ -102,8 +102,7 @@ LibraryTreeConfigDialog::LibraryTreeConfigDialog(LibraryTreeWidget* libraryTree,
     m_iconWidth->setSingleStep(5);
     m_iconHeight->setSingleStep(5);
 
-    auto* iconSizeHint = new QLabel(
-        u"🛈 "_s + tr("Size can also be changed using %1 in the widget.").arg(u"<b>Ctrl+Scroll</b>"_s), this);
+    auto* iconSizeHint = new QLabel(u"🛈 "_s + tr("Use <b>Ctrl+Scroll</b> in the widget to resize icons."), this);
     iconSizeHint->setTextFormat(Qt::RichText);
 
     int row{0};

@@ -42,6 +42,8 @@
 #include <set>
 #include <utility>
 
+using namespace Qt::StringLiterals;
+
 namespace {
 QFont filterFont()
 {
@@ -248,9 +250,8 @@ void FilterModelPrivate::updateSummary()
     }
 
     for(int column{0}; column < columnCount; ++column) {
-        const QString summaryText = QString{FilterModel::tr("All (%1 %2s)")}
-                                        .arg(static_cast<int>(uniqueColumns.at(column).size()))
-                                        .arg(m_columns.at(column).name.toLower());
+        //: Label for the filter summary entry that represents all values. %L1 is the number of entries, e.g. All (100).
+        const QString summaryText = FilterModel::tr("All (%L1)").arg(static_cast<int>(uniqueColumns.at(column).size()));
         nodeColumns.emplace_back(summaryText);
 
         if(richTemplates.at(column)) {

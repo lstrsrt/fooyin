@@ -42,11 +42,6 @@
 using namespace Qt::StringLiterals;
 
 namespace {
-QString tr(const char* text)
-{
-    return Fooyin::CommandButton::tr(text);
-}
-
 QString commandLabel(const QString& category, const QString& description)
 {
     return category.isEmpty() ? description : u"%1 | %2"_s.arg(category, description);
@@ -65,18 +60,18 @@ QString imageFilter()
     wildcards.removeDuplicates();
     wildcards.sort();
 
-    const QString imageFiles
-        = wildcards.isEmpty() ? tr("All files (*)") : tr("Images") + u" ("_s + wildcards.join(u' ') + u")"_s;
+    const QString imageFiles = wildcards.isEmpty()
+                                 ? Fooyin::CommandButton::tr("All files (*)")
+                                 : Fooyin::CommandButton::tr("Images") + u" ("_s + wildcards.join(u' ') + u")"_s;
 
-    return imageFiles + u";;"_s + tr("All files (*)");
+    return imageFiles + u";;"_s + Fooyin::CommandButton::tr("All files (*)");
 }
 } // namespace
 
 namespace Fooyin {
 CommandButtonConfigDialog::CommandButtonConfigDialog(CommandButton* button, ActionManager* actionManager,
                                                      QWidget* parent)
-    : WidgetConfigDialog<CommandButton, CommandButton::ConfigData>{button, tr("Configure %1").arg(button->name()),
-                                                                   parent}
+    : WidgetConfigDialog<CommandButton, CommandButton::ConfigData>{button, tr("Command Button Settings"), parent}
     , m_actionManager{actionManager}
     , m_command{new ExpandingComboBox(this)}
     , m_text{new QLineEdit(this)}

@@ -263,6 +263,8 @@ set(SOURCES
     replaygain/replaygainview.h
     replaygain/replaygainwidget.cpp
     replaygain/replaygainwidget.h
+    scanprogresstext.cpp
+    scanprogresstext.h
     scriptdisplay/scriptdisplay.cpp
     scriptdisplay/scriptdisplay.h
     scriptdisplay/scriptdisplayconfigdialog.cpp

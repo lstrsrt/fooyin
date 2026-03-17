@@ -89,14 +89,13 @@ ArtworkProperties::ArtworkProperties(AudioLoader* loader, MusicLibrary* library,
                 StatusEvent::post(tr("No embedded artwork found to export"));
             }
             else if(summary.failed == 0) {
-                StatusEvent::post(tr("Exported artwork to %1 files").arg(summary.written));
+                StatusEvent::post(tr("Exported artwork to %Ln file(s)", nullptr, summary.written));
             }
             else if(summary.written == 0) {
                 StatusEvent::post(tr("Failed to export artwork"));
             }
             else {
-                StatusEvent::post(
-                    tr("Exported artwork to %1 files (%2 failed)").arg(summary.written).arg(summary.failed));
+                StatusEvent::post(tr("Exported artwork to %Ln file(s); some exports failed", nullptr, summary.written));
             }
         });
         QObject::connect(artworkRow, &ArtworkRow::requestExtractAs, this, [this, artworkRow]() {

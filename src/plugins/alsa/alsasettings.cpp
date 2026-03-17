@@ -32,7 +32,7 @@ AlsaSettings::AlsaSettings(QWidget* parent)
     , m_bufferLength{new QSpinBox(this)}
     , m_periodLength{new QSpinBox(this)}
 {
-    setWindowTitle(tr("%1 Settings").arg(u"ALSA"_s));
+    setWindowTitle(tr("ALSA Settings"));
     setModal(true);
 
     auto* buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this);

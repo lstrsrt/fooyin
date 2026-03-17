@@ -165,8 +165,8 @@ OutputPageWidget::OutputPageWidget(EngineController* engine, SettingsManager* se
         const int highPct  = m_decodeHighWatermark->value();
         const int lowMs    = static_cast<int>(std::lround((static_cast<double>(bufferMs) * lowPct) / 100.0));
         const int highMs   = static_cast<int>(std::lround((static_cast<double>(bufferMs) * highPct) / 100.0));
-        m_decodeLowWatermarkHint->setText(tr("Resume decoding below %1 ms").arg(lowMs));
-        m_decodeHighWatermarkHint->setText(tr("Pause decoding at %1 ms").arg(highMs));
+        m_decodeLowWatermarkHint->setText(tr("Resume decoding below %Ln ms", nullptr, lowMs));
+        m_decodeHighWatermarkHint->setText(tr("Pause decoding at %Ln ms", nullptr, highMs));
     };
 
     QObject::connect(m_outputBox, &QComboBox::currentTextChanged, this, &OutputPageWidget::setupDevices);

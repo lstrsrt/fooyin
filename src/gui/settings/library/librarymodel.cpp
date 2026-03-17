@@ -19,12 +19,16 @@
 
 #include "librarymodel.h"
 
+#include "scanprogresstext.h"
+
 #include <core/library/librarymanager.h>
 #include <core/library/musiclibrary.h>
 #include <utils/enum.h>
 
 #include <QFont>
 #include <QLoggingCategory>
+
+using namespace Qt::StringLiterals;
 
 Q_LOGGING_CATEGORY(LIB_MODEL, "fy.librarymodel")
 
@@ -212,31 +216,14 @@ void LibraryModel::setScanProgress(const ScanProgress& progress)
         return;
     }
 
-    const bool checkingForChanges = progress.type == ScanRequest::Library && progress.onlyModified
-                                 && progress.phase == ScanProgress::Phase::ReadingMetadata;
+    QString statusText = ScanProgressText::libraryStatusPrefix(progress, "LibraryModel");
 
-    QString statusText;
-
-    switch(progress.phase) {
-        case ScanProgress::Phase::Enumerating:
-            statusText = tr("Scanning: discovering files");
-            break;
-        case ScanProgress::Phase::ReadingMetadata:
-            statusText = checkingForChanges ? tr("Scanning: checking for changes") : tr("Scanning: reading metadata");
-            break;
-        case ScanProgress::Phase::WritingDatabase:
-            statusText = tr("Scanning: saving changes");
-            break;
-        case ScanProgress::Phase::Finalising:
-            statusText = tr("Scanning: finalizing");
-            break;
-        case ScanProgress::Phase::Finished:
-            statusText = tr("Scanning");
-            break;
+    if(const QString phaseText = ScanProgressText::phaseText(progress, "LibraryModel"); !phaseText.isEmpty()) {
+        statusText += u" - "_s + phaseText;
     }
 
     if(progress.discovered > 0) {
-        statusText = tr("%1 (%2 files)").arg(statusText).arg(progress.discovered);
+        statusText += u" - "_s + ScanProgressText::discoveredText(progress.discovered, "LibraryModel");
     }
 
     m_scanStatusText[progress.info.id] = statusText;

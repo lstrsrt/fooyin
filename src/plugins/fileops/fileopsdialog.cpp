@@ -271,7 +271,8 @@ void FileOpsDialogPrivate::savePreset()
     auto existingPreset = findPreset(name);
     if(existingPreset != m_presets.cend()) {
         QMessageBox msg{QMessageBox::Question, tr("Preset already exists"),
-                        tr("Preset %1 already exists. Overwrite?").arg(name), QMessageBox::Yes | QMessageBox::No};
+                        tr("A preset named \"%1\" already exists. Overwrite it?").arg(name),
+                        QMessageBox::Yes | QMessageBox::No};
         if(msg.exec() == QMessageBox::Yes) {
             *existingPreset = preset;
             m_presetBox->setCurrentIndex(m_presetBox->findText(name));
@@ -408,7 +409,7 @@ void FileOpsDialogPrivate::modelUpdated()
         m_runButton->setEnabled(false);
     }
     else {
-        m_status->setText(FileOpsDialog::tr("Pending operations") + u": %1"_s.arg(opCount));
+        m_status->setText(FileOpsDialog::tr("Pending operation(s): %Ln", nullptr, opCount));
         m_runButton->setEnabled(true);
     }
 }

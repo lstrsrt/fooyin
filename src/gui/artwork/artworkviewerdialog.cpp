@@ -41,6 +41,8 @@
 #include <QVBoxLayout>
 #include <QWheelEvent>
 
+using namespace Qt::StringLiterals;
+
 namespace Fooyin {
 class ArtworkView : public QGraphicsView
 {
@@ -207,7 +209,7 @@ ArtworkViewerDialog::ArtworkViewerDialog(const Track& track, const QPixmap& cove
     , m_zoomOutAction(new QAction(tr("Zoom out"), this))
 {
     setAttribute(Qt::WA_DeleteOnClose);
-    setWindowTitle(track.isValid() ? tr("Artwork: %1").arg(track.effectiveTitle()) : tr("Artwork"));
+    setWindowTitle(track.isValid() ? tr("Artwork") + u" - "_s + track.effectiveTitle() : tr("Artwork"));
 
     m_fitToWindowAction->setCheckable(true);
     m_fitToWindowAction->setChecked(true);

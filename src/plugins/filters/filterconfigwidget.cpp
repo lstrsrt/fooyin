@@ -37,7 +37,7 @@ using namespace Qt::StringLiterals;
 namespace Fooyin::Filters {
 FilterConfigDialog::FilterConfigDialog(FilterWidget* filterWidget, ActionManager* actionManager,
                                        FilterColumnRegistry* columnRegistry, QWidget* parent)
-    : WidgetConfigDialog{filterWidget, tr("Configure %1").arg(filterWidget->name()), parent}
+    : WidgetConfigDialog{filterWidget, tr("Filter Settings"), parent}
     , m_actionManager{actionManager}
     , m_columnRegistry{columnRegistry}
     , m_middleClick{new QComboBox(this)}
@@ -102,8 +102,7 @@ FilterConfigDialog::FilterConfigDialog(FilterWidget* filterWidget, ActionManager
     m_iconVerticalGap->setRange(0, 256);
     m_iconVerticalGap->setSuffix(u"px"_s);
 
-    auto* iconSizeHint = new QLabel(
-        u"🛈 "_s + tr("Size can also be changed using %1 in the widget.").arg(u"<b>Ctrl+Scroll</b>"_s), this);
+    auto* iconSizeHint = new QLabel(u"🛈 "_s + tr("Use <b>Ctrl+Scroll</b> in the widget to resize icons."), this);
 
     int row{0};
     artworkLayout->addWidget(new QLabel(tr("Width") + u":"_s, this), row, 0);

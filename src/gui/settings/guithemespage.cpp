@@ -313,7 +313,8 @@ void GuiColoursPageWidget::saveTheme()
     const auto existingTheme = m_themeRegistry->itemByName(name);
     if(existingTheme) {
         QMessageBox msg{QMessageBox::Question, tr("Theme already exists"),
-                        tr("Theme %1 already exists. Overwrite?").arg(name), QMessageBox::Yes | QMessageBox::No};
+                        tr("A theme named \"%1\" already exists. Overwrite it?").arg(name),
+                        QMessageBox::Yes | QMessageBox::No};
         if(msg.exec() == QMessageBox::Yes) {
             theme.id    = existingTheme->id;
             theme.index = existingTheme->index;

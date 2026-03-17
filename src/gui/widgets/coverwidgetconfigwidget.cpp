@@ -32,7 +32,7 @@ using namespace Qt::StringLiterals;
 
 namespace Fooyin {
 CoverWidgetConfigDialog::CoverWidgetConfigDialog(CoverWidget* coverWidget, QWidget* parent)
-    : WidgetConfigDialog{coverWidget, tr("Configure %1").arg(coverWidget->name()), parent}
+    : WidgetConfigDialog{coverWidget, tr("Cover Widget Settings"), parent}
     , m_coverTypeGroup{new QButtonGroup(this)}
     , m_alignmentGroup{new QButtonGroup(this)}
     , m_keepAspectRatio{new QCheckBox(tr("Keep aspect ratio"), this)}

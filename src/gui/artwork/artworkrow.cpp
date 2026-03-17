@@ -21,6 +21,7 @@
 
 #include <gui/guiconstants.h>
 #include <gui/widgets/overlaywidget.h>
+#include <utils/stringutils.h>
 #include <utils/utils.h>
 
 #include <QBuffer>
@@ -189,7 +190,8 @@ void ArtworkRow::finalise(int trackCount)
     if(m_multipleImages) {
         m_image->setPixmap({});
         m_image->setText(tr("Multiple images"));
-        m_details->setText(tr("%1 of %2 files have artwork").arg(m_imageCount).arg(trackCount));
+        m_details->setText(tr("Artwork found in %Ln file(s)", nullptr, m_imageCount) + u"\n"_s
+                           + tr("%Ln file(s) selected", nullptr, trackCount));
         m_image->show();
         m_addButton->hide();
         m_removeButton->show();

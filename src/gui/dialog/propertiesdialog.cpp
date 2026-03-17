@@ -290,11 +290,13 @@ void PropertiesDialogWidget::currentTabChanged(int index)
     }
 
     tabIt->setVisited(true);
-    const QString subtitle = m_tracks.size() == 1
-                               ? u" (%1): %2"_s.arg(m_tracks.front().effectiveTitle(), tabIt->title())
-                               : u" (%1 tracks): %2"_s.arg(m_tracks.size()).arg(tabIt->title());
+    QString windowTitle = tr("Properties");
+    windowTitle
+        += u" - "_s
+         + (m_tracks.size() == 1 ? m_tracks.front().effectiveTitle() : tr("%Ln track(s)", nullptr, m_tracks.size()));
+    windowTitle += u" - "_s + tabIt->title();
 
-    setWindowTitle(tr("Properties") + subtitle);
+    setWindowTitle(windowTitle);
 
     if(auto* widget = tabIt->widget(m_tracks)) {
         tabIt->load(m_tracks);

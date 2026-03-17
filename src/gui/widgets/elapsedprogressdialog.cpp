@@ -163,16 +163,14 @@ QSize ElapsedProgressDialog::sizeHint() const
 
 void ElapsedProgressDialog::updateStatus()
 {
-    m_elapsedLabel->setText(tr("Time elapsed") + ": "_L1 + Utils::msToString(m_elapsedTimer.elapsed(), false));
+    m_elapsedLabel->setText(tr("Time elapsed: %1").arg(Utils::msToString(m_elapsedTimer.elapsed(), false)));
 
     const int current = m_progressBar->value();
     const int max     = m_progressBar->maximum();
     const int min     = m_progressBar->minimum();
 
-    const QString remainingText = tr("Estimated") + ": "_L1;
-
     if(m_isBusy || max <= min || current <= min) {
-        m_remainingLabel->setText(remainingText + tr("Calculating…"));
+        m_remainingLabel->setText(tr("Estimated: %1").arg(tr("Calculating…")));
         return;
     }
 
@@ -183,6 +181,6 @@ void ElapsedProgressDialog::updateStatus()
     const double remainingSecs = remaining / (current / elapsedSecs);
     const auto remainingMs     = static_cast<std::chrono::milliseconds>(static_cast<int>(remainingSecs * 1000));
 
-    m_remainingLabel->setText(remainingText + Utils::msToString(remainingMs, false));
+    m_remainingLabel->setText(tr("Estimated: %1").arg(Utils::msToString(remainingMs, false)));
 }
 } // namespace Fooyin

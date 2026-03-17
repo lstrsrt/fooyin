@@ -38,7 +38,6 @@ class LibraryTreeController;
 class MainWindow;
 class PlaylistController;
 class PlaylistInteractor;
-struct ScanProgress;
 class ScriptCommandHandler;
 class SettingsManager;
 class StatusWidget;
@@ -66,7 +65,6 @@ public:
 
 private:
     FyWidget* createDirBrowser();
-    void showScanProgress(const ScanProgress& progress);
 
     Application* m_core;
     GuiApplication* m_gui;

@@ -78,7 +78,7 @@ namespace Fooyin {
 AboutDialog::AboutDialog(QWidget* parent)
     : QDialog{parent}
 {
-    setWindowTitle(tr("About %1").arg("fooyin"_L1));
+    setWindowTitle(tr("About fooyin"));
     auto* layout = new QGridLayout(this);
     layout->setSizeConstraint(QLayout::SetFixedSize);
 

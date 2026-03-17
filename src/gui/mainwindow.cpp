@@ -21,11 +21,13 @@
 
 #include "internalguisettings.h"
 #include "menubar/mainmenubar.h"
+#include "scanprogresstext.h"
 #include "statusevent.h"
 #include "widgets/statuswidget.h"
 
 #include <core/application.h>
 #include <core/coresettings.h>
+#include <core/library/musiclibrary.h>
 #include <gui/guiconstants.h>
 #include <gui/guisettings.h>
 #include <utils/actions/actionmanager.h>
@@ -46,9 +48,11 @@ using namespace Qt::StringLiterals;
 constexpr auto MainWindowPrevState = "Interface/PrevState";
 
 namespace Fooyin {
-MainWindow::MainWindow(ActionManager* actionManager, MainMenuBar* menubar, SettingsManager* settings, QWidget* parent)
+MainWindow::MainWindow(ActionManager* actionManager, MainMenuBar* menubar, MusicLibrary* library,
+                       SettingsManager* settings, QWidget* parent)
     : QMainWindow{parent}
     , m_mainMenu{menubar}
+    , m_library{library}
     , m_settings{settings}
     , m_prevState{Normal}
     , m_state{Normal}
@@ -80,6 +84,7 @@ MainWindow::MainWindow(ActionManager* actionManager, MainMenuBar* menubar, Setti
 
     m_settings->subscribe<Settings::Gui::ShowStatusTips>(this, [this](const bool show) { m_showStatusTips = show; });
     m_settings->subscribe<Settings::Gui::ShowMenuBar>(this, [this](const bool show) { menuBar()->setVisible(show); });
+    QObject::connect(m_library, &MusicLibrary::scanProgress, this, &MainWindow::showScanProgress);
 
     menuBar()->setVisible(m_settings->value<Settings::Gui::ShowMenuBar>());
 }
@@ -175,13 +180,6 @@ void MainWindow::installStatusWidget(StatusWidget* statusWidget)
     m_statusWidget = statusWidget;
 }
 
-void MainWindow::setScanProgress(const QString& message, std::function<void()> cancel)
-{
-    if(m_statusWidget) {
-        m_statusWidget->setScanProgress(message, std::move(cancel));
-    }
-}
-
 QSize MainWindow::sizeHint() const
 {
     return Utils::proportionateSize(this, 0.6, 0.6);
@@ -237,6 +235,36 @@ void MainWindow::closeEvent(QCloseEvent* event)
 
     event->accept();
     QMainWindow::closeEvent(event);
+}
+
+void MainWindow::showScanProgress(const ScanProgress& progress)
+{
+    if(!m_statusWidget) {
+        return;
+    }
+
+    if(progress.id < 0) {
+        m_statusWidget->setScanProgress({});
+        return;
+    }
+
+    QString scanText = ScanProgressText::requestText(progress, "StatusWidget");
+
+    if(const QString phaseText = ScanProgressText::phaseText(progress, "StatusWidget"); !phaseText.isEmpty()) {
+        scanText += u": "_s + phaseText;
+    }
+
+    if(progress.discovered > 0) {
+        scanText += u": "_s + ScanProgressText::discoveredText(progress.discovered, "StatusWidget");
+    }
+
+    if(progress.phase == ScanProgress::Phase::Finished) {
+        m_statusWidget->setScanProgress({});
+        return;
+    }
+
+    m_statusWidget->setScanProgress(scanText,
+                                    [library = m_library, scanId = progress.id]() { library->cancelScan(scanId); });
 }
 
 MainWindow::WindowState MainWindow::currentState()

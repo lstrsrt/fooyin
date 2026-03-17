@@ -28,6 +28,7 @@
 #include <QGridLayout>
 #include <QGroupBox>
 #include <QLabel>
+#include <QLocale>
 #include <QSpinBox>
 
 using namespace Qt::StringLiterals;
@@ -36,7 +37,7 @@ constexpr auto DefaultFps = Fooyin::Gui::FrameRate::Preset::Fps40;
 
 namespace Fooyin::VuMeter {
 VuMeterConfigDialog::VuMeterConfigDialog(VuMeter::VuMeterWidget* vuMeter, QWidget* parent)
-    : WidgetConfigDialog{vuMeter, tr("Configure %1").arg(vuMeter->name()), parent}
+    : WidgetConfigDialog{vuMeter, tr("VU Meter Settings"), parent}
     , m_peakHold{new QDoubleSpinBox(this)}
     , m_falloff{new QDoubleSpinBox(this)}
     , m_updateFps{new QComboBox(this)}
@@ -62,7 +63,7 @@ VuMeterConfigDialog::VuMeterConfigDialog(VuMeter::VuMeterWidget* vuMeter, QWidge
 
     for(const auto preset : Gui::FrameRate::Presets) {
         const int fps = Gui::FrameRate::toFps(preset);
-        m_updateFps->addItem(tr("%1 FPS").arg(fps), fps);
+        m_updateFps->addItem(tr("%1 fps").arg(fps), fps);
     }
 
     int row = 0;

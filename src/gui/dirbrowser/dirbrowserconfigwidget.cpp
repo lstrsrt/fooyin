@@ -33,7 +33,7 @@ using namespace Qt::StringLiterals;
 
 namespace Fooyin {
 DirBrowserConfigDialog::DirBrowserConfigDialog(DirBrowser* browser, QWidget* parent)
-    : WidgetConfigDialog{browser, tr("Configure %1").arg(browser->name()), parent}
+    : WidgetConfigDialog{browser, tr("Directory Browser Settings"), parent}
     , m_treeMode{new QRadioButton(tr("Tree"), this)}
     , m_listMode{new QRadioButton(tr("List"), this)}
     , m_showIcons{new QCheckBox(tr("Show icons"), this)}

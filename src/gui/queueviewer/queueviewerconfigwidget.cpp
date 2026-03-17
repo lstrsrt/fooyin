@@ -31,7 +31,7 @@ using namespace Qt::StringLiterals;
 
 namespace Fooyin {
 QueueViewerConfigDialog::QueueViewerConfigDialog(QueueViewer* queueViewer, QWidget* parent)
-    : WidgetConfigDialog{queueViewer, tr("Configure %1").arg(queueViewer->name()), parent}
+    : WidgetConfigDialog{queueViewer, tr("Queue Viewer Settings"), parent}
     , m_titleScript{new ScriptLineEdit(this)}
     , m_subtitleScript{new ScriptLineEdit(this)}
     , m_headers{new QCheckBox(tr("Show header"), this)}
@@ -64,8 +64,7 @@ QueueViewerConfigDialog::QueueViewerConfigDialog(QueueViewer* queueViewer, QWidg
     m_iconWidth->setSingleStep(5);
     m_iconHeight->setSingleStep(5);
 
-    auto* iconSizeHint = new QLabel(
-        u"🛈 "_s + tr("Size can also be changed using %1 in the widget.").arg(u"<b>Ctrl+Scroll</b>"_s), this);
+    auto* iconSizeHint = new QLabel(u"🛈 "_s + tr("Use <b>Ctrl+Scroll</b> in the widget to resize icons."), this);
     iconSizeHint->setTextFormat(Qt::RichText);
 
     int row{0};

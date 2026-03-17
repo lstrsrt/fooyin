@@ -1220,7 +1220,7 @@ void PlaylistModel::removeTracks(const TrackGroups& groups)
 void PlaylistModel::updateHeader(Playlist* playlist)
 {
     if(playlist) {
-        m_headerText = u"%1: %2 Tracks"_s.arg(playlist->name()).arg(playlist->trackCount());
+        m_headerText = playlist->name() + u" - "_s + tr("%Ln track(s)", nullptr, playlist->trackCount());
     }
 }
 

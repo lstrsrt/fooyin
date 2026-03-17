@@ -39,7 +39,7 @@ using namespace Qt::StringLiterals;
 
 namespace Fooyin::WaveBar {
 WaveBarConfigDialog::WaveBarConfigDialog(WaveBarWidget* waveBar, QWidget* parent)
-    : WidgetConfigDialog{waveBar, tr("Configure %1").arg(waveBar->name()), parent}
+    : WidgetConfigDialog{waveBar, tr("WaveBar Settings"), parent}
     , m_showLabels{new QCheckBox(tr("Show labels"), this)}
     , m_elapsedTotal{new QCheckBox(tr("Show elapsed total"), this)}
     , m_minMax{new QCheckBox(tr("Min/Max"), this)}

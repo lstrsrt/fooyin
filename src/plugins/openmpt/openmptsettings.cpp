@@ -47,7 +47,7 @@ OpenMptSettings::OpenMptSettings(SettingsManager* settings, QWidget* parent)
     , m_interpolationFilter{new QComboBox(this)}
     , m_loopCount{new QSpinBox(this)}
 {
-    setWindowTitle(tr("%1 Settings").arg(u"OpenMPT"_s));
+    setWindowTitle(tr("OpenMPT Settings"));
     setModal(true);
 
     auto* buttons

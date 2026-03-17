@@ -216,7 +216,7 @@ GuiApplicationPrivate::GuiApplicationPrivate(GuiApplication* self_, Application*
     , m_editableLayout{std::make_unique<EditableLayout>(m_actionManager, &m_widgetProvider, &m_layoutProvider,
                                                         m_settings)}
     , m_menubar{std::make_unique<MainMenuBar>(m_actionManager, m_settings)}
-    , m_mainWindow{std::make_unique<MainWindow>(m_actionManager, m_menubar.get(), m_settings)}
+    , m_mainWindow{std::make_unique<MainWindow>(m_actionManager, m_menubar.get(), m_library, m_settings)}
     , m_mainContext{new WidgetContext(m_mainWindow.get(), Context{"Fooyin.MainWindow"}, m_self)}
     , m_playlistController{std::make_unique<PlaylistController>(m_core, &m_selectionController)}
     , m_playlistInteractor{m_core->playlistHandler(), m_playlistController.get(), m_library}

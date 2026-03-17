@@ -236,11 +236,11 @@ QString ArtworkExporter::statusMessage(const ArtworkExportSummary& summary)
         return QObject::tr("No embedded artwork found to extract");
     }
     if(summary.failed == 0) {
-        return QObject::tr("Extracted artwork to %1 files").arg(summary.written);
+        return QObject::tr("Extracted artwork to %Ln file(s)", nullptr, summary.written);
     }
     if(summary.written == 0) {
         return QObject::tr("Failed to extract artwork");
     }
-    return QObject::tr("Extracted artwork to %1 files (%2 failed)").arg(summary.written).arg(summary.failed);
+    return QObject::tr("Extracted artwork to %Ln file(s); some extractions failed", nullptr, summary.written);
 }
 } // namespace Fooyin

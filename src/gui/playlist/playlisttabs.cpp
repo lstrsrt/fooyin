@@ -380,6 +380,7 @@ void PlaylistTabs::contextMenuEvent(QContextMenuEvent* event)
 
             m_selectionController->changeSelectedTracks(selection);
 
+            //: %1 refers to the name of a playlist.
             auto* selectionMenu = new QMenu(tr("%1 contents").arg(playlist->name()), menu);
             m_selectionController->addTrackContextMenu(selectionMenu);
             menu->addMenu(selectionMenu);
