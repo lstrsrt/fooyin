@@ -275,7 +275,7 @@ void AudioClock::emitPosition(uint64_t positionMs)
         return;
     }
 
-    emit positionChanged(positionMs);
+    emit positionChanged(positionMs, m_generation);
 }
 
 void AudioClock::resetClock()

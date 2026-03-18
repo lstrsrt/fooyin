@@ -80,6 +80,8 @@ signals:
 
     //! Metadata/context update for currently active track.
     void trackChanged(const Fooyin::Track& track);
+    //! Logical track switch committed by the engine.
+    void trackCommitted(const Fooyin::Engine::TrackCommitContext& context);
     //! Early callback before track reaches terminal end.
     void trackAboutToFinish(const Fooyin::Engine::AboutToFinishContext& context);
     //! Callback fired when transition timing reaches the switch anchor.

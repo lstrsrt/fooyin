@@ -61,6 +61,7 @@ public:
         bool readyToSwitch{false};
         bool boundaryReached{false};
         bool endReached{false};
+        uint64_t remainingOutputMs{0};
     };
 
     struct TrackEndingInput

@@ -209,6 +209,11 @@ bool DecoderContext::adoptPreparedDecoder(LoadedDecoder decoder, const Track& tr
     return true;
 }
 
+void DecoderContext::setPreparedDecodePosition(const uint64_t positionMs)
+{
+    m_currentPos = std::max(positionMs, m_startPos);
+}
+
 AudioStreamPtr DecoderContext::createStream(size_t bufferSamples, Engine::FadeCurve fadeCurve)
 {
     auto stream = StreamFactory::createStream(m_format, bufferSamples);

@@ -33,7 +33,6 @@
 #include "library/librarymanager.h"
 #include "library/sortingregistry.h"
 #include "library/unifiedmusiclibrary.h"
-#include "playback/playbackcoordinator.h"
 #include "playback/playbackqueuestore.h"
 #include "playlist/parsers/cueparser.h"
 #include "playlist/parsers/m3uparser.h"
@@ -88,6 +87,9 @@ void registerTypes()
     qRegisterMetaType<Fooyin::OutputCreator>("OutputCreator");
     qRegisterMetaType<Fooyin::LibraryInfo>("LibraryInfo");
     qRegisterMetaType<Fooyin::LibraryInfoMap>("LibraryInfoMap");
+    qRegisterMetaType<Fooyin::Engine::TrackCommitContext>("Fooyin::Engine::TrackCommitContext");
+    qRegisterMetaType<Fooyin::Player::TrackChangeRequest>("Fooyin::Player::TrackChangeRequest");
+    qRegisterMetaType<Fooyin::Player::UpcomingTrack>("Fooyin::Player::UpcomingTrack");
 }
 } // namespace
 
@@ -134,7 +136,6 @@ public:
     PlayerController* m_playerController;
     PlaybackQueueStore m_playbackQueueStore;
     EngineHandler m_engine;
-    PlaybackCoordinator* m_playbackCoordinator;
     SortingRegistry* m_sortingRegistry;
     std::shared_ptr<NetworkAccessManager> m_networkManager;
 
@@ -161,8 +162,6 @@ ApplicationPrivate::ApplicationPrivate(Application* self_)
     , m_playerController{new PlayerController(m_settings, m_playlistHandler, m_self)}
     , m_playbackQueueStore{m_database->connectionPool(), m_library, m_playlistHandler}
     , m_engine{m_audioLoader, m_playerController, m_settings, &m_dspRegistry}
-    , m_playbackCoordinator{new PlaybackCoordinator(&m_engine, m_playerController, m_playlistHandler, m_settings,
-                                                    m_self)}
     , m_sortingRegistry{new SortingRegistry(m_settings, m_self)}
     , m_networkManager{new NetworkAccessManager(m_settings, m_self)}
     , m_pluginManager{m_settings}
@@ -520,8 +519,7 @@ Application::Application(QObject* parent)
         }
 
         p->m_library->updateTrackMetadata({track});
-        currentTrack.track = track;
-        p->m_playerController->changeCurrentTrack(currentTrack);
+        p->m_playerController->updateCurrentTrack(track);
     });
     QObject::connect(&p->m_engine, &EngineController::trackStatusContextChanged, this,
                      [this](const Engine::TrackStatusContext& context) {

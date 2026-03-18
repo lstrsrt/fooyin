@@ -42,6 +42,7 @@ PlaybackTransitionCoordinator::TrackEndingResult
 PlaybackTransitionCoordinator::evaluateTrackEnding(const TrackEndingInput& input)
 {
     TrackEndingResult result;
+    result.remainingOutputMs = input.remainingOutputMs;
 
     const bool durationBoundaryReached
         = input.durationBoundaryEnabled && input.durationMs > 0 && input.positionMs >= input.durationMs;

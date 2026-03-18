@@ -21,12 +21,14 @@
 
 #include <core/engine/enginecontroller.h>
 #include <core/engine/enginedefs.h>
+#include <core/player/playerdefs.h>
 
 #include <QMetaMethod>
 #include <QMetaObject>
 #include <QObject>
 #include <QThread>
 
+#include <chrono>
 #include <map>
 #include <memory>
 #include <optional>
@@ -124,7 +126,16 @@ private:
 
     void publishEvent(const Track& track, bool ready, uint64_t requestId);
     void handleStateChange(Engine::PlaybackState state);
-    void handleTrackChange(const Track& track);
+    void handleTrackChangeRequest(const Player::TrackChangeRequest& request);
+    void handleUpcomingTrackChanged(const Player::UpcomingTrack& upcomingTrack);
+    [[nodiscard]] bool hasAutoTrackEndTransitionEnabled() const;
+    void noteEngineOwnedTransition(const Track& track, uint64_t generation);
+    void handleTrackBoundaryReached(const Track& track, uint64_t generation, uint64_t remainingOutputMs,
+                                    bool engineOwnsTransition);
+    void armEndAdvanceWatchdog(const Track& track, uint64_t generation);
+    void clearPendingBoundaryAdvance();
+    void clearEngineOwnedTransition();
+    void handleTrackCommitted(const Engine::TrackCommitContext& context);
     void handleTrackStatus(Engine::TrackStatus status, const Track& track, uint64_t generation);
 
     void requestPlay() const;
@@ -164,6 +175,14 @@ private:
     CurrentOutput m_currentOutput;
     QMetaObject::Connection m_levelReadyRelayConnection;
     bool m_levelReadyRelayConnected;
+
+    std::optional<Player::TrackChangeRequest> m_pendingTrackChange;
+    Player::UpcomingTrack m_upcomingTrack;
+    Track m_engineOwnedTransitionTrack;
+    uint64_t m_engineOwnedTransitionGen;
+    bool m_endAdvanceSuppressed;
+    Track m_pendingBoundaryAdvanceTrack;
+    uint64_t m_pendingBoundaryAdvanceGen;
 
     Track m_lastPreparedNextTrack;
     bool m_lastPreparedNextTrackReady;

@@ -351,11 +351,13 @@ TEST(PlaybackTransitionCoordinatorTest, EndOfInputWithoutTransitionsWaitsForBuff
     const auto pending = state.evaluateTrackEnding(input);
     EXPECT_TRUE(pending.aboutToFinish);
     EXPECT_FALSE(pending.endReached);
+    EXPECT_EQ(pending.remainingOutputMs, 1000);
 
     input.bufferEmpty = true;
     const auto ended  = state.evaluateTrackEnding(input);
     EXPECT_FALSE(ended.aboutToFinish);
     EXPECT_TRUE(ended.endReached);
+    EXPECT_EQ(ended.remainingOutputMs, 1000);
 }
 
 TEST(PlaybackTransitionCoordinatorTest, HardEndSignalsAndClearsReadiness)

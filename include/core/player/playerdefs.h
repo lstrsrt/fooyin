@@ -21,6 +21,7 @@
 
 #include "fycore_export.h"
 
+#include <core/playlist/playlist.h>
 #include <core/track.h>
 #include <utils/id.h>
 
@@ -54,6 +55,19 @@ struct FYCORE_EXPORT TrackChangeContext
     bool userInitiated{false};
 };
 
+struct FYCORE_EXPORT TrackChangeRequest
+{
+    PlaylistTrack track;
+    TrackChangeContext context;
+    bool isQueueTrack{false};
+};
+
+struct FYCORE_EXPORT UpcomingTrack
+{
+    PlaylistTrack track;
+    bool isQueueTrack{false};
+};
+
 struct FYCORE_EXPORT PlaybackSnapshot
 {
     PlayState playState{PlayState::Stopped};
@@ -69,4 +83,6 @@ struct FYCORE_EXPORT PlaybackSnapshot
 
 Q_DECLARE_METATYPE(Fooyin::Player::AdvanceReason)
 Q_DECLARE_METATYPE(Fooyin::Player::TrackChangeContext)
+Q_DECLARE_METATYPE(Fooyin::Player::TrackChangeRequest)
+Q_DECLARE_METATYPE(Fooyin::Player::UpcomingTrack)
 Q_DECLARE_METATYPE(Fooyin::Player::PlaybackSnapshot)

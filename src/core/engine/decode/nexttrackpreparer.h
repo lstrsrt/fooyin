@@ -67,8 +67,8 @@ public:
         Track currentTrack; // Used to check for same-file transition
         Engine::PlaybackState playbackState{Engine::PlaybackState::Stopped};
         AudioDecoder::PlaybackHints playbackHints{AudioDecoder::NoHints};
-        uint64_t bufferLengthMs{0};     // Preferred stream buffer target for prefill
-        uint64_t preferredPrefillMs{0}; // Minimum prepared prefill target before handoff
+        uint64_t bufferLengthMs{0};     // Internal prepared-stream reserve target
+        uint64_t preferredPrefillMs{0}; // Minimum decoded reserve to accumulate before handoff
         std::shared_ptr<std::atomic<bool>> cancelFlag;
     };
 

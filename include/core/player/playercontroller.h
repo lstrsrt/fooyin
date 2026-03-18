@@ -99,6 +99,10 @@ public:
     void changeCurrentTrack(const Track& track);
     void changeCurrentTrack(const PlaylistTrack& track,
                             const Player::TrackChangeContext& context = Player::TrackChangeContext{});
+    void commitCurrentTrack(const Player::TrackChangeRequest& request);
+    void commitCurrentTrack(const Track& track);
+    void commitCurrentTrack(const PlaylistTrack& track,
+                            const Player::TrackChangeContext& context = Player::TrackChangeContext{});
     void updateCurrentTrack(const Track& track);
     void updateCurrentTrackPlaylist(const UId& playlistId);
     void updateCurrentTrackIndex(int index);
@@ -107,6 +111,7 @@ public:
     void remapPlaylistReferences(const UId& fromPlaylistId, const UId& toPlaylistId);
 
     [[nodiscard]] Track upcomingTrack() const;
+    [[nodiscard]] PlaylistTrack upcomingPlaylistTrack() const;
     [[nodiscard]] bool hasNextTrack() const;
     [[nodiscard]] bool hasPreviousTrack() const;
     [[nodiscard]] Player::TrackChangeContext lastTrackChangeContext() const;
@@ -152,6 +157,8 @@ signals:
     void currentTrackUpdated(const Fooyin::Track& track);
     void playlistTrackChanged(const Fooyin::PlaylistTrack& track);
     void trackPlayed(const Fooyin::Track& track);
+    void trackChangeRequested(const Fooyin::Player::TrackChangeRequest& request);
+    void upcomingTrackChanged(const Fooyin::Player::UpcomingTrack& upcomingTrack);
 
     void tracksQueued(const Fooyin::QueueTracks& tracks, int index);
     void tracksDequeued(const Fooyin::QueueTracks& tracks);

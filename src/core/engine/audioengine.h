@@ -43,6 +43,7 @@
 #include <QEvent>
 
 #include <atomic>
+#include <chrono>
 #include <memory>
 #include <optional>
 
@@ -78,7 +79,6 @@ public:
         bool gaplessHandoff{false};
         int fadeOutDurationMs{0};
         int fadeInDurationMs{0};
-        AudioFormat nextMixFormat;
     };
 
     enum class PhaseChangeReason : uint8_t
@@ -120,6 +120,7 @@ public:
 
 public slots:
     void loadTrack(const Fooyin::Track& track, bool manualChange = false);
+    void setUpcomingTrackCandidate(const Fooyin::Track& track);
     //! Schedule/prepare candidate next track for seamless transition.
     void prepareNextTrack(const Fooyin::Track& track, uint64_t requestId = 0);
     //! Stage a prepared crossfade stream in the pipeline without committing UI track context.
@@ -162,22 +163,21 @@ signals:
 
     void trackAboutToFinish(const Fooyin::Track& track, uint64_t generation);
     void trackReadyToSwitch(const Fooyin::Track& track, uint64_t generation);
-    void trackBoundaryReached(const Fooyin::Track& track, uint64_t generation);
+    void trackBoundaryReached(const Fooyin::Track& track, uint64_t generation, uint64_t remainingOutputMs,
+                              bool engineOwnsTransition);
     void nextTrackReadiness(const Fooyin::Track& track, bool ready, uint64_t requestId);
 
     void finished();
 
     void deviceError(const QString& error);
     void trackChanged(const Fooyin::Track& track);
+    void trackCommitted(const Fooyin::Engine::TrackCommitContext& context);
 
 protected:
     bool event(QEvent* event) override;
     void timerEvent(QTimerEvent* event) override;
 
 private:
-    [[nodiscard]] static QEvent::Type engineTaskEventType();
-    [[nodiscard]] static QEvent::Type pipelineWakeEventType();
-
     void beginShutdown();
 
     bool ensureCrossfadePrepared(const Track& track, bool isManualChange);
@@ -205,8 +205,30 @@ private:
     void applyAutoBoundaryFadeIn(bool allowFadeInOnly = false);
     void clearAutoCrossfadeTailFadeState();
     void clearAutoBoundaryFadeState(bool restoreOutput = false);
-    void handleTrackEndingSignals(const AudioStreamPtr& stream, uint64_t trackEndingPosMs, bool preparedCrossfadeArmed,
-                                  bool boundaryFallbackReached);
+    void clearAutoAdvanceState();
+
+    void rememberAutoTransitionMode(AutoTransitionMode mode);
+    [[nodiscard]] AutoTransitionMode effectiveAutoTransitionMode() const;
+    [[nodiscard]] AutoTransitionMode configuredTrackEndAutoTransitionMode() const;
+    [[nodiscard]] AutoTransitionMode configuredTrackEndAutoTransitionMode(const Track& track) const;
+
+    [[nodiscard]] uint64_t scaledPlaybackDelayMs() const;
+    [[nodiscard]] uint64_t scaledTransitionDelayMs() const;
+    [[nodiscard]] uint64_t boundaryCrossfadeOverlapMs() const;
+    [[nodiscard]] uint64_t transitionReserveMs() const;
+    [[nodiscard]] uint64_t aggressivePreparedPrefillMs() const;
+
+    [[nodiscard]] Track autoAdvanceTargetTrack() const;
+    void maybePrepareUpcomingTrackForDrainFill(const AudioStreamPtr& stream);
+    void noteReadyToSwitchAnchor();
+    void noteBoundaryAnchor();
+    void tryAutoAdvanceCommit();
+    void finaliseTrackCommit(Engine::TransitionMode mode);
+    void handleTrackEndingSignals(const AudioStreamPtr& stream, uint64_t trackEndingPosMs,
+                                  uint64_t publishedAudiblePosMs, uint64_t boundaryAudiblePosMs,
+                                  bool preparedCrossfadeArmed, bool boundaryFallbackReached,
+                                  bool preparedGaplessRendered);
+
     void updatePosition();
     void handleTimerTick(int timerId);
     void clearPendingAnalysisData();
@@ -245,9 +267,9 @@ private:
     void clearPreparedGaplessTransition();
     void disarmStalePreparedTransitions(const Track& contextTrack, uint64_t contextGeneration);
     void clearPreparedNextTrackAndCancelPendingJobs();
-    [[nodiscard]] bool prepareNextTrackImmediate(const Track& track);
+    [[nodiscard]] bool prepareNextTrackImmediate(const Track& track, uint64_t prefillTargetMs = 0);
     void cancelPendingPrepareJobs();
-    void enqueuePrepareNextTrack(const Track& track, uint64_t requestId);
+    void enqueuePrepareNextTrack(const Track& track, uint64_t requestId, uint64_t prefillTargetMs);
     void applyPreparedNextTrackResult(uint64_t jobToken, uint64_t requestId, const Track& track,
                                       NextTrackPreparationState prepared);
     void cleanupActiveStream();
@@ -314,12 +336,13 @@ private:
     ReplayGainProcessor::SharedSettingsPtr m_replayGainSharedSettings;
 
     double m_volume;
-    int m_bufferLengthMs;
+    int m_playbackBufferLengthMs;
     double m_decodeLowWatermarkRatio;
     double m_decodeHighWatermarkRatio;
     bool m_fadingEnabled;
     bool m_crossfadeEnabled;
     bool m_gaplessEnabled;
+    Engine::CrossfadeSwitchPolicy m_crossfadeSwitchPolicy;
     AudioDecoder::PlaybackHints m_decoderPlaybackHints{AudioDecoder::NoHints};
     Engine::FadingValues m_fadingValues;
     Engine::CrossfadingValues m_crossfadingValues;
@@ -338,5 +361,18 @@ private:
     uint64_t m_autoCrossfadeTailFadeGeneration;
     bool m_autoBoundaryFadeActive;
     uint64_t m_autoBoundaryFadeGeneration;
+
+    Track m_upcomingTrackCandidate;
+
+    struct AutoAdvanceState
+    {
+        uint64_t generation{0};
+        AutoTransitionMode mode{AutoTransitionMode::None};
+        bool readyAnchorSeen{false};
+        bool boundaryAnchorSeen{false};
+        bool boundaryPendingUntilAudible{false};
+        bool drainPrepareRequested{false};
+    };
+    AutoAdvanceState m_autoAdvanceState;
 };
 } // namespace Fooyin

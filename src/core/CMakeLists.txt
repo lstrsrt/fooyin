@@ -216,8 +216,6 @@ set(SOURCES
     library/unifiedmusiclibrary.cpp
     library/unifiedmusiclibrary.h
     network/networkaccessmanager.cpp
-    playback/playbackcoordinator.cpp
-    playback/playbackcoordinator.h
     playback/playbackqueue.cpp
     playback/playbackqueuestore.cpp
     playback/playbackqueuestore.h

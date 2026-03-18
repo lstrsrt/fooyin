@@ -33,7 +33,6 @@ fooyin_add_test(test_replaygainprocessor core/engine/replaygainprocessortest.cpp
 fooyin_add_test(test_seekplanner core/engine/seekplannertest.cpp)
 fooyin_add_test(test_trackloadplanner core/engine/trackloadplannertest.cpp)
 
-fooyin_add_test(test_playbackcoordinator core/playback/playbackcoordinatortest.cpp)
 fooyin_add_test(test_playlistnavigator core/playback/playlistnavigatortest.cpp)
 
 fooyin_add_test(test_cueparser core/playlist/cueparsertest.cpp data/playlists.qrc)

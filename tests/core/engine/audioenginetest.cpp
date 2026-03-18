@@ -631,6 +631,24 @@ TEST(AudioEngineTest, PrepareNextTrackInvalidTrackEmitsNotReady)
     EXPECT_EQ(requestId, 77U);
 }
 
+TEST(AudioEngineTest, UpcomingTrackCandidateDoesNotPrepareBeforeEndOfInput)
+{
+    ensureCoreApplication();
+    EngineHarness harness{false};
+
+    const Track currentTrack = harness.createTrack(u"candidate-current.fyt"_s, 0, 120000);
+    const Track nextTrack    = harness.createTrack(u"candidate-next.fyt"_s, 0, 120000);
+
+    harness.engine.loadTrack(currentTrack, false);
+    ASSERT_TRUE(pumpUntil([&harness]() { return harness.engine.trackStatus() == Engine::TrackStatus::Loaded; }));
+
+    const int decoderInitBefore = harness.decoderStats->initCalls.load();
+    harness.engine.setUpcomingTrackCandidate(nextTrack);
+
+    EXPECT_FALSE(pumpUntil(
+        [&harness, decoderInitBefore]() { return harness.decoderStats->initCalls.load() > decoderInitBefore; }, 250ms));
+}
+
 TEST(AudioEngineTest, SetVolumeClampsAndPropagatesToOutput)
 {
     ensureCoreApplication();
@@ -794,5 +812,4 @@ TEST(AudioEngineTest, TimelineTransitionHintsAreDisabledForRepeatTrackPlayback)
     unknownDuration.setDuration(0);
     EXPECT_FALSE(AudioEngine::shouldEnableTimelineTransitionHints(unknownDuration, AudioDecoder::PlaybackHints{}));
 }
-
 } // namespace Fooyin::Testing

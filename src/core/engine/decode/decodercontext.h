@@ -74,6 +74,7 @@ public:
     bool init(LoadedDecoder decoder, const Track& track);
 
     bool adoptPreparedDecoder(LoadedDecoder decoder, const Track& track);
+    void setPreparedDecodePosition(uint64_t positionMs);
 
     //! Create a stream compatible with current decoder format.
     AudioStreamPtr createStream(size_t bufferSamples, Engine::FadeCurve fadeCurve = Engine::FadeCurve::Linear);

@@ -62,6 +62,8 @@ struct AboutToFinishContext
 {
     Track track;
     uint64_t generation{0};
+    uint64_t remainingOutputMs{0};
+    bool engineOwnsTransition{false};
 };
 
 //! Result returned from asynchronous next-track prepare requests.
@@ -69,6 +71,22 @@ struct NextTrackPrepareRequest
 {
     uint64_t requestId{0};
     bool readyNow{false};
+};
+
+enum class TransitionMode : uint8_t
+{
+    Direct = 0,
+    SegmentSwitch,
+    Crossfade,
+    Gapless,
+    BoundaryFade,
+};
+
+struct TrackCommitContext
+{
+    Track track;
+    uint64_t generation{0};
+    TransitionMode mode{TransitionMode::Direct};
 };
 
 enum RGProcess : uint8_t
@@ -208,6 +226,7 @@ Q_DECLARE_OPERATORS_FOR_FLAGS(Fooyin::Engine::RGProcessing)
 Q_DECLARE_OPERATORS_FOR_FLAGS(Fooyin::Engine::AnalysisDataTypes)
 Q_DECLARE_METATYPE(Fooyin::Engine::TrackStatusContext)
 Q_DECLARE_METATYPE(Fooyin::Engine::AboutToFinishContext)
+Q_DECLARE_METATYPE(Fooyin::Engine::TrackCommitContext)
 Q_DECLARE_METATYPE(Fooyin::Engine::AnalysisDataTypes)
 Q_DECLARE_METATYPE(Fooyin::LevelFrame)
 Q_DECLARE_METATYPE(Fooyin::Engine::LiveDspSettingsUpdate)

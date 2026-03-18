@@ -84,7 +84,7 @@ signals:
     //! Request immediate sync sample from pipeline/engine.
     void requestSyncPosition();
     //! Published clock position update in milliseconds.
-    void positionChanged(uint64_t positionMs);
+    void positionChanged(uint64_t positionMs, uint64_t generation);
 
 protected:
     void timerEvent(QTimerEvent* event) override;

@@ -23,13 +23,17 @@
 #include "enginehelpers.h"
 #include <core/coresettings.h>
 #include <core/engine/enginedefs.h>
+#include <core/engine/fadingdefs.h>
+#include <core/internalcoresettings.h>
 #include <core/player/playercontroller.h>
 #include <core/track.h>
 #include <utils/settings/settingsmanager.h>
 
 #include <QLoggingCategory>
 #include <QPointer>
+#include <QTimer>
 
+#include <limits>
 #include <utility>
 
 Q_LOGGING_CATEGORY(ENG_HANDLER, "fy.engine")
@@ -44,55 +48,58 @@ EngineHandler::EngineHandler(std::shared_ptr<AudioLoader> audioLoader, PlayerCon
     , m_settings{settings}
     , m_engine{new AudioEngine(std::move(audioLoader), settings, dspRegistry)}
     , m_levelReadyRelayConnected{false}
+    , m_engineOwnedTransitionGen{0}
+    , m_endAdvanceSuppressed{false}
+    , m_pendingBoundaryAdvanceGen{0}
     , m_lastPreparedNextTrackReady{false}
     , m_nextPrepareTrackRequestId{1}
     , m_nextSeekRequestId{1}
 {
     m_engine->moveToThread(&m_engineThread);
 
-    QObject::connect(m_playerController, &PlayerController::positionMoved, this,
-                     [this](uint64_t positionMs) { dispatchSeek(positionMs); });
+    QObject::connect(m_playerController, &PlayerController::positionMoved, this, &EngineHandler::dispatchSeek);
 
     QObject::connect(m_engine, &AudioEngine::trackAboutToFinish, this, [this](const Track& track, uint64_t generation) {
-        emit trackAboutToFinish(Engine::AboutToFinishContext{track, generation});
+        emit trackAboutToFinish(Engine::AboutToFinishContext{.track = track, .generation = generation});
     });
     QObject::connect(m_engine, &AudioEngine::trackReadyToSwitch, this, [this](const Track& track, uint64_t generation) {
-        emit trackReadyToSwitch(Engine::AboutToFinishContext{track, generation});
+        emit trackReadyToSwitch(Engine::AboutToFinishContext{.track = track, .generation = generation});
     });
-    QObject::connect(m_engine, &AudioEngine::trackBoundaryReached, this,
-                     [this](const Track& track, uint64_t generation) {
-                         emit trackBoundaryReached(Engine::AboutToFinishContext{track, generation});
-                     });
+    QObject::connect(
+        m_engine, &AudioEngine::trackBoundaryReached, this,
+        [this](const Track& track, uint64_t generation, uint64_t remainingOutputMs, bool engineOwnsTransition) {
+            handleTrackBoundaryReached(track, generation, remainingOutputMs, engineOwnsTransition);
+            emit trackBoundaryReached(Engine::AboutToFinishContext{.track                = track,
+                                                                   .generation           = generation,
+                                                                   .remainingOutputMs    = remainingOutputMs,
+                                                                   .engineOwnsTransition = engineOwnsTransition});
+        });
     QObject::connect(m_engine, &AudioEngine::finished, this, &EngineHandler::finished);
     QObject::connect(m_engine, &AudioEngine::positionContextChanged, this, &EngineHandler::handlePositionContext);
     QObject::connect(m_engine, &AudioEngine::positionChangedWithContext, this, &EngineHandler::handlePositionSample);
     QObject::connect(m_engine, &AudioEngine::seekPositionApplied, this, &EngineHandler::handleSeekApplied);
     QObject::connect(m_engine, &AudioEngine::bitrateChanged, m_playerController, &PlayerController::setBitrate);
-    QObject::connect(m_engine, &AudioEngine::stateChanged, this,
-                     [this](Engine::PlaybackState state) { handleStateChange(state); });
+    QObject::connect(m_engine, &AudioEngine::stateChanged, this, &EngineHandler::handleStateChange);
     QObject::connect(m_engine, &AudioEngine::deviceError, this, &EngineController::engineError);
     QObject::connect(m_engine, &AudioEngine::trackChanged, this, &EngineController::trackChanged);
-    QObject::connect(m_engine, &AudioEngine::trackStatusContextChanged, this,
-                     [this](Engine::TrackStatus status, const Track& track, uint64_t generation) {
-                         handleTrackStatus(status, track, generation);
-                     });
-    QObject::connect(m_engine, &AudioEngine::nextTrackReadiness, this,
-                     [this](const Track& track, bool ready, uint64_t requestId) {
-                         handleNextTrackReadiness(track, ready, requestId);
-                     });
+    QObject::connect(m_engine, &AudioEngine::trackCommitted, this, &EngineHandler::handleTrackCommitted);
+    QObject::connect(m_engine, &AudioEngine::trackStatusContextChanged, this, &EngineHandler::handleTrackStatus);
+    QObject::connect(m_engine, &AudioEngine::nextTrackReadiness, this, &EngineHandler::handleNextTrackReadiness);
 
-    QObject::connect(m_playerController, &PlayerController::currentTrackChanged, this,
-                     [this]() { handleTrackChange(m_playerController->currentTrack()); });
+    QObject::connect(m_playerController, &PlayerController::trackChangeRequested, this,
+                     &EngineHandler::handleTrackChangeRequest);
+    QObject::connect(m_playerController, &PlayerController::upcomingTrackChanged, this,
+                     &EngineHandler::handleUpcomingTrackChanged);
 
     m_engineThread.start();
     updateLevelReadyRelay();
 
     updateVolume(m_settings->value<Settings::Core::OutputVolume>());
 
-    QObject::connect(m_playerController, &PlayerController::transportPlayRequested, this, [this]() { requestPlay(); });
+    QObject::connect(m_playerController, &PlayerController::transportPlayRequested, this, &EngineHandler::requestPlay);
     QObject::connect(m_playerController, &PlayerController::transportPauseRequested, this,
-                     [this]() { requestPause(); });
-    QObject::connect(m_playerController, &PlayerController::transportStopRequested, this, [this]() { requestStop(); });
+                     &EngineHandler::requestPause);
+    QObject::connect(m_playerController, &PlayerController::transportStopRequested, this, &EngineHandler::requestStop);
 
     QObject::connect(this, &EngineHandler::outputChanged, this, [this](const QString& output, const QString& device) {
         if(m_outputs.contains(output)) {
@@ -102,8 +109,8 @@ EngineHandler::EngineHandler(std::shared_ptr<AudioLoader> audioLoader, PlayerCon
     QObject::connect(this, &EngineHandler::deviceChanged, this,
                      [this](const QString& device) { dispatchCommand(&AudioEngine::setOutputDevice, device); });
 
-    m_settings->subscribe<Settings::Core::AudioOutput>(this, [this](const QString& output) { changeOutput(output); });
-    m_settings->subscribe<Settings::Core::OutputVolume>(this, [this](double volume) { updateVolume(volume); });
+    m_settings->subscribe<Settings::Core::AudioOutput>(this, &EngineHandler::changeOutput);
+    m_settings->subscribe<Settings::Core::OutputVolume>(this, &EngineHandler::updateVolume);
 }
 
 EngineHandler::~EngineHandler()
@@ -251,27 +258,162 @@ void EngineHandler::handleStateChange(Engine::PlaybackState state)
     emit engineStateChanged(state);
 }
 
-void EngineHandler::handleTrackChange(const Track& track)
+void EngineHandler::handleTrackChangeRequest(const Player::TrackChangeRequest& request)
 {
+    const Track& track = request.track.track;
     if(!track.isValid()) {
         return;
     }
 
     clearNextTrackReadiness();
     clearPositionAcceptanceFloor();
+    clearPendingBoundaryAdvance();
+    clearEngineOwnedTransition();
+    m_pendingTrackChange = request;
+    dispatchCommand(&AudioEngine::loadTrack, track, request.context.userInitiated);
+}
 
-    const auto changeContext = m_playerController->lastTrackChangeContext();
-    const bool manualChange  = changeContext.userInitiated;
-    if(changeContext.reason == Player::AdvanceReason::PreparedCrossfadeCommit) {
-        requestCommitPreparedCrossfadeTransition(track, manualChange);
+void EngineHandler::handleUpcomingTrackChanged(const Player::UpcomingTrack& upcomingTrack)
+{
+    m_upcomingTrack = upcomingTrack;
+    dispatchCommand(&AudioEngine::setUpcomingTrackCandidate, upcomingTrack.track.track);
+}
+
+bool EngineHandler::hasAutoTrackEndTransitionEnabled() const
+{
+    if(m_settings->value<Settings::Core::GaplessPlayback>()) {
+        return true;
+    }
+
+    const auto fadingValues = m_settings->value<Settings::Core::Internal::FadingValues>().value<Engine::FadingValues>();
+    if(m_settings->value<Settings::Core::Internal::EngineFading>() && fadingValues.boundary.isConfigured()) {
+        return true;
+    }
+
+    const auto crossfadingValues
+        = m_settings->value<Settings::Core::Internal::CrossfadingValues>().value<Engine::CrossfadingValues>();
+    return m_settings->value<Settings::Core::Internal::EngineCrossfading>()
+        && crossfadingValues.autoChange.isConfigured();
+}
+
+void EngineHandler::noteEngineOwnedTransition(const Track& track, uint64_t generation)
+{
+    if(!hasAutoTrackEndTransitionEnabled() || !track.isValid() || !m_upcomingTrack.track.isValid()
+       || !sameTrackIdentity(m_playerController->currentTrack(), track)) {
         return;
     }
-    else if(changeContext.reason == Player::AdvanceReason::PreparedCommit) {
-        requestCommitPreparedGaplessTransition(track, manualChange);
+
+    m_engineOwnedTransitionTrack = track;
+    m_engineOwnedTransitionGen   = generation;
+}
+
+void EngineHandler::handleTrackBoundaryReached(const Track& track, uint64_t generation, uint64_t remainingOutputMs,
+                                               bool engineOwnsTransition)
+{
+    if(!sameTrackIdentity(m_playerController->currentTrack(), track)) {
         return;
     }
 
-    dispatchCommand(&AudioEngine::loadTrack, track, manualChange);
+    if(engineOwnsTransition && hasAutoTrackEndTransitionEnabled() && m_upcomingTrack.track.isValid()) {
+        noteEngineOwnedTransition(track, generation);
+        return;
+    }
+
+    if(!engineOwnsTransition && hasAutoTrackEndTransitionEnabled() && m_upcomingTrack.track.isValid()) {
+        qCDebug(ENG_HANDLER) << "Boundary arrived without engine-owned transition, re-submitting upcoming track:"
+                             << "trackId=" << track.id() << "generation=" << generation
+                             << "upcomingTrackId=" << m_upcomingTrack.track.track.id()
+                             << "remainingOutputMs=" << remainingOutputMs;
+        dispatchCommand(&AudioEngine::setUpcomingTrackCandidate, m_upcomingTrack.track.track);
+        dispatchCommand(&AudioEngine::prepareNextTrack, m_upcomingTrack.track.track, uint64_t{0});
+        noteEngineOwnedTransition(track, generation);
+        return;
+    }
+
+    clearEngineOwnedTransition();
+    if(remainingOutputMs == 0) {
+        clearPendingBoundaryAdvance();
+        m_playerController->advance(Player::AdvanceReason::NaturalEnd);
+        return;
+    }
+
+    m_pendingBoundaryAdvanceTrack = track;
+    m_pendingBoundaryAdvanceGen   = generation;
+
+    qCDebug(ENG_HANDLER) << "Deferring controller natural-end advance until output boundary:"
+                         << "trackId=" << track.id() << "generation=" << generation
+                         << "remainingOutputMs=" << remainingOutputMs;
+
+    const auto delay = std::chrono::milliseconds{
+        std::min<uint64_t>(remainingOutputMs, static_cast<uint64_t>(std::numeric_limits<int>::max()))};
+    QTimer::singleShot(delay, this, [this, track, generation]() {
+        if(m_pendingBoundaryAdvanceGen != generation || !sameTrackIdentity(m_pendingBoundaryAdvanceTrack, track)
+           || !sameTrackIdentity(m_playerController->currentTrack(), track) || m_pendingTrackChange.has_value()) {
+            return;
+        }
+
+        clearPendingBoundaryAdvance();
+        m_playerController->advance(Player::AdvanceReason::NaturalEnd);
+    });
+}
+
+void EngineHandler::clearPendingBoundaryAdvance()
+{
+    m_pendingBoundaryAdvanceTrack = {};
+    m_pendingBoundaryAdvanceGen   = 0;
+}
+
+void EngineHandler::armEndAdvanceWatchdog(const Track& track, const uint64_t generation)
+{
+    const int bufferLengthMs = std::max(250, m_settings->value<Settings::Core::BufferLength>());
+    const int watchdogMs     = std::clamp(bufferLengthMs / 2, 250, 2000);
+
+    QTimer::singleShot(watchdogMs, this, [this, track, generation]() {
+        if(!m_endAdvanceSuppressed || m_engineOwnedTransitionGen != generation
+           || !sameTrackIdentity(m_engineOwnedTransitionTrack, track)
+           || !sameTrackIdentity(m_playerController->currentTrack(), track)) {
+            return;
+        }
+
+        qCWarning(ENG_HANDLER) << "Engine-owned transition watchdog expired, resuming controller natural-end advance:"
+                               << "trackId=" << track.id() << "generation=" << generation
+                               << "upcomingTrackId=" << m_upcomingTrack.track.track.id();
+        clearEngineOwnedTransition();
+        m_playerController->advance(Player::AdvanceReason::NaturalEnd);
+    });
+}
+
+void EngineHandler::clearEngineOwnedTransition()
+{
+    m_engineOwnedTransitionTrack = {};
+    m_engineOwnedTransitionGen   = 0;
+    m_endAdvanceSuppressed       = false;
+}
+
+void EngineHandler::handleTrackCommitted(const Engine::TrackCommitContext& context)
+{
+    emit trackCommitted(context);
+    clearPendingBoundaryAdvance();
+
+    if(!context.track.isValid()) {
+        return;
+    }
+
+    if(m_pendingTrackChange.has_value() && sameTrackIdentity(m_pendingTrackChange->track.track, context.track)) {
+        m_playerController->commitCurrentTrack(*m_pendingTrackChange);
+        m_pendingTrackChange.reset();
+        clearEngineOwnedTransition();
+        return;
+    }
+
+    if(m_upcomingTrack.track.isValid() && sameTrackIdentity(m_upcomingTrack.track.track, context.track)) {
+        m_playerController->commitCurrentTrack(Player::TrackChangeRequest{
+            .track        = m_upcomingTrack.track,
+            .context      = {.reason = Player::AdvanceReason::NaturalEnd, .userInitiated = false},
+            .isQueueTrack = m_upcomingTrack.isQueueTrack,
+        });
+        clearEngineOwnedTransition();
+    }
 }
 
 void EngineHandler::handleTrackStatus(Engine::TrackStatus status, const Track& track, uint64_t generation)
@@ -280,11 +422,27 @@ void EngineHandler::handleTrackStatus(Engine::TrackStatus status, const Track& t
         case Engine::TrackStatus::NoTrack:
             clearNextTrackReadiness();
             clearPositionAcceptanceFloor();
+            clearPendingBoundaryAdvance();
+            clearEngineOwnedTransition();
+            m_pendingTrackChange.reset();
             m_playerController->syncPlayStateFromEngine(Player::PlayState::Stopped);
             break;
         case Engine::TrackStatus::End:
+            clearPositionAcceptanceFloor();
+            if(sameTrackIdentity(m_playerController->currentTrack(), track)
+               && sameTrackIdentity(m_engineOwnedTransitionTrack, track) && m_engineOwnedTransitionGen == generation) {
+                qCDebug(ENG_HANDLER) << "Suppressing controller natural-end advance for engine-owned transition:"
+                                     << "trackId=" << track.id() << "generation=" << generation
+                                     << "upcomingTrackId=" << m_upcomingTrack.track.track.id();
+                m_endAdvanceSuppressed = true;
+                armEndAdvanceWatchdog(track, generation);
+                break;
+            }
+            break;
         case Engine::TrackStatus::Invalid:
             clearPositionAcceptanceFloor();
+            clearPendingBoundaryAdvance();
+            clearEngineOwnedTransition();
             break;
         case Engine::TrackStatus::Loading:
         case Engine::TrackStatus::Loaded:
@@ -293,7 +451,8 @@ void EngineHandler::handleTrackStatus(Engine::TrackStatus status, const Track& t
             break;
     }
 
-    emit trackStatusContextChanged(Engine::TrackStatusContext{status, track, generation});
+    emit trackStatusContextChanged(
+        Engine::TrackStatusContext{.status = status, .track = track, .generation = generation});
 }
 
 void EngineHandler::requestPlay() const
@@ -469,6 +628,10 @@ void EngineHandler::handleSeekApplied(uint64_t positionMs, uint64_t requestId)
         .timelineEpoch   = m_positionContextWatermark.timelineEpoch,
     });
     updatePosition(positionMs);
+
+    if(hasAutoTrackEndTransitionEnabled() && m_upcomingTrack.track.isValid()) {
+        dispatchCommand(&AudioEngine::setUpcomingTrackCandidate, m_upcomingTrack.track.track);
+    }
 }
 
 void EngineHandler::clearPositionAcceptanceFloor()
@@ -497,6 +660,15 @@ void EngineHandler::advancePositionContextWatermark(const PositionContext& conte
 void EngineHandler::handleNextTrackReadiness(const Track& track, bool ready, uint64_t requestId)
 {
     publishEvent(track, ready, requestId);
+
+    if(!ready && m_endAdvanceSuppressed && m_upcomingTrack.track.isValid()
+       && sameTrackIdentity(track, m_upcomingTrack.track.track)
+       && sameTrackIdentity(m_playerController->currentTrack(), m_engineOwnedTransitionTrack)) {
+        qCDebug(ENG_HANDLER) << "Engine-owned transition was not ready, resuming controller natural-end advance:"
+                             << "currentTrackId=" << m_engineOwnedTransitionTrack.id() << "nextTrackId=" << track.id();
+        clearEngineOwnedTransition();
+        m_playerController->advance(Player::AdvanceReason::NaturalEnd);
+    }
 }
 
 bool EngineHandler::cachedNextTrackReadyFor(const Track& track) const
