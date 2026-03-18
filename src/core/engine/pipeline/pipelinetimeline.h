@@ -74,6 +74,8 @@ public:
 
     [[nodiscard]] RenderedSegment renderedSegment() const;
     void setRenderedSegment(const RenderedSegment& segment);
+    [[nodiscard]] StreamId audibleOutputStreamId() const;
+    void setAudibleOutputStreamId(StreamId streamId);
 
     [[nodiscard]] uint64_t playbackDelayMs() const;
     void setPlaybackDelayMs(uint64_t playbackDelayMs);
@@ -123,6 +125,7 @@ private:
     std::atomic<uint64_t> m_renderedSegmentStartMs;
     std::atomic<uint64_t> m_renderedSegmentEndMs;
     std::atomic<int> m_renderedSegmentOutputFrames;
+    std::atomic<StreamId> m_audibleOutputStreamId;
     std::atomic<uint64_t> m_playbackDelayMs;
     std::atomic<uint64_t> m_transitionPlaybackDelayMs;
     std::atomic<double> m_playbackDelayToTrackScale;

@@ -257,9 +257,11 @@ private:
     void setCurrentTrackContext(const Track& track);
     void setStreamToTrackOriginForTrack(const Track& track);
     [[nodiscard]] bool setStreamToTrackOriginForSegmentSwitch(const Track& track, uint64_t streamPosMs);
+    [[nodiscard]] AudioStreamPtr currentTrackTimingStream() const;
 
     bool initDecoder(const Track& track, bool allowPreparedStream);
     bool setupNewTrackStream(const Track& track, bool applyPendingSeek);
+    [[nodiscard]] bool stagePreparedGaplessDecoder(Track track);
     [[nodiscard]] bool registerAndSwitchStream(const AudioStreamPtr& stream, const char* failureMessage);
     void cleanupDecoderActiveStreamFromPipeline(bool removeFromMixer);
     void clearPreparedNextTrack();
@@ -321,6 +323,8 @@ private:
         uint64_t sourceGeneration{0};
         StreamId streamId{InvalidStreamId};
         bool boundaryFadeMode{false};
+        bool decoderAdopted{false};
+        AudioStreamPtr preCommitTimingStream;
     };
     PreparedGaplessTransition m_preparedGaplessTransition;
 

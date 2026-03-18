@@ -30,6 +30,7 @@ PipelineTimeline::PipelineTimeline()
     , m_renderedSegmentStartMs{0}
     , m_renderedSegmentEndMs{0}
     , m_renderedSegmentOutputFrames{0}
+    , m_audibleOutputStreamId{InvalidStreamId}
     , m_playbackDelayMs{0}
     , m_transitionPlaybackDelayMs{0}
     , m_playbackDelayToTrackScale{1.0}
@@ -163,6 +164,16 @@ void PipelineTimeline::setRenderedSegment(const RenderedSegment& segment)
     m_renderedSegmentStartMs.store(segment.startMs, std::memory_order_relaxed);
     m_renderedSegmentEndMs.store(segment.endMs, std::memory_order_relaxed);
     m_renderedSegmentOutputFrames.store(segment.outputFrames, std::memory_order_relaxed);
+}
+
+StreamId PipelineTimeline::audibleOutputStreamId() const
+{
+    return m_audibleOutputStreamId.load(std::memory_order_relaxed);
+}
+
+void PipelineTimeline::setAudibleOutputStreamId(StreamId streamId)
+{
+    m_audibleOutputStreamId.store(streamId, std::memory_order_relaxed);
 }
 
 uint64_t PipelineTimeline::playbackDelayMs() const

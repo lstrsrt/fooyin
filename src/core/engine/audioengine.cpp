@@ -912,6 +912,18 @@ void AudioEngine::syncDecoderBitrate()
     }
 }
 
+AudioStreamPtr AudioEngine::currentTrackTimingStream() const
+{
+    const bool stagedPreparedGaplessDecoder
+        = m_preparedGaplessTransition.active && m_preparedGaplessTransition.sourceGeneration == m_trackGeneration
+       && m_preparedGaplessTransition.decoderAdopted && m_preparedGaplessTransition.preCommitTimingStream;
+    if(stagedPreparedGaplessDecoder) {
+        return m_preparedGaplessTransition.preCommitTimingStream;
+    }
+
+    return m_decoder.activeStream();
+}
+
 void AudioEngine::publishPosition(uint64_t sourcePositionMs, uint64_t outputDelayMs, double delayToSourceScale,
                                   AudioClock::UpdateMode mode, bool emitNow)
 {
@@ -1351,7 +1363,7 @@ void AudioEngine::tryAutoAdvanceCommit()
 }
 
 void AudioEngine::handleTrackEndingSignals(const AudioStreamPtr& stream, uint64_t trackEndingPosMs,
-                                           uint64_t publishedAudiblePosMs, uint64_t boundaryAudiblePosMs,
+                                           uint64_t /*publishedAudiblePosMs*/, uint64_t boundaryAudiblePosMs,
                                            bool preparedCrossfadeArmed, bool boundaryFallbackReached,
                                            bool preparedGaplessRendered)
 {
@@ -1390,10 +1402,23 @@ void AudioEngine::handleTrackEndingSignals(const AudioStreamPtr& stream, uint64_
         = effectiveMode == AutoTransitionMode::Gapless || effectiveMode == AutoTransitionMode::BoundaryFade;
     const bool preparedGaplessActive
         = m_preparedGaplessTransition.active && m_preparedGaplessTransition.sourceGeneration == m_trackGeneration;
-    const bool deferPreparedGaplessCommit   = gaplessBoundaryMode && preparedGaplessActive && !preparedGaplessRendered;
-    const bool deferRenderedGaplessCommit   = gaplessBoundaryMode && preparedGaplessActive && preparedGaplessRendered;
+    const bool preparedGaplessRenderedSafe
+        = preparedGaplessRendered && m_pipeline.audibleOutputStreamId() == m_preparedGaplessTransition.streamId;
+    const bool currentStreamFullyDrained   = stream && stream->endOfInput() && stream->bufferEmpty();
+    const bool preparedGaplessStageReady   = currentStreamFullyDrained && preparedGaplessRendered;
+    const bool preparedGaplessReleaseReady = preparedGaplessRenderedSafe;
+    const bool deferPreparedGaplessCommit  = gaplessBoundaryMode && preparedGaplessActive && !preparedGaplessRendered;
+    const bool deferRenderedGaplessCommit
+        = gaplessBoundaryMode && preparedGaplessActive && preparedGaplessRendered && !preparedGaplessReleaseReady;
     const bool releasePreparedGaplessCommit = gaplessBoundaryMode && preparedGaplessActive
-                                           && m_autoAdvanceState.boundaryAnchorSeen && preparedGaplessRendered;
+                                           && m_autoAdvanceState.boundaryAnchorSeen && preparedGaplessReleaseReady;
+
+    if(preparedGaplessActive && preparedGaplessStageReady && !m_preparedGaplessTransition.decoderAdopted) {
+        const Track preparedGaplessTarget = m_preparedGaplessTransition.targetTrack;
+        if(!stagePreparedGaplessDecoder(preparedGaplessTarget)) {
+            return;
+        }
+    }
 
     if(releasePreparedGaplessCommit) {
         tryAutoAdvanceCommit();
@@ -1402,17 +1427,11 @@ void AudioEngine::handleTrackEndingSignals(const AudioStreamPtr& stream, uint64_
         }
     }
 
-    const uint64_t scaledDelayMs         = scaledPlaybackDelayMs();
-    const uint64_t boundaryCoveragePosMs = saturatingAdd(boundaryAudiblePosMs, scaledDelayMs);
-    const bool audibleProgressObserved   = boundaryAudiblePosMs > 0 || publishedAudiblePosMs > 0;
     const bool pendingBoundaryRenderedGaplessReached
-        = m_autoAdvanceState.boundaryPendingUntilAudible && preparedGaplessActive && preparedGaplessRendered;
-    const bool pendingBoundaryCoverageReached = m_autoAdvanceState.boundaryPendingUntilAudible
-                                             && audibleProgressObserved
-                                             && saturatingAdd(boundaryCoveragePosMs, 1) >= m_currentTrack.duration();
-    const bool audibleBoundaryReached         = m_currentTrack.duration() == 0
-                                             || boundaryAudiblePosMs >= m_currentTrack.duration()
-                                             || pendingBoundaryCoverageReached || pendingBoundaryRenderedGaplessReached;
+        = m_autoAdvanceState.boundaryPendingUntilAudible && preparedGaplessActive && preparedGaplessReleaseReady;
+    const bool audibleBoundaryReached = m_currentTrack.duration() == 0
+                                     || boundaryAudiblePosMs >= m_currentTrack.duration()
+                                     || pendingBoundaryRenderedGaplessReached;
 
     if(result.boundaryReached && !audibleBoundaryReached) {
         m_autoAdvanceState.boundaryPendingUntilAudible = true;
@@ -1441,7 +1460,10 @@ void AudioEngine::handleTrackEndingSignals(const AudioStreamPtr& stream, uint64_
         const uint64_t boundaryGeneration       = m_trackGeneration;
         const bool boundaryEngineOwnsTransition = deferPreparedGaplessCommit || deferRenderedGaplessCommit;
 
-        if(!boundaryEngineOwnsTransition && m_currentTrack.duration() > boundaryAudiblePosMs) {
+        if(boundaryEngineOwnsTransition) {
+            boundaryRemainingOutputMs = 0;
+        }
+        else if(m_currentTrack.duration() > boundaryAudiblePosMs) {
             boundaryRemainingOutputMs
                 = std::max(boundaryRemainingOutputMs, m_currentTrack.duration() - boundaryAudiblePosMs);
         }
@@ -1449,26 +1471,15 @@ void AudioEngine::handleTrackEndingSignals(const AudioStreamPtr& stream, uint64_
         m_preparedCrossfadeTransition.boundarySignalled = true;
         noteBoundaryAnchor();
 
-        if(deferPreparedGaplessCommit) {
-            qCDebug(ENGINE) << "Deferring prepared gapless commit until pending stream is rendered:"
-                            << "trackId=" << m_currentTrack.id() << "generation=" << m_trackGeneration
-                            << "preparedStreamId=" << m_preparedGaplessTransition.streamId;
-        }
-        else if(deferRenderedGaplessCommit) {
-            qCDebug(ENGINE) << "Deferring prepared gapless commit to post-boundary update after rendered handoff:"
-                            << "trackId=" << m_currentTrack.id() << "generation=" << m_trackGeneration
-                            << "preparedStreamId=" << m_preparedGaplessTransition.streamId;
-        }
-        else {
-            tryAutoAdvanceCommit();
-            if(m_trackGeneration != boundaryGeneration || !sameTrackIdentity(m_currentTrack, boundaryTrack)) {
-                return false;
-            }
-        }
-
         emit trackBoundaryReached(boundaryTrack, boundaryGeneration, boundaryRemainingOutputMs,
                                   boundaryEngineOwnsTransition);
-        return true;
+
+        if(deferPreparedGaplessCommit || deferRenderedGaplessCommit) {
+            return true;
+        }
+
+        tryAutoAdvanceCommit();
+        return !(m_trackGeneration != boundaryGeneration || !sameTrackIdentity(m_currentTrack, boundaryTrack));
     };
 
     if(boundaryReachedNow || (preparedCrossfadeArmed && boundaryFallbackReached)) {
@@ -1478,6 +1489,13 @@ void AudioEngine::handleTrackEndingSignals(const AudioStreamPtr& stream, uint64_
     }
     if(result.endReached) {
         if(m_trackGeneration != initialGeneration) {
+            return;
+        }
+
+        const bool deferTrackEndStatusForPendingGaplessBoundary
+            = gaplessBoundaryMode && preparedGaplessActive
+           && (!m_autoAdvanceState.boundaryAnchorSeen || m_autoAdvanceState.boundaryPendingUntilAudible);
+        if(deferTrackEndStatusForPendingGaplessBoundary) {
             return;
         }
 
@@ -1491,7 +1509,7 @@ void AudioEngine::handleTrackEndingSignals(const AudioStreamPtr& stream, uint64_
 
 void AudioEngine::updatePosition()
 {
-    auto stream = m_decoder.activeStream();
+    auto stream = currentTrackTimingStream();
     if(!stream) {
         return;
     }
@@ -2293,6 +2311,8 @@ void AudioEngine::clearPreparedGaplessTransition()
     m_preparedGaplessTransition.sourceGeneration = 0;
     m_preparedGaplessTransition.streamId         = InvalidStreamId;
     m_preparedGaplessTransition.boundaryFadeMode = false;
+    m_preparedGaplessTransition.decoderAdopted   = false;
+    m_preparedGaplessTransition.preCommitTimingStream.reset();
 }
 
 void AudioEngine::disarmStalePreparedTransitions(const Track& contextTrack, uint64_t contextGeneration)
@@ -2981,15 +3001,18 @@ bool AudioEngine::armPreparedGaplessTransition(const Track& track, uint64_t gene
     m_preparedGaplessTransition.sourceGeneration = generation;
     m_preparedGaplessTransition.streamId         = transitionResult.streamId;
     m_preparedGaplessTransition.boundaryFadeMode = (transitionMode == AutoTransitionMode::BoundaryFade);
+    m_preparedGaplessTransition.decoderAdopted   = false;
+    m_preparedGaplessTransition.preCommitTimingStream.reset();
     clearPreparedCrossfadeTransition();
     return true;
 }
 
-bool AudioEngine::commitPreparedGaplessTransition(const Track& track)
+bool AudioEngine::stagePreparedGaplessDecoder(Track track)
 {
     disarmStalePreparedTransitions(track, m_trackGeneration);
 
-    const bool boundaryFadeMode = m_preparedGaplessTransition.boundaryFadeMode;
+    const bool boundaryFadeMode     = m_preparedGaplessTransition.boundaryFadeMode;
+    const auto previousActiveStream = m_decoder.activeStream();
 
     if(!track.isValid() || !m_preparedGaplessTransition.active
        || !sameTrackIdentity(track, m_preparedGaplessTransition.targetTrack)) {
@@ -3001,40 +3024,68 @@ bool AudioEngine::commitPreparedGaplessTransition(const Track& track)
 
     const StreamId preparedStreamId = m_preparedGaplessTransition.streamId;
 
-    if(!initDecoder(track, true)) {
-        if(boundaryFadeMode) {
-            clearAutoBoundaryFadeState(true);
+    auto preparedStream = m_decoder.activeStream();
+    if(!m_preparedGaplessTransition.decoderAdopted) {
+        const auto preservedPreparedGaplessTransition = m_preparedGaplessTransition;
+        if(!initDecoder(track, true)) {
+            if(boundaryFadeMode) {
+                clearAutoBoundaryFadeState(true);
+            }
+            clearPreparedGaplessTransition();
+            return false;
         }
-        clearPreparedGaplessTransition();
+
+        if(!m_preparedGaplessTransition.active && preservedPreparedGaplessTransition.active
+           && sameTrackIdentity(preservedPreparedGaplessTransition.targetTrack, track)) {
+            m_preparedGaplessTransition = preservedPreparedGaplessTransition;
+        }
+
+        preparedStream = m_decoder.activeStream();
+        if(!preparedStream || preparedStream->id() != preparedStreamId) {
+            if(boundaryFadeMode) {
+                clearAutoBoundaryFadeState(true);
+            }
+            clearPreparedGaplessTransition();
+            return false;
+        }
+
+        if(previousActiveStream && previousActiveStream->id() != preparedStreamId) {
+            m_preparedGaplessTransition.preCommitTimingStream = previousActiveStream;
+            previousActiveStream->setEndOfInput();
+        }
+        else {
+            m_preparedGaplessTransition.preCommitTimingStream.reset();
+        }
+
+        m_format = m_decoder.format();
+
+        const uint64_t bufferedBeforePrefillMs = preparedStream->bufferedDurationMs();
+
+        m_decoder.startDecoding();
+
+        const int gaplessCommitPrefillMs = std::max(20, m_decoder.lowWatermarkMs());
+        if(std::cmp_less(bufferedBeforePrefillMs, gaplessCommitPrefillMs)) {
+            prefillActiveStream(gaplessCommitPrefillMs);
+        }
+
+        if(m_decoder.isDecodeTimerActive() || hasPlaybackState(Engine::PlaybackState::Playing)) {
+            m_decoder.ensureDecodeTimerRunning();
+        }
+
+        m_preparedGaplessTransition.decoderAdopted = true;
+    }
+
+    return preparedStream && preparedStream->id() == preparedStreamId;
+}
+
+bool AudioEngine::commitPreparedGaplessTransition(const Track& track)
+{
+    if(!stagePreparedGaplessDecoder(track)) {
         return false;
     }
 
-    const auto preparedStream = m_decoder.activeStream();
-    if(!preparedStream || preparedStream->id() != preparedStreamId) {
-        qCWarning(ENGINE) << "Prepared gapless commit could not adopt armed stream:"
-                          << "expectedStreamId=" << preparedStreamId
-                          << "actualStreamId=" << (preparedStream ? preparedStream->id() : InvalidStreamId);
-        if(boundaryFadeMode) {
-            clearAutoBoundaryFadeState(true);
-        }
-        clearPreparedGaplessTransition();
-        return false;
-    }
-
-    m_format = m_decoder.format();
-
-    const uint64_t bufferedBeforePrefillMs = preparedStream->bufferedDurationMs();
-
-    m_decoder.startDecoding();
-
-    const int gaplessCommitPrefillMs = std::max(20, m_decoder.lowWatermarkMs());
-    if(std::cmp_less(bufferedBeforePrefillMs, gaplessCommitPrefillMs)) {
-        prefillActiveStream(gaplessCommitPrefillMs);
-    }
-
-    if(m_decoder.isDecodeTimerActive() || hasPlaybackState(Engine::PlaybackState::Playing)) {
-        m_decoder.ensureDecodeTimerRunning();
-    }
+    const bool boundaryFadeMode = m_preparedGaplessTransition.boundaryFadeMode;
+    const auto preparedStream   = m_decoder.activeStream();
 
     clearAutoCrossfadeTailFadeState();
     if(!boundaryFadeMode) {

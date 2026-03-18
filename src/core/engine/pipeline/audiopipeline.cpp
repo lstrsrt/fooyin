@@ -220,6 +220,7 @@ void AudioPipeline::resetPendingOutputState(bool resetMasterRate, bool clearLast
     }
 
     m_outputUnit.resetPendingState(clearLastOutputFrame);
+    clearBackendOutputQueue();
 }
 
 void AudioPipeline::clearRenderedSegmentSnapshot()
@@ -1283,6 +1284,11 @@ uint64_t AudioPipeline::transitionPlaybackDelayMs() const
     return m_timelineUnit.transitionPlaybackDelayMs();
 }
 
+StreamId AudioPipeline::audibleOutputStreamId() const
+{
+    return m_timelineUnit.audibleOutputStreamId();
+}
+
 double AudioPipeline::playbackDelayToTrackScale() const
 {
     return m_timelineUnit.playbackDelayToTrackScale();
@@ -1414,7 +1420,9 @@ void AudioPipeline::processAudio()
     }
 
     const auto state = m_outputUnit.output()->currentState();
-    int freeFrames   = state.freeFrames;
+    trimBackendOutputQueue(backendQueuedFramesForState(state));
+
+    int freeFrames = state.freeFrames;
     int framesWrittenThisCycle{0};
     resetCycleRenderedPosition();
 
@@ -1596,6 +1604,19 @@ OutputState AudioPipeline::stateWithWrites(const OutputState& state, int framesW
     return adjusted;
 }
 
+int AudioPipeline::backendQueuedFramesForState(const OutputState& state) const
+{
+    int queuedFrames = std::max(0, state.queuedFrames);
+
+    if(m_renderer.outputFormat().sampleRate() > 0 && state.delay > 0.0) {
+        const auto delayFrames
+            = std::llround(state.delay * static_cast<double>(m_renderer.outputFormat().sampleRate()));
+        queuedFrames = std::max(queuedFrames, std::max(0, static_cast<int>(delayFrames)));
+    }
+
+    return queuedFrames;
+}
+
 void AudioPipeline::updatePlaybackDelay(const OutputState& outputState, const PositionBasis basis)
 {
     uint64_t outputDelayMs{0};
@@ -1685,6 +1706,10 @@ bool AudioPipeline::drainPendingOutput(const OutputState& state, int& freeFrames
         const int pendingEndOffset   = writeResult.queueOffsetEndFrames;
         const double masterScale     = std::clamp(m_timelineUnit.observedMasterRateScale(), 0.05, 8.0);
         const auto& pendingTimeline  = m_outputUnit.pendingTimeline();
+
+        appendBackendOutputQueue(pendingTimeline, pendingStartOffset, pendingWritten, m_outputUnit.pendingStreamId(),
+                                 m_outputUnit.pendingEpoch());
+
         const auto startOffsetInfo
             = sourceTimelineOffsetInfoForFrameOffset(pendingTimeline, pendingStartOffset, masterScale,
                                                      m_outputUnit.pendingStreamId(), m_outputUnit.pendingEpoch());
@@ -2009,6 +2034,151 @@ AudioPipeline::sourceTimelineOffsetInfoForFrameOffset(const std::vector<Timeline
     return timelineInfoFor((tailEndNs + (tailFrameNs * static_cast<uint64_t>(std::max(0, remainingFrames))))
                                / Time::NsPerMs,
                            tailStreamId, tailEpoch);
+}
+
+void AudioPipeline::appendOutputQueueSpanMerged(std::deque<OutputQueueSpan>& queueSpans, const OutputQueueSpan& span)
+{
+    if(span.frames <= 0) {
+        return;
+    }
+
+    if(!queueSpans.empty()) {
+        auto& tail = queueSpans.back();
+        if(tail.streamId == span.streamId && tail.epoch == span.epoch) {
+            tail.frames += span.frames;
+            return;
+        }
+    }
+
+    queueSpans.push_back(span);
+}
+
+void AudioPipeline::discardOutputQueuePrefix(std::deque<OutputQueueSpan>& queueSpans, int frames)
+{
+    frames = std::max(0, frames);
+    if(frames <= 0 || queueSpans.empty()) {
+        return;
+    }
+
+    while(frames > 0 && !queueSpans.empty()) {
+        auto& span = queueSpans.front();
+        if(span.frames <= 0) {
+            queueSpans.pop_front();
+            continue;
+        }
+
+        const int take = std::min(span.frames, frames);
+        if(take <= 0) {
+            queueSpans.pop_front();
+            continue;
+        }
+
+        span.frames -= take;
+        frames -= take;
+
+        if(span.frames <= 0) {
+            queueSpans.pop_front();
+        }
+    }
+}
+
+void AudioPipeline::clearBackendOutputQueue()
+{
+    m_backendOutputQueue.clear();
+    syncAudibleOutputStreamId();
+}
+
+void AudioPipeline::trimBackendOutputQueue(int queuedFrames)
+{
+    const int clampedQueuedFrames = std::max(0, queuedFrames);
+    int timelineFrames{0};
+
+    for(const auto& span : m_backendOutputQueue) {
+        timelineFrames += std::max(0, span.frames);
+    }
+
+    if(clampedQueuedFrames <= 0 || timelineFrames <= 0) {
+        clearBackendOutputQueue();
+        return;
+    }
+
+    if(timelineFrames > clampedQueuedFrames) {
+        discardOutputQueuePrefix(m_backendOutputQueue, timelineFrames - clampedQueuedFrames);
+    }
+
+    syncAudibleOutputStreamId();
+}
+
+void AudioPipeline::appendBackendOutputQueue(std::span<const TimelineChunk> timelineChunks, int offsetFrames,
+                                             int frames, StreamId fallbackStreamId, uint64_t fallbackEpoch)
+{
+    if(frames <= 0) {
+        return;
+    }
+
+    int remainingFrames{frames};
+    int rangePos = std::max(0, offsetFrames);
+    int cursor{0};
+
+    for(const auto& chunk : timelineChunks) {
+        const int chunkFrames = std::max(0, chunk.frames);
+        if(chunkFrames <= 0) {
+            continue;
+        }
+
+        const int chunkStart = cursor;
+        const int chunkEnd   = chunkStart + chunkFrames;
+        cursor               = chunkEnd;
+
+        if(chunkEnd <= rangePos) {
+            continue;
+        }
+
+        if(remainingFrames <= 0) {
+            break;
+        }
+
+        const int skip = std::max(0, rangePos - chunkStart);
+        const int take = std::min(std::max(0, chunkFrames - skip), remainingFrames);
+        if(take <= 0) {
+            continue;
+        }
+
+        appendOutputQueueSpanMerged(
+            m_backendOutputQueue, OutputQueueSpan{
+                                      .streamId = chunk.streamId != InvalidStreamId ? chunk.streamId : fallbackStreamId,
+                                      .epoch    = chunk.epoch != 0 ? chunk.epoch : fallbackEpoch,
+                                      .frames   = take,
+                                  });
+        rangePos += take;
+        remainingFrames -= take;
+    }
+
+    if(remainingFrames > 0) {
+        appendOutputQueueSpanMerged(m_backendOutputQueue, OutputQueueSpan{
+                                                              .streamId = fallbackStreamId,
+                                                              .epoch    = fallbackEpoch,
+                                                              .frames   = remainingFrames,
+                                                          });
+    }
+
+    syncAudibleOutputStreamId();
+}
+
+void AudioPipeline::syncAudibleOutputStreamId()
+{
+    StreamId audibleStreamId{InvalidStreamId};
+
+    for(const auto& span : m_backendOutputQueue) {
+        if(span.frames <= 0) {
+            continue;
+        }
+
+        audibleStreamId = span.streamId;
+        break;
+    }
+
+    m_timelineUnit.setAudibleOutputStreamId(audibleStreamId);
 }
 
 void AudioPipeline::updatePlaybackState(const OutputState& state, int framesWrittenThisCycle)

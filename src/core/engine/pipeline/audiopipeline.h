@@ -45,6 +45,7 @@
 #include <chrono>
 #include <condition_variable>
 #include <cstdint>
+#include <deque>
 #include <expected>
 #include <functional>
 #include <memory>
@@ -298,6 +299,8 @@ public:
     [[nodiscard]] uint64_t transitionPlaybackDelayMs() const;
     //! Scale to convert output-time delay to source timeline delay.
     [[nodiscard]] double playbackDelayToTrackScale() const;
+    //! Stream currently at the audible head of the backend output queue.
+    [[nodiscard]] StreamId audibleOutputStreamId() const;
     //! True while audio worker thread is alive.
     [[nodiscard]] bool isRunning() const;
     //! True when an output backend is currently attached.
@@ -329,6 +332,7 @@ private:
     //! Execute one audio cycle (mix/process/write/state publication).
     void processAudio();
     [[nodiscard]] OutputState stateWithWrites(const OutputState& state, int framesWrittenThisCycle) const;
+    [[nodiscard]] int backendQueuedFramesForState(const OutputState& state) const;
 
     enum class PositionBasis : uint8_t
     {
@@ -363,9 +367,25 @@ private:
         StreamId streamId{InvalidStreamId};
         uint64_t epoch{0};
     };
+
+    struct OutputQueueSpan
+    {
+        StreamId streamId{InvalidStreamId};
+        uint64_t epoch{0};
+        int frames{0};
+    };
+
     [[nodiscard]] static std::expected<TimelineOffsetInfo, TimelineOffsetLookupError>
     sourceTimelineOffsetInfoForFrameOffset(const std::vector<TimelineChunk>& timelineChunks, int frameOffset,
                                            double fallbackScale, StreamId fallbackStreamId, uint64_t fallbackEpoch);
+    static void appendOutputQueueSpanMerged(std::deque<OutputQueueSpan>& queueSpans, const OutputQueueSpan& span);
+    static void discardOutputQueuePrefix(std::deque<OutputQueueSpan>& queueSpans, int frames);
+    void clearBackendOutputQueue();
+    void trimBackendOutputQueue(int queuedFrames);
+    void appendBackendOutputQueue(std::span<const TimelineChunk> timelineChunks, int offsetFrames, int frames,
+                                  StreamId fallbackStreamId, uint64_t fallbackEpoch);
+    void syncAudibleOutputStreamId();
+
     void resetCycleRenderedPosition();
     //! Queue processed master chunks into pending output FIFO.
     int queueProcessedOutput();
@@ -640,5 +660,6 @@ private:
     bool m_outputUnderrunLogActive;
     bool m_transitionUnderrunLogActive;
     std::chrono::steady_clock::time_point m_seekPrerollGraceUntil;
+    std::deque<OutputQueueSpan> m_backendOutputQueue;
 };
 } // namespace Fooyin
