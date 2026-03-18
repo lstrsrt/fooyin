@@ -54,7 +54,7 @@ signals:
     void resettingAll();
 
 private:
-    void apply();
+    bool apply();
     void reset();
     void resetAll();
     void showCategory(const QModelIndex& index);

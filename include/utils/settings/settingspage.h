@@ -38,6 +38,11 @@ public:
     virtual void apply() = 0;
     virtual void finish() { }
     virtual void reset() = 0;
+
+    [[nodiscard]] virtual QString validationError() const
+    {
+        return {};
+    }
 };
 
 class FYUTILS_EXPORT SettingsPage : public QObject
@@ -59,6 +64,8 @@ public:
     void apply();
     void finish();
     void reset();
+
+    [[nodiscard]] QString validationError() const;
 
 protected:
     void setId(const Id& id);

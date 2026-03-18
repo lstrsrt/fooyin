@@ -243,7 +243,9 @@ void SettingsDialog::done(int value)
 
 void SettingsDialog::accept()
 {
-    apply();
+    if(!apply()) {
+        return;
+    }
     for(const auto& page : m_pages) {
         page->finish();
     }
@@ -263,11 +265,22 @@ QSize SettingsDialog::sizeHint() const
     return Utils::proportionateSize(this, 0.3, 0.5);
 }
 
-void SettingsDialog::apply()
+bool SettingsDialog::apply()
 {
+    for(const auto& page : m_visitedPages) {
+        const QString error = page->validationError();
+        if(error.isEmpty()) {
+            openPage(page->id());
+            QMessageBox::warning(this, tr("Settings"), error);
+            return false;
+        }
+    }
+
     for(const auto& page : m_visitedPages) {
         page->apply();
     }
+
+    return true;
 }
 
 void SettingsDialog::reset()

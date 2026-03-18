@@ -98,6 +98,16 @@ void SettingsPage::reset()
     }
 }
 
+QString SettingsPage::validationError() const
+{
+    if(m_widget) {
+        if(auto* pageWidget = qobject_cast<SettingsPageWidget*>(m_widget)) {
+            return pageWidget->validationError();
+        }
+    }
+    return {};
+}
+
 void SettingsPage::setId(const Id& id)
 {
     m_id = id;
