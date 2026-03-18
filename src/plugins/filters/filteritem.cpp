@@ -98,7 +98,7 @@ QString FilterItem::column(int column) const
 
 const RichText& FilterItem::richColumn(int column) const
 {
-    static constexpr RichText EmptyText;
+    static const RichText EmptyText;
 
     if(column < 0 || std::cmp_greater_equal(column, m_richColumns.size())) {
         return EmptyText;
