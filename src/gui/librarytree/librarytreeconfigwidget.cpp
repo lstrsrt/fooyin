@@ -59,7 +59,7 @@ LibraryTreeConfigDialog::LibraryTreeConfigDialog(LibraryTreeWidget* libraryTree,
     , m_manageGroupings{new QPushButton(tr("Manage groupings..."), this)}
 {
     m_playbackOnSend->setToolTip(
-        tr("For \"Replace current playlist\" and \"Create new playlist\", start playback immediately."));
+        tr(R"(For "Replace current playlist" and "Create new playlist", start playback immediately.)"));
 
     auto* clickBehaviour       = new QGroupBox(tr("Click Behaviour"), this);
     auto* clickBehaviourLayout = new QGridLayout(clickBehaviour);

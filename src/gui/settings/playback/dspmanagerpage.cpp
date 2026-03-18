@@ -234,9 +234,9 @@ DspManagerPageWidget::DspManagerPageWidget(DspChainStore* chainStore, DspPresetR
     auto* perTrackGroup = new QGroupBox(tr("Per-Track DSPs"), this);
     auto* masterGroup   = new QGroupBox(tr("Master DSPs"), this);
 
-    perTrackGroup->setToolTip(tr("Per-track DSPs are applied to each stream separately before tracks are mixed. "
+    perTrackGroup->setToolTip(tr("Per-track DSPs are applied to each stream separately before tracks are mixed.\n"
                                  "During crossfades, each track is processed independently."));
-    masterGroup->setToolTip(tr("Master DSPs are applied after all active tracks are mixed into one signal. "
+    masterGroup->setToolTip(tr("Master DSPs are applied after all active tracks are mixed into one signal.\n"
                                "Effects here process the final combined output."));
 
     auto* availGroup = new QGroupBox(tr("Available DSPs"), this);
