@@ -1421,7 +1421,7 @@ void AudioEngine::handleTrackEndingSignals(const AudioStreamPtr& stream, uint64_
     const bool boundaryReachedNow = (result.boundaryReached && audibleBoundaryReached)
                                  || (m_autoAdvanceState.boundaryPendingUntilAudible && audibleBoundaryReached);
 
-    if(boundaryReachedNow || (preparedCrossfadeArmed && boundaryFallbackReached)) {
+    const auto emitBoundarySignal = [&]() -> bool {
         m_autoAdvanceState.boundaryPendingUntilAudible = false;
         uint64_t boundaryRemainingOutputMs{0};
 
@@ -1437,16 +1437,10 @@ void AudioEngine::handleTrackEndingSignals(const AudioStreamPtr& stream, uint64_
             }
         }
 
-        const Track boundaryTrack         = m_currentTrack;
-        const uint64_t boundaryGeneration = m_trackGeneration;
+        const Track boundaryTrack               = m_currentTrack;
+        const uint64_t boundaryGeneration       = m_trackGeneration;
+        const bool boundaryEngineOwnsTransition = deferPreparedGaplessCommit || deferRenderedGaplessCommit;
 
-        AutoTransitionMode boundaryMode = effectiveAutoTransitionMode();
-        if(boundaryMode == AutoTransitionMode::None) {
-            boundaryMode = configuredTrackEndAutoTransitionMode();
-        }
-
-        const bool boundaryEngineOwnsTransition
-            = autoAdvanceTargetTrack().isValid() && boundaryMode != AutoTransitionMode::None;
         if(!boundaryEngineOwnsTransition && m_currentTrack.duration() > boundaryAudiblePosMs) {
             boundaryRemainingOutputMs
                 = std::max(boundaryRemainingOutputMs, m_currentTrack.duration() - boundaryAudiblePosMs);
@@ -1468,12 +1462,19 @@ void AudioEngine::handleTrackEndingSignals(const AudioStreamPtr& stream, uint64_
         else {
             tryAutoAdvanceCommit();
             if(m_trackGeneration != boundaryGeneration || !sameTrackIdentity(m_currentTrack, boundaryTrack)) {
-                return;
+                return false;
             }
         }
 
         emit trackBoundaryReached(boundaryTrack, boundaryGeneration, boundaryRemainingOutputMs,
                                   boundaryEngineOwnsTransition);
+        return true;
+    };
+
+    if(boundaryReachedNow || (preparedCrossfadeArmed && boundaryFallbackReached)) {
+        if(!emitBoundarySignal()) {
+            return;
+        }
     }
     if(result.endReached) {
         if(m_trackGeneration != initialGeneration) {
