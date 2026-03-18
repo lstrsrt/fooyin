@@ -114,7 +114,8 @@ EngineHandler::EngineHandler(std::shared_ptr<AudioLoader> audioLoader, PlayerCon
     m_settings->subscribe<Settings::Core::StopAfterCurrent>(this, [this](bool enabled) {
         clearPendingBoundaryAdvance();
         clearEngineOwnedTransition();
-        dispatchCommand(&AudioEngine::setUpcomingTrackCandidate, enabled ? Track{} : m_upcomingTrack.track.track);
+        dispatchCommand(&AudioEngine::setUpcomingTrackCandidate,
+                        enabled ? Track{} : m_playerController->upcomingTrack());
     });
 }
 

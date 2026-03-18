@@ -212,6 +212,7 @@ PlayerController::PlayerController(SettingsManager* settings, PlaylistHandler* p
             p->emitUpcomingTrackChangedIfNeeded();
         }
     });
+    settings->subscribe<Settings::Core::StopAfterCurrent>(this, [this]() { p->emitUpcomingTrackChangedIfNeeded(); });
 
     if(!playlistHandler) {
         return;
