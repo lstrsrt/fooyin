@@ -269,7 +269,7 @@ bool SettingsDialog::apply()
 {
     for(const auto& page : m_visitedPages) {
         const QString error = page->validationError();
-        if(error.isEmpty()) {
+        if(!error.isEmpty()) {
             openPage(page->id());
             QMessageBox::warning(this, tr("Settings"), error);
             return false;

@@ -32,8 +32,11 @@
 #include <QHeaderView>
 #include <QKeyEvent>
 #include <QKeySequenceEdit>
+#include <QLabel>
 #include <QPushButton>
 #include <QTreeView>
+
+using namespace Qt::StringLiterals;
 
 namespace Fooyin {
 class ShortcutInput : public ExpandableInput
@@ -80,12 +83,17 @@ public:
     void apply() override;
     void reset() override;
 
+    [[nodiscard]] QString validationError() const override;
+
 private:
+    [[nodiscard]] Command* selectedCommand() const;
     void updateCurrentShortcuts(const ShortcutList& shortcuts);
+    void updateConflictState();
     void selectionChanged();
     void shortcutChanged();
     void shortcutDeleted(const QString& text);
     void resetCurrentShortcut();
+    void reassignConflicts();
 
     ActionManager* m_actionManager;
 
@@ -93,6 +101,8 @@ private:
     ShortcutsModel* m_model;
     QGroupBox* m_shortcutBox;
     ExpandableInputBox* m_inputBox;
+    QLabel* m_conflictLabel;
+    QPushButton* m_reassignButton;
 };
 
 ShortcutsPageWidget::ShortcutsPageWidget(ActionManager* actionManager)
@@ -100,8 +110,10 @@ ShortcutsPageWidget::ShortcutsPageWidget(ActionManager* actionManager)
     , m_shortcutTable{new QTreeView(this)}
     , m_model{new ShortcutsModel(this)}
     , m_shortcutBox{new QGroupBox(this)}
-    , m_inputBox{
-          new ExpandableInputBox(tr("Shortcuts"), ExpandableInput::ClearButton | ExpandableInput::CustomWidget, this)}
+    , m_inputBox{new ExpandableInputBox(tr("Shortcuts"), ExpandableInput::ClearButton | ExpandableInput::CustomWidget,
+                                        this)}
+    , m_conflictLabel{new QLabel(this)}
+    , m_reassignButton{new QPushButton(tr("Overwrite Shortcut"), this)}
 {
     m_shortcutTable->setModel(m_model);
     m_shortcutTable->hideColumn(1);
@@ -127,9 +139,17 @@ ShortcutsPageWidget::ShortcutsPageWidget(ActionManager* actionManager)
 
     groupLayout->addWidget(m_inputBox);
 
+    m_conflictLabel->setWordWrap(true);
+    m_conflictLabel->hide();
+    groupLayout->addWidget(m_conflictLabel);
+
+    m_reassignButton->hide();
+    groupLayout->addWidget(m_reassignButton, 0, Qt::AlignLeft);
+
     layout->addWidget(m_shortcutBox, 1, 0);
 
     QObject::connect(resetShortcut, &QAbstractButton::clicked, this, &ShortcutsPageWidget::resetCurrentShortcut);
+    QObject::connect(m_reassignButton, &QAbstractButton::clicked, this, &ShortcutsPageWidget::reassignConflicts);
     QObject::connect(m_shortcutTable->selectionModel(), &QItemSelectionModel::selectionChanged, this,
                      &ShortcutsPageWidget::selectionChanged);
     QObject::connect(m_inputBox, &ExpandableInputBox::blockDeleted, this, &ShortcutsPageWidget::shortcutDeleted);
@@ -140,6 +160,7 @@ ShortcutsPageWidget::ShortcutsPageWidget(ActionManager* actionManager)
 void ShortcutsPageWidget::load()
 {
     m_model->populate(m_actionManager);
+    updateConflictState();
 }
 
 void ShortcutsPageWidget::apply()
@@ -153,6 +174,26 @@ void ShortcutsPageWidget::reset()
     for(Command* command : commands) {
         command->setShortcut(command->defaultShortcuts());
     }
+}
+
+QString ShortcutsPageWidget::validationError() const
+{
+    return m_model->firstConflictError();
+}
+
+Command* ShortcutsPageWidget::selectedCommand() const
+{
+    const auto selected = m_shortcutTable->selectionModel()->selectedIndexes();
+    if(selected.empty()) {
+        return nullptr;
+    }
+
+    const QModelIndex index = selected.front();
+    if(index.data(ShortcutItem::IsCategory).toBool()) {
+        return nullptr;
+    }
+
+    return index.data(ShortcutItem::ActionCommand).value<Command*>();
 }
 
 void ShortcutsPageWidget::updateCurrentShortcuts(const ShortcutList& shortcuts)
@@ -171,35 +212,47 @@ void ShortcutsPageWidget::updateCurrentShortcuts(const ShortcutList& shortcuts)
     }
 }
 
+void ShortcutsPageWidget::updateConflictState()
+{
+    Command* command = selectedCommand();
+    if(!command) {
+        m_conflictLabel->hide();
+        m_reassignButton->hide();
+        return;
+    }
+
+    const QString conflicts = m_model->conflictDescription(command);
+    if(conflicts.isEmpty()) {
+        m_conflictLabel->hide();
+        m_reassignButton->hide();
+        return;
+    }
+
+    m_conflictLabel->setText(tr("Duplicate shortcuts") + u":\n%1"_s.arg(conflicts));
+    m_conflictLabel->show();
+    m_reassignButton->show();
+}
+
 void ShortcutsPageWidget::selectionChanged()
 {
-    const auto selected = m_shortcutTable->selectionModel()->selectedIndexes();
-
-    if(selected.empty()) {
+    Command* command = selectedCommand();
+    if(!command) {
         m_shortcutBox->setDisabled(true);
+        updateConflictState();
         return;
     }
 
-    const QModelIndex index = selected.front();
-
-    if(index.data(ShortcutItem::IsCategory).toBool()) {
-        m_shortcutBox->setDisabled(true);
-        return;
-    }
-
-    auto* command        = index.data(ShortcutItem::ActionCommand).value<Command*>();
-    const auto shortcuts = command->shortcuts();
+    const auto shortcuts = m_model->shortcuts(command);
 
     updateCurrentShortcuts(shortcuts);
-
     m_shortcutBox->setDisabled(false);
+    updateConflictState();
 }
 
 void ShortcutsPageWidget::shortcutChanged()
 {
-    const auto selected = m_shortcutTable->selectionModel()->selectedIndexes();
-
-    if(selected.empty()) {
+    Command* command = selectedCommand();
+    if(!command) {
         return;
     }
 
@@ -213,37 +266,42 @@ void ShortcutsPageWidget::shortcutChanged()
         }
     }
 
-    const QModelIndex index = selected.front();
-    auto* command           = index.data(ShortcutItem::ActionCommand).value<Command*>();
     m_model->shortcutChanged(command, shortcuts);
+    updateConflictState();
 }
 
 void ShortcutsPageWidget::shortcutDeleted(const QString& text)
 {
-    const auto selected = m_shortcutTable->selectionModel()->selectedIndexes();
-
-    if(selected.empty()) {
+    Command* command = selectedCommand();
+    if(!command) {
         return;
     }
 
-    const QModelIndex index = selected.front();
-    auto* command           = index.data(ShortcutItem::ActionCommand).value<Command*>();
     m_model->shortcutDeleted(command, text);
+    updateConflictState();
 }
 
 void ShortcutsPageWidget::resetCurrentShortcut()
 {
-    const auto selected = m_shortcutTable->selectionModel()->selectedIndexes();
-
-    if(selected.empty()) {
+    Command* command = selectedCommand();
+    if(!command) {
         return;
     }
 
-    const QModelIndex index = selected.front();
-    auto* command           = index.data(ShortcutItem::ActionCommand).value<Command*>();
-
     m_model->shortcutChanged(command, command->defaultShortcuts());
     updateCurrentShortcuts(command->defaultShortcuts());
+    updateConflictState();
+}
+
+void ShortcutsPageWidget::reassignConflicts()
+{
+    Command* command = selectedCommand();
+    if(!command) {
+        return;
+    }
+
+    m_model->reassignConflicts(command);
+    updateConflictState();
 }
 
 ShortcutsPage::ShortcutsPage(ActionManager* actionManager, SettingsManager* settings, QObject* parent)

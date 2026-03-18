@@ -28,6 +28,14 @@ namespace Fooyin {
 class ActionManager;
 class Command;
 
+struct ShortcutConflict
+{
+    QKeySequence shortcut;
+    Id otherCommandId;
+    QString otherCommandDescription;
+};
+using ShortcutConflictList = std::vector<ShortcutConflict>;
+
 class ShortcutItem : public TreeStatusItem<ShortcutItem>
 {
 public:
@@ -70,12 +78,27 @@ public:
     void shortcutChanged(Command* command, const ShortcutList& shortcuts);
     void shortcutDeleted(Command* command, const QKeySequence& shortcut);
     void processQueue();
+    void reassignConflicts(Command* command);
+
+    [[nodiscard]] ShortcutList shortcuts(Command* command) const;
+    [[nodiscard]] ShortcutConflictList conflicts(Command* command) const;
+    [[nodiscard]] QString conflictDescription(Command* command) const;
+    [[nodiscard]] QString firstConflictError() const;
+    [[nodiscard]] bool hasConflicts() const;
 
     [[nodiscard]] QVariant headerData(int section, Qt::Orientation orientation, int role) const override;
     [[nodiscard]] QVariant data(const QModelIndex& index, int role) const override;
     [[nodiscard]] int columnCount(const QModelIndex& parent) const override;
 
 private:
+    using ConflictMap = std::map<Id, ShortcutConflictList>;
+
+    [[nodiscard]] ShortcutItem* itemForCommand(Command* command);
+    [[nodiscard]] const ShortcutItem* itemForCommand(Command* command) const;
+    void rebuildConflicts();
+    void emitDataChanged(const IdSet& ids);
+
     std::map<Id, ShortcutItem> m_nodes;
+    ConflictMap m_conflicts;
 };
 } // namespace Fooyin
