@@ -6,7 +6,7 @@
     <message>
         <location filename="../../src/gui/scripting/scriptreferenceentries.cpp" line="63"/>
         <source>Functions</source>
-        <translation type="unfinished"></translation>
+        <translation>功能</translation>
     </message>
     <message>
         <location filename="../../src/gui/scripting/scriptreferenceentries.cpp" line="87"/>
@@ -61,262 +61,262 @@
         <location filename="../../src/gui/scripting/scriptreferenceentries.cpp" line="136"/>
         <location filename="../../src/gui/scripting/scriptreferenceentries.cpp" line="137"/>
         <source>Metadata</source>
-        <translation type="unfinished">資料</translation>
+        <translation>詮釋資料</translation>
     </message>
     <message>
         <location filename="../../src/gui/scripting/scriptreferenceentries.cpp" line="87"/>
         <source>Track title</source>
-        <translation type="unfinished"></translation>
+        <translation>曲目標題</translation>
     </message>
     <message>
         <location filename="../../src/gui/scripting/scriptreferenceentries.cpp" line="88"/>
         <source>Primary artist</source>
-        <translation type="unfinished"></translation>
+        <translation>主要藝人</translation>
     </message>
     <message>
         <location filename="../../src/gui/scripting/scriptreferenceentries.cpp" line="89"/>
         <source>Unique artists combined into one value</source>
-        <translation type="unfinished"></translation>
+        <translation>獨特藝人組合成為單一數值</translation>
     </message>
     <message>
         <location filename="../../src/gui/scripting/scriptreferenceentries.cpp" line="90"/>
         <source>Album title</source>
-        <translation type="unfinished"></translation>
+        <translation>專輯標題</translation>
     </message>
     <message>
         <location filename="../../src/gui/scripting/scriptreferenceentries.cpp" line="91"/>
         <source>Album artist</source>
-        <translation type="unfinished"></translation>
+        <translation>專輯藝人</translation>
     </message>
     <message>
         <location filename="../../src/gui/scripting/scriptreferenceentries.cpp" line="92"/>
         <source>Track number</source>
-        <translation type="unfinished"></translation>
+        <translation>曲目編號</translation>
     </message>
     <message>
         <location filename="../../src/gui/scripting/scriptreferenceentries.cpp" line="93"/>
         <source>Total tracks on the release</source>
-        <translation type="unfinished"></translation>
+        <translation>發行曲目總數</translation>
     </message>
     <message>
         <location filename="../../src/gui/scripting/scriptreferenceentries.cpp" line="94"/>
         <source>Disc number</source>
-        <translation type="unfinished"></translation>
+        <translation>光碟編號</translation>
     </message>
     <message>
         <location filename="../../src/gui/scripting/scriptreferenceentries.cpp" line="95"/>
         <source>Total discs on the release</source>
-        <translation type="unfinished"></translation>
+        <translation>發行光碟總數</translation>
     </message>
     <message>
         <location filename="../../src/gui/scripting/scriptreferenceentries.cpp" line="96"/>
         <source>Genres</source>
-        <translation type="unfinished"></translation>
+        <translation>曲風</translation>
     </message>
     <message>
         <location filename="../../src/gui/scripting/scriptreferenceentries.cpp" line="97"/>
         <source>Composers</source>
-        <translation type="unfinished"></translation>
+        <translation>作曲者</translation>
     </message>
     <message>
         <location filename="../../src/gui/scripting/scriptreferenceentries.cpp" line="98"/>
         <source>Performers</source>
-        <translation type="unfinished"></translation>
+        <translation>演出者</translation>
     </message>
     <message>
         <location filename="../../src/gui/scripting/scriptreferenceentries.cpp" line="99"/>
         <source>Track duration formatted as time</source>
-        <translation type="unfinished"></translation>
+        <translation>曲目持續格式為時間</translation>
     </message>
     <message>
         <location filename="../../src/gui/scripting/scriptreferenceentries.cpp" line="100"/>
         <source>Track duration in seconds</source>
-        <translation type="unfinished"></translation>
+        <translation>曲目持續時間(秒)</translation>
     </message>
     <message>
         <location filename="../../src/gui/scripting/scriptreferenceentries.cpp" line="101"/>
         <source>Track duration in milliseconds</source>
-        <translation type="unfinished"></translation>
+        <translation>曲目持續時間(毫秒)</translation>
     </message>
     <message>
         <location filename="../../src/gui/scripting/scriptreferenceentries.cpp" line="102"/>
         <source>Comment tag</source>
-        <translation type="unfinished"></translation>
+        <translation>評註標籤</translation>
     </message>
     <message>
         <location filename="../../src/gui/scripting/scriptreferenceentries.cpp" line="103"/>
         <source>Release date</source>
-        <translation type="unfinished"></translation>
+        <translation>發行日期</translation>
     </message>
     <message>
         <location filename="../../src/gui/scripting/scriptreferenceentries.cpp" line="104"/>
         <source>Release year</source>
-        <translation type="unfinished"></translation>
+        <translation>發行年份</translation>
     </message>
     <message>
         <location filename="../../src/gui/scripting/scriptreferenceentries.cpp" line="105"/>
         <source>File size in bytes</source>
-        <translation type="unfinished"></translation>
+        <translation>檔案大小(位元組）</translation>
     </message>
     <message>
         <location filename="../../src/gui/scripting/scriptreferenceentries.cpp" line="106"/>
         <source>Human readable file size</source>
-        <translation type="unfinished"></translation>
+        <translation>人類可讀的檔案大小</translation>
     </message>
     <message>
         <location filename="../../src/gui/scripting/scriptreferenceentries.cpp" line="107"/>
         <source>Track bitrate</source>
-        <translation type="unfinished"></translation>
+        <translation>曲目位元率</translation>
     </message>
     <message>
         <location filename="../../src/gui/scripting/scriptreferenceentries.cpp" line="108"/>
         <source>Sample rate</source>
-        <translation type="unfinished"></translation>
+        <translation>取樣頻率</translation>
     </message>
     <message>
         <location filename="../../src/gui/scripting/scriptreferenceentries.cpp" line="109"/>
         <source>Bit depth</source>
-        <translation type="unfinished">位元深度</translation>
+        <translation>位元深度</translation>
     </message>
     <message>
         <location filename="../../src/gui/scripting/scriptreferenceentries.cpp" line="110"/>
         <source>First played timestamp</source>
-        <translation type="unfinished"></translation>
+        <translation>首次播放時間戳記</translation>
     </message>
     <message>
         <location filename="../../src/gui/scripting/scriptreferenceentries.cpp" line="111"/>
         <source>Last played timestamp</source>
-        <translation type="unfinished"></translation>
+        <translation>上次播放時間戳記</translation>
     </message>
     <message>
         <location filename="../../src/gui/scripting/scriptreferenceentries.cpp" line="112"/>
         <source>Play count</source>
-        <translation type="unfinished"></translation>
+        <translation>播放次數</translation>
     </message>
     <message>
         <location filename="../../src/gui/scripting/scriptreferenceentries.cpp" line="113"/>
         <source>Numeric rating</source>
-        <translation type="unfinished"></translation>
+        <translation>分數評等</translation>
     </message>
     <message>
         <location filename="../../src/gui/scripting/scriptreferenceentries.cpp" line="114"/>
         <source>Rating shown as stars</source>
-        <translation type="unfinished"></translation>
+        <translation>評等顯示為星星</translation>
     </message>
     <message>
         <location filename="../../src/gui/scripting/scriptreferenceentries.cpp" line="115"/>
         <source>Rating editor representation</source>
-        <translation type="unfinished"></translation>
+        <translation>評等編輯器呈現</translation>
     </message>
     <message>
         <location filename="../../src/gui/scripting/scriptreferenceentries.cpp" line="116"/>
         <source>Codec name</source>
-        <translation type="unfinished"></translation>
+        <translation>編解碼器名稱</translation>
     </message>
     <message>
         <location filename="../../src/gui/scripting/scriptreferenceentries.cpp" line="117"/>
         <source>Codec profile</source>
-        <translation type="unfinished"></translation>
+        <translation>編解碼器設定檔案</translation>
     </message>
     <message>
         <location filename="../../src/gui/scripting/scriptreferenceentries.cpp" line="118"/>
         <source>Encoding tool</source>
-        <translation type="unfinished"></translation>
+        <translation>編碼工具</translation>
     </message>
     <message>
         <location filename="../../src/gui/scripting/scriptreferenceentries.cpp" line="119"/>
         <source>Tag type list</source>
-        <translation type="unfinished"></translation>
+        <translation>標籤類型列表</translation>
     </message>
     <message>
         <location filename="../../src/gui/scripting/scriptreferenceentries.cpp" line="120"/>
         <source>Encoding description</source>
-        <translation type="unfinished"></translation>
+        <translation>編碼描述說明</translation>
     </message>
     <message>
         <location filename="../../src/gui/scripting/scriptreferenceentries.cpp" line="121"/>
         <source>Channel layout</source>
-        <translation type="unfinished"></translation>
+        <translation>頻道配置</translation>
     </message>
     <message>
         <location filename="../../src/gui/scripting/scriptreferenceentries.cpp" line="122"/>
         <source>Library added timestamp</source>
-        <translation type="unfinished"></translation>
+        <translation>曲庫所添加的時間戳記</translation>
     </message>
     <message>
         <location filename="../../src/gui/scripting/scriptreferenceentries.cpp" line="123"/>
         <source>Last modified timestamp</source>
-        <translation type="unfinished"></translation>
+        <translation>最後修改時間戳記</translation>
     </message>
     <message>
         <location filename="../../src/gui/scripting/scriptreferenceentries.cpp" line="124"/>
         <source>Full file path</source>
-        <translation type="unfinished"></translation>
+        <translation>完整檔案路徑</translation>
     </message>
     <message>
         <location filename="../../src/gui/scripting/scriptreferenceentries.cpp" line="125"/>
         <source>Path relative to the library root</source>
-        <translation type="unfinished"></translation>
+        <translation>相對於曲庫根目錄的路徑</translation>
     </message>
     <message>
         <location filename="../../src/gui/scripting/scriptreferenceentries.cpp" line="126"/>
         <source>Filename without extension</source>
-        <translation type="unfinished"></translation>
+        <translation>檔案名稱 不含副檔名</translation>
     </message>
     <message>
         <location filename="../../src/gui/scripting/scriptreferenceentries.cpp" line="127"/>
         <source>File extension</source>
-        <translation type="unfinished"></translation>
+        <translation>檔案副檔名</translation>
     </message>
     <message>
         <location filename="../../src/gui/scripting/scriptreferenceentries.cpp" line="128"/>
         <source>Filename including extension</source>
-        <translation type="unfinished"></translation>
+        <translation>檔案名稱 包含副檔名</translation>
     </message>
     <message>
         <location filename="../../src/gui/scripting/scriptreferenceentries.cpp" line="129"/>
         <source>Containing directory name</source>
-        <translation type="unfinished"></translation>
+        <translation>包含目錄名稱</translation>
     </message>
     <message>
         <location filename="../../src/gui/scripting/scriptreferenceentries.cpp" line="130"/>
         <source>Containing directory path</source>
-        <translation type="unfinished"></translation>
+        <translation>包含目錄路徑</translation>
     </message>
     <message>
         <location filename="../../src/gui/scripting/scriptreferenceentries.cpp" line="131"/>
         <source>Subsong index</source>
-        <translation type="unfinished"></translation>
+        <translation>副歌索引</translation>
     </message>
     <message>
         <location filename="../../src/gui/scripting/scriptreferenceentries.cpp" line="132"/>
         <source>ReplayGain track gain</source>
-        <translation type="unfinished"></translation>
+        <translation>播放增益 曲目增益</translation>
     </message>
     <message>
         <location filename="../../src/gui/scripting/scriptreferenceentries.cpp" line="133"/>
         <source>ReplayGain track peak</source>
-        <translation type="unfinished"></translation>
+        <translation>播放增益 曲目峰值</translation>
     </message>
     <message>
         <location filename="../../src/gui/scripting/scriptreferenceentries.cpp" line="134"/>
         <source>ReplayGain track peak in dB</source>
-        <translation type="unfinished"></translation>
+        <translation>播放增益 曲目峰值 dB</translation>
     </message>
     <message>
         <location filename="../../src/gui/scripting/scriptreferenceentries.cpp" line="135"/>
         <source>ReplayGain album gain</source>
-        <translation type="unfinished"></translation>
+        <translation>播放增益 專輯增益</translation>
     </message>
     <message>
         <location filename="../../src/gui/scripting/scriptreferenceentries.cpp" line="136"/>
         <source>ReplayGain album peak</source>
-        <translation type="unfinished"></translation>
+        <translation>播放增益 專輯峰值</translation>
     </message>
     <message>
         <location filename="../../src/gui/scripting/scriptreferenceentries.cpp" line="137"/>
         <source>ReplayGain album peak in dB</source>
-        <translation type="unfinished"></translation>
+        <translation>播放增益 專輯峰值 dB</translation>
     </message>
     <message>
         <location filename="../../src/gui/scripting/scriptreferenceentries.cpp" line="138"/>
@@ -324,22 +324,22 @@
         <location filename="../../src/gui/scripting/scriptreferenceentries.cpp" line="140"/>
         <location filename="../../src/gui/scripting/scriptreferenceentries.cpp" line="142"/>
         <source>Playlist</source>
-        <translation type="unfinished">播放清單</translation>
+        <translation>播放清單</translation>
     </message>
     <message>
         <location filename="../../src/gui/scripting/scriptreferenceentries.cpp" line="138"/>
         <source>Number of tracks in the list</source>
-        <translation type="unfinished"></translation>
+        <translation>清單中的曲目數量</translation>
     </message>
     <message>
         <location filename="../../src/gui/scripting/scriptreferenceentries.cpp" line="139"/>
         <source>Combined duration of the track list</source>
-        <translation type="unfinished"></translation>
+        <translation>曲目清單的合計時長</translation>
     </message>
     <message>
         <location filename="../../src/gui/scripting/scriptreferenceentries.cpp" line="140"/>
         <source>Alias for total playlist duration</source>
-        <translation type="unfinished"></translation>
+        <translation>播放清單總計持續時間的別名</translation>
     </message>
     <message>
         <location filename="../../src/gui/scripting/scriptreferenceentries.cpp" line="141"/>
@@ -350,68 +350,68 @@
         <location filename="../../src/gui/scripting/scriptreferenceentries.cpp" line="147"/>
         <location filename="../../src/gui/scripting/scriptreferenceentries.cpp" line="148"/>
         <source>Playback</source>
-        <translation type="unfinished">播放</translation>
+        <translation>播放</translation>
     </message>
     <message>
         <location filename="../../src/gui/scripting/scriptreferenceentries.cpp" line="141"/>
         <source>Elapsed time within the active playlist</source>
-        <translation type="unfinished"></translation>
+        <translation>已經播放時間 於作用中的播放清單</translation>
     </message>
     <message>
         <location filename="../../src/gui/scripting/scriptreferenceentries.cpp" line="142"/>
         <source>Unique genres across the track list</source>
-        <translation type="unfinished"></translation>
+        <translation>獨特曲風 跨越曲目清單</translation>
     </message>
     <message>
         <location filename="../../src/gui/scripting/scriptreferenceentries.cpp" line="143"/>
         <source>Current playback position formatted as time</source>
-        <translation type="unfinished"></translation>
+        <translation>目前播放位置格式為時間</translation>
     </message>
     <message>
         <location filename="../../src/gui/scripting/scriptreferenceentries.cpp" line="144"/>
         <source>Current playback position in seconds</source>
-        <translation type="unfinished"></translation>
+        <translation>目前播放位置 秒數</translation>
     </message>
     <message>
         <location filename="../../src/gui/scripting/scriptreferenceentries.cpp" line="145"/>
         <source>Remaining playback time formatted as time</source>
-        <translation type="unfinished"></translation>
+        <translation>剩餘播放時間格式為時間</translation>
     </message>
     <message>
         <location filename="../../src/gui/scripting/scriptreferenceentries.cpp" line="146"/>
         <source>Remaining playback time in seconds</source>
-        <translation type="unfinished"></translation>
+        <translation>剩餘播放時間 秒數</translation>
     </message>
     <message>
         <location filename="../../src/gui/scripting/scriptreferenceentries.cpp" line="147"/>
         <source>Returns 1 while playback is active</source>
-        <translation type="unfinished"></translation>
+        <translation>當播放作用時 返回 1</translation>
     </message>
     <message>
         <location filename="../../src/gui/scripting/scriptreferenceentries.cpp" line="148"/>
         <source>Returns 1 while playback is paused</source>
-        <translation type="unfinished"></translation>
+        <translation>當播放暫停時 返回 1</translation>
     </message>
     <message>
         <location filename="../../src/gui/scripting/scriptreferenceentries.cpp" line="149"/>
         <location filename="../../src/gui/scripting/scriptreferenceentries.cpp" line="150"/>
         <source>Library</source>
-        <translation type="unfinished">媒體庫</translation>
+        <translation>音樂歌曲庫</translation>
     </message>
     <message>
         <location filename="../../src/gui/scripting/scriptreferenceentries.cpp" line="149"/>
         <source>Current library name</source>
-        <translation type="unfinished"></translation>
+        <translation>目前音樂庫名稱</translation>
     </message>
     <message>
         <location filename="../../src/gui/scripting/scriptreferenceentries.cpp" line="150"/>
         <source>Current library path</source>
-        <translation type="unfinished"></translation>
+        <translation>目前音樂庫路徑</translation>
     </message>
     <message>
         <location filename="../../src/gui/scripting/scriptreferenceentries.cpp" line="151"/>
         <source>Adds numeric arguments</source>
-        <translation type="unfinished"></translation>
+        <translation>添增數字參數</translation>
     </message>
     <message>
         <location filename="../../src/gui/scripting/scriptreferenceentries.cpp" line="152"/>
@@ -2166,12 +2166,12 @@ When disabled, existing track order is preserved and only newly added matching t
     <message>
         <location filename="../../src/gui/settings/playback/dspmanagerpage.cpp" line="237"/>
         <source>Per-track DSPs are applied to each stream separately before tracks are mixed. During crossfades, each track is processed independently.</source>
-        <translation>在軌道混合之前，各依曲目 DSPs 分別應用於每個串流。在交叉淡出淡入期間，每個曲目音軌都是獨立處理的。</translation>
+        <translation>在軌道混合之前，各依曲目 DSPs 分別應用於每個串流。在交叉淡出淡入期間，每個曲目都是獨立處理的。</translation>
     </message>
     <message>
         <location filename="../../src/gui/settings/playback/dspmanagerpage.cpp" line="239"/>
         <source>Master DSPs are applied after all active tracks are mixed into one signal. Effects here process the final combined output.</source>
-        <translation>在全部作用音軌混合成一個訊號後，套用主控 DSPs。音效處理最終的組合輸出。</translation>
+        <translation>在全部作用曲目混合成單一訊號後，套用主控 DSPs。音效處理最終的組合輸出。</translation>
     </message>
     <message>
         <location filename="../../src/gui/settings/playback/dspmanagerpage.cpp" line="242"/>
@@ -2232,7 +2232,7 @@ When disabled, existing track order is preserved and only newly added matching t
     <message>
         <location filename="../../src/gui/settings/playback/dspmanagerpage.cpp" line="663"/>
         <source>Add to Per-Track</source>
-        <translation>添增至各依音軌</translation>
+        <translation>添增至各依曲目</translation>
     </message>
     <message>
         <location filename="../../src/gui/settings/playback/dspmanagerpage.cpp" line="664"/>
@@ -3138,7 +3138,7 @@ When disabled, existing track order is preserved and only newly added matching t
     <message>
         <location filename="../../src/plugins/filters/filtercolumnregistry.cpp" line="39"/>
         <source>Genre</source>
-        <translation>音樂類型</translation>
+        <translation>曲風</translation>
     </message>
     <message>
         <location filename="../../src/plugins/filters/filtercolumnregistry.cpp" line="40"/>
@@ -4439,7 +4439,7 @@ When disabled, existing track order is preserved and only newly added matching t
     <message>
         <location filename="../../src/gui/selectioninfo/infopopulator.cpp" line="153"/>
         <source>Genre</source>
-        <translation>音樂類型</translation>
+        <translation>曲風</translation>
     </message>
     <message>
         <location filename="../../src/gui/selectioninfo/infopopulator.cpp" line="154"/>
@@ -4564,12 +4564,12 @@ When disabled, existing track order is preserved and only newly added matching t
     <message>
         <location filename="../../src/gui/selectioninfo/infopopulator.cpp" line="243"/>
         <source>Track Gain</source>
-        <translation>音軌增益</translation>
+        <translation>曲目增益</translation>
     </message>
     <message>
         <location filename="../../src/gui/selectioninfo/infopopulator.cpp" line="248"/>
         <source>Track Peak</source>
-        <translation>音軌峰值</translation>
+        <translation>曲目峰值</translation>
     </message>
     <message>
         <location filename="../../src/gui/selectioninfo/infopopulator.cpp" line="253"/>
@@ -7958,7 +7958,7 @@ When disabled, existing track order is preserved and only newly added matching t
     <message>
         <location filename="../../src/plugins/rgscanner/rgscanresultsmodel.cpp" line="48"/>
         <source>Track Gain</source>
-        <translation>音軌增益</translation>
+        <translation>曲目增益</translation>
     </message>
     <message>
         <location filename="../../src/plugins/rgscanner/rgscanresultsmodel.cpp" line="50"/>
@@ -7968,7 +7968,7 @@ When disabled, existing track order is preserved and only newly added matching t
     <message>
         <location filename="../../src/plugins/rgscanner/rgscanresultsmodel.cpp" line="52"/>
         <source>Track Peak</source>
-        <translation>音軌峰值</translation>
+        <translation>曲目峰值</translation>
     </message>
     <message>
         <location filename="../../src/plugins/rgscanner/rgscanresultsmodel.cpp" line="54"/>
@@ -8126,12 +8126,12 @@ When disabled, existing track order is preserved and only newly added matching t
     <message>
         <location filename="../../src/gui/replaygain/replaygainmodel.cpp" line="126"/>
         <source>Track Gain</source>
-        <translation>音軌增益</translation>
+        <translation>曲目增益</translation>
     </message>
     <message>
         <location filename="../../src/gui/replaygain/replaygainmodel.cpp" line="128"/>
         <source>Track Peak</source>
-        <translation>音軌峰值</translation>
+        <translation>曲目峰值</translation>
     </message>
     <message>
         <location filename="../../src/gui/replaygain/replaygainmodel.cpp" line="130"/>
@@ -8187,7 +8187,7 @@ When disabled, existing track order is preserved and only newly added matching t
     <message>
         <location filename="../../src/gui/settings/playback/replaygainpage.cpp" line="71"/>
         <source>Use track-based gain</source>
-        <translation>使用基於音軌的增益</translation>
+        <translation>使用基於曲目的增益</translation>
     </message>
     <message>
         <location filename="../../src/gui/settings/playback/replaygainpage.cpp" line="72"/>
@@ -8202,7 +8202,7 @@ When disabled, existing track order is preserved and only newly added matching t
     <message>
         <location filename="../../src/gui/settings/playback/replaygainpage.cpp" line="77"/>
         <source>Base normalisation on track loudness</source>
-        <translation>基於音軌音量進行基本正規化</translation>
+        <translation>基於曲目音量進行基本正規化</translation>
     </message>
     <message>
         <location filename="../../src/gui/settings/playback/replaygainpage.cpp" line="78"/>
@@ -8212,7 +8212,7 @@ When disabled, existing track order is preserved and only newly added matching t
     <message>
         <location filename="../../src/gui/settings/playback/replaygainpage.cpp" line="79"/>
         <source>Base normalisation on track loudness if shuffling tracks, else album loudness</source>
-        <translation>如果播放清單是隨機播放清單，則基於音軌曲目音量進行基本正規化，否則基於專輯的音量進行基本正規化</translation>
+        <translation>如果播放清單是隨機播放清單，則基於曲目音量進行基本正規化，否則基於專輯的音量進行基本正規化</translation>
     </message>
     <message>
         <location filename="../../src/gui/settings/playback/replaygainpage.cpp" line="83"/>
@@ -8271,7 +8271,7 @@ When disabled, existing track order is preserved and only newly added matching t
     <message>
         <location filename="../../src/gui/replaygain/replaygainpopulator.cpp" line="125"/>
         <source>Track Peak</source>
-        <translation>音軌峰值</translation>
+        <translation>曲目峰值</translation>
     </message>
     <message>
         <location filename="../../src/gui/replaygain/replaygainpopulator.cpp" line="127"/>
@@ -8287,12 +8287,12 @@ When disabled, existing track order is preserved and only newly added matching t
     <message>
         <location filename="../../src/gui/replaygain/replaygainpopulator.cpp" line="167"/>
         <source>Lowest Gain (Loudest track)</source>
-        <translation>最低增益 (最大音量音軌)</translation>
+        <translation>最低增益 (最大音量曲目)</translation>
     </message>
     <message>
         <location filename="../../src/gui/replaygain/replaygainpopulator.cpp" line="179"/>
         <source>Highest Gain (Quietest track)</source>
-        <translation>最高增益 (最小音量音軌)</translation>
+        <translation>最高增益 (最小音量曲目)</translation>
     </message>
 </context>
 <context>
@@ -9618,7 +9618,7 @@ When disabled, existing track order is preserved and only newly added matching t
     <message>
         <location filename="../../src/plugins/tageditor/settings/tageditorfieldregistry.cpp" line="49"/>
         <source>Genre</source>
-        <translation>音樂類型</translation>
+        <translation>曲風</translation>
     </message>
     <message>
         <location filename="../../src/plugins/tageditor/settings/tageditorfieldregistry.cpp" line="50"/>
