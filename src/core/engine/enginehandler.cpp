@@ -111,6 +111,11 @@ EngineHandler::EngineHandler(std::shared_ptr<AudioLoader> audioLoader, PlayerCon
 
     m_settings->subscribe<Settings::Core::AudioOutput>(this, &EngineHandler::changeOutput);
     m_settings->subscribe<Settings::Core::OutputVolume>(this, &EngineHandler::updateVolume);
+    m_settings->subscribe<Settings::Core::StopAfterCurrent>(this, [this](bool enabled) {
+        clearPendingBoundaryAdvance();
+        clearEngineOwnedTransition();
+        dispatchCommand(&AudioEngine::setUpcomingTrackCandidate, enabled ? Track{} : m_upcomingTrack.track.track);
+    });
 }
 
 EngineHandler::~EngineHandler()
@@ -276,11 +281,21 @@ void EngineHandler::handleTrackChangeRequest(const Player::TrackChangeRequest& r
 void EngineHandler::handleUpcomingTrackChanged(const Player::UpcomingTrack& upcomingTrack)
 {
     m_upcomingTrack = upcomingTrack;
-    dispatchCommand(&AudioEngine::setUpcomingTrackCandidate, upcomingTrack.track.track);
+    dispatchCommand(&AudioEngine::setUpcomingTrackCandidate,
+                    stopAfterCurrentEnabled() ? Track{} : upcomingTrack.track.track);
+}
+
+bool EngineHandler::stopAfterCurrentEnabled() const
+{
+    return m_settings->value<Settings::Core::StopAfterCurrent>();
 }
 
 bool EngineHandler::hasAutoTrackEndTransitionEnabled() const
 {
+    if(stopAfterCurrentEnabled()) {
+        return false;
+    }
+
     if(m_settings->value<Settings::Core::GaplessPlayback>()) {
         return true;
     }
@@ -407,6 +422,12 @@ void EngineHandler::handleTrackCommitted(const Engine::TrackCommitContext& conte
     }
 
     if(m_upcomingTrack.track.isValid() && sameTrackIdentity(m_upcomingTrack.track.track, context.track)) {
+        if(stopAfterCurrentEnabled()) {
+            clearEngineOwnedTransition();
+            m_playerController->advance(Player::AdvanceReason::NaturalEnd);
+            return;
+        }
+
         m_playerController->commitCurrentTrack(Player::TrackChangeRequest{
             .track        = m_upcomingTrack.track,
             .context      = {.reason = Player::AdvanceReason::NaturalEnd, .userInitiated = false},

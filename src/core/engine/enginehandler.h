@@ -128,6 +128,7 @@ private:
     void handleStateChange(Engine::PlaybackState state);
     void handleTrackChangeRequest(const Player::TrackChangeRequest& request);
     void handleUpcomingTrackChanged(const Player::UpcomingTrack& upcomingTrack);
+    [[nodiscard]] bool stopAfterCurrentEnabled() const;
     [[nodiscard]] bool hasAutoTrackEndTransitionEnabled() const;
     void noteEngineOwnedTransition(const Track& track, uint64_t generation);
     void handleTrackBoundaryReached(const Track& track, uint64_t generation, uint64_t remainingOutputMs,

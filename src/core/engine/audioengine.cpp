@@ -1120,6 +1120,10 @@ AutoTransitionMode AudioEngine::configuredTrackEndAutoTransitionMode() const
 
 AutoTransitionMode AudioEngine::configuredTrackEndAutoTransitionMode(const Track& track) const
 {
+    if(m_settings->value<Settings::Core::StopAfterCurrent>()) {
+        return AutoTransitionMode::None;
+    }
+
     const bool crossfadeConfigured   = m_crossfadeEnabled && m_crossfadingValues.autoChange.isConfigured();
     const uint64_t trackDurationMs   = track.duration();
     const bool trackDurationKnown    = trackDurationMs > 0;
@@ -1821,12 +1825,25 @@ void AudioEngine::setupSettings()
         }
     };
 
+    const auto cancelTrackEndAutoTransitions = [this]() {
+        m_upcomingTrackCandidate = {};
+        clearAutoAdvanceState();
+        clearPreparedCrossfadeTransition();
+        clearPreparedGaplessTransition();
+        clearPreparedNextTrackAndCancelPendingJobs();
+    };
+
     refreshReplayGainSettings();
     refreshDecoderPlaybackHints(false);
 
     m_settings->subscribe<Settings::Core::PlayMode>(this, refreshReplayGainSettings);
     m_settings->subscribe<Settings::Core::PlayMode>(
         this, [refreshDecoderPlaybackHints]() { refreshDecoderPlaybackHints(true); });
+    m_settings->subscribe<Settings::Core::StopAfterCurrent>(this, [cancelTrackEndAutoTransitions](bool enabled) {
+        if(enabled) {
+            cancelTrackEndAutoTransitions();
+        }
+    });
     m_settings->subscribe<Settings::Core::RGMode>(this, refreshReplayGainSettings);
     m_settings->subscribe<Settings::Core::RGType>(this, refreshReplayGainSettings);
     m_settings->subscribe<Settings::Core::RGPreAmp>(this, refreshReplayGainSettings);
