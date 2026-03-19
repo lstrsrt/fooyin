@@ -282,6 +282,11 @@ void EngineHandler::handleTrackChangeRequest(const Player::TrackChangeRequest& r
 void EngineHandler::handleUpcomingTrackChanged(const Player::UpcomingTrack& upcomingTrack)
 {
     m_upcomingTrack = upcomingTrack;
+    qCDebug(ENG_HANDLER) << "Controller upcoming track changed:"
+                         << "currentTrackId=" << m_playerController->currentTrack().id()
+                         << "upcomingTrackId=" << upcomingTrack.track.track.id()
+                         << "isQueueTrack=" << upcomingTrack.isQueueTrack
+                         << "stopAfterCurrent=" << stopAfterCurrentEnabled();
     dispatchCommand(&AudioEngine::setUpcomingTrackCandidate,
                     stopAfterCurrentEnabled() ? Track{} : upcomingTrack.track.track);
 }
@@ -681,6 +686,8 @@ void EngineHandler::advancePositionContextWatermark(const PositionContext& conte
 
 void EngineHandler::handleNextTrackReadiness(const Track& track, bool ready, uint64_t requestId)
 {
+    qCDebug(ENG_HANDLER) << "Next-track readiness updated:" << "trackId=" << track.id() << "ready=" << ready
+                         << "requestId=" << requestId;
     publishEvent(track, ready, requestId);
 
     if(!ready && m_endAdvanceSuppressed && m_upcomingTrack.track.isValid()

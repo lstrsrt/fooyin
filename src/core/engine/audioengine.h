@@ -218,7 +218,25 @@ private:
     [[nodiscard]] uint64_t transitionReserveMs() const;
     [[nodiscard]] uint64_t aggressivePreparedPrefillMs() const;
 
+    enum class DrainFillPrepareDiagnosticReason : uint8_t
+    {
+        None = 0,
+        NoUpcomingCandidate,
+        CandidateMatchesCurrent,
+        AutoTransitionDisabled,
+        WaitingForEndOfInput,
+        PreparedCrossfadeAlreadyActive,
+        PreparedGaplessAlreadyActive,
+        AlreadyBuffered,
+        AlreadyRequested,
+        Enqueued,
+    };
+    Q_ENUM(DrainFillPrepareDiagnosticReason)
+
     [[nodiscard]] Track autoAdvanceTargetTrack() const;
+    void maybeLogDrainFillPrepareGate(const AudioStreamPtr& stream, const TrackEndingResult& result);
+    void logDrainFillPrepareDiagnostic(DrainFillPrepareDiagnosticReason reason, const AudioStreamPtr& stream,
+                                       uint64_t prefillTargetMs = 0);
     void maybePrepareUpcomingTrackForDrainFill(const AudioStreamPtr& stream);
     void noteReadyToSwitchAnchor();
     void noteBoundaryAnchor();
@@ -250,9 +268,9 @@ private:
     void clearTrackEndLatch();
     TrackEndingResult checkTrackEnding(const AudioStreamPtr& stream, uint64_t relativePosMs);
     [[nodiscard]] uint64_t preferredPreparedPrefillMs() const;
-    std::optional<AutoTransitionEligibility> evaluateAutoTransitionEligibility(const Track& track, bool isManualChange,
-                                                                               bool requireTransitionReady
-                                                                               = true) const;
+    std::optional<AutoTransitionEligibility>
+    evaluateAutoTransitionEligibility(const Track& track, bool isManualChange, bool requireTransitionReady = true,
+                                      const char** rejectionReason = nullptr) const;
     bool isAutoTransitionEligible(const Track& track) const;
     void setCurrentTrackContext(const Track& track);
     void setStreamToTrackOriginForTrack(const Track& track);
@@ -382,5 +400,13 @@ private:
         bool drainPrepareRequested{false};
     };
     AutoAdvanceState m_autoAdvanceState;
+
+    struct DrainFillPrepareDiagnosticState
+    {
+        uint64_t generation{0};
+        DrainFillPrepareDiagnosticReason reason{DrainFillPrepareDiagnosticReason::None};
+        int candidateTrackId{0};
+    };
+    DrainFillPrepareDiagnosticState m_drainFillPrepareDiagnostic;
 };
 } // namespace Fooyin

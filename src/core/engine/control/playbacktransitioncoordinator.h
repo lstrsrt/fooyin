@@ -21,6 +21,8 @@
 
 #include "fycore_export.h"
 
+#include <QObject>
+
 #include <cstdint>
 #include <optional>
 
@@ -30,6 +32,8 @@ namespace Fooyin {
  */
 class FYCORE_EXPORT PlaybackTransitionCoordinator
 {
+    Q_GADGET
+
 public:
     PlaybackTransitionCoordinator();
 
@@ -40,6 +44,7 @@ public:
         Crossfade,
         BoundaryFade
     };
+    Q_ENUM(AutoTransitionMode)
 
     struct CrossfadeParams
     {
