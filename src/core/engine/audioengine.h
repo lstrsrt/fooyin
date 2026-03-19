@@ -103,6 +103,21 @@ public:
     };
     Q_ENUM(PhaseChangeReason)
 
+    enum class DrainFillPrepareDiagnosticReason : uint8_t
+    {
+        None = 0,
+        NoUpcomingCandidate,
+        CandidateMatchesCurrent,
+        AutoTransitionDisabled,
+        WaitingForEndOfInput,
+        PreparedCrossfadeAlreadyActive,
+        PreparedGaplessAlreadyActive,
+        AlreadyBuffered,
+        AlreadyRequested,
+        Enqueued,
+    };
+    Q_ENUM(DrainFillPrepareDiagnosticReason)
+
     AudioEngine(std::shared_ptr<AudioLoader> audioLoader, SettingsManager* settings, DspRegistry* dspRegistry,
                 QObject* parent = nullptr);
     ~AudioEngine() override;
@@ -217,21 +232,6 @@ private:
     [[nodiscard]] uint64_t boundaryCrossfadeOverlapMs() const;
     [[nodiscard]] uint64_t transitionReserveMs() const;
     [[nodiscard]] uint64_t aggressivePreparedPrefillMs() const;
-
-    enum class DrainFillPrepareDiagnosticReason : uint8_t
-    {
-        None = 0,
-        NoUpcomingCandidate,
-        CandidateMatchesCurrent,
-        AutoTransitionDisabled,
-        WaitingForEndOfInput,
-        PreparedCrossfadeAlreadyActive,
-        PreparedGaplessAlreadyActive,
-        AlreadyBuffered,
-        AlreadyRequested,
-        Enqueued,
-    };
-    Q_ENUM(DrainFillPrepareDiagnosticReason)
 
     [[nodiscard]] Track autoAdvanceTargetTrack() const;
     void maybeLogDrainFillPrepareGate(const AudioStreamPtr& stream, const TrackEndingResult& result);
