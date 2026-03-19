@@ -56,6 +56,7 @@ public:
     {
         Player::UpcomingTrack upcoming;
         Playlist* activePlaylist{nullptr};
+        Playlist* playbackPlaylist{nullptr};
         const char* source{"unknown"};
         int previewIndex{-1};
     };
@@ -160,30 +161,41 @@ public:
             return resolution;
         }
 
+        resolution.playbackPlaylist = playbackPlaylist();
+        if(resolution.playbackPlaylist) {
+            resolution.previewIndex
+                = resolution.playbackPlaylist->nextIndexFrom(m_currentTrack.indexInPlaylist, 1, m_playMode);
+            resolution.upcoming.track
+                = resolution.playbackPlaylist->playlistTrack(resolution.previewIndex).value_or(PlaylistTrack{});
+            resolution.upcoming.isQueueTrack = false;
+
+            if(resolution.upcoming.track.isValid()) {
+                resolution.source = "playback-playlist-preview";
+            }
+            else if(resolution.playbackPlaylist->trackCount() <= 0) {
+                resolution.source = "playback-playlist-empty";
+            }
+            else if(m_currentTrack.indexInPlaylist >= resolution.playbackPlaylist->trackCount()) {
+                resolution.source = "playback-playlist-current-out-of-range";
+            }
+            else {
+                resolution.source = "playback-playlist-preview-invalid";
+            }
+
+            return resolution;
+        }
+
         if(!resolution.activePlaylist) {
             resolution.source = "no-active-playlist";
             return resolution;
         }
 
-        const bool playbackBackedByActivePlaylist = m_currentTrack.isValid() && m_currentTrack.playlistId.isValid()
-                                                 && resolution.activePlaylist->id() == m_currentTrack.playlistId
-                                                 && m_currentTrack.indexInPlaylist >= 0;
-
-        if(playbackBackedByActivePlaylist) {
-            resolution.previewIndex
-                = resolution.activePlaylist->nextIndexFrom(m_currentTrack.indexInPlaylist, 1, m_playMode);
-            resolution.upcoming.track
-                = resolution.activePlaylist->playlistTrack(resolution.previewIndex).value_or(PlaylistTrack{});
-            resolution.upcoming.isQueueTrack = false;
-        }
-        else {
-            resolution.previewIndex          = resolution.activePlaylist->nextIndex(1, m_playMode);
-            resolution.upcoming.track        = m_playlistHandler->peekRelativeTrack(m_playMode, 1);
-            resolution.upcoming.isQueueTrack = false;
-        }
+        resolution.previewIndex          = resolution.activePlaylist->nextIndex(1, m_playMode);
+        resolution.upcoming.track        = m_playlistHandler->peekRelativeTrack(m_playMode, 1);
+        resolution.upcoming.isQueueTrack = false;
 
         if(resolution.upcoming.track.isValid()) {
-            resolution.source = playbackBackedByActivePlaylist ? "current-track-preview" : "active-playlist-preview";
+            resolution.source = "active-playlist-preview";
             return resolution;
         }
 
@@ -217,7 +229,8 @@ public:
         if(upcoming.track.isValid()) {
             const bool reuseLastUpcoming = m_lastUpcomingTrack.track == upcoming.track
                                         && m_lastUpcomingTrack.isQueueTrack == upcoming.isQueueTrack
-                                        && m_lastUpcomingTrack.itemId != 0;
+                                        && m_lastUpcomingTrack.itemId != 0
+                                        && m_lastUpcomingTrack.itemId != m_currentItemId;
             upcoming.itemId              = reuseLastUpcoming ? m_lastUpcomingTrack.itemId : nextPlaybackItemId();
         }
 
@@ -323,6 +336,60 @@ public:
         }
 
         return false;
+    }
+
+    [[nodiscard]] Playlist* playbackPlaylist() const
+    {
+        if(!m_playlistHandler || m_isQueueTrack || !m_currentTrack.isValid() || !m_currentTrack.playlistId.isValid()
+           || m_currentTrack.indexInPlaylist < 0) {
+            return nullptr;
+        }
+
+        auto* playlist = m_playlistHandler->playlistById(m_currentTrack.playlistId);
+        if(!playlist || m_currentTrack.indexInPlaylist >= playlist->trackCount()) {
+            return nullptr;
+        }
+
+        const auto playlistTrack = playlist->playlistTrack(m_currentTrack.indexInPlaylist);
+        if(!playlistTrack.has_value() || !sameTrackIdentity(playlistTrack->track, m_currentTrack.track)) {
+            return nullptr;
+        }
+
+        return playlist;
+    }
+
+    [[nodiscard]] PlaylistTrack previewPlaybackRelativeTrack(int delta) const
+    {
+        if(auto* playlist = playbackPlaylist()) {
+            const int nextIndex = playlist->nextIndexFrom(m_currentTrack.indexInPlaylist, delta, m_playMode);
+            return playlist->playlistTrack(nextIndex).value_or(PlaylistTrack{});
+        }
+
+        if(!m_playlistHandler) {
+            return {};
+        }
+
+        return m_playlistHandler->peekRelativeTrack(m_playMode, delta);
+    }
+
+    PlaylistTrack advancePlaybackRelativeTrack(int delta)
+    {
+        if(auto* playlist = playbackPlaylist()) {
+            const int nextIndex = playlist->nextIndexFrom(m_currentTrack.indexInPlaylist, delta, m_playMode);
+            if(nextIndex < 0 || nextIndex >= playlist->trackCount()) {
+                playlist->changeCurrentIndex(-1);
+                return {};
+            }
+
+            playlist->changeCurrentIndex(nextIndex);
+            return playlist->playlistTrack(nextIndex).value_or(PlaylistTrack{});
+        }
+
+        if(!m_playlistHandler) {
+            return {};
+        }
+
+        return m_playlistHandler->advanceRelativeTrack(m_playMode, delta);
     }
 
     PlayerController* m_self;
@@ -534,7 +601,7 @@ void PlayerController::previous()
     p->m_playMode &= ~Playlist::RepeatTrack;
 
     if(p->m_playlistHandler) {
-        const PlaylistTrack track = p->m_playlistHandler->advanceRelativeTrack(p->m_playMode, -1);
+        const PlaylistTrack track = p->advancePlaybackRelativeTrack(-1);
         changeCurrentTrack(track, {Player::AdvanceReason::ManualPrevious, true});
     }
     else {
@@ -594,7 +661,7 @@ void PlayerController::advance(Player::AdvanceReason reason)
             return;
         }
 
-        const PlaylistTrack track = p->m_playlistHandler->advanceRelativeTrack(p->m_playMode, 1);
+        const PlaylistTrack track = p->advancePlaybackRelativeTrack(1);
         p->requestTrackChange({
             .track        = track,
             .context      = p->m_pendingChangeContext,
@@ -724,7 +791,6 @@ void PlayerController::commitCurrentTrack(const Player::TrackChangeRequest& requ
     p->m_isQueueTrack  = isQueueTrack;
     p->updateBitrate(0);
     p->clearPendingRequest();
-    p->m_lastUpcomingTrack = {};
 
     if(isQueueTrack) {
         const auto removedTracks = p->m_queue.removeTracks({requestWithId.track});
@@ -824,11 +890,7 @@ bool PlayerController::hasNextTrack() const
 
 bool PlayerController::hasPreviousTrack() const
 {
-    if(!p->m_playlistHandler) {
-        return false;
-    }
-
-    return p->m_playlistHandler->peekRelativeTrack(p->m_playMode, -1).isValid();
+    return p->previewPlaybackRelativeTrack(-1).isValid();
 }
 
 Player::PlaybackSnapshot PlayerController::playbackSnapshot() const
