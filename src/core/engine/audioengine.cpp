@@ -1606,8 +1606,9 @@ void AudioEngine::handleTrackEndingSignals(const AudioStreamPtr& stream, uint64_
                                      || boundaryAudiblePosMs >= m_currentTrack.duration()
                                      || pendingBoundaryRenderedGaplessReached;
 
-    const bool boundaryWasPending = m_autoAdvanceState.boundaryPendingUntilAudible;
-    if(result.boundaryReached && !audibleBoundaryReached) {
+    const bool deferBoundaryUntilAudible = preparedGaplessActive;
+    const bool boundaryWasPending        = m_autoAdvanceState.boundaryPendingUntilAudible;
+    if(result.boundaryReached && !audibleBoundaryReached && deferBoundaryUntilAudible) {
         m_autoAdvanceState.boundaryPendingUntilAudible = true;
         if(!boundaryWasPending && preparedGaplessActive) {
             const StreamId currentStreamId = stream ? stream->id() : InvalidStreamId;
@@ -1623,7 +1624,7 @@ void AudioEngine::handleTrackEndingSignals(const AudioStreamPtr& stream, uint64_
         }
     }
 
-    const bool boundaryReachedNow = (result.boundaryReached && audibleBoundaryReached)
+    const bool boundaryReachedNow = (result.boundaryReached && (audibleBoundaryReached || !deferBoundaryUntilAudible))
                                  || (m_autoAdvanceState.boundaryPendingUntilAudible && audibleBoundaryReached);
 
     const auto emitBoundarySignal = [&]() -> bool {
@@ -2155,9 +2156,6 @@ bool AudioEngine::hasPlaybackState(Engine::PlaybackState state) const
 bool AudioEngine::signalTrackEndOnce(bool flushDspOnEnd)
 {
     if(!shouldEmitTrackEndOnce(m_lastEndedTrack, m_currentTrack)) {
-        qCDebug(ENGINE) << "Track end status already emitted for current track:"
-                        << "trackId=" << m_currentTrack.id() << "generation=" << m_trackGeneration
-                        << "flushDspOnEnd=" << flushDspOnEnd;
         return false;
     }
 
