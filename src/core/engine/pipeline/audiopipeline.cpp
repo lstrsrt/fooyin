@@ -2168,14 +2168,24 @@ void AudioPipeline::appendBackendOutputQueue(std::span<const TimelineChunk> time
 void AudioPipeline::syncAudibleOutputStreamId()
 {
     StreamId audibleStreamId{InvalidStreamId};
+    int queuedFrames{0};
 
     for(const auto& span : m_backendOutputQueue) {
+        queuedFrames += std::max(0, span.frames);
+
         if(span.frames <= 0) {
             continue;
         }
 
         audibleStreamId = span.streamId;
         break;
+    }
+
+    const StreamId previousAudibleStreamId = m_timelineUnit.audibleOutputStreamId();
+    if(previousAudibleStreamId != audibleStreamId) {
+        qCDebug(PIPELINE) << "Audible output head changed:" << "from=" << previousAudibleStreamId
+                          << "to=" << audibleStreamId << "queuedFrames=" << queuedFrames
+                          << "spanCount=" << m_backendOutputQueue.size();
     }
 
     m_timelineUnit.setAudibleOutputStreamId(audibleStreamId);

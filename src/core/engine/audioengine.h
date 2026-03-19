@@ -258,6 +258,10 @@ private:
     void setStreamToTrackOriginForTrack(const Track& track);
     [[nodiscard]] bool setStreamToTrackOriginForSegmentSwitch(const Track& track, uint64_t streamPosMs);
     [[nodiscard]] AudioStreamPtr currentTrackTimingStream() const;
+    void scheduleGaplessBoundaryStallDiagnostic(uint64_t generation, StreamId currentStreamId,
+                                                StreamId preparedStreamId);
+    void logGaplessBoundaryDiagnostic(const char* reason, StreamId triggerCurrentStreamId,
+                                      StreamId triggerPreparedStreamId) const;
 
     bool initDecoder(const Track& track, bool allowPreparedStream);
     bool setupNewTrackStream(const Track& track, bool applyPendingSeek);
