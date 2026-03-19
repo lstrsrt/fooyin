@@ -40,7 +40,7 @@ class AudioLoader;
 
 struct FYCORE_EXPORT NextTrackPreparationState
 {
-    Track track;
+    Engine::PlaybackItem item;
     LoadedDecoder loadedDecoder;
     AudioFormat format;
     AudioStreamPtr preparedStream;
@@ -48,7 +48,7 @@ struct FYCORE_EXPORT NextTrackPreparationState
 
     [[nodiscard]] bool isValid() const
     {
-        return track.isValid() && loadedDecoder.decoder != nullptr && format.isValid();
+        return item.isValid() && loadedDecoder.decoder != nullptr && format.isValid();
     }
 };
 
@@ -94,12 +94,12 @@ public:
     {
         uint64_t jobToken{0};
         uint64_t requestId{0};
-        Track track;
+        Engine::PlaybackItem item;
         NextTrackPreparer::Context context;
     };
 
-    using CompletionHandler = std::function<void(uint64_t jobToken, uint64_t requestId, const Track& track,
-                                                 NextTrackPreparationState prepared)>;
+    using CompletionHandler = std::function<void(uint64_t jobToken, uint64_t requestId,
+                                                 const Engine::PlaybackItem& item, NextTrackPreparationState prepared)>;
 
     NextTrackPrepareWorker();
     ~NextTrackPrepareWorker();

@@ -118,6 +118,11 @@ bool pumpUntil(const std::function<bool()>& predicate, std::chrono::milliseconds
     return predicate();
 }
 
+Fooyin::Engine::PlaybackItem makePlaybackItem(const Fooyin::Track& track, uint64_t itemId)
+{
+    return {.track = track, .itemId = itemId};
+}
+
 QString createDummyAudioFile(QTemporaryDir& tempDir, const QString& fileName)
 {
     const QString filePath = tempDir.filePath(fileName);
@@ -451,7 +456,7 @@ TEST(AudioEngineTest, LoadTrackFullReinitInitialisesDecoderAndOutput)
     EngineHarness harness{false};
 
     const Track track = harness.createTrack(u"full-reinit.fyt"_s, 0, 100000);
-    harness.engine.loadTrack(track, false);
+    harness.engine.loadTrack(makePlaybackItem(track, 1), false);
 
     ASSERT_TRUE(pumpUntil([&harness]() { return harness.engine.trackStatus() == Engine::TrackStatus::Loaded; }));
     EXPECT_EQ(harness.engine.playbackState(), Engine::PlaybackState::Stopped);
@@ -466,7 +471,7 @@ TEST(AudioEngineTest, ContiguousSegmentSwitchDoesNotReinitDecoderOrOutput)
     EngineHarness harness{false};
 
     const Track firstTrack = harness.createTrack(u"segments.fyt"_s, 0, 100000);
-    harness.engine.loadTrack(firstTrack, false);
+    harness.engine.loadTrack(makePlaybackItem(firstTrack, 1), false);
     ASSERT_TRUE(pumpUntil([&harness]() { return harness.engine.trackStatus() == Engine::TrackStatus::Loaded; }));
 
     harness.engine.play();
@@ -480,7 +485,7 @@ TEST(AudioEngineTest, ContiguousSegmentSwitchDoesNotReinitDecoderOrOutput)
     nextSegment.setOffset(firstTrack.offset() + firstTrack.duration());
     nextSegment.setDuration(firstTrack.duration());
 
-    harness.engine.loadTrack(nextSegment, false);
+    harness.engine.loadTrack(makePlaybackItem(nextSegment, 2), false);
     QCoreApplication::processEvents(QEventLoop::AllEvents, 10);
 
     EXPECT_EQ(harness.decoderStats->initCalls.load(), decoderInitBefore);
@@ -496,7 +501,7 @@ TEST(AudioEngineTest, PlayPauseStopWithFadeCompletesStateTransitions)
     EngineHarness harness{/*enablePauseStopFade=*/true};
 
     const Track track = harness.createTrack(u"fade-smoke.fyt"_s, 0, 100000);
-    harness.engine.loadTrack(track, false);
+    harness.engine.loadTrack(makePlaybackItem(track, 1), false);
     ASSERT_TRUE(pumpUntil([&harness]() { return harness.engine.trackStatus() == Engine::TrackStatus::Loaded; }));
 
     harness.engine.play();
@@ -524,7 +529,7 @@ TEST(AudioEngineTest, SeekDiscontinuityPublishesNearTargetQuickly)
     EngineHarness harness{false};
 
     const Track track = harness.createTrack(u"seek-quick-discontinuity.fyt"_s, 0, 120000);
-    harness.engine.loadTrack(track, false);
+    harness.engine.loadTrack(makePlaybackItem(track, 1), false);
     ASSERT_TRUE(pumpUntil([&harness]() { return harness.engine.trackStatus() == Engine::TrackStatus::Loaded; }));
 
     harness.engine.play();
@@ -556,7 +561,7 @@ TEST(AudioEngineTest, SeekWithRequestPublishesMatchingRequestIds)
     EngineHarness harness{false};
 
     const Track track = harness.createTrack(u"seek-request-id.fyt"_s, 0, 120000);
-    harness.engine.loadTrack(track, false);
+    harness.engine.loadTrack(makePlaybackItem(track, 1), false);
     ASSERT_TRUE(pumpUntil([&harness]() { return harness.engine.trackStatus() == Engine::TrackStatus::Loaded; }));
 
     harness.engine.play();
@@ -582,7 +587,7 @@ TEST(AudioEngineTest, SeekWithRequestFromStoppedLoadsTrackAndStartsPlayback)
     EngineHarness harness{false};
 
     const Track track = harness.createTrack(u"seek-from-stopped.fyt"_s, 0, 120000);
-    harness.engine.loadTrack(track, false);
+    harness.engine.loadTrack(makePlaybackItem(track, 1), false);
     ASSERT_TRUE(pumpUntil([&harness]() { return harness.engine.trackStatus() == Engine::TrackStatus::Loaded; }));
 
     harness.engine.play();
@@ -615,15 +620,16 @@ TEST(AudioEngineTest, PrepareNextTrackInvalidTrackEmitsNotReady)
     uint64_t requestId{0};
     Track signalTrack;
 
-    QObject::connect(&harness.engine, &AudioEngine::nextTrackReadiness, &harness.engine,
-                     [&received, &signalTrack, &ready, &requestId](const Track& track, bool trackReady, uint64_t id) {
-                         received    = true;
-                         signalTrack = track;
-                         ready       = trackReady;
-                         requestId   = id;
-                     });
+    QObject::connect(
+        &harness.engine, &AudioEngine::nextTrackReadiness, &harness.engine,
+        [&received, &signalTrack, &ready, &requestId](const Engine::PlaybackItem& item, bool trackReady, uint64_t id) {
+            received    = true;
+            signalTrack = item.track;
+            ready       = trackReady;
+            requestId   = id;
+        });
 
-    harness.engine.prepareNextTrack(Track{}, 77);
+    harness.engine.prepareNextTrack({}, 77);
 
     ASSERT_TRUE(pumpUntil([&received]() { return received; }, 1000ms));
     EXPECT_FALSE(signalTrack.isValid());
@@ -639,11 +645,11 @@ TEST(AudioEngineTest, UpcomingTrackCandidateDoesNotPrepareBeforeEndOfInput)
     const Track currentTrack = harness.createTrack(u"candidate-current.fyt"_s, 0, 120000);
     const Track nextTrack    = harness.createTrack(u"candidate-next.fyt"_s, 0, 120000);
 
-    harness.engine.loadTrack(currentTrack, false);
+    harness.engine.loadTrack(makePlaybackItem(currentTrack, 1), false);
     ASSERT_TRUE(pumpUntil([&harness]() { return harness.engine.trackStatus() == Engine::TrackStatus::Loaded; }));
 
     const int decoderInitBefore = harness.decoderStats->initCalls.load();
-    harness.engine.setUpcomingTrackCandidate(nextTrack);
+    harness.engine.setUpcomingTrackCandidate(makePlaybackItem(nextTrack, 2));
 
     EXPECT_FALSE(pumpUntil(
         [&harness, decoderInitBefore]() { return harness.decoderStats->initCalls.load() > decoderInitBefore; }, 250ms));
@@ -655,7 +661,7 @@ TEST(AudioEngineTest, SetVolumeClampsAndPropagatesToOutput)
     EngineHarness harness{false};
 
     const Track track = harness.createTrack(u"volume-clamp.fyt"_s, 0, 100000);
-    harness.engine.loadTrack(track, false);
+    harness.engine.loadTrack(makePlaybackItem(track, 1), false);
     ASSERT_TRUE(pumpUntil([&harness]() { return harness.engine.trackStatus() == Engine::TrackStatus::Loaded; }));
 
     const int volumeCallsBefore = harness.outputStats->setVolumeCalls.load();
@@ -678,7 +684,7 @@ TEST(AudioEngineTest, SetAudioOutputReinitializesLoadedOutput)
     EngineHarness harness{false};
 
     const Track track = harness.createTrack(u"switch-output.fyt"_s, 0, 100000);
-    harness.engine.loadTrack(track, false);
+    harness.engine.loadTrack(makePlaybackItem(track, 1), false);
     ASSERT_TRUE(pumpUntil([&harness]() { return harness.engine.trackStatus() == Engine::TrackStatus::Loaded; }));
     ASSERT_EQ(harness.outputStats->initCalls.load(), 1);
 
@@ -700,7 +706,7 @@ TEST(AudioEngineTest, SetDspChainWithFormatChangeReinitializesOutput)
                                   .factory = []() { return std::make_unique<FormatShiftDsp>(); }});
 
     const Track track = harness.createTrack(u"dsp-format-change.fyt"_s, 0, 100000);
-    harness.engine.loadTrack(track, false);
+    harness.engine.loadTrack(makePlaybackItem(track, 1), false);
     ASSERT_TRUE(pumpUntil([&harness]() { return harness.engine.trackStatus() == Engine::TrackStatus::Loaded; }));
     const int initBefore = harness.outputStats->initCalls.load();
 
@@ -750,7 +756,7 @@ TEST(AudioEngineTest, ManualChangeCrossfadeReanchorsPositionWithoutStoppingPlayb
     const Track firstTrack  = harness.createTrack(u"manual-crossfade-first.fyt"_s, 0, 120000);
     const Track secondTrack = harness.createTrack(u"manual-crossfade-second.fyt"_s, 0, 120000);
 
-    harness.engine.loadTrack(firstTrack, false);
+    harness.engine.loadTrack(makePlaybackItem(firstTrack, 1), false);
     ASSERT_TRUE(pumpUntil([&harness]() { return harness.engine.trackStatus() == Engine::TrackStatus::Loaded; }));
 
     harness.engine.play();
@@ -761,7 +767,7 @@ TEST(AudioEngineTest, ManualChangeCrossfadeReanchorsPositionWithoutStoppingPlayb
     const int outputUninitBefore        = harness.outputStats->uninitCalls.load();
     const int decoderInitBefore         = harness.decoderStats->initCalls.load();
 
-    harness.engine.loadTrack(secondTrack, true);
+    harness.engine.loadTrack(makePlaybackItem(secondTrack, 2), true);
 
     ASSERT_TRUE(pumpUntil(
         [&harness, decoderInitBefore]() { return harness.decoderStats->initCalls.load() > decoderInitBefore; },
@@ -787,7 +793,7 @@ TEST(AudioEngineTest, NonCueTracksDoNotForceEndAtMetadataDurationBoundary)
 
     static constexpr uint64_t trackDurationMs = 200;
     const Track track = harness.createTrack(u"non-cue-duration-boundary.fyt"_s, 0, trackDurationMs);
-    harness.engine.loadTrack(track, false);
+    harness.engine.loadTrack(makePlaybackItem(track, 1), false);
     ASSERT_TRUE(pumpUntil([&harness]() { return harness.engine.trackStatus() == Engine::TrackStatus::Loaded; }));
 
     harness.engine.play();

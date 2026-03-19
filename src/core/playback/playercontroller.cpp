@@ -67,6 +67,18 @@ public:
         , m_playMode{static_cast<Playlist::PlayModes>(m_settings->value<Settings::Core::PlayMode>())}
     { }
 
+    [[nodiscard]] uint64_t nextPlaybackItemId()
+    {
+        uint64_t itemId = m_nextPlaybackItemId++;
+        if(itemId == 0) {
+            itemId = m_nextPlaybackItemId++;
+        }
+        if(m_nextPlaybackItemId == 0) {
+            m_nextPlaybackItemId = 1;
+        }
+        return itemId;
+    }
+
     void emitPositionSignals(uint64_t ms)
     {
         emit m_self->positionChanged(ms);
@@ -105,6 +117,14 @@ public:
         }
 
         m_scheduledTrack = {};
+    }
+
+    [[nodiscard]] Player::TrackChangeRequest withPlaybackItemId(Player::TrackChangeRequest request)
+    {
+        if(request.itemId == 0 && request.track.isValid()) {
+            request.itemId = nextPlaybackItemId();
+        }
+        return request;
     }
 
     [[nodiscard]] UpcomingTrackResolution resolveUpcomingTrack() const
@@ -181,7 +201,14 @@ public:
     void emitUpcomingTrackChangedIfNeeded(const char* trigger = "state-refresh")
     {
         const UpcomingTrackResolution resolution = resolveUpcomingTrack();
-        const Player::UpcomingTrack& upcoming    = resolution.upcoming;
+        Player::UpcomingTrack upcoming           = resolution.upcoming;
+
+        if(upcoming.track.isValid()) {
+            const bool reuseLastUpcoming = m_lastUpcomingTrack.track == upcoming.track
+                                        && m_lastUpcomingTrack.isQueueTrack == upcoming.isQueueTrack
+                                        && m_lastUpcomingTrack.itemId != 0;
+            upcoming.itemId              = reuseLastUpcoming ? m_lastUpcomingTrack.itemId : nextPlaybackItemId();
+        }
 
         const UId activePlaylistId = resolution.activePlaylist ? resolution.activePlaylist->id() : UId{};
         const int activePlaylistCurrentIndex
@@ -208,6 +235,7 @@ public:
                                        << "currentTrackIndex=" << m_currentTrack.indexInPlaylist
                                        << "source=" << resolution.source
                                        << "upcomingTrackId=" << upcoming.track.track.id()
+                                       << "upcomingItemId=" << upcoming.itemId
                                        << "isQueueTrack=" << upcoming.isQueueTrack
                                        << "queueCount=" << m_queue.trackCount()
                                        << "scheduledTrackId=" << m_scheduledTrack.track.id()
@@ -237,9 +265,10 @@ public:
 
     void requestTrackChange(const Player::TrackChangeRequest& request)
     {
-        m_pendingRequest       = request;
-        m_pendingChangeContext = request.context;
-        emit m_self->trackChangeRequested(request);
+        const auto requestWithId = withPlaybackItemId(request);
+        m_pendingRequest         = requestWithId;
+        m_pendingChangeContext   = requestWithId.context;
+        emit m_self->trackChangeRequested(requestWithId);
     }
 
     void clearPendingRequest()
@@ -311,6 +340,8 @@ public:
     Player::TrackChangeContext m_lastChangeContext;
     std::optional<Player::TrackChangeRequest> m_pendingRequest;
     Player::UpcomingTrack m_lastUpcomingTrack;
+    uint64_t m_currentItemId{0};
+    uint64_t m_nextPlaybackItemId{1};
     const char* m_lastUpcomingTrackSource{"unknown"};
     UId m_lastUpcomingPlaylistId;
     int m_lastUpcomingPlaylistCurrentIndex{-1};
@@ -392,8 +423,9 @@ PlayerController::~PlayerController() = default;
 
 void PlayerController::reset()
 {
-    p->m_currentTrack = {};
-    p->m_position     = 0;
+    p->m_currentTrack  = {};
+    p->m_currentItemId = 0;
+    p->m_position      = 0;
     p->clearPendingRequest();
     p->updateBitrate(0);
 
@@ -659,26 +691,32 @@ void PlayerController::commitCurrentTrack(const Track& track)
 
 void PlayerController::commitCurrentTrack(const Player::TrackChangeRequest& request)
 {
-    if(!request.track.isValid()) {
+    const auto requestWithId = p->withPlaybackItemId(request);
+    if(!requestWithId.track.isValid()) {
         reset();
         return;
     }
 
-    Player::TrackChangeContext commitContext = request.context;
-    bool isQueueTrack                        = request.isQueueTrack;
+    Player::TrackChangeContext commitContext = requestWithId.context;
+    bool isQueueTrack                        = requestWithId.isQueueTrack;
+    uint64_t itemId                          = requestWithId.itemId;
 
-    if(p->m_pendingRequest.has_value() && p->m_pendingRequest->track == request.track) {
+    if(p->m_pendingRequest.has_value() && p->m_pendingRequest->track == requestWithId.track
+       && p->m_pendingRequest->itemId == requestWithId.itemId) {
         isQueueTrack  = p->m_pendingRequest->isQueueTrack;
         commitContext = p->m_pendingRequest->context;
+        itemId        = p->m_pendingRequest->itemId;
     }
 
-    p->changeTrack(request.track, commitContext);
-    p->m_isQueueTrack = isQueueTrack;
+    p->changeTrack(requestWithId.track, commitContext);
+    p->m_currentItemId = itemId;
+    p->m_isQueueTrack  = isQueueTrack;
     p->updateBitrate(0);
     p->clearPendingRequest();
+    p->m_lastUpcomingTrack = {};
 
     if(isQueueTrack) {
-        const auto removedTracks = p->m_queue.removeTracks({request.track});
+        const auto removedTracks = p->m_queue.removeTracks({requestWithId.track});
         if(!removedTracks.empty()) {
             emit tracksDequeued(removedTracks);
         }
@@ -699,6 +737,7 @@ void PlayerController::commitCurrentTrack(const PlaylistTrack& track, const Play
         .track        = track,
         .context      = context,
         .isQueueTrack = false,
+        .itemId       = p->nextPlaybackItemId(),
     });
 }
 

@@ -65,7 +65,7 @@ namespace Fooyin {
 NextTrackPreparationState NextTrackPreparer::prepare(const Track& track, const Context& context)
 {
     NextTrackPreparationState state;
-    state.track = track;
+    state.item.track = track;
 
     const auto canceled = [&context]() {
         return context.cancelFlag && context.cancelFlag->load(std::memory_order_relaxed);
@@ -240,7 +240,8 @@ void NextTrackPrepareWorker::run(const std::stop_token& stopToken)
             m_activeJobToken.store(request.jobToken, std::memory_order_relaxed);
         }
 
-        auto prepared = NextTrackPreparer::prepare(request.track, request.context);
+        auto prepared = NextTrackPreparer::prepare(request.item.track, request.context);
+        prepared.item = request.item;
 
         const bool canceled = request.context.cancelFlag && request.context.cancelFlag->load(std::memory_order_relaxed);
 
@@ -248,7 +249,7 @@ void NextTrackPrepareWorker::run(const std::stop_token& stopToken)
         const bool stale             = (currentActive != request.jobToken);
 
         if(!canceled && !stale && completion) {
-            completion(request.jobToken, request.requestId, request.track, std::move(prepared));
+            completion(request.jobToken, request.requestId, request.item, std::move(prepared));
         }
     }
 }

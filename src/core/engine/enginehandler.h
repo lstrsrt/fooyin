@@ -124,12 +124,13 @@ private:
             Qt::QueuedConnection);
     }
 
-    void publishEvent(const Track& track, bool ready, uint64_t requestId);
+    void publishEvent(const Engine::PlaybackItem& item, bool ready, uint64_t requestId);
     void handleStateChange(Engine::PlaybackState state);
     void handleTrackChangeRequest(const Player::TrackChangeRequest& request);
     void handleUpcomingTrackChanged(const Player::UpcomingTrack& upcomingTrack);
     [[nodiscard]] bool stopAfterCurrentEnabled() const;
     [[nodiscard]] bool hasAutoTrackEndTransitionEnabled() const;
+    [[nodiscard]] bool hasDistinctUpcomingTrack() const;
     void noteEngineOwnedTransition(const Track& track, uint64_t generation);
     void handleTrackBoundaryReached(const Track& track, uint64_t generation, uint64_t remainingOutputMs,
                                     bool engineOwnsTransition);
@@ -145,10 +146,10 @@ private:
 
     [[nodiscard]] uint64_t nextPrepareRequestId();
     [[nodiscard]] Engine::NextTrackPrepareRequest requestPrepareNextTrack(const Track& track);
-    void requestArmPreparedCrossfadeTransition(const Track& track, uint64_t generation);
-    void requestCommitPreparedCrossfadeTransition(const Track& track, bool manualChange);
-    void requestArmPreparedGaplessTransition(const Track& track, uint64_t generation);
-    void requestCommitPreparedGaplessTransition(const Track& track, bool manualChange);
+    void requestArmPreparedCrossfadeTransition(const Engine::PlaybackItem& item, uint64_t generation);
+    void requestCommitPreparedCrossfadeTransition(const Engine::PlaybackItem& item, bool manualChange);
+    void requestArmPreparedGaplessTransition(const Engine::PlaybackItem& item, uint64_t generation);
+    void requestCommitPreparedGaplessTransition(const Engine::PlaybackItem& item, bool manualChange);
 
     void changeOutput(const QString& output);
     void updateVolume(double volume);
@@ -162,8 +163,8 @@ private:
     [[nodiscard]] static bool contextLess(const PositionContext& lhs, const PositionContext& rhs);
     void advancePositionContextWatermark(const PositionContext& context);
     void updateLevelReadyRelay();
-    void handleNextTrackReadiness(const Track& track, bool ready, uint64_t requestId);
-    [[nodiscard]] bool cachedNextTrackReadyFor(const Track& track) const;
+    void handleNextTrackReadiness(const Engine::PlaybackItem& item, bool ready, uint64_t requestId);
+    [[nodiscard]] bool cachedNextTrackReadyFor(const Engine::PlaybackItem& item) const;
     void clearNextTrackReadiness();
 
     PlayerController* m_playerController;
@@ -179,13 +180,15 @@ private:
 
     std::optional<Player::TrackChangeRequest> m_pendingTrackChange;
     Player::UpcomingTrack m_upcomingTrack;
+    uint64_t m_currentTrackItemId{0};
     Track m_engineOwnedTransitionTrack;
+    uint64_t m_engineOwnedTransitionItemId{0};
     uint64_t m_engineOwnedTransitionGen;
     bool m_endAdvanceSuppressed;
     Track m_pendingBoundaryAdvanceTrack;
     uint64_t m_pendingBoundaryAdvanceGen;
 
-    Track m_lastPreparedNextTrack;
+    Engine::PlaybackItem m_lastPreparedNextTrack;
     bool m_lastPreparedNextTrackReady;
     uint64_t m_nextPrepareTrackRequestId;
     uint64_t m_nextSeekRequestId;

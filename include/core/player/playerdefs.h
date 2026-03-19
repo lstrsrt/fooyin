@@ -60,12 +60,14 @@ struct FYCORE_EXPORT TrackChangeRequest
     PlaylistTrack track;
     TrackChangeContext context;
     bool isQueueTrack{false};
+    uint64_t itemId{0};
 };
 
 struct FYCORE_EXPORT UpcomingTrack
 {
     PlaylistTrack track;
     bool isQueueTrack{false};
+    uint64_t itemId{0};
 };
 
 struct FYCORE_EXPORT PlaybackSnapshot

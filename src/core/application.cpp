@@ -87,6 +87,7 @@ void registerTypes()
     qRegisterMetaType<Fooyin::OutputCreator>("OutputCreator");
     qRegisterMetaType<Fooyin::LibraryInfo>("LibraryInfo");
     qRegisterMetaType<Fooyin::LibraryInfoMap>("LibraryInfoMap");
+    qRegisterMetaType<Fooyin::Engine::PlaybackItem>("Fooyin::Engine::PlaybackItemRef");
     qRegisterMetaType<Fooyin::Engine::TrackCommitContext>("Fooyin::Engine::TrackCommitContext");
     qRegisterMetaType<Fooyin::Player::TrackChangeRequest>("Fooyin::Player::TrackChangeRequest");
     qRegisterMetaType<Fooyin::Player::UpcomingTrack>("Fooyin::Player::UpcomingTrack");

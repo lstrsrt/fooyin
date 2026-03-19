@@ -89,11 +89,11 @@ signals:
     //! Callback fired when active logical track reaches its exact boundary.
     void trackBoundaryReached(const Fooyin::Engine::AboutToFinishContext& context);
     //! Prepared-next-track readiness notification.
-    void nextTrackReadiness(const Fooyin::Track& track, bool ready, uint64_t requestId);
+    void nextTrackReadiness(const Fooyin::Engine::PlaybackItem& item, bool ready, uint64_t requestId);
     //! Result of async prepared-crossfade arm attempt for a specific boundary generation.
-    void preparedCrossfadeArmResult(const Fooyin::Track& track, uint64_t generation, bool armed);
+    void preparedCrossfadeArmResult(const Fooyin::Engine::PlaybackItem& item, uint64_t generation, bool armed);
     //! Result of async prepared-gapless arm attempt for a specific boundary generation.
-    void preparedGaplessArmResult(const Fooyin::Track& track, uint64_t generation, bool armed);
+    void preparedGaplessArmResult(const Fooyin::Engine::PlaybackItem& item, uint64_t generation, bool armed);
 
     //! Emitted after stop teardown completes.
     void finished();

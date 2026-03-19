@@ -108,6 +108,7 @@ public:
         None = 0,
         NoUpcomingCandidate,
         CandidateMatchesCurrent,
+        MultiTrackFileTransition,
         AutoTransitionDisabled,
         WaitingForEndOfInput,
         PreparedCrossfadeAlreadyActive,
@@ -134,20 +135,20 @@ public:
     void setDspChain(const Engine::DspChains& chain);
 
 public slots:
-    void loadTrack(const Fooyin::Track& track, bool manualChange = false);
-    void setUpcomingTrackCandidate(const Fooyin::Track& track);
+    void loadTrack(const Fooyin::Engine::PlaybackItem& item, bool manualChange = false);
+    void setUpcomingTrackCandidate(const Fooyin::Engine::PlaybackItem& item);
     //! Schedule/prepare candidate next track for seamless transition.
-    void prepareNextTrack(const Fooyin::Track& track, uint64_t requestId = 0);
+    void prepareNextTrack(const Fooyin::Engine::PlaybackItem& item, uint64_t requestId = 0);
     //! Stage a prepared crossfade stream in the pipeline without committing UI track context.
-    [[nodiscard]] bool armPreparedCrossfadeTransition(const Fooyin::Track& track, uint64_t generation);
+    [[nodiscard]] bool armPreparedCrossfadeTransition(const Fooyin::Engine::PlaybackItem& item, uint64_t generation);
     //! Commit a previously armed prepared crossfade transition after UI track context changes.
-    [[nodiscard]] bool commitPreparedCrossfadeTransition(const Fooyin::Track& track);
+    [[nodiscard]] bool commitPreparedCrossfadeTransition(const Fooyin::Engine::PlaybackItem& item);
     [[nodiscard]] static bool shouldEnableTimelineTransitionHints(const Fooyin::Track& track,
                                                                   Fooyin::AudioDecoder::PlaybackHints playbackHints);
     //! Stage a prepared gapless stream in the pipeline without committing UI track context.
-    [[nodiscard]] bool armPreparedGaplessTransition(const Fooyin::Track& track, uint64_t generation);
+    [[nodiscard]] bool armPreparedGaplessTransition(const Fooyin::Engine::PlaybackItem& item, uint64_t generation);
     //! Commit a previously armed prepared gapless transition after UI track context changes.
-    [[nodiscard]] bool commitPreparedGaplessTransition(const Fooyin::Track& track);
+    [[nodiscard]] bool commitPreparedGaplessTransition(const Fooyin::Engine::PlaybackItem& item);
 
     void play();
     void pause();
@@ -180,7 +181,7 @@ signals:
     void trackReadyToSwitch(const Fooyin::Track& track, uint64_t generation);
     void trackBoundaryReached(const Fooyin::Track& track, uint64_t generation, uint64_t remainingOutputMs,
                               bool engineOwnsTransition);
-    void nextTrackReadiness(const Fooyin::Track& track, bool ready, uint64_t requestId);
+    void nextTrackReadiness(const Fooyin::Engine::PlaybackItem& item, bool ready, uint64_t requestId);
 
     void finished();
 
@@ -195,9 +196,9 @@ protected:
 private:
     void beginShutdown();
 
-    bool ensureCrossfadePrepared(const Track& track, bool isManualChange);
-    bool handleManualChangeFade(const Track& track);
-    bool startTrackCrossfade(const Track& track, bool isManualChange);
+    bool ensureCrossfadePrepared(const Engine::PlaybackItem& item, bool isManualChange);
+    bool handleManualChangeFade(const Engine::PlaybackItem& item);
+    bool startTrackCrossfade(const Engine::PlaybackItem& item, bool isManualChange);
     void performSeek(uint64_t positionMs, uint64_t requestId);
     void checkPendingSeek();
     void startSeekCrossfade(uint64_t positionMs, int fadeOutDurationMs, int fadeInDurationMs, uint64_t requestId);
@@ -233,15 +234,21 @@ private:
     [[nodiscard]] uint64_t transitionReserveMs() const;
     [[nodiscard]] uint64_t aggressivePreparedPrefillMs() const;
 
-    [[nodiscard]] Track autoAdvanceTargetTrack() const;
+    [[nodiscard]] Engine::PlaybackItem autoAdvanceTargetTrack() const;
     void maybeLogDrainFillPrepareGate(const AudioStreamPtr& stream, const TrackEndingResult& result);
     void logDrainFillPrepareDiagnostic(DrainFillPrepareDiagnosticReason reason, const AudioStreamPtr& stream,
                                        uint64_t prefillTargetMs = 0);
     void maybePrepareUpcomingTrackForDrainFill(const AudioStreamPtr& stream);
     void noteReadyToSwitchAnchor();
     void noteBoundaryAnchor();
+    [[nodiscard]] Engine::TrackCommitContext makeTrackCommitContext(Engine::TransitionMode mode,
+                                                                    uint64_t audibleDelayMs = 0) const;
+    void clearPendingAudibleTrackCommit();
+    void finaliseTrackCommitCleanup();
     void tryAutoAdvanceCommit();
-    void finaliseTrackCommit(Engine::TransitionMode mode);
+    void finaliseTrackCommit(Engine::TransitionMode mode, uint64_t audibleDelayMs = 0);
+    bool finaliseTrackCommitWhenAudible(Engine::TransitionMode mode, StreamId streamId);
+    void maybeEmitPendingAudibleTrackCommit(StreamId audibleOutputStreamId);
     void handleTrackEndingSignals(const AudioStreamPtr& stream, uint64_t trackEndingPosMs,
                                   uint64_t publishedAudiblePosMs, uint64_t boundaryAudiblePosMs,
                                   bool preparedCrossfadeArmed, bool boundaryFallbackReached,
@@ -266,13 +273,17 @@ private:
     bool hasPlaybackState(Engine::PlaybackState state) const;
     bool signalTrackEndOnce(bool flushDspOnEnd);
     void clearTrackEndLatch();
-    TrackEndingResult checkTrackEnding(const AudioStreamPtr& stream, uint64_t relativePosMs);
+    TrackEndingResult checkTrackEnding(const AudioStreamPtr& stream, uint64_t relativePosMs, uint64_t audiblePosMs);
     [[nodiscard]] uint64_t preferredPreparedPrefillMs() const;
+    [[nodiscard]] Engine::PlaybackItem currentPlaybackItem() const;
+    [[nodiscard]] Engine::PlaybackItem upcomingTrackCandidateItem() const;
+    [[nodiscard]] Engine::PlaybackItem preparedCrossfadeTargetItem() const;
+    [[nodiscard]] Engine::PlaybackItem preparedGaplessTargetItem() const;
     std::optional<AutoTransitionEligibility>
     evaluateAutoTransitionEligibility(const Track& track, bool isManualChange, bool requireTransitionReady = true,
                                       const char** rejectionReason = nullptr) const;
     bool isAutoTransitionEligible(const Track& track) const;
-    void setCurrentTrackContext(const Track& track);
+    void setCurrentTrackContext(const Engine::PlaybackItem& item);
     void setStreamToTrackOriginForTrack(const Track& track);
     [[nodiscard]] bool setStreamToTrackOriginForSegmentSwitch(const Track& track, uint64_t streamPosMs);
     [[nodiscard]] AudioStreamPtr currentTrackTimingStream() const;
@@ -281,9 +292,9 @@ private:
     void logGaplessBoundaryDiagnostic(const char* reason, StreamId triggerCurrentStreamId,
                                       StreamId triggerPreparedStreamId) const;
 
-    bool initDecoder(const Track& track, bool allowPreparedStream);
+    bool initDecoder(const Engine::PlaybackItem& item, bool allowPreparedStream);
     bool setupNewTrackStream(const Track& track, bool applyPendingSeek);
-    [[nodiscard]] bool stagePreparedGaplessDecoder(Track track);
+    [[nodiscard]] bool stagePreparedGaplessDecoder(const Engine::PlaybackItem& item);
     [[nodiscard]] bool registerAndSwitchStream(const AudioStreamPtr& stream, const char* failureMessage);
     void cleanupDecoderActiveStreamFromPipeline(bool removeFromMixer);
     void clearPreparedNextTrack();
@@ -291,20 +302,21 @@ private:
     void clearPreparedGaplessTransition();
     void disarmStalePreparedTransitions(const Track& contextTrack, uint64_t contextGeneration);
     void clearPreparedNextTrackAndCancelPendingJobs();
-    [[nodiscard]] bool prepareNextTrackImmediate(const Track& track, uint64_t prefillTargetMs = 0);
+    [[nodiscard]] bool prepareNextTrackImmediate(const Engine::PlaybackItem& item, uint64_t prefillTargetMs = 0);
     void cancelPendingPrepareJobs();
-    void enqueuePrepareNextTrack(const Track& track, uint64_t requestId, uint64_t prefillTargetMs);
-    void applyPreparedNextTrackResult(uint64_t jobToken, uint64_t requestId, const Track& track,
+    void enqueuePrepareNextTrack(const Engine::PlaybackItem& item, uint64_t requestId, uint64_t prefillTargetMs);
+    void applyPreparedNextTrackResult(uint64_t jobToken, uint64_t requestId, const Engine::PlaybackItem& item,
                                       NextTrackPreparationState prepared);
     void cleanupActiveStream();
     void cleanupOrphanedStream();
     void resetStreamToTrackOrigin();
     [[nodiscard]] TrackLoadContext buildLoadContext(const Track& track, bool manualChange) const;
-    [[nodiscard]] bool executeSegmentSwitchLoad(const Track& track, bool preserveTransportFade);
-    [[nodiscard]] bool executeManualFadeDeferredLoad(const Track& track);
-    [[nodiscard]] bool executeAutoTransitionLoad(const Track& track);
-    void executeFullReinitLoad(const Track& track, bool manualChange, bool preserveTransportFade);
-    void executeLoadPlan(const Track& track, bool manualChange, const TrackLoadContext& context, const LoadPlan& plan);
+    [[nodiscard]] bool executeSegmentSwitchLoad(const Engine::PlaybackItem& item, bool preserveTransportFade);
+    [[nodiscard]] bool executeManualFadeDeferredLoad(const Engine::PlaybackItem& item);
+    [[nodiscard]] bool executeAutoTransitionLoad(const Engine::PlaybackItem& item);
+    void executeFullReinitLoad(const Engine::PlaybackItem& item, bool manualChange, bool preserveTransportFade);
+    void executeLoadPlan(const Engine::PlaybackItem& item, bool manualChange, const TrackLoadContext& context,
+                         const LoadPlan& plan);
 
     SettingsManager* m_settings;
     DspRegistry* m_dspRegistry;
@@ -316,10 +328,12 @@ private:
     Playback::Phase m_phase;
 
     Track m_currentTrack;
+    uint64_t m_currentTrackItemId{0};
     Track m_lastEndedTrack;
     uint64_t m_trackGeneration;
     uint64_t m_streamToTrackOriginMs;
     uint64_t m_nextTransitionId;
+    uint64_t m_pendingManualTrackItemId{0};
     AudioFormat m_format;
 
     DecodingController m_decoder;
@@ -330,6 +344,7 @@ private:
     {
         bool active{false};
         Track targetTrack;
+        uint64_t targetItemId{0};
         uint64_t sourceGeneration{0};
         StreamId streamId{InvalidStreamId};
         uint64_t boundaryLeadMs{0};
@@ -342,6 +357,7 @@ private:
     {
         bool active{false};
         Track targetTrack;
+        uint64_t targetItemId{0};
         uint64_t sourceGeneration{0};
         StreamId streamId{InvalidStreamId};
         bool boundaryFadeMode{false};
@@ -389,6 +405,7 @@ private:
     uint64_t m_autoBoundaryFadeGeneration;
 
     Track m_upcomingTrackCandidate;
+    uint64_t m_upcomingTrackCandidateItemId{0};
 
     struct AutoAdvanceState
     {
@@ -408,5 +425,13 @@ private:
         int candidateTrackId{0};
     };
     DrainFillPrepareDiagnosticState m_drainFillPrepareDiagnostic;
+
+    struct PendingAudibleTrackCommit
+    {
+        bool active{false};
+        Engine::TrackCommitContext context;
+        StreamId streamId{InvalidStreamId};
+    };
+    PendingAudibleTrackCommit m_pendingAudibleTrackCommit;
 };
 } // namespace Fooyin

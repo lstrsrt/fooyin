@@ -107,8 +107,7 @@ bool PlaybackTransitionCoordinator::shouldSignalTrackEnding(const TrackEndingInp
     bool crossfadeReady = false;
     if(input.autoCrossfadeEnabled) {
         const uint64_t fadeOutWindowMs  = static_cast<uint64_t>(std::max(0, input.autoFadeOutMs));
-        const uint64_t prepareLeadMs    = saturatingAdd(input.timelineDelayMs, input.autoPrepareLeadMs);
-        const uint64_t timelineWindowMs = saturatingAdd(fadeOutWindowMs, prepareLeadMs);
+        const uint64_t timelineWindowMs = saturatingAdd(fadeOutWindowMs, input.timelineDelayMs);
         const bool readyByTimeline      = timelineWindowEligible && inTimelineWindow(input, timelineWindowMs);
         const bool readyByDrain         = input.endOfInput && input.remainingOutputMs <= timelineWindowMs;
         crossfadeReady                  = readyByTimeline || readyByDrain;

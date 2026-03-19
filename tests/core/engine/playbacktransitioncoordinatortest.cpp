@@ -309,7 +309,7 @@ TEST(PlaybackTransitionCoordinatorTest, CrossfadeReadyWindowAccountsForOutputDel
     EXPECT_TRUE(ready.readyToSwitch);
 }
 
-TEST(PlaybackTransitionCoordinatorTest, CrossfadePreparationLeadQueuesBeforeOverlapWindow)
+TEST(PlaybackTransitionCoordinatorTest, CrossfadePreparationLeadDoesNotAdvanceOverlapStartAnchor)
 {
     PlaybackTransitionCoordinator state;
 
@@ -323,18 +323,19 @@ TEST(PlaybackTransitionCoordinatorTest, CrossfadePreparationLeadQueuesBeforeOver
     input.gaplessEnabled         = false;
     input.autoFadeOutMs          = 2000;
     input.autoFadeInMs           = 2000;
-    input.autoPrepareLeadMs      = 1000;
     input.gaplessPrepareWindowMs = 300;
 
+    const auto beforeWindow = state.evaluateTrackEnding(input);
+    EXPECT_FALSE(beforeWindow.aboutToFinish);
+    EXPECT_FALSE(beforeWindow.readyToSwitch);
+    EXPECT_FALSE(beforeWindow.endReached);
+
+    input.positionMs         = 8000;
     const auto aboutToFinish = state.evaluateTrackEnding(input);
     EXPECT_TRUE(aboutToFinish.aboutToFinish);
-    EXPECT_FALSE(aboutToFinish.readyToSwitch);
+    EXPECT_TRUE(aboutToFinish.readyToSwitch);
+    EXPECT_FALSE(aboutToFinish.endReached);
     EXPECT_TRUE(state.isReadyForAutoCrossfade());
-
-    input.positionMs = 8000;
-    const auto ready = state.evaluateTrackEnding(input);
-    EXPECT_FALSE(ready.aboutToFinish);
-    EXPECT_TRUE(ready.readyToSwitch);
 }
 
 TEST(PlaybackTransitionCoordinatorTest, EndOfInputWithoutTransitionsWaitsForBufferDrain)

@@ -66,6 +66,19 @@ struct AboutToFinishContext
     bool engineOwnsTransition{false};
 };
 
+struct PlaybackItem
+{
+    Track track;
+    uint64_t itemId{0};
+
+    [[nodiscard]] bool isValid() const
+    {
+        return track.isValid();
+    }
+
+    bool operator==(const PlaybackItem&) const = default;
+};
+
 //! Result returned from asynchronous next-track prepare requests.
 struct NextTrackPrepareRequest
 {
@@ -85,8 +98,10 @@ enum class TransitionMode : uint8_t
 struct TrackCommitContext
 {
     Track track;
+    uint64_t itemId{0};
     uint64_t generation{0};
     TransitionMode mode{TransitionMode::Direct};
+    uint64_t audibleDelayMs{0};
 };
 
 enum RGProcess : uint8_t
@@ -226,6 +241,7 @@ Q_DECLARE_OPERATORS_FOR_FLAGS(Fooyin::Engine::RGProcessing)
 Q_DECLARE_OPERATORS_FOR_FLAGS(Fooyin::Engine::AnalysisDataTypes)
 Q_DECLARE_METATYPE(Fooyin::Engine::TrackStatusContext)
 Q_DECLARE_METATYPE(Fooyin::Engine::AboutToFinishContext)
+Q_DECLARE_METATYPE(Fooyin::Engine::PlaybackItem)
 Q_DECLARE_METATYPE(Fooyin::Engine::TrackCommitContext)
 Q_DECLARE_METATYPE(Fooyin::Engine::AnalysisDataTypes)
 Q_DECLARE_METATYPE(Fooyin::LevelFrame)
