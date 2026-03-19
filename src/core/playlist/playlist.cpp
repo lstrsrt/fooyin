@@ -121,6 +121,7 @@ public:
     int handlePreviousAlbum(Playlist::PlayModes mode, int albumShuffleIndex, AlbumTracks& currentAlbum, int& nextIndex);
 
     int getNextIndex(int delta, Playlist::PlayModes mode, bool onlyCheck);
+    int getNextIndexFrom(int currentIndex, int delta, Playlist::PlayModes mode, bool onlyCheck);
     [[nodiscard]] std::optional<Track> getTrack(int index) const;
 
     UId m_id;
@@ -519,6 +520,15 @@ int PlaylistPrivate::getNextIndex(int delta, Playlist::PlayModes mode, bool only
     return nextIndex;
 }
 
+int PlaylistPrivate::getNextIndexFrom(const int currentIndex, const int delta, const Playlist::PlayModes mode,
+                                      const bool onlyCheck)
+{
+    const int prevTrackIndex = std::exchange(m_currentTrackIndex, currentIndex);
+    const int nextIndex      = getNextIndex(delta, mode, onlyCheck);
+    m_currentTrackIndex      = prevTrackIndex;
+    return nextIndex;
+}
+
 std::optional<Track> PlaylistPrivate::getTrack(int index) const
 {
     if(m_tracks.empty() || index < 0 || std::cmp_greater_equal(index, m_tracks.size())) {
@@ -665,9 +675,25 @@ int Playlist::nextIndex(int delta, PlayModes mode)
     return p->getNextIndex(delta, mode, true);
 }
 
+int Playlist::nextIndexFrom(int currentIndex, int delta, PlayModes mode)
+{
+    return p->getNextIndexFrom(currentIndex, delta, mode, true);
+}
+
 Track Playlist::nextTrack(int delta, PlayModes mode)
 {
     const int index = p->getNextIndex(delta, mode, true);
+
+    if(index < 0 || index >= trackCount()) {
+        return {};
+    }
+
+    return p->m_tracks.at(index);
+}
+
+Track Playlist::nextTrackFrom(int currentIndex, int delta, PlayModes mode)
+{
+    const int index = p->getNextIndexFrom(currentIndex, delta, mode, true);
 
     if(index < 0 || index >= trackCount()) {
         return {};

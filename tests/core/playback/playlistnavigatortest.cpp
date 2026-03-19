@@ -81,6 +81,7 @@ TEST(PlaylistNavigatorTest, HandlesNullPlaylistAndOutOfRangePreview)
 
     EXPECT_FALSE(navigator.currentTrack(nullptr).isValid());
     EXPECT_FALSE(navigator.previewRelativeTrack(nullptr, Playlist::Default, 1).isValid());
+    EXPECT_FALSE(navigator.previewRelativeTrackFrom(nullptr, 0, Playlist::Default, 1).isValid());
     EXPECT_FALSE(navigator.advanceRelativeTrack(nullptr, Playlist::Default, 1).isValid());
 
     SettingsManager settings{QDir::tempPath() + u"/fooyin_playlistnavigator_empty_test.ini"_s};
@@ -88,6 +89,30 @@ TEST(PlaylistNavigatorTest, HandlesNullPlaylistAndOutOfRangePreview)
     ASSERT_TRUE(playlist);
 
     EXPECT_FALSE(navigator.previewRelativeTrack(playlist.get(), Playlist::Default, 1).isValid());
+    EXPECT_FALSE(navigator.previewRelativeTrackFrom(playlist.get(), 0, Playlist::Default, 1).isValid());
     EXPECT_FALSE(navigator.advanceRelativeTrack(playlist.get(), Playlist::Default, 1).isValid());
+}
+
+TEST(PlaylistNavigatorTest, PreviewFromExplicitIndexDoesNotDependOnPlaylistCurrentIndex)
+{
+    SettingsManager settings{QDir::tempPath() + u"/fooyin_playlistnavigator_explicit_index_test.ini"_s};
+    auto playlist = PlaylistTestUtils::createPlaylist(u"ExplicitIndex"_s, &settings);
+    ASSERT_TRUE(playlist);
+
+    const TrackList tracks{
+        makeTrack(u"/tmp/a.flac"_s, 0, 2000),
+        makeTrack(u"/tmp/b.flac"_s, 0, 3000),
+        makeTrack(u"/tmp/c.flac"_s, 0, 4000),
+    };
+    PlaylistTestUtils::replaceTracks(*playlist, tracks);
+    PlaylistTestUtils::changeCurrentIndex(*playlist, 0);
+
+    const PlaylistNavigator navigator{nullptr};
+
+    const PlaylistTrack preview = navigator.previewRelativeTrackFrom(playlist.get(), 1, Playlist::Default, 1);
+    EXPECT_TRUE(preview.isValid());
+    EXPECT_EQ(preview.indexInPlaylist, 2);
+    EXPECT_EQ(preview.track.uniqueFilepath(), tracks[2].uniqueFilepath());
+    EXPECT_EQ(playlist->currentTrackIndex(), 0);
 }
 } // namespace Fooyin::Testing

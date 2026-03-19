@@ -165,14 +165,25 @@ public:
             return resolution;
         }
 
-        resolution.previewIndex = resolution.activePlaylist->nextIndex(1, m_playMode);
-        resolution.upcoming     = {
-            .track        = m_playlistHandler->peekRelativeTrack(m_playMode, 1),
-            .isQueueTrack = false,
-        };
+        const bool playbackBackedByActivePlaylist = m_currentTrack.isValid() && m_currentTrack.playlistId.isValid()
+                                                 && resolution.activePlaylist->id() == m_currentTrack.playlistId
+                                                 && m_currentTrack.indexInPlaylist >= 0;
+
+        if(playbackBackedByActivePlaylist) {
+            resolution.previewIndex
+                = resolution.activePlaylist->nextIndexFrom(m_currentTrack.indexInPlaylist, 1, m_playMode);
+            resolution.upcoming.track
+                = resolution.activePlaylist->playlistTrack(resolution.previewIndex).value_or(PlaylistTrack{});
+            resolution.upcoming.isQueueTrack = false;
+        }
+        else {
+            resolution.previewIndex          = resolution.activePlaylist->nextIndex(1, m_playMode);
+            resolution.upcoming.track        = m_playlistHandler->peekRelativeTrack(m_playMode, 1);
+            resolution.upcoming.isQueueTrack = false;
+        }
 
         if(resolution.upcoming.track.isValid()) {
-            resolution.source = "active-playlist-preview";
+            resolution.source = playbackBackedByActivePlaylist ? "current-track-preview" : "active-playlist-preview";
             return resolution;
         }
 

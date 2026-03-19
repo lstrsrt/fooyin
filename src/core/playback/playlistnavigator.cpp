@@ -47,6 +47,21 @@ PlaylistTrack PlaylistNavigator::previewRelativeTrack(Playlist* playlist, Playli
     return {};
 }
 
+PlaylistTrack PlaylistNavigator::previewRelativeTrackFrom(Playlist* playlist, int currentIndex,
+                                                          Playlist::PlayModes mode, int delta) const
+{
+    if(!playlist || currentIndex < 0) {
+        return {};
+    }
+
+    const int index = playlist->nextIndexFrom(currentIndex, delta, mode);
+    if(const auto track = playlist->track(index)) {
+        return populateTrackMetadata(playlist, track.value(), index);
+    }
+
+    return {};
+}
+
 PlaylistTrack PlaylistNavigator::advanceRelativeTrack(Playlist* playlist, Playlist::PlayModes mode, int delta) const
 {
     if(!playlist) {

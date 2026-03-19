@@ -135,6 +135,7 @@ public:
     bool regenerateTracks(const TrackList& tracks);
 
     int nextIndex(int delta, PlayModes mode);
+    int nextIndexFrom(int currentIndex, int delta, PlayModes mode);
     /*!
      * Returns the next track to be played based on the @p delta from the current
      * index and the @p mode.
@@ -142,6 +143,7 @@ public:
      * the index +- delta is out of range.
      */
     Track nextTrack(int delta, PlayModes mode);
+    Track nextTrackFrom(int currentIndex, int delta, PlayModes mode);
     /*!
      * Changes to and returns the next track to be played based on the @p delta from the current
      * index and the @p mode.

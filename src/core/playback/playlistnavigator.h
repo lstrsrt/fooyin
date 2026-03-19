@@ -34,6 +34,8 @@ public:
 
     PlaylistTrack currentTrack(Playlist* playlist) const;
     PlaylistTrack previewRelativeTrack(Playlist* playlist, Playlist::PlayModes mode, int delta) const;
+    PlaylistTrack previewRelativeTrackFrom(Playlist* playlist, int currentIndex, Playlist::PlayModes mode,
+                                           int delta) const;
     PlaylistTrack advanceRelativeTrack(Playlist* playlist, Playlist::PlayModes mode, int delta) const;
 
 private:
