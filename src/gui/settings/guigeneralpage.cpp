@@ -22,26 +22,17 @@
 #include "internalguisettings.h"
 #include "quicksetup/quicksetupdialog.h"
 
-#include <core/internalcoresettings.h>
 #include <gui/editablelayout.h>
 #include <gui/guiconstants.h>
 #include <gui/guisettings.h>
-#include <gui/widgets/scriptlineedit.h>
 #include <utils/settings/settingsmanager.h>
-#include <utils/utils.h>
 
-#include <QApplication>
-#include <QButtonGroup>
 #include <QCheckBox>
-#include <QComboBox>
-#include <QFileDialog>
+#include <QGridLayout>
 #include <QGroupBox>
-#include <QLabel>
-#include <QProxyStyle>
+#include <QHBoxLayout>
 #include <QPushButton>
-#include <QRadioButton>
 #include <QSpinBox>
-#include <QStyleFactory>
 #include <QVBoxLayout>
 
 using namespace Qt::StringLiterals;
@@ -71,13 +62,6 @@ private:
     EditableLayout* m_editableLayout;
     SettingsManager* m_settings;
 
-    QComboBox* m_styles;
-
-    QRadioButton* m_detectIconTheme;
-    QRadioButton* m_lightTheme;
-    QRadioButton* m_darkTheme;
-    QRadioButton* m_systemTheme;
-
     QCheckBox* m_showMenuBar;
 
     QCheckBox* m_overrideMargin;
@@ -88,18 +72,8 @@ private:
     QCheckBox* m_overrideSplitterHandle;
     QSpinBox* m_splitterHandleGap;
 
-    QSpinBox* m_allocationSize;
-
     QCheckBox* m_buttonRaise;
     QCheckBox* m_buttonStretch;
-
-    ScriptLineEdit* m_titleScript;
-    QSpinBox* m_vbrInterval;
-
-    QRadioButton* m_preferPlaying;
-    QRadioButton* m_preferSelection;
-
-    QSpinBox* m_starRatingSize;
 };
 
 GuiGeneralPageWidget::GuiGeneralPageWidget(LayoutProvider* layoutProvider, EditableLayout* editableLayout,
@@ -107,11 +81,6 @@ GuiGeneralPageWidget::GuiGeneralPageWidget(LayoutProvider* layoutProvider, Edita
     : m_layoutProvider{layoutProvider}
     , m_editableLayout{editableLayout}
     , m_settings{settings}
-    , m_styles{new QComboBox(this)}
-    , m_detectIconTheme{new QRadioButton(tr("Auto-detect theme"), this)}
-    , m_lightTheme{new QRadioButton(tr("Light"), this)}
-    , m_darkTheme{new QRadioButton(tr("Dark"), this)}
-    , m_systemTheme{new QRadioButton(tr("Use system icons"), this)}
     , m_showMenuBar{new QCheckBox(tr("Show menu bar"), this)}
     , m_overrideMargin{new QCheckBox(tr("Override root margin") + u":"_s, this)}
     , m_editableLayoutMargin{new QSpinBox(this)}
@@ -119,16 +88,10 @@ GuiGeneralPageWidget::GuiGeneralPageWidget(LayoutProvider* layoutProvider, Edita
     , m_lockSplitters{new QCheckBox(tr("Lock splitters"), this)}
     , m_overrideSplitterHandle{new QCheckBox(tr("Override splitter handle size") + u":"_s, this)}
     , m_splitterHandleGap{new QSpinBox(this)}
-    , m_allocationSize{new QSpinBox(this)}
     , m_buttonRaise{new QCheckBox(tr("Raise"), this)}
     , m_buttonStretch{new QCheckBox(tr("Stretch"), this)}
-    , m_titleScript{new ScriptLineEdit(this)}
-    , m_vbrInterval{new QSpinBox(this)}
-    , m_preferPlaying{new QRadioButton(tr("Prefer currently playing track"), this)}
-    , m_preferSelection{new QRadioButton(tr("Prefer current selection"), this)}
-    , m_starRatingSize{new QSpinBox(this)}
 {
-    auto* setupBox        = new QGroupBox(tr("Setup"));
+    auto* setupBox        = new QGroupBox(tr("Setup"), this);
     auto* setupBoxLayout  = new QHBoxLayout(setupBox);
     auto* quickSetup      = new QPushButton(tr("Quick Setup"), this);
     auto* importLayoutBtn = new QPushButton(tr("Import Layout"), this);
@@ -138,29 +101,10 @@ GuiGeneralPageWidget::GuiGeneralPageWidget(LayoutProvider* layoutProvider, Edita
     setupBoxLayout->addWidget(importLayoutBtn);
     setupBoxLayout->addWidget(exportLayoutBtn);
 
-    auto* themeBox       = new QGroupBox(tr("Theme"), this);
-    auto* themeBoxLayout = new QGridLayout(themeBox);
-
-    auto* iconThemeBox       = new QGroupBox(tr("Icons"), themeBox);
-    auto* iconThemeBoxLayout = new QGridLayout(iconThemeBox);
-
-    int row{0};
-    iconThemeBoxLayout->addWidget(m_detectIconTheme, row++, 0, 1, 2);
-    iconThemeBoxLayout->addWidget(m_lightTheme, row, 0);
-    iconThemeBoxLayout->addWidget(m_darkTheme, row++, 1);
-    iconThemeBoxLayout->addWidget(m_systemTheme, row++, 0, 1, 2);
-    iconThemeBoxLayout->setColumnStretch(2, 1);
-
-    row = 0;
-    themeBoxLayout->addWidget(new QLabel(tr("Style") + ":"_L1, this), row, 0);
-    themeBoxLayout->addWidget(m_styles, row++, 1);
-    themeBoxLayout->addWidget(iconThemeBox, row++, 0, 1, 3);
-    themeBoxLayout->setColumnStretch(2, 1);
-
     auto* layoutGroup       = new QGroupBox(tr("Layout"), this);
     auto* layoutGroupLayout = new QGridLayout(layoutGroup);
 
-    row = 0;
+    int row{0};
     layoutGroupLayout->addWidget(m_showMenuBar, row++, 0, 1, 3);
     layoutGroupLayout->addWidget(m_splitterHandles, row++, 0, 1, 3);
     layoutGroupLayout->addWidget(m_lockSplitters, row++, 0, 1, 3);
@@ -182,67 +126,12 @@ GuiGeneralPageWidget::GuiGeneralPageWidget(LayoutProvider* layoutProvider, Edita
     toolButtonGroupLayout->addWidget(m_buttonRaise);
     toolButtonGroupLayout->addWidget(m_buttonStretch);
 
-    auto* imagesGroupBox       = new QGroupBox(tr("Images"), this);
-    auto* imagesGroupBoxLayout = new QGridLayout(imagesGroupBox);
-
-    auto* allocationSizeLabel = new QLabel(tr("Image allocation limit") + u":"_s, this);
-    auto* allocationSizeHint  = new QLabel(u"🛈 "_s + tr("Set to '0' to disable the limit."), this);
-
-    m_allocationSize->setMinimum(0);
-    m_allocationSize->setMaximum(1024);
-    m_allocationSize->setSuffix(u" MB"_s);
-
-    imagesGroupBoxLayout->addWidget(allocationSizeLabel, row, 0);
-    imagesGroupBoxLayout->addWidget(m_allocationSize, row++, 1);
-    imagesGroupBoxLayout->addWidget(allocationSizeHint, row++, 0, 1, 2);
-    imagesGroupBoxLayout->setColumnStretch(2, 1);
-
-    auto* playbackGroup       = new QGroupBox(tr("Playback"), this);
-    auto* playbackGroupLayout = new QGridLayout(playbackGroup);
-
-    m_vbrInterval->setRange(100, 300000);
-    m_vbrInterval->setSingleStep(250);
-    m_vbrInterval->setSuffix(u" ms"_s);
-
-    row = 0;
-    playbackGroupLayout->addWidget(new QLabel(tr("Window title") + u":"_s, this), row, 0);
-    playbackGroupLayout->addWidget(m_titleScript, row++, 1, 1, 2);
-    playbackGroupLayout->addWidget(new QLabel(tr("VBR update interval") + u":"_s, this), row, 0);
-    playbackGroupLayout->addWidget(m_vbrInterval, row++, 1);
-    playbackGroupLayout->setColumnStretch(2, 1);
-
-    auto* selectionGroupBox    = new QGroupBox(tr("Selection Info"), this);
-    auto* selectionGroup       = new QButtonGroup(this);
-    auto* selectionGroupLayout = new QVBoxLayout(selectionGroupBox);
-
-    selectionGroup->addButton(m_preferPlaying);
-    selectionGroup->addButton(m_preferSelection);
-
-    selectionGroupLayout->addWidget(m_preferPlaying);
-    selectionGroupLayout->addWidget(m_preferSelection);
-
-    auto* ratingGroupBox    = new QGroupBox(tr("Rating"), this);
-    auto* ratingGroupLayout = new QGridLayout(ratingGroupBox);
-
-    m_starRatingSize->setRange(5, 30);
-    m_starRatingSize->setSuffix(u" px"_s);
-
-    ratingGroupLayout->addWidget(new QLabel(tr("Star size"), this), 0, 0);
-    ratingGroupLayout->addWidget(m_starRatingSize, 0, 1);
-    ratingGroupLayout->setColumnStretch(2, 1);
-
     auto* mainLayout = new QGridLayout(this);
 
     row = 0;
     mainLayout->addWidget(setupBox, row++, 0, 1, 2);
-    mainLayout->addWidget(themeBox, row++, 0, 1, 2);
     mainLayout->addWidget(layoutGroup, row++, 0, 1, 2);
     mainLayout->addWidget(toolButtonGroup, row++, 0, 1, 2);
-    mainLayout->addWidget(imagesGroupBox, row++, 0, 1, 2);
-    mainLayout->addWidget(playbackGroup, row++, 0, 1, 2);
-    mainLayout->addWidget(selectionGroupBox, row++, 0, 1, 2);
-    mainLayout->addWidget(ratingGroupBox, row++, 0, 1, 2);
-
     mainLayout->setColumnStretch(1, 1);
     mainLayout->setRowStretch(mainLayout->rowCount(), 1);
 
@@ -256,38 +145,6 @@ GuiGeneralPageWidget::GuiGeneralPageWidget(LayoutProvider* layoutProvider, Edita
 
 void GuiGeneralPageWidget::load()
 {
-    m_styles->clear();
-
-    m_styles->addItem(u"System default"_s);
-    const QStringList keys = QStyleFactory::keys();
-    for(const QString& key : keys) {
-        m_styles->addItem(key);
-    }
-
-    const auto style = m_settings->value<Style>();
-    if(!style.isEmpty()) {
-        m_styles->setCurrentText(style);
-    }
-    else {
-        m_styles->setCurrentIndex(0);
-    }
-
-    const auto iconTheme = static_cast<IconThemeOption>(m_settings->value<IconTheme>());
-    switch(iconTheme) {
-        case(IconThemeOption::AutoDetect):
-            m_detectIconTheme->setChecked(true);
-            break;
-        case(IconThemeOption::System):
-            m_systemTheme->setChecked(true);
-            break;
-        case(IconThemeOption::Light):
-            m_lightTheme->setChecked(true);
-            break;
-        case(IconThemeOption::Dark):
-            m_darkTheme->setChecked(true);
-            break;
-    }
-
     m_showMenuBar->setChecked(m_settings->value<ShowMenuBar>());
 
     m_splitterHandles->setChecked(m_settings->value<ShowSplitterHandles>());
@@ -304,42 +161,10 @@ void GuiGeneralPageWidget::load()
     const auto buttonOptions = m_settings->value<ToolButtonStyle>();
     m_buttonRaise->setChecked(buttonOptions & Raise);
     m_buttonStretch->setChecked(buttonOptions & Stretch);
-
-    m_allocationSize->setValue(m_settings->value<Settings::Gui::Internal::ImageAllocationLimit>());
-
-    m_titleScript->setText(m_settings->value<WindowTitleTrackScript>());
-    m_vbrInterval->setValue(m_settings->value<Settings::Core::Internal::VBRUpdateInterval>());
-
-    const auto option = static_cast<SelectionDisplay>(m_settings->value<InfoDisplayPrefer>());
-    if(option == SelectionDisplay::PreferPlaying) {
-        m_preferPlaying->setChecked(true);
-    }
-    else {
-        m_preferSelection->setChecked(true);
-    }
-
-    m_starRatingSize->setValue(m_settings->value<StarRatingSize>());
 }
 
 void GuiGeneralPageWidget::apply()
 {
-    m_settings->set<Style>(m_styles->currentText());
-
-    IconThemeOption iconThemeOption;
-    if(m_detectIconTheme->isChecked()) {
-        iconThemeOption = IconThemeOption::AutoDetect;
-    }
-    else if(m_lightTheme->isChecked()) {
-        iconThemeOption = IconThemeOption::Light;
-    }
-    else if(m_darkTheme->isChecked()) {
-        iconThemeOption = IconThemeOption::Dark;
-    }
-    else {
-        iconThemeOption = IconThemeOption::System;
-    }
-    m_settings->set<IconTheme>(static_cast<int>(iconThemeOption));
-
     m_settings->set<ShowMenuBar>(m_showMenuBar->isChecked());
 
     m_settings->set<ShowSplitterHandles>(m_splitterHandles->isChecked());
@@ -359,38 +184,21 @@ void GuiGeneralPageWidget::apply()
         m_settings->reset<SplitterHandleSize>();
     }
 
-    m_settings->set<Settings::Gui::Internal::ImageAllocationLimit>(m_allocationSize->value());
-
     ToolButtonOptions buttonOptions;
     buttonOptions.setFlag(Raise, m_buttonRaise->isChecked());
     buttonOptions.setFlag(Stretch, m_buttonStretch->isChecked());
 
     m_settings->set<ToolButtonStyle>(static_cast<int>(buttonOptions));
-
-    m_settings->set<WindowTitleTrackScript>(m_titleScript->text());
-    m_settings->set<Settings::Core::Internal::VBRUpdateInterval>(m_vbrInterval->value());
-
-    const SelectionDisplay option
-        = m_preferPlaying->isChecked() ? SelectionDisplay::PreferPlaying : SelectionDisplay::PreferSelection;
-    m_settings->set<InfoDisplayPrefer>(static_cast<int>(option));
-
-    m_settings->set<StarRatingSize>(m_starRatingSize->value());
 }
 
 void GuiGeneralPageWidget::reset()
 {
-    m_settings->reset<Style>();
-    m_settings->reset<IconTheme>();
     m_settings->reset<ShowMenuBar>();
     m_settings->reset<ShowSplitterHandles>();
     m_settings->reset<LockSplitterHandles>();
     m_settings->reset<EditableLayoutMargin>();
     m_settings->reset<SplitterHandleSize>();
-    m_settings->reset<ImageAllocationLimit>();
-    m_settings->reset<WindowTitleTrackScript>();
-    m_settings->reset<Settings::Core::Internal::VBRUpdateInterval>();
-    m_settings->reset<InfoDisplayPrefer>();
-    m_settings->reset<StarRatingSize>();
+    m_settings->reset<ToolButtonStyle>();
 }
 
 void GuiGeneralPageWidget::showQuickSetup()
@@ -416,7 +224,7 @@ GuiGeneralPage::GuiGeneralPage(LayoutProvider* layoutProvider, EditableLayout* e
     : SettingsPage{settings->settingsDialog(), parent}
 {
     setId(Constants::Page::InterfaceGeneral);
-    setName(tr("General"));
+    setName(tr("Layout"));
     setCategory({tr("Interface")});
     setWidgetCreator([layoutProvider, editableLayout, settings] {
         return new GuiGeneralPageWidget(layoutProvider, editableLayout, settings);

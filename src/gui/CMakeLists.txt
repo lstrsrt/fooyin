@@ -311,6 +311,8 @@ set(SOURCES
     settings/artwork/artworksourcespage.h
     settings/generalpage.cpp
     settings/generalpage.h
+    settings/guidisplaypage.cpp
+    settings/guidisplaypage.h
     settings/guigeneralpage.cpp
     settings/guigeneralpage.h
     settings/guithemespage.cpp

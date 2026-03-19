@@ -53,6 +53,7 @@
 #include "settings/artwork/artworksearchingpage.h"
 #include "settings/artwork/artworksourcespage.h"
 #include "settings/generalpage.h"
+#include "settings/guidisplaypage.h"
 #include "settings/guigeneralpage.h"
 #include "settings/guithemespage.h"
 #include "settings/library/librarygeneralpage.h"
@@ -266,6 +267,7 @@ void Widgets::registerPages()
 {
     new GeneralPage(m_settings, this);
     new GuiGeneralPage(m_gui->layoutProvider(), m_gui->editableLayout(), m_settings, this);
+    new GuiDisplayPage(m_settings, this);
     new GuiThemesPage(m_gui->themeRegistry(), m_settings, this);
     new ArtworkGeneralPage(m_settings, this);
     new ArtworkSearchingPage(m_settings, this);
