@@ -33,9 +33,33 @@
 namespace Fooyin {
 Q_LOGGING_CATEGORY(PLAYER_CONTROLLER, "fy.playercontroller")
 
+namespace {
+bool sameTrackIdentity(const Track& lhs, const Track& rhs)
+{
+    if(!lhs.isValid() || !rhs.isValid()) {
+        return false;
+    }
+
+    if(lhs.id() >= 0 && rhs.id() >= 0) {
+        return lhs.id() == rhs.id();
+    }
+
+    return lhs.uniqueFilepath() == rhs.uniqueFilepath() && lhs.subsong() == rhs.subsong()
+        && lhs.offset() == rhs.offset() && lhs.duration() == rhs.duration();
+}
+} // namespace
+
 class PlayerControllerPrivate
 {
 public:
+    struct UpcomingTrackResolution
+    {
+        Player::UpcomingTrack upcoming;
+        Playlist* activePlaylist{nullptr};
+        const char* source{"unknown"};
+        int previewIndex{-1};
+    };
+
     PlayerControllerPrivate(PlayerController* self, SettingsManager* settings, PlaylistHandler* playlistHandler)
         : m_self{self}
         , m_settings{settings}
@@ -83,36 +107,127 @@ public:
         m_scheduledTrack = {};
     }
 
-    [[nodiscard]] Player::UpcomingTrack resolveUpcomingTrack() const
+    [[nodiscard]] UpcomingTrackResolution resolveUpcomingTrack() const
     {
+        UpcomingTrackResolution resolution;
+        resolution.activePlaylist = m_playlistHandler ? m_playlistHandler->activePlaylist() : nullptr;
+
         if(m_settings->value<Settings::Core::StopAfterCurrent>()) {
-            return {};
+            resolution.source = "stop-after-current";
+            return resolution;
         }
 
         if(m_scheduledTrack.isValid()) {
-            return {
+            resolution.upcoming = {
                 .track        = m_scheduledTrack,
                 .isQueueTrack = false,
             };
+            resolution.source = "scheduled-track";
+            return resolution;
         }
 
         if(!m_queue.empty()) {
-            return {
+            resolution.upcoming = {
                 .track        = m_queue.nextTrack(),
                 .isQueueTrack = true,
             };
+            resolution.source = "queue-track";
+            return resolution;
         }
 
-        return {
+        if(!m_playlistHandler) {
+            resolution.source = "no-playlist-handler";
+            return resolution;
+        }
+
+        if(!resolution.activePlaylist) {
+            resolution.source = "no-active-playlist";
+            return resolution;
+        }
+
+        resolution.previewIndex = resolution.activePlaylist->nextIndex(1, m_playMode);
+        resolution.upcoming     = {
             .track        = m_playlistHandler->peekRelativeTrack(m_playMode, 1),
             .isQueueTrack = false,
         };
+
+        if(resolution.upcoming.track.isValid()) {
+            resolution.source = "active-playlist-preview";
+            return resolution;
+        }
+
+        const int currentIndex  = resolution.activePlaylist->currentTrackIndex();
+        const Track activeTrack = resolution.activePlaylist->currentTrack();
+
+        if(resolution.activePlaylist->trackCount() <= 0) {
+            resolution.source = "active-playlist-empty";
+        }
+        else if(currentIndex < 0) {
+            resolution.source = "active-playlist-no-current";
+        }
+        else if(currentIndex >= resolution.activePlaylist->trackCount()) {
+            resolution.source = "active-playlist-current-out-of-range";
+        }
+        else if(activeTrack.isValid() && !sameTrackIdentity(activeTrack, m_currentTrack.track)) {
+            resolution.source = "active-playlist-current-mismatch";
+        }
+        else {
+            resolution.source = "active-playlist-preview-invalid";
+        }
+
+        return resolution;
     }
 
-    void emitUpcomingTrackChangedIfNeeded()
+    void emitUpcomingTrackChangedIfNeeded(const char* trigger = "state-refresh")
     {
-        const Player::UpcomingTrack upcoming = resolveUpcomingTrack();
-        if(m_lastUpcomingTrack.track == upcoming.track && m_lastUpcomingTrack.isQueueTrack == upcoming.isQueueTrack) {
+        const UpcomingTrackResolution resolution = resolveUpcomingTrack();
+        const Player::UpcomingTrack& upcoming    = resolution.upcoming;
+
+        const UId activePlaylistId = resolution.activePlaylist ? resolution.activePlaylist->id() : UId{};
+        const int activePlaylistCurrentIndex
+            = resolution.activePlaylist ? resolution.activePlaylist->currentTrackIndex() : -1;
+        const int activePlaylistTrackCount = resolution.activePlaylist ? resolution.activePlaylist->trackCount() : 0;
+        const Track activePlaylistCurrentTrack
+            = resolution.activePlaylist ? resolution.activePlaylist->currentTrack() : Track{};
+        const bool activeCurrentMatchesPlaying = sameTrackIdentity(activePlaylistCurrentTrack, m_currentTrack.track);
+
+        const bool upcomingChanged
+            = m_lastUpcomingTrack.track != upcoming.track || m_lastUpcomingTrack.isQueueTrack != upcoming.isQueueTrack;
+        const bool diagnosticChanged = m_lastUpcomingTrackSource != resolution.source
+                                    || m_lastUpcomingPlaylistId != activePlaylistId
+                                    || m_lastUpcomingPlaylistCurrentIndex != activePlaylistCurrentIndex
+                                    || m_lastUpcomingPlaylistTrackCount != activePlaylistTrackCount
+                                    || m_lastUpcomingPlaylistCurrentTrackId != activePlaylistCurrentTrack.id()
+                                    || m_lastUpcomingPreviewIndex != resolution.previewIndex
+                                    || m_lastUpcomingActiveCurrentMatchesPlaying != activeCurrentMatchesPlaying;
+
+        if(upcomingChanged || diagnosticChanged) {
+            qCDebug(PLAYER_CONTROLLER) << "Upcoming track resolution:" << "trigger=" << trigger
+                                       << "currentTrackId=" << m_currentTrack.track.id()
+                                       << "currentPlaylistId=" << m_currentTrack.playlistId
+                                       << "currentTrackIndex=" << m_currentTrack.indexInPlaylist
+                                       << "source=" << resolution.source
+                                       << "upcomingTrackId=" << upcoming.track.track.id()
+                                       << "isQueueTrack=" << upcoming.isQueueTrack
+                                       << "queueCount=" << m_queue.trackCount()
+                                       << "scheduledTrackId=" << m_scheduledTrack.track.id()
+                                       << "activePlaylistId=" << activePlaylistId
+                                       << "activePlaylistCurrentIndex=" << activePlaylistCurrentIndex
+                                       << "activePlaylistTrackCount=" << activePlaylistTrackCount
+                                       << "activePlaylistCurrentTrackId=" << activePlaylistCurrentTrack.id()
+                                       << "activeCurrentMatchesPlaying=" << activeCurrentMatchesPlaying
+                                       << "previewIndex=" << resolution.previewIndex;
+
+            m_lastUpcomingTrackSource                 = resolution.source;
+            m_lastUpcomingPlaylistId                  = activePlaylistId;
+            m_lastUpcomingPlaylistCurrentIndex        = activePlaylistCurrentIndex;
+            m_lastUpcomingPlaylistTrackCount          = activePlaylistTrackCount;
+            m_lastUpcomingPlaylistCurrentTrackId      = activePlaylistCurrentTrack.id();
+            m_lastUpcomingPreviewIndex                = resolution.previewIndex;
+            m_lastUpcomingActiveCurrentMatchesPlaying = activeCurrentMatchesPlaying;
+        }
+
+        if(!upcomingChanged) {
             return;
         }
 
@@ -196,6 +311,13 @@ public:
     Player::TrackChangeContext m_lastChangeContext;
     std::optional<Player::TrackChangeRequest> m_pendingRequest;
     Player::UpcomingTrack m_lastUpcomingTrack;
+    const char* m_lastUpcomingTrackSource{"unknown"};
+    UId m_lastUpcomingPlaylistId;
+    int m_lastUpcomingPlaylistCurrentIndex{-1};
+    int m_lastUpcomingPlaylistTrackCount{0};
+    int m_lastUpcomingPlaylistCurrentTrackId{-1};
+    int m_lastUpcomingPreviewIndex{-1};
+    bool m_lastUpcomingActiveCurrentMatchesPlaying{false};
 
     PlaybackQueue m_queue;
     PlaylistTrack m_scheduledTrack;
@@ -209,14 +331,47 @@ PlayerController::PlayerController(SettingsManager* settings, PlaylistHandler* p
         const auto mode = static_cast<Playlist::PlayModes>(p->m_settings->value<Settings::Core::PlayMode>());
         if(std::exchange(p->m_playMode, mode) != mode) {
             emit playModeChanged(mode);
-            p->emitUpcomingTrackChangedIfNeeded();
+            p->emitUpcomingTrackChangedIfNeeded("play-mode-changed");
         }
     });
-    settings->subscribe<Settings::Core::StopAfterCurrent>(this, [this]() { p->emitUpcomingTrackChangedIfNeeded(); });
+    settings->subscribe<Settings::Core::StopAfterCurrent>(
+        this, [this]() { p->emitUpcomingTrackChangedIfNeeded("stop-after-current-changed"); });
 
     if(!playlistHandler) {
         return;
     }
+
+    QObject::connect(playlistHandler, &PlaylistHandler::activePlaylistChanged, this,
+                     [this]() { p->emitUpcomingTrackChangedIfNeeded("active-playlist-changed"); });
+    QObject::connect(playlistHandler, &PlaylistHandler::tracksAdded, this, [this, playlistHandler](Playlist* playlist) {
+        if(playlist == playlistHandler->activePlaylist()) {
+            p->emitUpcomingTrackChangedIfNeeded("active-playlist-tracks-added");
+        }
+    });
+    QObject::connect(playlistHandler, &PlaylistHandler::tracksPatched, this,
+                     [this, playlistHandler](Playlist* playlist) {
+                         if(playlist == playlistHandler->activePlaylist()) {
+                             p->emitUpcomingTrackChangedIfNeeded("active-playlist-tracks-patched");
+                         }
+                     });
+    QObject::connect(playlistHandler, &PlaylistHandler::tracksChanged, this,
+                     [this, playlistHandler](Playlist* playlist) {
+                         if(playlist == playlistHandler->activePlaylist()) {
+                             p->emitUpcomingTrackChangedIfNeeded("active-playlist-tracks-changed");
+                         }
+                     });
+    QObject::connect(playlistHandler, &PlaylistHandler::tracksUpdated, this,
+                     [this, playlistHandler](Playlist* playlist) {
+                         if(playlist == playlistHandler->activePlaylist()) {
+                             p->emitUpcomingTrackChangedIfNeeded("active-playlist-tracks-updated");
+                         }
+                     });
+    QObject::connect(playlistHandler, &PlaylistHandler::tracksRemoved, this,
+                     [this, playlistHandler](Playlist* playlist) {
+                         if(playlist == playlistHandler->activePlaylist()) {
+                             p->emitUpcomingTrackChangedIfNeeded("active-playlist-tracks-removed");
+                         }
+                     });
 
     QObject::connect(playlistHandler, &PlaylistHandler::activePlaylistDeleted, this, [this]() {
         if(p->m_settings->value<Settings::Core::StopIfActivePlaylistDeleted>()) {
@@ -244,7 +399,7 @@ void PlayerController::reset()
 
     p->emitPositionSignals(0);
     emit playbackSnapshotChanged(playbackSnapshot());
-    p->emitUpcomingTrackChangedIfNeeded();
+    p->emitUpcomingTrackChangedIfNeeded("controller-reset");
 }
 
 void PlayerController::play()
@@ -535,7 +690,7 @@ void PlayerController::commitCurrentTrack(const Player::TrackChangeRequest& requ
     emit currentTrackChanged(p->m_currentTrack.track);
     emit playlistTrackChanged(p->m_currentTrack);
     emit playbackSnapshotChanged(playbackSnapshot());
-    p->emitUpcomingTrackChangedIfNeeded();
+    p->emitUpcomingTrackChangedIfNeeded("track-committed");
 }
 
 void PlayerController::commitCurrentTrack(const PlaylistTrack& track, const Player::TrackChangeContext& context)
@@ -573,7 +728,7 @@ void PlayerController::updateCurrentTrackIndex(int index)
 void PlayerController::scheduleNextTrack(const PlaylistTrack& track)
 {
     p->m_scheduledTrack = track;
-    p->emitUpcomingTrackChangedIfNeeded();
+    p->emitUpcomingTrackChangedIfNeeded("track-scheduled");
 }
 
 void PlayerController::remapPlaylistReferences(const UId& fromPlaylistId, const UId& toPlaylistId)
@@ -599,17 +754,17 @@ void PlayerController::remapPlaylistReferences(const UId& fromPlaylistId, const 
         updateCurrentTrackPlaylist(toPlaylistId);
     }
 
-    p->emitUpcomingTrackChangedIfNeeded();
+    p->emitUpcomingTrackChangedIfNeeded("playlist-references-remapped");
 }
 
 Track PlayerController::upcomingTrack() const
 {
-    return p->resolveUpcomingTrack().track.track;
+    return p->resolveUpcomingTrack().upcoming.track.track;
 }
 
 PlaylistTrack PlayerController::upcomingPlaylistTrack() const
 {
-    return p->resolveUpcomingTrack().track;
+    return p->resolveUpcomingTrack().upcoming.track;
 }
 
 bool PlayerController::hasNextTrack() const
@@ -805,7 +960,7 @@ void PlayerController::queueTracks(const QueueTracks& tracks)
 
     p->m_queue.addTracks(tracksToAdd);
     emit tracksQueued(tracksToAdd, index);
-    p->emitUpcomingTrackChangedIfNeeded();
+    p->emitUpcomingTrackChangedIfNeeded("queue-tracks-added");
 }
 
 void PlayerController::queueTrackNext(const Track& track)
@@ -847,7 +1002,7 @@ void PlayerController::queueTracksNext(const QueueTracks& tracks)
 
     p->m_queue.addTracks(tracksToAdd, 0);
     emit trackQueueChanged({}, p->m_queue.tracks());
-    p->emitUpcomingTrackChangedIfNeeded();
+    p->emitUpcomingTrackChangedIfNeeded("queue-tracks-added-next");
 }
 
 void PlayerController::dequeueTrack(const Track& track)
@@ -883,7 +1038,7 @@ void PlayerController::dequeueTracks(const QueueTracks& tracks)
     const auto removedTracks = p->m_queue.removeTracks(tracks);
     if(!removedTracks.empty()) {
         emit tracksDequeued(removedTracks);
-        p->emitUpcomingTrackChangedIfNeeded();
+        p->emitUpcomingTrackChangedIfNeeded("queue-tracks-removed");
     }
 }
 
@@ -912,7 +1067,7 @@ void PlayerController::dequeueTracks(const std::vector<int>& indexes)
 
     if(!dequeuedIndexes.empty()) {
         emit trackIndexesDequeued(dequeuedIndexes);
-        p->emitUpcomingTrackChangedIfNeeded();
+        p->emitUpcomingTrackChangedIfNeeded("queue-track-indexes-removed");
     }
 }
 
@@ -939,7 +1094,7 @@ void PlayerController::replaceTracks(const QueueTracks& tracks)
     p->m_queue.replaceTracks(tracks);
 
     emit trackQueueChanged(removed, tracks);
-    p->emitUpcomingTrackChangedIfNeeded();
+    p->emitUpcomingTrackChangedIfNeeded("queue-replaced");
 }
 
 void PlayerController::clearPlaylistQueue(const UId& playlistId)
@@ -947,7 +1102,7 @@ void PlayerController::clearPlaylistQueue(const UId& playlistId)
     const auto removedTracks = p->m_queue.removePlaylistTracks(playlistId);
     if(!removedTracks.empty()) {
         emit tracksDequeued(removedTracks);
-        p->emitUpcomingTrackChangedIfNeeded();
+        p->emitUpcomingTrackChangedIfNeeded("playlist-queue-cleared");
     }
 }
 
@@ -958,7 +1113,7 @@ void PlayerController::clearQueue()
     if(!removedTracks.empty()) {
         emit tracksDequeued(removedTracks);
     }
-    p->emitUpcomingTrackChangedIfNeeded();
+    p->emitUpcomingTrackChangedIfNeeded("queue-cleared");
 }
 
 } // namespace Fooyin

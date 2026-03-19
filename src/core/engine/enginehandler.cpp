@@ -331,7 +331,16 @@ void EngineHandler::noteEngineOwnedTransition(const Track& track, uint64_t gener
 void EngineHandler::handleTrackBoundaryReached(const Track& track, uint64_t generation, uint64_t remainingOutputMs,
                                                bool engineOwnsTransition)
 {
+    qCDebug(ENG_HANDLER) << "Engine track boundary received:" << "trackId=" << track.id() << "generation=" << generation
+                         << "currentTrackId=" << m_playerController->currentTrack().id()
+                         << "upcomingTrackId=" << m_upcomingTrack.track.track.id()
+                         << "remainingOutputMs=" << remainingOutputMs << "engineOwnsTransition=" << engineOwnsTransition
+                         << "autoTransitionEnabled=" << hasAutoTrackEndTransitionEnabled();
+
     if(!sameTrackIdentity(m_playerController->currentTrack(), track)) {
+        qCDebug(ENG_HANDLER) << "Ignoring boundary for non-current track:" << "trackId=" << track.id()
+                             << "generation=" << generation
+                             << "currentTrackId=" << m_playerController->currentTrack().id();
         return;
     }
 
@@ -456,6 +465,15 @@ void EngineHandler::handleTrackStatus(Engine::TrackStatus status, const Track& t
             break;
         case Engine::TrackStatus::End:
             clearPositionAcceptanceFloor();
+            qCDebug(ENG_HANDLER) << "Engine track-end status received:" << "trackId=" << track.id()
+                                 << "generation=" << generation
+                                 << "currentTrackId=" << m_playerController->currentTrack().id()
+                                 << "upcomingTrackId=" << m_upcomingTrack.track.track.id()
+                                 << "engineOwnedTransitionTrackId=" << m_engineOwnedTransitionTrack.id()
+                                 << "engineOwnedTransitionGen=" << m_engineOwnedTransitionGen
+                                 << "pendingBoundaryAdvanceTrackId=" << m_pendingBoundaryAdvanceTrack.id()
+                                 << "pendingBoundaryAdvanceGen=" << m_pendingBoundaryAdvanceGen
+                                 << "endAdvanceSuppressed=" << m_endAdvanceSuppressed;
             if(sameTrackIdentity(m_playerController->currentTrack(), track)
                && sameTrackIdentity(m_engineOwnedTransitionTrack, track) && m_engineOwnedTransitionGen == generation) {
                 qCDebug(ENG_HANDLER) << "Suppressing controller natural-end advance for engine-owned transition:"
@@ -465,6 +483,8 @@ void EngineHandler::handleTrackStatus(Engine::TrackStatus status, const Track& t
                 armEndAdvanceWatchdog(track, generation);
                 break;
             }
+            qCDebug(ENG_HANDLER) << "Track-end status left to boundary/natural-end path:"
+                                 << "trackId=" << track.id() << "generation=" << generation;
             break;
         case Engine::TrackStatus::Invalid:
             clearPositionAcceptanceFloor();

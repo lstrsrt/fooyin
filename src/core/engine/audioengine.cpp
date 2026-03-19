@@ -1656,6 +1656,16 @@ void AudioEngine::handleTrackEndingSignals(const AudioStreamPtr& stream, uint64_
 
         m_preparedCrossfadeTransition.boundarySignalled = true;
         noteBoundaryAnchor();
+        qCDebug(ENGINE) << "Track boundary emitted:" << "trackId=" << boundaryTrack.id()
+                        << "generation=" << boundaryGeneration << "remainingOutputMs=" << boundaryRemainingOutputMs
+                        << "engineOwnsTransition=" << boundaryEngineOwnsTransition
+                        << "candidateTrackId=" << m_upcomingTrackCandidate.id()
+                        << "effectiveMode=" << Utils::Enum::toString(effectiveAutoTransitionMode())
+                        << "currentStreamId=" << (stream ? stream->id() : InvalidStreamId)
+                        << "streamEndOfInput=" << (stream ? stream->endOfInput() : false)
+                        << "streamBufferEmpty=" << (stream ? stream->bufferEmpty() : true)
+                        << "streamBufferedMs=" << (stream ? stream->bufferedDurationMs() : 0)
+                        << "boundaryAudiblePosMs=" << boundaryAudiblePosMs;
 
         emit trackBoundaryReached(boundaryTrack, boundaryGeneration, boundaryRemainingOutputMs,
                                   boundaryEngineOwnsTransition);
@@ -1678,10 +1688,33 @@ void AudioEngine::handleTrackEndingSignals(const AudioStreamPtr& stream, uint64_
             return;
         }
 
+        if(!m_autoAdvanceState.boundaryAnchorSeen && !m_autoAdvanceState.boundaryPendingUntilAudible) {
+            qCWarning(ENGINE) << "Track reached end without prior boundary signal:"
+                              << "trackId=" << m_currentTrack.id() << "generation=" << m_trackGeneration
+                              << "candidateTrackId=" << m_upcomingTrackCandidate.id()
+                              << "effectiveMode=" << Utils::Enum::toString(effectiveAutoTransitionMode())
+                              << "configuredMode=" << Utils::Enum::toString(configuredTrackEndAutoTransitionMode())
+                              << "resultBoundaryReached=" << result.boundaryReached
+                              << "currentStreamId=" << (stream ? stream->id() : InvalidStreamId)
+                              << "streamEndOfInput=" << (stream ? stream->endOfInput() : false)
+                              << "streamBufferEmpty=" << (stream ? stream->bufferEmpty() : true)
+                              << "streamBufferedMs=" << (stream ? stream->bufferedDurationMs() : 0)
+                              << "trackEndingPosMs=" << trackEndingPosMs
+                              << "boundaryAudiblePosMs=" << boundaryAudiblePosMs;
+        }
+
         const bool deferTrackEndStatusForPendingGaplessBoundary
             = gaplessBoundaryMode && preparedGaplessActive
            && (!m_autoAdvanceState.boundaryAnchorSeen || m_autoAdvanceState.boundaryPendingUntilAudible);
         if(deferTrackEndStatusForPendingGaplessBoundary) {
+            qCDebug(ENGINE) << "Deferring track-end status until pending gapless boundary resolves:"
+                            << "trackId=" << m_currentTrack.id() << "generation=" << m_trackGeneration
+                            << "candidateTrackId=" << m_upcomingTrackCandidate.id()
+                            << "preparedStreamId=" << m_preparedGaplessTransition.streamId
+                            << "currentStreamId=" << (stream ? stream->id() : InvalidStreamId)
+                            << "boundaryAnchorSeen=" << m_autoAdvanceState.boundaryAnchorSeen
+                            << "boundaryPendingUntilAudible=" << m_autoAdvanceState.boundaryPendingUntilAudible
+                            << "preparedGaplessRendered=" << preparedGaplessRendered;
             return;
         }
 
@@ -2122,9 +2155,14 @@ bool AudioEngine::hasPlaybackState(Engine::PlaybackState state) const
 bool AudioEngine::signalTrackEndOnce(bool flushDspOnEnd)
 {
     if(!shouldEmitTrackEndOnce(m_lastEndedTrack, m_currentTrack)) {
+        qCDebug(ENGINE) << "Track end status already emitted for current track:"
+                        << "trackId=" << m_currentTrack.id() << "generation=" << m_trackGeneration
+                        << "flushDspOnEnd=" << flushDspOnEnd;
         return false;
     }
 
+    qCDebug(ENGINE) << "Emitting track-end status:" << "trackId=" << m_currentTrack.id()
+                    << "generation=" << m_trackGeneration << "flushDspOnEnd=" << flushDspOnEnd;
     updateTrackStatus(Engine::TrackStatus::End, flushDspOnEnd);
     return true;
 }
