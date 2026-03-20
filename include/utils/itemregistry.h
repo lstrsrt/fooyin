@@ -94,6 +94,8 @@ public:
 
     void reset()
     {
+        const ItemList previousItems{m_items};
+
         m_itemsChanged = false;
         m_settings->fileRemove(m_settingKey);
 
@@ -104,6 +106,35 @@ public:
 
         m_items.clear();
         loadDefaults();
+
+        std::unordered_map<int, Item> previousItemsById;
+        previousItemsById.reserve(previousItems.size());
+
+        for(const auto& item : previousItems) {
+            previousItemsById.emplace(item.id, item);
+        }
+
+        std::unordered_map<int, Item> currentItemsById;
+        currentItemsById.reserve(m_items.size());
+
+        for(const auto& item : m_items) {
+            currentItemsById.emplace(item.id, item);
+        }
+
+        for(const auto& item : previousItems) {
+            if(!currentItemsById.contains(item.id)) {
+                emit itemRemoved(item.id);
+            }
+        }
+
+        for(const auto& item : m_items) {
+            if(!previousItemsById.contains(item.id)) {
+                emit itemAdded(item.id);
+            }
+            else if(!(previousItemsById.at(item.id) == item)) {
+                emit itemChanged(item.id);
+            }
+        }
     }
 
     Item addItem(const Item& item)
