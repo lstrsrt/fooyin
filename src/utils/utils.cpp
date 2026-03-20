@@ -329,6 +329,11 @@ void saveState(QWidget* widget, QSettings& settings, const QString& name)
 
     settings.setValue(geometryKey, widget->saveGeometry());
     settings.setValue(sizeKey, widget->size());
+
+    if(auto* window = qobject_cast<QMainWindow*>(widget)) {
+        const QString stateKey = QStringLiteral("%1/State").arg(keyGroup);
+        settings.setValue(stateKey, window->saveState());
+    }
 }
 
 void restoreState(QWidget* widget, const QSettings& settings, const QString& name)
@@ -340,6 +345,14 @@ void restoreState(QWidget* widget, const QSettings& settings, const QString& nam
     const QByteArray geometry = settings.value(geometryKey).toByteArray();
     if(!geometry.isEmpty()) {
         widget->restoreGeometry(geometry);
+    }
+
+    if(auto* window = qobject_cast<QMainWindow*>(widget)) {
+        const QString stateKey = QStringLiteral("%1/State").arg(keyGroup);
+        const QByteArray state = settings.value(stateKey).toByteArray();
+        if(!state.isEmpty()) {
+            window->restoreState(state);
+        }
     }
 
     const QSize size = settings.value(sizeKey).toSize();
