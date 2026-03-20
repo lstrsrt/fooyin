@@ -92,12 +92,22 @@ LibraryTreeGroupEditorWidget::LibraryTreeGroupEditorWidget(ActionManager* action
         this);
     hint->setWordWrap(true);
     hint->setTextFormat(Qt::RichText);
+
+    auto* artworkHint = new QLabel(
+        u"🛈 "_s
+            + tr("Add artwork to the tree by placing a cover variable such as <code>%frontcover%</code> at the "
+                 "start or end of a level."),
+        this);
+    artworkHint->setWordWrap(true);
+    artworkHint->setTextFormat(Qt::RichText);
+
     m_hintFrame->setFrameShape(QFrame::StyledPanel);
     m_hintFrame->setFrameShadow(QFrame::Plain);
 
-    auto* hintLayout = new QHBoxLayout(m_hintFrame);
+    auto* hintLayout = new QVBoxLayout(m_hintFrame);
     hintLayout->setContentsMargins(10, 8, 10, 8);
     hintLayout->addWidget(hint);
+    hintLayout->addWidget(artworkHint);
 
     auto* mainLayout = new QVBoxLayout(this);
     mainLayout->addWidget(m_groupList);
