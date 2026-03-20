@@ -300,7 +300,7 @@ QString stristrLast(const QStringList& vec)
 
 QString split(const QStringList& vec)
 {
-    if(vec.size() != 2) {
+    if(vec.size() != 3) {
         return {};
     }
 
@@ -313,7 +313,14 @@ QString split(const QStringList& vec)
         part = part.trimmed();
     }
 
-    return parts.join(QLatin1String{Constants::UnitSeparator});
+    bool ok{false};
+    const int index = vec.at(2).toInt(&ok);
+
+    if(!ok || index <= 0 || std::cmp_greater(index, parts.size())) {
+        return {};
+    }
+
+    return parts.at(index - 1);
 }
 
 QString len(const QStringList& vec)

@@ -175,7 +175,7 @@ const std::vector<ScriptReferenceEntry>& scriptReferenceEntries()
         functionEntry("strstrlast", u"$strstrlast(text,needle)"_s, tr("Finds the last substring position")),
         functionEntry("stristrlast", u"$stristrlast(text,needle)"_s,
                       tr("Finds the last substring position ignoring case")),
-        functionEntry("split", u"$split(text,sep,index)"_s, tr("Returns one split segment")),
+        functionEntry("split", u"$split(text,sep,index)"_s, tr("Returns one split segment (1-based index)")),
         functionEntry("len", u"$len(text)"_s, tr("Returns the text length")),
         functionEntry("longest", u"$longest(a,b,...)"_s, tr("Returns the longest string")),
         functionEntry("strcmp", u"$strcmp(a,b)"_s, tr("Compares two strings")),

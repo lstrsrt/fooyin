@@ -385,6 +385,12 @@ TEST_F(ScriptParserTest, StringTest)
     EXPECT_EQ(u"          X", m_parser.evaluate(QStringLiteral("$padright(,$mul($sub(3,1),5))X")));
     EXPECT_EQ(u"true", m_parser.evaluate(QStringLiteral("$if($stricmp(cmp,cMp),true,false)")));
     EXPECT_EQ(u"false", m_parser.evaluate(QStringLiteral("$if($strcmp(cmp,cMp),true,false)")));
+    EXPECT_EQ(u"", m_parser.evaluate(QStringLiteral("$split(a;b;c,;)")));
+    EXPECT_EQ(u"", m_parser.evaluate(QStringLiteral("$split(a;b;c,;,0)")));
+    EXPECT_EQ(u"a", m_parser.evaluate(QStringLiteral("$split(a;b;c,;,1)")));
+    EXPECT_EQ(u"b", m_parser.evaluate(QStringLiteral("$split(a;b;c,;,2)")));
+    EXPECT_EQ(u"c", m_parser.evaluate(QStringLiteral("$split(a;b;c,;,3)")));
+    EXPECT_EQ(u"", m_parser.evaluate(QStringLiteral("$split(a;b;c,;,4)")));
 }
 
 TEST_F(ScriptParserTest, MathTest)
