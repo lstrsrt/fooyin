@@ -59,6 +59,7 @@ private:
     SortingModel* m_model;
 
     ScriptLineEdit* m_sortScript;
+    ScriptLineEdit* m_libraryViewPlaylistSortScript;
     QToolButton* m_openEditor;
 };
 
@@ -69,6 +70,7 @@ LibrarySortingPageWidget::LibrarySortingPageWidget(ActionManager* actionManager,
     , m_sortList{new ExtendableTableView(actionManager, this)}
     , m_model{new SortingModel(m_sortRegistry, this)}
     , m_sortScript{new ScriptLineEdit(this)}
+    , m_libraryViewPlaylistSortScript{new ScriptLineEdit(this)}
     , m_openEditor{new QToolButton(this)}
 {
     m_sortList->setExtendableModel(m_model);
@@ -84,11 +86,15 @@ LibrarySortingPageWidget::LibrarySortingPageWidget(ActionManager* actionManager,
 
     m_openEditor->setText(tr("Script Editor"));
     m_sortList->addCustomTool(m_openEditor);
+    m_libraryViewPlaylistSortScript->setPlaceholderText(tr("Preserve library viewer order"));
 
     auto* mainLayout = new QGridLayout(this);
     mainLayout->addWidget(m_sortList, 0, 0, 1, 2);
     mainLayout->addWidget(new QLabel(tr("Sort tracks in library by") + ":"_L1, this), 1, 0);
     mainLayout->addWidget(m_sortScript, 2, 0, 1, 2);
+    mainLayout->addWidget(new QLabel(tr("Sort tracks added to playlists from library viewers by") + ":"_L1, this), 3,
+                          0);
+    mainLayout->addWidget(m_libraryViewPlaylistSortScript, 4, 0, 1, 2);
     mainLayout->setRowStretch(0, 1);
 
     QObject::connect(m_sortList->selectionModel(), &QItemSelectionModel::selectionChanged, this,
@@ -108,18 +114,21 @@ void LibrarySortingPageWidget::load()
     m_model->populate();
     updateButtonState();
     m_sortScript->setText(m_settings->value<Settings::Core::LibrarySortScript>());
+    m_libraryViewPlaylistSortScript->setText(m_settings->value<Settings::Core::LibraryViewPlaylistSortScript>());
 }
 
 void LibrarySortingPageWidget::apply()
 {
     m_model->processQueue();
     m_settings->set<Settings::Core::LibrarySortScript>(m_sortScript->text());
+    m_settings->set<Settings::Core::LibraryViewPlaylistSortScript>(m_libraryViewPlaylistSortScript->text());
 }
 
 void LibrarySortingPageWidget::reset()
 {
     m_sortRegistry->reset();
     m_settings->reset<Settings::Core::LibrarySortScript>();
+    m_settings->reset<Settings::Core::LibraryViewPlaylistSortScript>();
 }
 
 void LibrarySortingPageWidget::updateButtonState()

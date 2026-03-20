@@ -10,6 +10,7 @@ set(SOURCES
     ${CMAKE_SOURCE_DIR}/include/gui/guiconstants.h
     ${CMAKE_SOURCE_DIR}/include/gui/guipaths.h
     ${CMAKE_SOURCE_DIR}/include/gui/guisettings.h
+    ${CMAKE_SOURCE_DIR}/include/gui/guiutils.h
     ${CMAKE_SOURCE_DIR}/include/gui/layoutprovider.h
     ${CMAKE_SOURCE_DIR}/include/gui/plugins/dspguiplugin.h
     ${CMAKE_SOURCE_DIR}/include/gui/plugins/guiplugin.h
@@ -137,7 +138,6 @@ set(SOURCES
     guiapplication.h
     guipaths.cpp
     guiutils.cpp
-    guiutils.h
     internalguisettings.cpp
     internalguisettings.h
     layoutcommands.cpp

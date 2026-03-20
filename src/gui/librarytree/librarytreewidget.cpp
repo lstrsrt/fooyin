@@ -39,6 +39,7 @@
 #include <gui/configdialog.h>
 #include <gui/guiconstants.h>
 #include <gui/guisettings.h>
+#include <gui/guiutils.h>
 #include <gui/trackselectioncontroller.h>
 #include <utils/actions/actionmanager.h>
 #include <utils/actions/command.h>
@@ -436,7 +437,8 @@ void LibraryTreeWidget::selectionChanged(const QItemSelection& selected, const Q
     }
 
     std::set<Track> trackIndexes;
-    const TrackList tracks = getSelectedTracks(m_libraryTree, m_library);
+    const TrackList tracks
+        = Gui::sortTracksForLibraryViewerPlaylist(m_settings, getSelectedTracks(m_libraryTree, m_library));
     TrackSelection selectionState;
     selectionState.tracks = tracks;
     m_trackSelection->changeSelectedTracks(m_widgetContext, selectionState);

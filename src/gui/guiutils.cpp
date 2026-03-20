@@ -17,10 +17,13 @@
  *
  */
 
-#include "guiutils.h"
+#include <gui/guiutils.h>
 
+#include <core/coresettings.h>
 #include <core/library/musiclibrary.h>
+#include <core/library/tracksort.h>
 #include <utils/datastream.h>
+#include <utils/settings/settingsmanager.h>
 
 #include <QApplication>
 #include <QIODevice>
@@ -36,6 +39,42 @@ TrackList tracksFromMimeData(MusicLibrary* library, QByteArray data)
     TrackList tracks = library->tracksForIds(ids);
 
     return tracks;
+}
+
+TrackList sortTracksForLibraryViewerPlaylist(SettingsManager* settings, const TrackList& tracks)
+{
+    if(!settings || tracks.size() < 2) {
+        return tracks;
+    }
+
+    const QString sortScript = settings->value<Settings::Core::LibraryViewPlaylistSortScript>();
+    if(sortScript.isEmpty()) {
+        return tracks;
+    }
+
+    TrackSorter sorter;
+    return sorter.calcSortTracks(sortScript, tracks);
+}
+
+TrackIds sortTrackIdsForLibraryViewerPlaylist(MusicLibrary* library, SettingsManager* settings, const TrackIds& ids)
+{
+    if(!library || ids.size() < 2) {
+        return ids;
+    }
+
+    const TrackList sortedTracks = sortTracksForLibraryViewerPlaylist(settings, library->tracksForIds(ids));
+    if(sortedTracks.size() != ids.size()) {
+        return ids;
+    }
+
+    TrackIds sortedIds;
+    sortedIds.reserve(sortedTracks.size());
+
+    for(const Track& track : sortedTracks) {
+        sortedIds.push_back(track.id());
+    }
+
+    return sortedIds;
 }
 
 QByteArray queueTracksToMimeData(const QueueTracks& tracks)

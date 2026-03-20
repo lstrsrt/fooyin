@@ -30,6 +30,7 @@
 #include <core/scripting/scriptparser.h>
 #include <gui/coverprovider.h>
 #include <gui/editablelayout.h>
+#include <gui/guiutils.h>
 #include <gui/trackselectioncontroller.h>
 #include <utils/async.h>
 #include <utils/crypto.h>
@@ -362,7 +363,7 @@ void FilterControllerPrivate::updateAllPlaylistActions()
 void FilterControllerPrivate::selectionChanged(FilterWidget* filter)
 {
     TrackSelection selection;
-    selection.tracks = filter->filteredTracks();
+    selection.tracks = Gui::sortTracksForLibraryViewerPlaylist(m_settings, filter->filteredTracks());
     m_trackSelection->changeSelectedTracks(filter->widgetContext(), selection);
 
     if(filter->playlistEnabled()) {

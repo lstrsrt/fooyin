@@ -19,6 +19,8 @@
 
 #pragma once
 
+#include "fygui_export.h"
+
 #include <core/player/playbackqueue.h>
 #include <core/track.h>
 #include <gui/theme/fytheme.h>
@@ -28,14 +30,18 @@
 
 namespace Fooyin {
 class MusicLibrary;
+class SettingsManager;
 
 namespace Gui {
-TrackList tracksFromMimeData(MusicLibrary* library, QByteArray data);
-QByteArray queueTracksToMimeData(const QueueTracks& tracks);
-QueueTracks queueTracksFromMimeData(MusicLibrary* library, QByteArray data);
+FYGUI_EXPORT TrackList tracksFromMimeData(MusicLibrary* library, QByteArray data);
+FYGUI_EXPORT TrackList sortTracksForLibraryViewerPlaylist(SettingsManager* settings, const TrackList& tracks);
+FYGUI_EXPORT TrackIds sortTrackIdsForLibraryViewerPlaylist(MusicLibrary* library, SettingsManager* settings,
+                                                           const TrackIds& ids);
+FYGUI_EXPORT QByteArray queueTracksToMimeData(const QueueTracks& tracks);
+FYGUI_EXPORT QueueTracks queueTracksFromMimeData(MusicLibrary* library, QByteArray data);
 
-QMap<PaletteKey, QColor> coloursFromPalette();
-QMap<PaletteKey, QColor> coloursFromStylePalette();
-QMap<PaletteKey, QColor> coloursFromPalette(const QPalette& palette);
+FYGUI_EXPORT QMap<PaletteKey, QColor> coloursFromPalette();
+FYGUI_EXPORT QMap<PaletteKey, QColor> coloursFromStylePalette();
+FYGUI_EXPORT QMap<PaletteKey, QColor> coloursFromPalette(const QPalette& palette);
 } // namespace Gui
 } // namespace Fooyin

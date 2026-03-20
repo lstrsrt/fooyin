@@ -26,6 +26,7 @@
 #include <core/library/tracksort.h>
 #include <gui/coverprovider.h>
 #include <gui/guiconstants.h>
+#include <gui/guiutils.h>
 #include <gui/scripting/richtextutils.h>
 #include <gui/scripting/scriptformatter.h>
 #include <utils/datastream.h>
@@ -142,7 +143,7 @@ public:
 
     void batchFinished(const PendingTreeDataPtr& data);
 
-    void traverseTree(const QModelIndex& index, Fooyin::TrackIds& trackIds);
+    void traverseTree(const QModelIndex& index, TrackList& tracks);
     QByteArray saveTracks(const QModelIndexList& indexes);
 
     void updatePendingNodes(const PendingTreeData& data);
@@ -300,7 +301,7 @@ void LibraryTreeModelPrivate::batchFinished(const PendingTreeDataPtr& data)
     }
 }
 
-void LibraryTreeModelPrivate::traverseTree(const QModelIndex& index, TrackIds& trackIds)
+void LibraryTreeModelPrivate::traverseTree(const QModelIndex& index, TrackList& tracks)
 {
     if(!index.isValid()) {
         return;
@@ -308,13 +309,12 @@ void LibraryTreeModelPrivate::traverseTree(const QModelIndex& index, TrackIds& t
 
     const auto childCount = index.model()->rowCount(index);
     if(childCount == 0) {
-        const auto tracks = index.data(Fooyin::LibraryTreeItem::Tracks).value<Fooyin::TrackList>();
-        std::ranges::transform(std::as_const(tracks), std::back_inserter(trackIds),
-                               [](const Fooyin::Track& track) { return track.id(); });
+        const auto leafTracks = index.data(LibraryTreeItem::Tracks).value<TrackList>();
+        std::ranges::copy(leafTracks, std::back_inserter(tracks));
     }
     else {
         for(int i{0}; i < childCount; ++i) {
-            traverseTree(m_self->index(i, 0, index), trackIds);
+            traverseTree(m_self->index(i, 0, index), tracks);
         }
     }
 }
@@ -324,10 +324,19 @@ QByteArray LibraryTreeModelPrivate::saveTracks(const QModelIndexList& indexes)
     QByteArray result;
     QDataStream stream(&result, QIODevice::WriteOnly);
 
-    TrackIds trackIds;
+    TrackList tracks;
 
     for(const QModelIndex& index : indexes) {
-        traverseTree(index, trackIds);
+        traverseTree(index, tracks);
+    }
+
+    const TrackList sortedTracks = Gui::sortTracksForLibraryViewerPlaylist(m_settings, tracks);
+
+    TrackIds trackIds;
+    trackIds.reserve(sortedTracks.size());
+
+    for(const Track& track : sortedTracks) {
+        trackIds.push_back(track.id());
     }
 
     stream << trackIds;

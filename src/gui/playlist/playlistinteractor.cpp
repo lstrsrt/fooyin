@@ -19,7 +19,6 @@
 
 #include "playlistinteractor.h"
 
-#include "guiutils.h"
 #include "playlistcontroller.h"
 
 #include <core/library/musiclibrary.h>
@@ -27,6 +26,7 @@
 #include <core/playlist/playlist.h>
 #include <core/playlist/playlisthandler.h>
 #include <core/track.h>
+#include <gui/guiutils.h>
 #include <gui/widgets/elapsedprogressdialog.h>
 #include <utils/datastream.h>
 #include <utils/fileutils.h>

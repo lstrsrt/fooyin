@@ -19,7 +19,6 @@
 
 #include "queueviewer.h"
 
-#include "guiutils.h"
 #include "internalguisettings.h"
 #include "playlist/playlistinteractor.h"
 #include "queueviewerconfigwidget.h"
@@ -30,6 +29,7 @@
 #include <core/player/playercontroller.h>
 #include <gui/configdialog.h>
 #include <gui/guiconstants.h>
+#include <gui/guiutils.h>
 #include <gui/widgets/scriptlineedit.h>
 #include <utils/actions/actioncontainer.h>
 #include <utils/actions/actionmanager.h>

@@ -84,6 +84,7 @@ enum CoreSettings : uint32_t
     OutputBitDepth                = 35 | Type::Int,
     OutputDither                  = 36 | Type::Bool,
     ClearPlaybackQueueOnExit      = 37 | Type::Bool,
+    LibraryViewPlaylistSortScript = 38 | Type::String,
 };
 Q_ENUM_NS(CoreSettings)
 } // namespace Settings::Core

@@ -19,10 +19,9 @@
 
 #include "guithemespage.h"
 
-#include "guiutils.h"
-
 #include <gui/guiconstants.h>
 #include <gui/guisettings.h>
+#include <gui/guiutils.h>
 #include <gui/internalguisettings.h>
 #include <gui/theme/fytheme.h>
 #include <gui/theme/themeregistry.h>

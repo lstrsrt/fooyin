@@ -29,6 +29,7 @@
 #include <core/track.h>
 #include <gui/coverprovider.h>
 #include <gui/guiconstants.h>
+#include <gui/guiutils.h>
 #include <gui/widgets/autoheaderview.h>
 #include <utils/datastream.h>
 #include <utils/settings/settingsmanager.h>
@@ -50,7 +51,7 @@ QFont filterFont()
     return QApplication::font("Fooyin::Filters::FilterView");
 }
 
-QByteArray saveTracks(const QModelIndexList& indexes)
+QByteArray saveTracks(Fooyin::MusicLibrary* library, Fooyin::SettingsManager* settings, const QModelIndexList& indexes)
 {
     QByteArray result;
     QDataStream stream(&result, QIODevice::WriteOnly);
@@ -63,7 +64,7 @@ QByteArray saveTracks(const QModelIndexList& indexes)
         std::ranges::copy(ids, std::back_inserter(trackIds));
     }
 
-    stream << trackIds;
+    stream << Fooyin::Gui::sortTrackIdsForLibraryViewerPlaylist(library, settings, trackIds);
 
     return result;
 }
@@ -625,7 +626,7 @@ Qt::DropActions FilterModel::supportedDragActions() const
 QMimeData* FilterModel::mimeData(const QModelIndexList& indexes) const
 {
     auto* mimeData = new QMimeData();
-    mimeData->setData(QString::fromLatin1(Constants::Mime::TrackIds), saveTracks(indexes));
+    mimeData->setData(QString::fromLatin1(Constants::Mime::TrackIds), saveTracks(p->m_library, p->m_settings, indexes));
     return mimeData;
 }
 
