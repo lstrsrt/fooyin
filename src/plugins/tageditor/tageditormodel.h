@@ -44,6 +44,7 @@ public:
     void setRatingRow(int row);
     void updateTracks(const TrackList& tracks);
 
+    void capitaliseRows(const QModelIndexList& rows);
     void autoNumberTracks();
     void updateValues(const std::map<QString, QString>& fieldValues, bool match);
 

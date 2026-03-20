@@ -45,6 +45,7 @@ TagEditorView::TagEditorView(ActionManager* actionManager, QWidget* parent)
     , m_actionManager{actionManager}
     , m_editTrigger{AllEditTriggers}
     , m_context{new WidgetContext(this, Context{"Context.TagEditor"}, this)}
+    , m_capitaliseAction{new QAction(tr("Capitalise"), this)}
     , m_copyAction{new QAction(tr("Copy"), this)}
     , m_pasteAction{new QAction(tr("Paste"), this)}
     , m_pasteFields{new QAction(tr("Paste fields"), this)}
@@ -69,6 +70,8 @@ void TagEditorView::setTagEditTriggers(EditTriggers triggers)
 
 void TagEditorView::setupActions()
 {
+    QObject::connect(m_capitaliseAction, &QAction::triggered, this, &TagEditorView::capitaliseSelection);
+
     m_copyAction->setShortcut(QKeySequence::Copy);
     if(auto* command = m_actionManager->command(Constants::Actions::Copy)) {
         m_copyAction->setShortcuts(command->defaultShortcuts());
@@ -122,6 +125,9 @@ void TagEditorView::setupContextActions(QMenu* menu, const QPoint& /*pos*/)
 {
     menu->addAction(m_copyAction);
     menu->addAction(m_pasteAction);
+    menu->addSeparator();
+    m_capitaliseAction->setEnabled(canCapitaliseSelection());
+    menu->addAction(m_capitaliseAction);
     menu->addSeparator();
     menu->addAction(m_pasteFields);
 }
@@ -284,6 +290,34 @@ void TagEditorView::pasteSelection(bool match)
 
     if(auto* tagModel = qobject_cast<TagEditorModel*>(model())) {
         tagModel->updateValues(values, match);
+    }
+}
+
+bool TagEditorView::canCapitaliseSelection() const
+{
+    if(m_editTrigger == NoEditTriggers || !selectionModel()) {
+        return false;
+    }
+
+    const auto selectedRows = selectionModel()->selectedRows();
+    return std::ranges::any_of(selectedRows, [this](const QModelIndex& index) {
+        if(!index.isValid() || index.row() == m_ratingRow) {
+            return false;
+        }
+
+        const QModelIndex valueIndex = index.siblingAtColumn(1);
+        return valueIndex.isValid() && (model()->flags(valueIndex) & Qt::ItemIsEditable) != 0;
+    });
+}
+
+void TagEditorView::capitaliseSelection()
+{
+    if(!canCapitaliseSelection()) {
+        return;
+    }
+
+    if(auto* tagModel = qobject_cast<TagEditorModel*>(model())) {
+        tagModel->capitaliseRows(selectionModel()->selectedRows());
     }
 }
 

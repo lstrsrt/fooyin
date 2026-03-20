@@ -62,13 +62,19 @@ QString elideTextWithBreaks(const QString& text, const QFontMetrics& fontMetrics
 
 QString capitalise(const QString& str)
 {
-    QStringList parts = str.split(u' ', Qt::SkipEmptyParts);
+    QString capitalised{str};
+    bool capitaliseNext{true};
 
-    for(auto& part : parts) {
-        part.replace(0, 1, part[0].toUpper());
+    for(auto& character : capitalised) {
+        if(capitaliseNext && character.isLetter()) {
+            character      = character.toUpper();
+            capitaliseNext = false;
+            continue;
+        }
+        capitaliseNext = character.isSpace();
     }
 
-    return parts.join(u' ');
+    return capitalised;
 }
 
 QByteArray detectEncoding(const QByteArray& content)

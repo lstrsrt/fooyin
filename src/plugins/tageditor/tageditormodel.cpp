@@ -25,10 +25,10 @@
 #include <core/library/libraryutils.h>
 #include <core/scripting/scripttrackwriter.h>
 #include <gui/guisettings.h>
-#include <gui/trackselectioncontroller.h>
 #include <utils/helpers.h>
 #include <utils/settings/settingsmanager.h>
 #include <utils/starrating.h>
+#include <utils/stringutils.h>
 
 using namespace Qt::StringLiterals;
 
@@ -36,6 +36,81 @@ constexpr auto MultipleValuesPrefix = "<<multiple values>>";
 
 namespace Fooyin::TagEditor {
 using TagFieldMap = std::unordered_map<QString, TagEditorItem>;
+
+namespace {
+QStringList splitEditorValues(const QString& value)
+{
+    QStringList values = value.split(u';', Qt::KeepEmptyParts);
+    std::ranges::transform(values, values.begin(), [](const QString& currentValue) { return currentValue.trimmed(); });
+    return values;
+}
+
+QString joinEditorValues(const QStringList& values)
+{
+    return values.join("; "_L1);
+}
+
+QStringList capitaliseValues(QStringList values)
+{
+    std::ranges::transform(values, values.begin(), Utils::capitalise);
+    return values;
+}
+
+bool hasDistinctValues(const QStringList& values)
+{
+    if(values.size() < 2) {
+        return false;
+    }
+
+    const QString& firstValue = values.front();
+    return std::ranges::any_of(values.cbegin() + 1, values.cend(),
+                               [&firstValue](const QString& value) { return value != firstValue; });
+}
+
+QStringList capitalisedTrackValues(const TrackList& tracks, const TagEditorField& field)
+{
+    QStringList values;
+    values.reserve(static_cast<qsizetype>(tracks.size()));
+
+    for(const auto& track : tracks) {
+        const QString trackValue = track.metaValue(field.scriptField);
+
+        if(field.multivalue) {
+            values.append(joinEditorValues(
+                capitaliseValues(trackValue.split(QLatin1String{Constants::UnitSeparator}, Qt::KeepEmptyParts))));
+        }
+        else {
+            values.append(Utils::capitalise(trackValue));
+        }
+    }
+
+    return values;
+}
+
+bool updateItemTrackValues(TagEditorItem& item, const QStringList& values)
+{
+    if(values.empty()) {
+        return false;
+    }
+
+    if(hasDistinctValues(values)) {
+        if(item.setValue(joinEditorValues(values))) {
+            item.setMultipleValues(true);
+            item.setSplitTrackValues(true);
+            return true;
+        }
+        return false;
+    }
+
+    if(item.setValue(values.front())) {
+        item.setMultipleValues(false);
+        item.setSplitTrackValues(false);
+        return true;
+    }
+
+    return false;
+}
+} // namespace
 
 class TagEditorModelPrivate
 {
@@ -229,6 +304,68 @@ void TagEditorModel::setRatingRow(int row)
 void TagEditorModel::updateTracks(const TrackList& tracks)
 {
     Utils::updateCommonTracks(p->m_tracks, tracks, Utils::CommonOperation::Update);
+}
+
+void TagEditorModel::capitaliseRows(const QModelIndexList& rows)
+{
+    if(rows.empty() || p->m_tracks.empty()) {
+        return;
+    }
+
+    std::set<int> uniqueRows;
+    std::ranges::transform(rows, std::inserter(uniqueRows, uniqueRows.begin()), &QModelIndex::row);
+
+    bool changed{false};
+
+    for(const int row : uniqueRows) {
+        if(row == p->m_ratingRow) {
+            continue;
+        }
+
+        const QModelIndex valueIndex = index(row, 1, {});
+        if(!valueIndex.isValid() || (flags(valueIndex) & Qt::ItemIsEditable) == 0) {
+            continue;
+        }
+
+        auto* item = static_cast<TagEditorItem*>(valueIndex.internalPointer());
+        if(!item) {
+            continue;
+        }
+
+        if(item->valueChanged()) {
+            if(item->splitTrackValues()) {
+                changed |= updateItemTrackValues(*item, capitaliseValues(splitEditorValues(item->changedValue())));
+                continue;
+            }
+
+            if(item->field().multivalue) {
+                changed |= item->setValue(joinEditorValues(capitaliseValues(splitEditorValues(item->changedValue()))));
+                continue;
+            }
+
+            changed |= item->setValue(Utils::capitalise(item->changedValue()));
+            continue;
+        }
+
+        if(item->field().multivalue) {
+            if(item->trackCount() > 1 && item->multipleValues()) {
+                const QStringList trackValues = capitalisedTrackValues(p->m_tracks, item->field());
+                if(!trackValues.empty() && !hasDistinctValues(trackValues)) {
+                    changed |= updateItemTrackValues(*item, QStringList{trackValues.front()});
+                }
+                continue;
+            }
+
+            changed |= item->setValue(joinEditorValues(capitaliseValues(splitEditorValues(item->value()))));
+            continue;
+        }
+
+        changed |= updateItemTrackValues(*item, capitalisedTrackValues(p->m_tracks, item->field()));
+    }
+
+    if(changed) {
+        invalidateData();
+    }
 }
 
 void TagEditorModel::autoNumberTracks()

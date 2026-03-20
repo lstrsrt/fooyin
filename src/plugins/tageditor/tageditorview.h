@@ -52,6 +52,10 @@ private:
     void reopenEditor(const QModelIndex& index);
     void copySelection();
     void pasteSelection(bool match);
+
+    [[nodiscard]] bool canCapitaliseSelection() const;
+    void capitaliseSelection();
+
     void ratingHoverIn(const QModelIndex& index, const QPoint& pos);
     void ratingHoverOut();
 
@@ -59,6 +63,7 @@ private:
 
     EditTriggers m_editTrigger;
     WidgetContext* m_context;
+    QAction* m_capitaliseAction;
     QAction* m_copyAction;
     QAction* m_pasteAction;
     QAction* m_pasteFields;
