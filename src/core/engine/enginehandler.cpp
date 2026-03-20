@@ -63,8 +63,11 @@ EngineHandler::EngineHandler(std::shared_ptr<AudioLoader> audioLoader, PlayerCon
     , m_settings{settings}
     , m_engine{new AudioEngine(std::move(audioLoader), settings, dspRegistry)}
     , m_levelReadyRelayConnected{false}
+    , m_currentTrackItemId{0}
+    , m_engineOwnedTransitionItemId{9}
     , m_engineOwnedTransitionGen{0}
     , m_endAdvanceSuppressed{false}
+    , m_stopAfterCurrentPending{false}
     , m_pendingBoundaryAdvanceGen{0}
     , m_lastPreparedNextTrackReady{false}
     , m_nextPrepareTrackRequestId{1}
@@ -130,8 +133,9 @@ EngineHandler::EngineHandler(std::shared_ptr<AudioLoader> audioLoader, PlayerCon
         clearPendingBoundaryAdvance();
         clearEngineOwnedTransition();
         dispatchCommand(&AudioEngine::setUpcomingTrackCandidate,
-                        enabled ? Engine::PlaybackItem{}
-                                : makePlaybackItem(m_upcomingTrack.track.track, m_upcomingTrack.itemId));
+                        (enabled || m_stopAfterCurrentPending)
+                            ? Engine::PlaybackItem{}
+                            : makePlaybackItem(m_playerController->upcomingTrack(), uint64_t{0}));
     });
 }
 
@@ -270,6 +274,7 @@ void EngineHandler::handleStateChange(Engine::PlaybackState state)
         case Engine::PlaybackState::Error:
         case Engine::PlaybackState::Stopped:
             clearPositionAcceptanceFloor();
+            m_stopAfterCurrentPending = false;
             m_playerController->syncPlayStateFromEngine(Player::PlayState::Stopped);
             break;
         case Engine::PlaybackState::Paused:
@@ -294,7 +299,8 @@ void EngineHandler::handleTrackChangeRequest(const Player::TrackChangeRequest& r
     clearPositionAcceptanceFloor();
     clearPendingBoundaryAdvance();
     clearEngineOwnedTransition();
-    m_pendingTrackChange = request;
+    m_stopAfterCurrentPending = false;
+    m_pendingTrackChange      = request;
     dispatchCommand(&AudioEngine::loadTrack, makePlaybackItem(track, request.itemId), request.context.userInitiated);
 }
 
@@ -308,8 +314,9 @@ void EngineHandler::handleUpcomingTrackChanged(const Player::UpcomingTrack& upco
                          << "upcomingItemId=" << upcomingTrack.itemId << "isQueueTrack=" << upcomingTrack.isQueueTrack
                          << "stopAfterCurrent=" << stopAfterCurrentEnabled();
     dispatchCommand(&AudioEngine::setUpcomingTrackCandidate,
-                    stopAfterCurrentEnabled() ? Engine::PlaybackItem{}
-                                              : makePlaybackItem(upcomingTrack.track.track, upcomingTrack.itemId));
+                    (stopAfterCurrentEnabled() || m_stopAfterCurrentPending)
+                        ? Engine::PlaybackItem{}
+                        : makePlaybackItem(upcomingTrack.track.track, upcomingTrack.itemId));
 }
 
 bool EngineHandler::stopAfterCurrentEnabled() const
@@ -395,6 +402,7 @@ void EngineHandler::handleTrackBoundaryReached(const Track& track, uint64_t gene
     clearEngineOwnedTransition();
     if(remainingOutputMs == 0) {
         clearPendingBoundaryAdvance();
+        m_stopAfterCurrentPending = stopAfterCurrentEnabled();
         m_playerController->advance(Player::AdvanceReason::NaturalEnd);
         return;
     }
@@ -415,6 +423,7 @@ void EngineHandler::handleTrackBoundaryReached(const Track& track, uint64_t gene
         }
 
         clearPendingBoundaryAdvance();
+        m_stopAfterCurrentPending = stopAfterCurrentEnabled();
         m_playerController->advance(Player::AdvanceReason::NaturalEnd);
     });
 }
@@ -501,6 +510,7 @@ void EngineHandler::handleTrackStatus(Engine::TrackStatus status, const Track& t
             clearPositionAcceptanceFloor();
             clearPendingBoundaryAdvance();
             clearEngineOwnedTransition();
+            m_stopAfterCurrentPending = false;
             m_pendingTrackChange.reset();
             m_playerController->syncPlayStateFromEngine(Player::PlayState::Stopped);
             break;

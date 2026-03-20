@@ -180,11 +180,12 @@ private:
 
     std::optional<Player::TrackChangeRequest> m_pendingTrackChange;
     Player::UpcomingTrack m_upcomingTrack;
-    uint64_t m_currentTrackItemId{0};
+    uint64_t m_currentTrackItemId;
     Track m_engineOwnedTransitionTrack;
-    uint64_t m_engineOwnedTransitionItemId{0};
+    uint64_t m_engineOwnedTransitionItemId;
     uint64_t m_engineOwnedTransitionGen;
     bool m_endAdvanceSuppressed;
+    bool m_stopAfterCurrentPending;
     Track m_pendingBoundaryAdvanceTrack;
     uint64_t m_pendingBoundaryAdvanceGen;
 
