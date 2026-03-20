@@ -29,6 +29,11 @@ class FYUTILS_EXPORT StarDelegate : public QStyledItemDelegate
     Q_OBJECT
 
 public:
+    enum Role
+    {
+        MixedValues = Qt::UserRole + 100
+    };
+
     using QStyledItemDelegate::QStyledItemDelegate;
 
     [[nodiscard]] QModelIndex hoveredIndex() const;

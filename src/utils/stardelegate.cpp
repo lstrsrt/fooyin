@@ -49,12 +49,13 @@ void StarDelegate::paint(QPainter* painter, const QStyleOptionViewItem& option, 
     initStyleOption(&opt, index);
 
     if(!index.data().canConvert<StarRating>()) {
-        QStyle* style = opt.widget ? opt.widget->style() : QApplication::style();
+        const QStyle* style = opt.widget ? opt.widget->style() : QApplication::style();
         style->drawControl(QStyle::CE_ItemViewItem, &opt, painter, opt.widget);
         return;
     }
 
-    auto starRating = index.data().value<StarRating>();
+    auto starRating        = index.data().value<StarRating>();
+    const bool mixedValues = index.data(MixedValues).toBool();
 
     const bool hover = m_hoverIndex.isValid()
                     && (m_hoverIndex == index || (m_selected.contains(m_hoverIndex) && m_selected.contains(index)));
@@ -64,6 +65,33 @@ void StarDelegate::paint(QPainter* painter, const QStyleOptionViewItem& option, 
     }
 
     starRating.paint(painter, opt.rect, opt.palette, StarRating::EditMode::ReadOnly, opt.displayAlignment);
+
+    if(mixedValues && !hover) {
+        painter->save();
+
+        QFont font{opt.font};
+        font.setPointSizeF(std::max(7.0, font.pointSizeF() - 1.0));
+        painter->setFont(font);
+
+        QColor textColour = opt.palette.text().color();
+        textColour.setAlpha(170);
+        painter->setPen(textColour);
+
+        int starX           = opt.rect.x();
+        const int starWidth = starRating.sizeHint().width();
+        if(opt.displayAlignment & Qt::AlignHCenter) {
+            starX += (opt.rect.width() - starWidth) / 2;
+        }
+        else if(opt.displayAlignment & Qt::AlignRight) {
+            starX += opt.rect.width() - starWidth;
+        }
+
+        const QRect mixedRect = opt.rect.adjusted((starX - opt.rect.x()) + starWidth + 4, 0, 0, 0);
+        //: Indicates that the selected tracks have different ratings in the tag editor.
+        painter->drawText(mixedRect, Qt::AlignLeft | Qt::AlignVCenter, tr("mixed"));
+
+        painter->restore();
+    }
 }
 
 QSize StarDelegate::sizeHint(const QStyleOptionViewItem& option, const QModelIndex& index) const

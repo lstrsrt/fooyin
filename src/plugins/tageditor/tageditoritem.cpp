@@ -205,6 +205,9 @@ void TagEditorItem::addTrackValue(const QStringList& values)
     m_trackCount++;
 
     if(values.empty()) {
+        if(m_trackCount > 1 && (!m_values.empty() || m_multipleValues)) {
+            m_multipleValues = true;
+        }
         return;
     }
 
@@ -213,7 +216,7 @@ void TagEditorItem::addTrackValue(const QStringList& values)
             continue;
         }
 
-        const bool hadPreviousValue = !m_values.empty() || m_multipleValues;
+        const bool hadPreviousValue = m_trackCount > 1 || !m_values.empty() || m_multipleValues;
         const bool appended         = appendPreviewValue(m_values, m_value, m_valueCharCount, trackValue);
 
         if(m_trackCount > 1 && (hadPreviousValue || !appended)) {

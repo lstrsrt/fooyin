@@ -27,6 +27,7 @@
 #include <gui/guisettings.h>
 #include <utils/helpers.h>
 #include <utils/settings/settingsmanager.h>
+#include <utils/stardelegate.h>
 #include <utils/starrating.h>
 #include <utils/stringutils.h>
 
@@ -480,13 +481,13 @@ void TagEditorModel::applyChanges()
         field.isDefault  = !Track::isExtraTag(field.scriptField);
 
         switch(status) {
-            case(TagEditorItem::Added): {
+            case TagEditorItem::Added: {
                 if(p->updateTrackMetadata(field, node.changedValue(), node.splitTrackValues())) {
                     node.applyChanges(field);
                 }
                 break;
             }
-            case(TagEditorItem::Removed): {
+            case TagEditorItem::Removed: {
                 if(p->updateTrackMetadata(field, {})) {
                     beginRemoveRows({}, node.row(), node.row());
                     p->m_root.removeChild(node.row());
@@ -495,7 +496,7 @@ void TagEditorModel::applyChanges()
                 }
                 break;
             }
-            case(TagEditorItem::Changed): {
+            case TagEditorItem::Changed: {
                 if(node.titleChanged()) {
                     const auto fieldIt = std::ranges::find_if(std::as_const(p->m_tags), [node](const auto& tag) {
                         return tag.second.title() == node.title();
@@ -518,7 +519,7 @@ void TagEditorModel::applyChanges()
                 }
                 break;
             }
-            case(TagEditorItem::None):
+            case TagEditorItem::None:
                 break;
         }
     }
@@ -541,9 +542,9 @@ QVariant TagEditorModel::headerData(int section, Qt::Orientation orientation, in
     }
 
     switch(section) {
-        case(0):
+        case 0:
             return u"Name"_s;
-        case(1):
+        case 1:
             return u"Value"_s;
         default:
             break;
@@ -591,6 +592,10 @@ QVariant TagEditorModel::data(const QModelIndex& index, int role) const
         return item->titleChanged() ? item->changedTitle() : item->title();
     }
 
+    if(role == StarDelegate::Role::MixedValues) {
+        return item->trackCount() > 1 && item->multipleValues();
+    }
+
     if(role == Qt::DisplayRole || role == Qt::EditRole || role == TagEditorItem::Title) {
         if(index.column() == 0) {
             const QString title = item->titleChanged() ? item->changedTitle() : item->title();
@@ -606,12 +611,10 @@ QVariant TagEditorModel::data(const QModelIndex& index, int role) const
         }
 
         if(index.row() == p->m_ratingRow) {
-            if(item->trackCount() > 1) {
-                return QString::fromLatin1(MultipleValuesPrefix);
-            }
-            return QVariant::fromValue(
-                StarRating{item->valueChanged() ? item->changedValue().toFloat() : item->value().toFloat(), 5,
-                           p->m_settings->value<Settings::Gui::StarRatingSize>()});
+            const bool mixedValues = index.data(StarDelegate::Role::MixedValues).toBool();
+            return QVariant::fromValue(StarRating{
+                mixedValues ? 0.0F : (item->valueChanged() ? item->changedValue().toFloat() : item->value().toFloat()),
+                5, p->m_settings->value<Settings::Gui::StarRatingSize>()});
         }
 
         if(role == Qt::EditRole) {
@@ -619,6 +622,11 @@ QVariant TagEditorModel::data(const QModelIndex& index, int role) const
         }
 
         return item->valueChanged() ? item->changedDisplayValue() : item->displayValue();
+    }
+
+    if(role == Qt::ToolTipRole && index.row() == p->m_ratingRow
+       && index.data(StarDelegate::Role::MixedValues).toBool()) {
+        return tr("Multiple values. Choose a rating to apply it to all selected tracks.");
     }
 
     return {};
@@ -637,7 +645,7 @@ bool TagEditorModel::setData(const QModelIndex& index, const QVariant& value, in
     auto* item = static_cast<TagEditorItem*>(index.internalPointer());
 
     switch(index.column()) {
-        case(0): {
+        case 0: {
             const QString newTitle = value.toString().toUpper();
 
             if((item->status() == TagEditorItem::Added && newTitle == p->m_defaultFieldtext)
@@ -657,7 +665,7 @@ bool TagEditorModel::setData(const QModelIndex& index, const QVariant& value, in
 
             break;
         }
-        case(1): {
+        case 1: {
             QString setValue = value.toString();
 
             if(index.row() == p->m_ratingRow) {
