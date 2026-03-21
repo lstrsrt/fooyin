@@ -19,6 +19,8 @@
 
 #include "playbackprogresstracker.h"
 
+#include <utility>
+
 namespace Fooyin {
 PlaybackProgressTracker::PlaybackProgressTracker()
     : m_totalDuration{0}
