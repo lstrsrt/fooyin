@@ -216,9 +216,17 @@ set(SOURCES
     library/unifiedmusiclibrary.cpp
     library/unifiedmusiclibrary.h
     network/networkaccessmanager.cpp
+    playback/playbackcursor.cpp
+    playback/playbackcursor.h
     playback/playbackqueue.cpp
     playback/playbackqueuestore.cpp
     playback/playbackqueuestore.h
+    playback/playbackordernavigator.cpp
+    playback/playbackordernavigator.h
+    playback/playbackprogresstracker.cpp
+    playback/playbackprogresstracker.h
+    playback/playbacksession.cpp
+    playback/playbacksession.h
     playback/playercontroller.cpp
     playback/playlistnavigator.cpp
     playback/playlistnavigator.h

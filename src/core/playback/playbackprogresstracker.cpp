@@ -1,0 +1,143 @@
+/*
+ * Fooyin
+ * Copyright © 2026, Luke Taylor <luket@pm.me>
+ *
+ * Fooyin is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * Fooyin is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with Fooyin.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ */
+
+#include "playbackprogresstracker.h"
+
+namespace Fooyin {
+PlaybackProgressTracker::PlaybackProgressTracker()
+    : m_totalDuration{0}
+    , m_position{0}
+    , m_timeListened{0}
+    , m_playedThreshold{0}
+    , m_bitrate{0}
+    , m_lastPositionSecond{0}
+    , m_hasLastPositionSecond{false}
+    , m_seeking{false}
+    , m_counted{false}
+{ }
+
+void PlaybackProgressTracker::reset()
+{
+    m_totalDuration         = 0;
+    m_position              = 0;
+    m_timeListened          = 0;
+    m_playedThreshold       = 0;
+    m_lastPositionSecond    = 0;
+    m_hasLastPositionSecond = false;
+    m_seeking               = false;
+    m_counted               = false;
+}
+
+void PlaybackProgressTracker::onTrackCommitted(uint64_t totalDurationMs, double playedThresholdFraction)
+{
+    m_totalDuration   = totalDurationMs;
+    m_position        = 0;
+    m_timeListened    = 0;
+    m_playedThreshold = 0;
+    m_seeking         = false;
+    m_counted         = false;
+
+    if(m_totalDuration > 200) {
+        m_playedThreshold = static_cast<uint64_t>(static_cast<double>(m_totalDuration - 200) * playedThresholdFraction);
+    }
+}
+
+PlaybackProgressTracker::PositionUpdate PlaybackProgressTracker::updatePosition(uint64_t posMs)
+{
+    if(!m_seeking && posMs > m_position) {
+        m_timeListened += (posMs - m_position);
+    }
+
+    m_seeking  = false;
+    m_position = posMs;
+
+    bool reachedPlayedThreshold = false;
+    if(!m_counted && m_timeListened >= m_playedThreshold) {
+        m_counted              = true;
+        reachedPlayedThreshold = true;
+    }
+
+    return currentPositionUpdate(reachedPlayedThreshold);
+}
+
+PlaybackProgressTracker::PositionUpdate PlaybackProgressTracker::resetPosition()
+{
+    m_position = 0;
+    m_seeking  = false;
+    return currentPositionUpdate();
+}
+
+bool PlaybackProgressTracker::markSeekPosition(uint64_t posMs)
+{
+    if(std::exchange(m_position, posMs) == posMs) {
+        return false;
+    }
+
+    m_seeking = true;
+    return true;
+}
+
+bool PlaybackProgressTracker::updateBitrate(int bitrate)
+{
+    return std::exchange(m_bitrate, bitrate) != bitrate;
+}
+
+uint64_t PlaybackProgressTracker::totalDuration() const
+{
+    return m_totalDuration;
+}
+
+uint64_t PlaybackProgressTracker::position() const
+{
+    return m_position;
+}
+
+uint64_t PlaybackProgressTracker::timeListened() const
+{
+    return m_timeListened;
+}
+
+uint64_t PlaybackProgressTracker::playedThreshold() const
+{
+    return m_playedThreshold;
+}
+
+int PlaybackProgressTracker::bitrate() const
+{
+    return m_bitrate;
+}
+
+PlaybackProgressTracker::PositionUpdate PlaybackProgressTracker::currentPositionUpdate(bool reachedPlayedThreshold)
+{
+    PositionUpdate update{
+        .positionMs             = m_position,
+        .positionSeconds        = {},
+        .reachedPlayedThreshold = reachedPlayedThreshold,
+    };
+
+    const uint64_t seconds = m_position / 1000;
+    if(!m_hasLastPositionSecond || m_lastPositionSecond != seconds) {
+        m_lastPositionSecond    = seconds;
+        m_hasLastPositionSecond = true;
+        update.positionSeconds  = seconds;
+    }
+
+    return update;
+}
+} // namespace Fooyin

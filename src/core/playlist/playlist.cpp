@@ -764,6 +764,46 @@ int Playlist::firstIndex(PlayModes mode)
     return 0;
 }
 
+int Playlist::lastIndex(PlayModes mode)
+{
+    if(trackCount() <= 0) {
+        return -1;
+    }
+
+    if(mode & ShuffleTracks) {
+        if(p->m_trackShuffleOrder.empty()) {
+            p->createShuffleOrder(false);
+        }
+
+        if(p->m_trackShuffleOrder.empty()) {
+            return -1;
+        }
+
+        p->m_trackShuffleIndex = static_cast<int>(p->m_trackShuffleOrder.size()) - 1;
+        return p->m_trackShuffleOrder.back();
+    }
+
+    if(mode & ShuffleAlbums) {
+        if(p->m_albumShuffleOrder.empty()) {
+            p->createAlbumShuffleOrder(false);
+        }
+
+        if(p->m_albumShuffleOrder.empty() || p->m_albumShuffleOrder.back().empty()) {
+            return -1;
+        }
+
+        p->m_albumShuffleIndex = static_cast<int>(p->m_albumShuffleOrder.size()) - 1;
+        p->m_trackInAlbumIndex = static_cast<int>(p->m_albumShuffleOrder.back().size()) - 1;
+        return p->m_albumShuffleOrder.back().back();
+    }
+
+    if(mode & Random) {
+        return p->getNextIndex(-1, mode, true);
+    }
+
+    return trackCount() - 1;
+}
+
 Track Playlist::nextTrack(int delta, PlayModes mode)
 {
     const int index = p->getNextIndex(delta, mode, true);
