@@ -109,6 +109,7 @@ public:
 
     void createShuffleOrder();
     void createAlbumShuffleOrder();
+    void syncShuffleStateToCurrentTrack();
 
     std::vector<AlbumTracks>::iterator findAlbumContainingTrack(int trackIndex);
     AlbumTracks getAlbumTracks(int currentIndex);
@@ -259,6 +260,42 @@ void PlaylistPrivate::createAlbumShuffleOrder()
     }
     else {
         m_trackInAlbumIndex = 0;
+    }
+}
+
+void PlaylistPrivate::syncShuffleStateToCurrentTrack()
+{
+    if(m_currentTrackIndex < 0 || std::cmp_greater_equal(m_currentTrackIndex, m_tracks.size())) {
+        m_trackShuffleIndex = -1;
+        m_albumShuffleIndex = -1;
+        m_trackInAlbumIndex = -1;
+        return;
+    }
+
+    if(!m_trackShuffleOrder.empty()) {
+        const auto trackIt = std::ranges::find(m_trackShuffleOrder, m_currentTrackIndex);
+        if(trackIt != m_trackShuffleOrder.cend()) {
+            m_trackShuffleIndex = static_cast<int>(std::distance(m_trackShuffleOrder.begin(), trackIt));
+        }
+        else {
+            m_trackShuffleOrder.clear();
+            m_trackShuffleIndex = -1;
+        }
+    }
+
+    if(!m_albumShuffleOrder.empty()) {
+        const auto albumIt = findAlbumContainingTrack(m_currentTrackIndex);
+        if(albumIt != m_albumShuffleOrder.end()) {
+            m_albumShuffleIndex = static_cast<int>(std::distance(m_albumShuffleOrder.begin(), albumIt));
+            const auto trackIt  = std::ranges::find(*albumIt, m_currentTrackIndex);
+            m_trackInAlbumIndex
+                = trackIt != albumIt->cend() ? static_cast<int>(std::distance(albumIt->begin(), trackIt)) : -1;
+        }
+        else {
+            m_albumShuffleOrder.clear();
+            m_albumShuffleIndex = -1;
+            m_trackInAlbumIndex = -1;
+        }
     }
 }
 
@@ -719,6 +756,7 @@ Track Playlist::nextTrackChange(int delta, PlayModes mode)
 void Playlist::changeCurrentIndex(int index)
 {
     p->m_currentTrackIndex = index;
+    p->syncShuffleStateToCurrentTrack();
 }
 
 void Playlist::reset()
