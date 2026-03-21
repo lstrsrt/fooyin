@@ -56,6 +56,22 @@ TEST_F(ScriptFormatterTest, Rgb)
     EXPECT_EQ(255, result.blocks.front().format.colour.red());
 }
 
+TEST_F(ScriptFormatterTest, ColorName)
+{
+    const auto result = m_formattter.evaluate(QStringLiteral("<color=red>I am a test."));
+    ASSERT_EQ(1, result.size());
+    EXPECT_EQ(QColor(QStringLiteral("red")), result.blocks.front().format.colour);
+}
+
+TEST_F(ScriptFormatterTest, ColorHex)
+{
+    const auto result = m_formattter.evaluate(QStringLiteral("<color=#00ff00>I am a test."));
+    ASSERT_EQ(1, result.size());
+    EXPECT_EQ(0, result.blocks.front().format.colour.red());
+    EXPECT_EQ(255, result.blocks.front().format.colour.green());
+    EXPECT_EQ(0, result.blocks.front().format.colour.blue());
+}
+
 TEST_F(ScriptFormatterTest, EscapedLeftAngle)
 {
     const auto result = m_formattter.evaluate(QStringLiteral("\\<A"));

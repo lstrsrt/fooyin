@@ -38,6 +38,64 @@ struct FormatterHandlerEntry
     FormatterHandler handler;
 };
 
+bool parseRgbComponent(const QString& value, int* component)
+{
+    bool isInt{false};
+    const int parsed = value.trimmed().toInt(&isInt);
+    if(!isInt || parsed < 0 || parsed > 255) {
+        return false;
+    }
+
+    *component = parsed;
+    return true;
+}
+
+bool parseRgb(const QString& option, QColor* colour)
+{
+    if(option.isEmpty()) {
+        return false;
+    }
+
+    const QStringList parts = option.split(u","_s);
+    if(parts.size() < 3 || parts.size() > 4) {
+        return false;
+    }
+
+    int red{0};
+    int green{0};
+    int blue{0};
+    int alpha{255};
+
+    if(!parseRgbComponent(parts.at(0), &red) || !parseRgbComponent(parts.at(1), &green)
+       || !parseRgbComponent(parts.at(2), &blue)) {
+        return false;
+    }
+
+    if(parts.size() == 4 && !parseRgbComponent(parts.at(3), &alpha)) {
+        return false;
+    }
+
+    colour->setRgb(red, green, blue, alpha);
+    return true;
+}
+
+bool parseColour(const QString& option, QColor* colour)
+{
+    if(option.isEmpty()) {
+        return false;
+    }
+
+    const QString trimmed{option.trimmed()};
+
+    const QColor namedOrHex = QColor::fromString(trimmed);
+    if(namedOrHex.isValid()) {
+        *colour = namedOrHex;
+        return true;
+    }
+
+    return parseRgb(trimmed, colour);
+}
+
 bool bold(RichFormatting& formatting, const QString& /*option*/)
 {
     formatting.font.setBold(true);
@@ -113,24 +171,20 @@ bool colourAlpha(RichFormatting& formatting, const QString& option)
 
 bool colourRgb(RichFormatting& formatting, const QString& option)
 {
-    if(option.isEmpty()) {
-        return false;
+    QColor colour;
+    if(parseRgb(option, &colour)) {
+        formatting.colour = colour;
+        return true;
     }
 
-    const QStringList rgb = option.split(","_L1);
+    return false;
+}
 
-    if(rgb.size() < 3) {
-        return false;
-    }
-
-    bool isInt{false};
-    const int red   = rgb.at(0).toInt(&isInt);
-    const int green = rgb.at(1).toInt(&isInt);
-    const int blue  = rgb.at(2).toInt(&isInt);
-    const int alpha = (rgb.size() == 4) ? rgb.at(3).toInt(&isInt) : 255;
-
-    if(isInt) {
-        formatting.colour.setRgb(red, green, blue, alpha);
+bool colourGeneric(RichFormatting& formatting, const QString& option)
+{
+    QColor colour;
+    if(parseColour(option, &colour)) {
+        formatting.colour = colour;
         return true;
     }
 
@@ -157,6 +211,7 @@ constexpr std::array FormatterHandlers{
     FormatterHandlerEntry{.name = "sized"_L1, .handler = &fontDelta},
     FormatterHandlerEntry{.name = "alpha"_L1, .handler = &colourAlpha},
     FormatterHandlerEntry{.name = "rgb"_L1, .handler = &colourRgb},
+    FormatterHandlerEntry{.name = "color"_L1, .handler = &colourGeneric},
     FormatterHandlerEntry{.name = "a"_L1, .handler = &linkHref},
 };
 } // namespace
