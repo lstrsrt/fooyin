@@ -111,6 +111,7 @@ public:
         m_counted              = false;
         m_lastChangeContext    = context;
         m_pendingChangeContext = {};
+        m_stoppedAtBoundary    = false;
 
         if(m_totalDuration > 200) {
             m_playedThreshold = static_cast<uint64_t>(static_cast<double>(m_totalDuration - 200)
@@ -392,6 +393,30 @@ public:
         return m_playlistHandler->advanceRelativeTrack(m_playMode, delta);
     }
 
+    [[nodiscard]] PlaylistTrack restartPlaylistFromBeginning()
+    {
+        Playlist* playlist{playbackPlaylist()};
+
+        if(!playlist && m_playlistHandler) {
+            playlist = m_playlistHandler->activePlaylist();
+        }
+
+        if(!playlist || playlist->trackCount() <= 0) {
+            return {};
+        }
+
+        if(m_playlistHandler && m_playlistHandler->activePlaylist() != playlist) {
+            m_playlistHandler->changeActivePlaylist(playlist);
+        }
+
+        const int restartIndex = playlist->firstIndex(m_playMode);
+        const int startIndex   = restartIndex >= 0 ? restartIndex : 0;
+
+        playlist->changeCurrentIndex(startIndex);
+        m_stoppedAtBoundary = false;
+        return playlist->playlistTrack(startIndex).value_or(PlaylistTrack{});
+    }
+
     PlayerController* m_self;
     SettingsManager* m_settings;
     PlaylistHandler* m_playlistHandler{nullptr};
@@ -412,6 +437,7 @@ public:
     bool m_counted{false};
     bool m_isQueueTrack{false};
     bool m_stopCurrentSkip{false};
+    bool m_stoppedAtBoundary{false};
     bool m_hasLastPositionSecond{false};
 
     Player::TrackChangeContext m_pendingChangeContext;
@@ -501,9 +527,10 @@ PlayerController::~PlayerController() = default;
 
 void PlayerController::reset()
 {
-    p->m_currentTrack  = {};
-    p->m_currentItemId = 0;
-    p->m_position      = 0;
+    p->m_currentTrack      = {};
+    p->m_currentItemId     = 0;
+    p->m_position          = 0;
+    p->m_stoppedAtBoundary = false;
     p->clearPendingRequest();
     p->updateBitrate(0);
 
@@ -514,7 +541,17 @@ void PlayerController::reset()
 
 void PlayerController::play()
 {
-    if(!p->m_currentTrack.isValid() && !p->m_pendingRequest.has_value()) {
+    if(p->m_playState == Player::PlayState::Stopped && p->m_stoppedAtBoundary && p->m_currentTrack.isValid()
+       && !p->m_pendingRequest.has_value() && p->m_queue.empty() && !p->m_scheduledTrack.isValid()
+       && !p->m_isQueueTrack) {
+        const PlaylistTrack track = p->restartPlaylistFromBeginning();
+        p->requestTrackChange({
+            .track        = track,
+            .context      = p->m_pendingChangeContext,
+            .isQueueTrack = false,
+        });
+    }
+    else if(!p->m_currentTrack.isValid() && !p->m_pendingRequest.has_value()) {
         if(p->m_scheduledTrack.isValid()) {
             p->loadScheduledTrack();
         }
@@ -647,14 +684,32 @@ void PlayerController::advance(Player::AdvanceReason reason)
         // Preserve current track context when playback naturally ends with no
         // upcoming track so stopped seeks and play still works.
         p->m_pendingChangeContext = {};
+        p->m_stoppedAtBoundary    = true;
         stop();
         return;
     }
 
-    if(p->m_scheduledTrack.isValid()) {
+    if(reason == Player::AdvanceReason::ManualNext && p->m_stoppedAtBoundary
+       && p->m_playState == Player::PlayState::Stopped && p->m_queue.empty() && !p->m_scheduledTrack.isValid()
+       && !p->m_isQueueTrack) {
+        const PlaylistTrack track = p->restartPlaylistFromBeginning();
+        p->requestTrackChange({
+            .track        = track,
+            .context      = p->m_pendingChangeContext,
+            .isQueueTrack = false,
+        });
+    }
+    else if(reason == Player::AdvanceReason::ManualNext && !hasNextTrack() && p->m_queue.empty()
+            && !p->m_scheduledTrack.isValid() && !p->m_isQueueTrack) {
+        p->m_stoppedAtBoundary = true;
+        stop();
+        return;
+    }
+
+    if(!p->m_pendingRequest.has_value() && p->m_scheduledTrack.isValid()) {
         p->loadScheduledTrack();
     }
-    else if(p->m_queue.empty() && p->m_playlistHandler) {
+    else if(!p->m_pendingRequest.has_value() && p->m_queue.empty() && p->m_playlistHandler) {
         if(p->m_isQueueTrack && p->m_settings->value<Settings::Core::PlaybackQueueStopWhenFinished>()) {
             reset();
             stop();
@@ -668,7 +723,7 @@ void PlayerController::advance(Player::AdvanceReason reason)
             .isQueueTrack = false,
         });
     }
-    else {
+    else if(!p->m_pendingRequest.has_value()) {
         if(!p->m_queue.empty()) {
             p->requestTrackChange({
                 .track        = p->m_queue.nextTrack(),

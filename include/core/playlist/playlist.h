@@ -136,6 +136,7 @@ public:
 
     int nextIndex(int delta, PlayModes mode);
     int nextIndexFrom(int currentIndex, int delta, PlayModes mode);
+    int firstIndex(PlayModes mode);
     /*!
      * Returns the next track to be played based on the @p delta from the current
      * index and the @p mode.
