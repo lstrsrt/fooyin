@@ -211,6 +211,7 @@ constexpr std::array FormatterHandlers{
     FormatterHandlerEntry{.name = "sized"_L1, .handler = &fontDelta},
     FormatterHandlerEntry{.name = "alpha"_L1, .handler = &colourAlpha},
     FormatterHandlerEntry{.name = "rgb"_L1, .handler = &colourRgb},
+    FormatterHandlerEntry{.name = "rgba"_L1, .handler = &colourRgb},
     FormatterHandlerEntry{.name = "color"_L1, .handler = &colourGeneric},
     FormatterHandlerEntry{.name = "a"_L1, .handler = &linkHref},
 };

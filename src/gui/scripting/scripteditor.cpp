@@ -156,11 +156,11 @@ protected:
     {
         if(m_completer->popup()->isVisible()) {
             switch(event->key()) {
-                case(Qt::Key_Return):
-                case(Qt::Key_Enter):
-                case(Qt::Key_Escape):
-                case(Qt::Key_Tab):
-                case(Qt::Key_Backtab):
+                case Qt::Key_Return:
+                case Qt::Key_Enter:
+                case Qt::Key_Escape:
+                case Qt::Key_Tab:
+                case Qt::Key_Backtab:
                     event->ignore();
                     return;
                 default:
@@ -196,17 +196,17 @@ private:
         }
 
         switch(event->key()) {
-            case(Qt::Key_Backspace):
-            case(Qt::Key_Delete):
+            case Qt::Key_Backspace:
+            case Qt::Key_Delete:
                 return true;
-            case(Qt::Key_Left):
-            case(Qt::Key_Right):
-            case(Qt::Key_Up):
-            case(Qt::Key_Down):
-            case(Qt::Key_Home):
-            case(Qt::Key_End):
-            case(Qt::Key_PageUp):
-            case(Qt::Key_PageDown):
+            case Qt::Key_Left:
+            case Qt::Key_Right:
+            case Qt::Key_Up:
+            case Qt::Key_Down:
+            case Qt::Key_Home:
+            case Qt::Key_End:
+            case Qt::Key_PageUp:
+            case Qt::Key_PageDown:
                 return false;
             default:
                 break;
@@ -223,15 +223,15 @@ private:
     [[nodiscard]] static bool isCompletionDismissKey(const QKeyEvent* event)
     {
         switch(event->key()) {
-            case(Qt::Key_Left):
-            case(Qt::Key_Right):
-            case(Qt::Key_Up):
-            case(Qt::Key_Down):
-            case(Qt::Key_Home):
-            case(Qt::Key_End):
-            case(Qt::Key_PageUp):
-            case(Qt::Key_PageDown):
-            case(Qt::Key_Escape):
+            case Qt::Key_Left:
+            case Qt::Key_Right:
+            case Qt::Key_Up:
+            case Qt::Key_Down:
+            case Qt::Key_Home:
+            case Qt::Key_End:
+            case Qt::Key_PageUp:
+            case Qt::Key_PageDown:
+            case Qt::Key_Escape:
                 return true;
             default:
                 return false;
@@ -240,17 +240,22 @@ private:
 
     void populateCompletionModels()
     {
-        for(const auto& entry : Fooyin::scriptReferenceEntries()) {
+        for(const auto& entry : scriptReferenceEntries()) {
             auto* item = new QStandardItem(entry.label);
             item->setData(entry.insertText, InsertTextRole);
             item->setData(entry.cursorOffset, CursorOffsetRole);
             item->setToolTip(entry.description);
 
-            if(entry.kind == ScriptReferenceKind::Variable) {
-                m_variableModel->appendRow(item);
-            }
-            else {
-                m_functionModel->appendRow(item);
+            switch(entry.kind) {
+                case ScriptReferenceKind::Variable:
+                    m_variableModel->appendRow(item);
+                    break;
+                case ScriptReferenceKind::Function:
+                case ScriptReferenceKind::CommandAlias:
+                    m_functionModel->appendRow(item);
+                    break;
+                case ScriptReferenceKind::Formatting:
+                    break;
             }
         }
     }
@@ -266,7 +271,23 @@ private:
         m_completionStart = context.startPos;
         m_completionEnd   = context.endPos;
 
-        m_completer->setModel(context.kind == ScriptReferenceKind::Variable ? m_variableModel : m_functionModel);
+        QStandardItemModel* model{nullptr};
+        switch(context.kind) {
+            case ScriptReferenceKind::Variable:
+                model = m_variableModel;
+                break;
+            case ScriptReferenceKind::Function:
+                model = m_functionModel;
+                break;
+            case ScriptReferenceKind::Formatting:
+            case ScriptReferenceKind::CommandAlias:
+                break;
+        }
+
+        if(model) {
+            m_completer->setModel(model);
+        }
+
         m_completer->setCompletionPrefix(context.prefix);
 
         if(!m_completer->setCurrentRow(0)) {
@@ -416,12 +437,15 @@ public:
     QLineEdit* m_referenceSearch;
     QTreeView* m_variableReferenceTree;
     QTreeView* m_functionReferenceTree;
+    QTreeView* m_formattingReferenceTree;
     QTreeView* m_commandReferenceTree;
     QStandardItemModel* m_variableReferenceModel;
     QStandardItemModel* m_functionReferenceModel;
+    QStandardItemModel* m_formattingReferenceModel;
     QStandardItemModel* m_commandReferenceModel;
     ScriptReferenceFilterModel* m_variableReferenceFilter;
     ScriptReferenceFilterModel* m_functionReferenceFilter;
+    ScriptReferenceFilterModel* m_formattingReferenceFilter;
     ScriptReferenceFilterModel* m_commandReferenceFilter;
     ExpressionTreeModel* m_model;
 
@@ -449,12 +473,15 @@ ScriptEditorPrivate::ScriptEditorPrivate(ScriptEditor* self, LibraryManager* lib
     , m_referenceSearch{new QLineEdit(m_self)}
     , m_variableReferenceTree{new QTreeView(m_self)}
     , m_functionReferenceTree{new QTreeView(m_self)}
+    , m_formattingReferenceTree{new QTreeView(m_self)}
     , m_commandReferenceTree{new QTreeView(m_self)}
     , m_variableReferenceModel{new QStandardItemModel(m_self)}
     , m_functionReferenceModel{new QStandardItemModel(m_self)}
+    , m_formattingReferenceModel{new QStandardItemModel(m_self)}
     , m_commandReferenceModel{new QStandardItemModel(m_self)}
     , m_variableReferenceFilter{new ScriptReferenceFilterModel(m_self)}
     , m_functionReferenceFilter{new ScriptReferenceFilterModel(m_self)}
+    , m_formattingReferenceFilter{new ScriptReferenceFilterModel(m_self)}
     , m_commandReferenceFilter{new ScriptReferenceFilterModel(m_self)}
     , m_model{new ExpressionTreeModel(m_self)}
     , m_libraryEnvironment{libraryManager}
@@ -522,6 +549,7 @@ void ScriptEditorPrivate::setupConnections()
                                             QRegularExpression::CaseInsensitiveOption};
         m_variableReferenceFilter->setFilterRegularExpression(expression);
         m_functionReferenceFilter->setFilterRegularExpression(expression);
+        m_formattingReferenceFilter->setFilterRegularExpression(expression);
         m_commandReferenceFilter->setFilterRegularExpression(expression);
     });
     const auto connectReferenceTree = [this](QTreeView* tree) {
@@ -536,7 +564,8 @@ void ScriptEditorPrivate::setupConnections()
             m_editor->setFocus();
         });
     };
-    for(auto* tree : {m_variableReferenceTree, m_functionReferenceTree, m_commandReferenceTree}) {
+    for(auto* tree :
+        {m_variableReferenceTree, m_functionReferenceTree, m_formattingReferenceTree, m_commandReferenceTree}) {
         connectReferenceTree(tree);
     }
     QObject::connect(m_referenceTabs, &QTabWidget::currentChanged, m_self, [this](int index) {
@@ -581,7 +610,8 @@ void ScriptEditorPrivate::setupReference()
     const auto headers
         = QStringList{ScriptEditor::tr("Item"), ScriptEditor::tr("Category"), ScriptEditor::tr("Description")};
 
-    for(auto* model : {m_variableReferenceModel, m_functionReferenceModel, m_commandReferenceModel}) {
+    for(auto* model :
+        {m_variableReferenceModel, m_functionReferenceModel, m_formattingReferenceModel, m_commandReferenceModel}) {
         model->setHorizontalHeaderLabels(headers);
     }
 
@@ -612,6 +642,9 @@ void ScriptEditorPrivate::setupReference()
             case ScriptReferenceKind::Function:
                 appendRow(m_functionReferenceModel, entry);
                 break;
+            case ScriptReferenceKind::Formatting:
+                appendRow(m_formattingReferenceModel, entry);
+                break;
             case ScriptReferenceKind::CommandAlias:
                 appendRow(m_commandReferenceModel, entry);
                 break;
@@ -637,10 +670,12 @@ void ScriptEditorPrivate::setupReference()
 
     configureReferenceTree(m_variableReferenceTree, m_variableReferenceFilter, m_variableReferenceModel);
     configureReferenceTree(m_functionReferenceTree, m_functionReferenceFilter, m_functionReferenceModel);
+    configureReferenceTree(m_formattingReferenceTree, m_formattingReferenceFilter, m_formattingReferenceModel);
     configureReferenceTree(m_commandReferenceTree, m_commandReferenceFilter, m_commandReferenceModel);
 
     m_referenceTabs->addTab(m_variableReferenceTree, ScriptEditor::tr("Variables"));
     m_referenceTabs->addTab(m_functionReferenceTree, ScriptEditor::tr("Functions"));
+    m_referenceTabs->addTab(m_formattingReferenceTree, ScriptEditor::tr("Formatting"));
     m_referenceTabs->addTab(m_commandReferenceTree, ScriptEditor::tr("Commands"));
 
     m_referenceSearch->setPlaceholderText(ScriptEditor::tr("Filter"));

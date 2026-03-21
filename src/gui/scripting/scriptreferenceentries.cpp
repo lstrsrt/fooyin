@@ -65,6 +65,20 @@ Fooyin::ScriptReferenceEntry functionEntry(const char* name, QString signature, 
             .cursorOffset = 1};
 }
 
+Fooyin::ScriptReferenceEntry formattingEntry(const char* name, const char* signature, QString category,
+                                             QString description, int cursorOffset)
+{
+    const QString tagName = QString::fromLatin1(name);
+    const QString sig     = QString::fromLatin1(signature);
+
+    return {.kind         = Fooyin::ScriptReferenceKind::Formatting,
+            .label        = sig,
+            .insertText   = u"%1</%2>"_s.arg(sig, tagName),
+            .category     = std::move(category),
+            .description  = std::move(description),
+            .cursorOffset = cursorOffset};
+}
+
 Fooyin::ScriptReferenceEntry commandAliasEntry(const Fooyin::ScriptCommandAlias& alias)
 {
     return {
@@ -152,6 +166,19 @@ const std::vector<ScriptReferenceEntry>& scriptReferenceEntries()
         variableEntry("ispaused", tr("Playback"), tr("Returns 1 while playback is paused")),
         variableEntry("libraryname", tr("Library"), tr("Current library name")),
         variableEntry("librarypath", tr("Library"), tr("Current library path")),
+        formattingEntry("b", "<b>", tr("Style"), tr("Makes the enclosed text bold"), 4),
+        formattingEntry("i", "<i>", tr("Style"), tr("Makes the enclosed text italic"), 4),
+        formattingEntry("font", "<font=sans>", tr("Style"), tr("Sets the font family for the enclosed text"), 7),
+        formattingEntry("size", "<size=12>", tr("Style"), tr("Sets the font size in points"), 7),
+        formattingEntry("sized", "<sized=2>", tr("Style"),
+                        tr("Adjusts the current font size by a positive or negative delta"), 8),
+        formattingEntry("alpha", "<alpha=180>", tr("Colour"), tr("Sets the text alpha channel from 0 to 255"), 8),
+        formattingEntry("rgb", "<rgb=255,0,0>", tr("Colour"),
+                        tr("Sets the text colour from red, green and blue components"), 6),
+        formattingEntry("rgba", "<rgba=255,0,0,255>", tr("Colour"),
+                        tr("Sets the text colour from red, green, blue, and alpha components"), 7),
+        formattingEntry("color", "<color=red>", tr("Colour"),
+                        tr("Sets the text colour from a named colour or hex code"), 8),
         functionEntry("add", u"$add(a,b,...)"_s, tr("Adds numeric arguments")),
         functionEntry("sub", u"$sub(a,b,...)"_s, tr("Subtracts later values from the first")),
         functionEntry("mul", u"$mul(a,b,...)"_s, tr("Multiplies numeric arguments")),
