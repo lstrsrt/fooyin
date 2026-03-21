@@ -248,6 +248,11 @@ public:
     Expression checkOperator(const Expression& expr);
     Expression normaliseQueryField(Expression field) const;
 
+    // Handle formatting in function args
+    bool hasClosingAngleBeforeArgEnd(int startDelta = 1);
+    Expression consumeAngleLiteral(bool escaped);
+    Expression consumeEscapedAngleLiteral();
+
     void reset();
 
     ScriptParser* m_self;
@@ -512,6 +517,18 @@ Expression ScriptParserPrivate::functionArgs()
 
     while(!currentToken(TokenType::TokComma) && !currentToken(TokenType::TokRightParen)
           && !currentToken(TokenType::TokEos)) {
+        if(currentToken(TokenType::TokEscape) && m_scanner.peekNext().type == TokenType::TokLeftAngle) {
+            const bool hasClosing    = hasClosingAngleBeforeArgEnd(2);
+            const Expression argExpr = hasClosing ? consumeAngleLiteral(true) : consumeEscapedAngleLiteral();
+            funcExpr.emplace_back(argExpr);
+            continue;
+        }
+
+        if(currentToken(TokenType::TokLeftAngle) && hasClosingAngleBeforeArgEnd()) {
+            funcExpr.emplace_back(consumeAngleLiteral(false));
+            continue;
+        }
+
         const Expression argExpr = expression();
         if(argExpr.type != Expr::Null) {
             funcExpr.emplace_back(argExpr);
@@ -519,6 +536,84 @@ Expression ScriptParserPrivate::functionArgs()
     }
 
     expr.value = funcExpr;
+    return expr;
+}
+
+bool ScriptParserPrivate::hasClosingAngleBeforeArgEnd(int startDelta)
+{
+    bool inQuote{false};
+
+    for(int delta{startDelta};; ++delta) {
+        const auto token = m_scanner.peekNext(delta);
+        switch(token.type) {
+            case TokenType::TokQuote:
+                inQuote = !inQuote;
+                break;
+            case TokenType::TokRightAngle:
+                if(!inQuote) {
+                    return true;
+                }
+                break;
+            case TokenType::TokRightParen:
+            case TokenType::TokRightSquare:
+            case TokenType::TokEos:
+                if(!inQuote) {
+                    return false;
+                }
+                break;
+            case TokenType::TokError:
+                return false;
+            default:
+                break;
+        }
+    }
+}
+
+Expression ScriptParserPrivate::consumeAngleLiteral(bool escaped)
+{
+    Expression expr{Expr::Literal};
+    QString value;
+
+    if(escaped && currentToken(TokenType::TokEscape)) {
+        advance();
+        value.append(m_previous.value);
+    }
+
+    if(currentToken(TokenType::TokLeftAngle)) {
+        advance();
+        value.append(m_previous.value);
+    }
+
+    while(!currentToken(TokenType::TokRightAngle) && !currentToken(TokenType::TokEos)) {
+        advance();
+        value.append(m_previous.value);
+    }
+
+    if(currentToken(TokenType::TokRightAngle)) {
+        advance();
+        value.append(m_previous.value);
+    }
+
+    expr.value = value;
+    return expr;
+}
+
+Expression ScriptParserPrivate::consumeEscapedAngleLiteral()
+{
+    Expression expr{Expr::Literal};
+    QString value;
+
+    if(currentToken(TokenType::TokEscape)) {
+        advance();
+        value.append(m_previous.value);
+    }
+
+    if(currentToken(TokenType::TokLeftAngle)) {
+        advance();
+        value.append(m_previous.value);
+    }
+
+    expr.value = value;
     return expr;
 }
 

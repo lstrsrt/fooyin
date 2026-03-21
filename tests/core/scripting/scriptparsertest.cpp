@@ -419,6 +419,10 @@ TEST_F(ScriptParserTest, ConditionalTest)
     EXPECT_EQ(u"true", m_parser.evaluate(QStringLiteral("[$ifequal(1,1,true,false)]")));
     EXPECT_EQ(u"true", m_parser.evaluate(QStringLiteral("[$ifgreater(5,3,true,false)]")));
     EXPECT_EQ(u"true", m_parser.evaluate(QStringLiteral("[$iflonger(aaa,2,true,false)]")));
+    EXPECT_EQ(u"<A", m_parser.evaluate(QStringLiteral("$if(1,<A,X)")));
+    EXPECT_EQ(u"<rgb=255,0,0>A", m_parser.evaluate(QStringLiteral("$if(1,<rgb=255,0,0>A,X)")));
+    EXPECT_EQ(u"\\<A", m_parser.evaluate(QStringLiteral("$if(1,\\<A,X)")));
+    EXPECT_EQ(u"\\<rgb=255,0,0>", m_parser.evaluate(QStringLiteral("$if(1,\\<rgb=255,0,0>,X)")));
 }
 
 TEST_F(ScriptParserTest, MetadataTest)

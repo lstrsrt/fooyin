@@ -56,6 +56,13 @@ TEST_F(ScriptFormatterTest, Rgb)
     EXPECT_EQ(255, result.blocks.front().format.colour.red());
 }
 
+TEST_F(ScriptFormatterTest, EscapedLeftAngle)
+{
+    const auto result = m_formattter.evaluate(QStringLiteral("\\<A"));
+    ASSERT_EQ(1, result.size());
+    EXPECT_EQ(QStringLiteral("<A"), result.blocks.front().text);
+}
+
 TEST_F(ScriptFormatterTest, Link)
 {
     const auto result = m_formattter.evaluate(QStringLiteral("<a href=\"https://example.com\">Example</a>"));
