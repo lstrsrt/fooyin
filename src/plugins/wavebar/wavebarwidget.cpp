@@ -90,12 +90,7 @@ WaveBarWidget::WaveBarWidget(std::shared_ptr<AudioLoader> audioLoader, DbConnect
 
     QObject::connect(playerController, &PlayerController::positionChanged, m_seekbar, &WaveSeekBar::setPosition);
     QObject::connect(playerController, &PlayerController::playStateChanged, m_seekbar, &WaveSeekBar::setPlayState);
-    QObject::connect(m_seekbar, &WaveSeekBar::sliderMoved, playerController, [this](uint64_t pos) {
-        m_playerController->seek(pos);
-        if(m_playerController->playState() == Player::PlayState::Stopped) {
-            m_playerController->play();
-        }
-    });
+    QObject::connect(m_seekbar, &WaveSeekBar::sliderMoved, playerController, &PlayerController::seek);
     QObject::connect(m_seekbar, &WaveSeekBar::seekForward, playerController,
                      [this]() { m_playerController->seekForward(m_settings->value<Settings::Gui::SeekStepSmall>()); });
     QObject::connect(m_seekbar, &WaveSeekBar::seekBackward, playerController,
