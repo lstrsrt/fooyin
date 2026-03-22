@@ -510,12 +510,14 @@ std::unique_ptr<ArchiveReader> AudioLoader::archiveReaderForFile(const QString& 
 
 bool AudioLoader::readTrackMetadata(Track& track) const
 {
-    bool readersFound = false;
-    for(auto& reader : readersForTrack(track)) {
-        readersFound = true;
+    const Track originalTrack{track};
+
+    const auto readers = readersForTrack(track);
+    for(const auto& reader : readers) {
         AudioSource source;
         source.filepath = track.filepath();
         QFile file{track.filepath()};
+
         if(!track.isInArchive()) {
             if(!file.open(QIODevice::ReadOnly)) {
                 qCWarning(AUD_LDR) << "Failed to open file:" << source.filepath;
@@ -524,16 +526,19 @@ bool AudioLoader::readTrackMetadata(Track& track) const
             source.device = &file;
         }
 
-        if(reader->init(source)) {
-            if(reader->readTrack(source, track)) {
-                track.setMetadataWasRead(true);
-                return true;
-            }
-            return false;
+        if(!reader->init(source)) {
+            continue;
+        }
+
+        Track readTrack{originalTrack};
+        if(reader->readTrack(source, readTrack)) {
+            readTrack.setMetadataWasRead(true);
+            track = readTrack;
+            return true;
         }
     }
 
-    if(!readersFound) {
+    if(readers.empty()) {
         qCInfo(AUD_LDR) << "Tag reader not available for file:" << track.filepath();
         return {};
     }
@@ -543,7 +548,8 @@ bool AudioLoader::readTrackMetadata(Track& track) const
 
 QByteArray AudioLoader::readTrackCover(const Track& track, Track::Cover cover) const
 {
-    for(auto& reader : readersForTrack(track)) {
+    const auto readers = readersForTrack(track);
+    for(const auto& reader : readers) {
         if(!track.isInArchive() && !reader->canReadCover()) {
             continue;
         }
@@ -551,6 +557,7 @@ QByteArray AudioLoader::readTrackCover(const Track& track, Track::Cover cover) c
         AudioSource source;
         source.filepath = track.filepath();
         QFile file{track.filepath()};
+
         if(!track.isInArchive()) {
             if(!file.open(QIODevice::ReadOnly)) {
                 return {};
@@ -572,7 +579,8 @@ bool AudioLoader::writeTrackMetadata(const Track& track, AudioReader::WriteOptio
         return false;
     }
 
-    for(auto& reader : readersForTrack(track)) {
+    const auto readers = readersForTrack(track);
+    for(const auto& reader : readers) {
         if(!reader->canWriteMetaData()) {
             continue;
         }
@@ -607,7 +615,8 @@ bool AudioLoader::writeTrackCover(const Track& track, const TrackCovers& coverDa
         return false;
     }
 
-    for(auto& reader : readersForTrack(track)) {
+    const auto readers = readersForTrack(track);
+    for(const auto& reader : readers) {
         if(!reader->canWriteCover()) {
             continue;
         }
@@ -615,6 +624,7 @@ bool AudioLoader::writeTrackCover(const Track& track, const TrackCovers& coverDa
         AudioSource source;
         source.filepath = track.filepath();
         QFile file{track.filepath()};
+
         if(!file.open(QIODeviceBase::ReadWrite)) {
             qCWarning(AUD_LDR) << "Failed to open file:" << source.filepath;
             return false;

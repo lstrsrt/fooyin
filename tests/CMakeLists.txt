@@ -18,6 +18,7 @@ function(fooyin_add_test name)
 endfunction()
 
 fooyin_add_test(test_audioconverter core/engine/audioconvertertest.cpp)
+fooyin_add_test(test_audioloader core/engine/audioloadertest.cpp)
 fooyin_add_test(test_audioengine core/engine/audioenginetest.cpp)
 fooyin_add_test(test_audiomixer core/engine/audiomixertest.cpp)
 fooyin_add_test(test_audiopipeline core/engine/audiopipelinetest.cpp)
