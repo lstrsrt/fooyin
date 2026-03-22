@@ -272,6 +272,7 @@ private:
     [[nodiscard]] uint64_t beginTransportTransition();
     void clearTransportTransition();
     [[nodiscard]] uint64_t nextTransitionId();
+    void refreshVbrUpdateTimer();
     void setupSettings();
     void reconfigureActiveStreamBuffering(uint64_t positionMs);
     void updatePlaybackState(Engine::PlaybackState state);
@@ -399,6 +400,9 @@ private:
 
     AudioClock m_audioClock;
     int m_lastReportedBitrate;
+    int m_vbrUpdateIntervalMs;
+    std::chrono::steady_clock::time_point m_lastVbrUpdateAt;
+    int m_vbrUpdateTimerId;
     NextTrackPrepareWorker m_nextTrackPrepareWorker;
     PositionCoordinator m_positionCoordinator;
 

@@ -129,9 +129,28 @@ QString getCodec(AVCodecID codec)
 bool isLossless(AVCodecID codec)
 {
     switch(codec) {
-        case(AV_CODEC_ID_ALAC):
-        case(AV_CODEC_ID_WAVPACK):
-        case(AV_CODEC_ID_FLAC):
+        case AV_CODEC_ID_ALAC:
+        case AV_CODEC_ID_WAVPACK:
+        case AV_CODEC_ID_FLAC:
+            return true;
+        default:
+            return false;
+    }
+}
+
+bool canBeVBR(const Fooyin::Track& track, AVCodecID codec)
+{
+    if(track.codecProfile().contains("VBR"_L1) || track.codecProfile().contains("ABR"_L1)) {
+        return true;
+    }
+
+    switch(codec) {
+        case AV_CODEC_ID_AAC: // Assume AAC is always VBR
+        case AV_CODEC_ID_ALAC:
+        case AV_CODEC_ID_FLAC:
+        case AV_CODEC_ID_OPUS:
+        case AV_CODEC_ID_VORBIS:
+        case AV_CODEC_ID_WAVPACK:
             return true;
         default:
             return false;
@@ -509,8 +528,7 @@ bool FFmpegInputPrivate::setup(const AudioSource& source)
 void FFmpegInputPrivate::checkIsVbr(const Track& track)
 {
     const auto codec = m_codec.context()->codec_id;
-    m_isVbr          = track.codecProfile().contains("VBR"_L1) || track.codecProfile().contains("ABR"_L1)
-                    || codec == AV_CODEC_ID_OPUS || codec == AV_CODEC_ID_VORBIS;
+    m_isVbr          = canBeVBR(track, codec);
 }
 
 bool FFmpegInputPrivate::createCodec(AVStream* avStream)
@@ -707,9 +725,9 @@ void FFmpegInputPrivate::readNext()
                                                                   AVRounding::AV_ROUND_NEAR_INF))
                            / static_cast<double>(AV_TIME_BASE);
         if(durSecs > 0) {
-            const int bitrate = static_cast<int>((packet->size * 8) / durSecs);
+            const int bitrate = static_cast<int>((packet->size * 8) / durSecs) / 1000;
             if(bitrate > 0) {
-                m_bitrate = bitrate / 1000;
+                m_bitrate = bitrate;
             }
         }
     }

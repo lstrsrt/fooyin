@@ -76,6 +76,8 @@ constexpr auto AudiblePauseDrainThresholdMs = 5;
 constexpr auto AudiblePauseWatchdogMinMs    = 250;
 constexpr auto AudiblePauseWatchdogMaxMs    = 1500;
 constexpr auto AudiblePauseWatchdogMarginMs = 100;
+constexpr auto MinLiveBitrateKbps           = 8;
+constexpr auto LiveBitrateWindowMs          = 1000;
 
 std::pair<double, double> sanitiseWatermarkRatios(double lowRatio, double highRatio)
 {
@@ -292,6 +294,8 @@ AudioEngine::AudioEngine(std::shared_ptr<AudioLoader> audioLoader, SettingsManag
           m_settings->value<Settings::Core::Internal::CrossfadeSwitchPolicy>())}
     , m_audioClock{this}
     , m_lastReportedBitrate{0}
+    , m_vbrUpdateIntervalMs{std::max(0, m_settings->value<Settings::Core::Internal::VBRUpdateInterval>())}
+    , m_vbrUpdateTimerId{0}
     , m_lastAppliedSeekRequestId{0}
     , m_positionContextTrackGeneration{0}
     , m_positionContextTimelineEpoch{0}
@@ -346,6 +350,10 @@ AudioEngine::AudioEngine(std::shared_ptr<AudioLoader> audioLoader, SettingsManag
 
 void AudioEngine::beginShutdown()
 {
+    if(m_vbrUpdateTimerId != 0) {
+        killTimer(m_vbrUpdateTimerId);
+        m_vbrUpdateTimerId = 0;
+    }
     m_pipelineWakeTaskQueued.store(false, std::memory_order_relaxed);
     m_engineTaskQueue.beginShutdown();
 }
@@ -1040,7 +1048,7 @@ void AudioEngine::syncDecoderTrackMetadata()
 
     m_currentTrack = changedTrack;
     setStreamToTrackOriginForTrack(changedTrack);
-    if(changedTrack.bitrate() > 0) {
+    if(changedTrack.bitrate() >= MinLiveBitrateKbps) {
         publishBitrate(changedTrack.bitrate());
     }
     emit trackChanged(changedTrack);
@@ -1063,9 +1071,24 @@ void AudioEngine::syncDecoderBitrate()
         return;
     }
 
-    const int decoderBitrate = m_decoder.bitrate();
-    if(decoderBitrate > 0) {
-        publishBitrate(decoderBitrate);
+    if(m_vbrUpdateIntervalMs <= 0) {
+        return;
+    }
+
+    int bitrate{0};
+    if(const auto stream = m_decoder.activeStream()) {
+        bitrate = stream->audibleWindowBitrate(LiveBitrateWindowMs);
+    }
+
+    if(bitrate >= MinLiveBitrateKbps) {
+        const auto now = std::chrono::steady_clock::now();
+        if(m_lastVbrUpdateAt != std::chrono::steady_clock::time_point{}
+           && (now - m_lastVbrUpdateAt) < std::chrono::milliseconds{m_vbrUpdateIntervalMs}) {
+            return;
+        }
+
+        m_lastVbrUpdateAt = now;
+        publishBitrate(bitrate);
     }
 }
 
@@ -2040,6 +2063,11 @@ void AudioEngine::updatePosition()
 
 void AudioEngine::handleTimerTick(int timerId)
 {
+    if(timerId == m_vbrUpdateTimerId) {
+        syncDecoderBitrate();
+        return;
+    }
+
     if(auto decodeResult = m_decoder.handleTimer(timerId, m_transitions.isSeekInProgress())) {
         syncDecoderTrackMetadata();
         syncDecoderBitrate();
@@ -2181,6 +2209,26 @@ uint64_t AudioEngine::nextTransitionId()
     return id;
 }
 
+void AudioEngine::refreshVbrUpdateTimer()
+{
+    const bool shouldRun = m_vbrUpdateIntervalMs > 0 && playbackState() == Engine::PlaybackState::Playing
+                        && m_decoder.isValid() && m_decoder.activeStream();
+
+    if(!shouldRun) {
+        if(m_vbrUpdateTimerId != 0) {
+            killTimer(m_vbrUpdateTimerId);
+            m_vbrUpdateTimerId = 0;
+        }
+        return;
+    }
+
+    if(m_vbrUpdateTimerId != 0) {
+        killTimer(m_vbrUpdateTimerId);
+    }
+
+    m_vbrUpdateTimerId = startTimer(m_vbrUpdateIntervalMs, Qt::PreciseTimer);
+}
+
 void AudioEngine::setupSettings()
 {
     const auto updateFadeDurations = [this]() {
@@ -2241,6 +2289,14 @@ void AudioEngine::setupSettings()
             m_decodeHighWatermarkRatio = ratio;
             updateDecodeWatermarks();
         });
+    m_settings->subscribe<Settings::Core::Internal::VBRUpdateInterval>(this, [this](int intervalMs) {
+        m_vbrUpdateIntervalMs = std::max(0, intervalMs);
+        m_lastVbrUpdateAt     = {};
+        refreshVbrUpdateTimer();
+        if(m_vbrUpdateIntervalMs <= 0) {
+            publishBitrate(m_currentTrack.bitrate());
+        }
+    });
 
     m_replayGainSharedSettings           = ReplayGainProcessor::makeSharedSettings();
     const auto refreshReplayGainSettings = [this]() {
@@ -2324,6 +2380,8 @@ void AudioEngine::updatePlaybackState(Engine::PlaybackState state)
         }
         emit stateChanged(state);
     }
+
+    refreshVbrUpdateTimer();
 }
 
 void AudioEngine::updateTrackStatus(Engine::TrackStatus status, bool flushDspOnEnd)
@@ -2613,12 +2671,14 @@ void AudioEngine::setCurrentTrackContext(const Engine::PlaybackItem& item)
     m_currentTrackItemId = item.itemId;
     ++m_trackGeneration;
     m_lastAppliedSeekRequestId = 0;
+    m_lastVbrUpdateAt          = {};
     m_positionCoordinator.resetContinuity();
     clearAutoAdvanceState();
     clearPendingAudibleTrackCommit();
 
     updatePositionContext(m_pipeline.currentStatus().timelineEpoch);
     publishBitrate(item.track.bitrate());
+    refreshVbrUpdateTimer();
 }
 
 void AudioEngine::setStreamToTrackOriginForTrack(const Track& track)

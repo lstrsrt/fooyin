@@ -153,6 +153,7 @@ void AudioStream::resetEndOfInput()
 void AudioStream::setPosition(uint64_t pos)
 {
     m_position.store(pos, std::memory_order_relaxed);
+    clearBitrateSpans();
 }
 
 int AudioStream::read(double* output, int frames)
@@ -267,6 +268,87 @@ uint64_t AudioStream::bufferedDurationMs() const
     return (frames * 1000) / rate;
 }
 
+int AudioStream::audibleWindowBitrate(int windowMs) const
+{
+    if(windowMs <= 0) {
+        return 0;
+    }
+
+    const uint64_t currentSample{position()};
+    const uint64_t windowSamples   = (static_cast<uint64_t>(windowMs) * static_cast<uint64_t>(sampleRate())
+                                      * static_cast<uint64_t>(channelCount()))
+                                   / 1000ULL;
+    const uint64_t windowEndSample = currentSample + std::max<uint64_t>(1, windowSamples);
+
+    const std::scoped_lock lock{m_bitrateMutex};
+    // Trim already audible spans
+    // This query is the only reader of span history, so cleanup here avoids a separate pass
+    trimConsumedBitrateSpans(currentSample);
+
+    uint64_t weightedSamples{0};
+    uint64_t weightedBitrateSum{0};
+    for(const auto& span : m_bitrateSpans) {
+        if(span.endSample <= currentSample) {
+            continue;
+        }
+        if(span.startSample >= windowEndSample) {
+            break;
+        }
+
+        const uint64_t overlapStart = std::max(currentSample, span.startSample);
+        const uint64_t overlapEnd   = std::min(windowEndSample, span.endSample);
+        if(overlapEnd <= overlapStart) {
+            continue;
+        }
+
+        const uint64_t overlapSamples = overlapEnd - overlapStart;
+        weightedSamples += overlapSamples;
+        weightedBitrateSum += overlapSamples * static_cast<uint64_t>(std::max(0, span.bitrate));
+    }
+
+    if(weightedSamples == 0) {
+        return 0;
+    }
+
+    return static_cast<int>(
+        std::llround(static_cast<long double>(weightedBitrateSum) / static_cast<long double>(weightedSamples)));
+}
+
+void AudioStream::appendBitrateSpan(uint64_t startSample, uint64_t endSample, int bitrate)
+{
+    if(bitrate <= 0 || endSample <= startSample) {
+        return;
+    }
+
+    const std::scoped_lock lock{m_bitrateMutex};
+    trimConsumedBitrateSpans(position());
+
+    while(!m_bitrateSpans.empty() && m_bitrateSpans.back().endSample > startSample) {
+        m_bitrateSpans.pop_back();
+    }
+
+    if(!m_bitrateSpans.empty() && m_bitrateSpans.back().endSample == startSample
+       && m_bitrateSpans.back().bitrate == bitrate) {
+        m_bitrateSpans.back().endSample = endSample;
+        return;
+    }
+
+    m_bitrateSpans.push_back({.startSample = startSample, .endSample = endSample, .bitrate = bitrate});
+}
+
+void AudioStream::clearBitrateSpans()
+{
+    const std::scoped_lock lock{m_bitrateMutex};
+    m_bitrateSpans.clear();
+}
+
+void AudioStream::trimConsumedBitrateSpans(uint64_t currentSample) const
+{
+    while(!m_bitrateSpans.empty() && m_bitrateSpans.front().endSample <= currentSample) {
+        m_bitrateSpans.pop_front();
+    }
+}
+
 void AudioStream::handleCommand(Command cmd, int param)
 {
     switch(cmd) {
@@ -339,6 +421,7 @@ void AudioStream::resetBufferForSeek()
     reader.requestReset();
 
     m_endOfInput.store(false, std::memory_order_relaxed);
+    clearBitrateSpans();
 }
 
 StreamId StreamRegistry::registerStream(AudioStreamPtr stream)

@@ -48,6 +48,7 @@ struct DecoderStats
 {
     std::atomic<int> initCalls{0};
     std::atomic<int> seekCalls{0};
+    std::atomic<int> bitrate{320};
 };
 
 struct OutputStats
@@ -213,7 +214,7 @@ public:
 
     [[nodiscard]] int bitrate() const override
     {
-        return 320;
+        return m_stats->bitrate.load(std::memory_order_relaxed);
     }
 
     std::optional<AudioFormat> init(const AudioSource& source, const Track& track, DecoderOptions options) override
@@ -755,6 +756,157 @@ TEST(AudioEngineTest, SeekWithRequestFromStoppedLoadsTrackAndStartsPlayback)
         [&harness, seekCallsBefore]() { return harness.decoderStats->seekCalls.load() > seekCallsBefore; }, 3000ms));
     ASSERT_TRUE(pumpUntil([&appliedRequestIds]() { return !appliedRequestIds.empty(); }, 3000ms));
     EXPECT_EQ(appliedRequestIds.back(), 42U);
+}
+
+TEST(AudioEngineTest, AudioStreamBitrateSpansAdvanceWithPlaybackPosition)
+{
+    const AudioFormat format{SampleFormat::F64, 1000, 2};
+    auto stream = StreamFactory::createStream(format, 8000);
+    ASSERT_TRUE(stream);
+
+    std::vector<double> samples(4000, 0.1);
+    auto writer = stream->writer();
+    ASSERT_EQ(writer.write(samples.data(), samples.size()), samples.size());
+
+    stream->appendBitrateSpan(0, 2000, 192);
+    stream->appendBitrateSpan(2000, 4000, 256);
+
+    EXPECT_EQ(stream->audibleWindowBitrate(1000), 192);
+
+    std::vector<double> output(2000, 0.0);
+    EXPECT_EQ(stream->read(output.data(), 1000), 1000);
+    EXPECT_EQ(stream->audibleWindowBitrate(1000), 256);
+}
+
+TEST(AudioEngineTest, AudioStreamRollingBitrateSmoothsShortOutliers)
+{
+    const AudioFormat format{SampleFormat::F64, 1000, 2};
+    auto stream = StreamFactory::createStream(format, 8000);
+    ASSERT_TRUE(stream);
+
+    stream->appendBitrateSpan(0, 20, 2);
+    stream->appendBitrateSpan(20, 2000, 192);
+
+    EXPECT_GE(stream->audibleWindowBitrate(1000), 180);
+}
+
+TEST(AudioEngineTest, ZeroVbrIntervalDisablesLiveBitrateUpdates)
+{
+    ensureCoreApplication();
+    QTemporaryDir tempDir;
+    SettingsManager settings{tempDir.filePath(u"settings.ini"_s)};
+    registerMinimalEngineSettings(settings, false, false);
+
+    auto decoderStats = std::make_shared<DecoderStats>();
+    auto outputStats  = std::make_shared<OutputStats>();
+    auto loader       = std::make_shared<AudioLoader>();
+    DspRegistry registry;
+    AudioEngine engine{loader, &settings, &registry};
+
+    loader->addDecoder(u"FakeDecoder"_s, [stats = decoderStats]() { return std::make_unique<FakeDecoder>(stats); });
+    engine.setAudioOutput([stats = outputStats]() { return std::make_unique<FakeAudioOutput>(stats); }, QString{});
+
+    settings.set<Settings::Core::Internal::VBRUpdateInterval>(0);
+    decoderStats->bitrate.store(192, std::memory_order_relaxed);
+
+    Track track = makeTrack(createDummyAudioFile(tempDir, u"vbr-disabled.fyt"_s), 0, 120000);
+    track.setBitrate(0);
+
+    std::vector<int> updates;
+    const auto bitrateConn = QObject::connect(&engine, &AudioEngine::bitrateChanged, &engine,
+                                              [&updates](int bitrate) { updates.push_back(bitrate); });
+
+    engine.loadTrack(makePlaybackItem(track, 1), false);
+    ASSERT_TRUE(pumpUntil([&engine]() { return engine.trackStatus() == Engine::TrackStatus::Loaded; }));
+
+    engine.play();
+    ASSERT_TRUE(pumpUntil([&engine]() { return engine.playbackState() == Engine::PlaybackState::Playing; }));
+
+    std::this_thread::sleep_for(150ms);
+    QCoreApplication::processEvents(QEventLoop::AllEvents, 10);
+
+    EXPECT_TRUE(updates.empty());
+    QObject::disconnect(bitrateConn);
+    engine.stopImmediate();
+}
+
+TEST(AudioEngineTest, PositiveVbrIntervalAllowsLiveBitrateUpdates)
+{
+    ensureCoreApplication();
+    QTemporaryDir tempDir;
+    SettingsManager settings{tempDir.filePath(u"settings.ini"_s)};
+    registerMinimalEngineSettings(settings, false, false);
+
+    auto decoderStats = std::make_shared<DecoderStats>();
+    auto outputStats  = std::make_shared<OutputStats>();
+    auto loader       = std::make_shared<AudioLoader>();
+    DspRegistry registry;
+    AudioEngine engine{loader, &settings, &registry};
+
+    loader->addDecoder(u"FakeDecoder"_s, [stats = decoderStats]() { return std::make_unique<FakeDecoder>(stats); });
+    engine.setAudioOutput([stats = outputStats]() { return std::make_unique<FakeAudioOutput>(stats); }, QString{});
+
+    settings.set<Settings::Core::Internal::VBRUpdateInterval>(1);
+    decoderStats->bitrate.store(192, std::memory_order_relaxed);
+
+    Track track = makeTrack(createDummyAudioFile(tempDir, u"vbr-enabled.fyt"_s), 0, 120000);
+    track.setBitrate(0);
+
+    std::vector<int> updates;
+    const auto bitrateConn = QObject::connect(&engine, &AudioEngine::bitrateChanged, &engine,
+                                              [&updates](int bitrate) { updates.push_back(bitrate); });
+
+    engine.loadTrack(makePlaybackItem(track, 1), false);
+    ASSERT_TRUE(pumpUntil([&engine]() { return engine.trackStatus() == Engine::TrackStatus::Loaded; }));
+
+    engine.play();
+    ASSERT_TRUE(pumpUntil([&engine]() { return engine.playbackState() == Engine::PlaybackState::Playing; }));
+
+    ASSERT_TRUE(pumpUntil([&updates]() { return !updates.empty(); }, 1000ms));
+    EXPECT_EQ(updates.back(), 192);
+    QObject::disconnect(bitrateConn);
+    engine.stopImmediate();
+}
+
+TEST(AudioEngineTest, DisablingVbrUpdatesRestoresStaticTrackBitrate)
+{
+    ensureCoreApplication();
+    QTemporaryDir tempDir;
+    SettingsManager settings{tempDir.filePath(u"settings.ini"_s)};
+    registerMinimalEngineSettings(settings, false, false);
+
+    auto decoderStats = std::make_shared<DecoderStats>();
+    auto outputStats  = std::make_shared<OutputStats>();
+    auto loader       = std::make_shared<AudioLoader>();
+    DspRegistry registry;
+    AudioEngine engine{loader, &settings, &registry};
+
+    loader->addDecoder(u"FakeDecoder"_s, [stats = decoderStats]() { return std::make_unique<FakeDecoder>(stats); });
+    engine.setAudioOutput([stats = outputStats]() { return std::make_unique<FakeAudioOutput>(stats); }, QString{});
+
+    settings.set<Settings::Core::Internal::VBRUpdateInterval>(1);
+    decoderStats->bitrate.store(192, std::memory_order_relaxed);
+
+    Track track = makeTrack(createDummyAudioFile(tempDir, u"vbr-disable-restores-static.fyt"_s), 0, 120000);
+    track.setBitrate(320);
+
+    std::vector<int> updates;
+    const auto bitrateConn = QObject::connect(&engine, &AudioEngine::bitrateChanged, &engine,
+                                              [&updates](int bitrate) { updates.push_back(bitrate); });
+
+    engine.loadTrack(makePlaybackItem(track, 1), false);
+    ASSERT_TRUE(pumpUntil([&engine]() { return engine.trackStatus() == Engine::TrackStatus::Loaded; }));
+
+    engine.play();
+    ASSERT_TRUE(pumpUntil([&engine]() { return engine.playbackState() == Engine::PlaybackState::Playing; }));
+
+    ASSERT_TRUE(pumpUntil([&updates]() { return !updates.empty() && updates.back() == 192; }, 1000ms));
+
+    settings.set<Settings::Core::Internal::VBRUpdateInterval>(0);
+    ASSERT_TRUE(pumpUntil([&updates]() { return !updates.empty() && updates.back() == 320; }, 1000ms));
+
+    QObject::disconnect(bitrateConn);
+    engine.stopImmediate();
 }
 
 TEST(AudioEngineTest, PrepareNextTrackInvalidTrackEmitsNotReady)

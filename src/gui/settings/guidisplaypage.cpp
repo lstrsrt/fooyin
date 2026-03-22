@@ -62,7 +62,6 @@ private:
     QRadioButton* m_systemTheme;
 
     ScriptLineEdit* m_titleScript;
-    QSpinBox* m_vbrInterval;
 
     QRadioButton* m_preferPlaying;
     QRadioButton* m_preferSelection;
@@ -79,7 +78,6 @@ GuiDisplayPageWidget::GuiDisplayPageWidget(SettingsManager* settings)
     , m_darkTheme{new QRadioButton(tr("Dark"), this)}
     , m_systemTheme{new QRadioButton(tr("Use system icons"), this)}
     , m_titleScript{new ScriptLineEdit(this)}
-    , m_vbrInterval{new QSpinBox(this)}
     , m_preferPlaying{new QRadioButton(tr("Prefer currently playing track"), this)}
     , m_preferSelection{new QRadioButton(tr("Prefer current selection"), this)}
     , m_starRatingSize{new QSpinBox(this)}
@@ -107,15 +105,9 @@ GuiDisplayPageWidget::GuiDisplayPageWidget(SettingsManager* settings)
     auto* nowPlayingGroup       = new QGroupBox(tr("Now Playing"), this);
     auto* nowPlayingGroupLayout = new QGridLayout(nowPlayingGroup);
 
-    m_vbrInterval->setRange(100, 300000);
-    m_vbrInterval->setSingleStep(250);
-    m_vbrInterval->setSuffix(u" ms"_s);
-
     row = 0;
     nowPlayingGroupLayout->addWidget(new QLabel(tr("Window title") + u":"_s, this), row, 0);
     nowPlayingGroupLayout->addWidget(m_titleScript, row++, 1, 1, 2);
-    nowPlayingGroupLayout->addWidget(new QLabel(tr("VBR update interval") + u":"_s, this), row, 0);
-    nowPlayingGroupLayout->addWidget(m_vbrInterval, row++, 1);
     nowPlayingGroupLayout->setColumnStretch(2, 1);
 
     auto* infoGroupBox       = new QGroupBox(tr("Information Display"), this);
@@ -194,7 +186,6 @@ void GuiDisplayPageWidget::load()
     }
 
     m_titleScript->setText(m_settings->value<WindowTitleTrackScript>());
-    m_vbrInterval->setValue(m_settings->value<Settings::Core::Internal::VBRUpdateInterval>());
 
     const auto option = static_cast<SelectionDisplay>(m_settings->value<InfoDisplayPrefer>());
     if(option == SelectionDisplay::PreferPlaying) {
@@ -228,7 +219,6 @@ void GuiDisplayPageWidget::apply()
     m_settings->set<IconTheme>(static_cast<int>(iconThemeOption));
 
     m_settings->set<WindowTitleTrackScript>(m_titleScript->text());
-    m_settings->set<Settings::Core::Internal::VBRUpdateInterval>(m_vbrInterval->value());
 
     const SelectionDisplay option
         = m_preferPlaying->isChecked() ? SelectionDisplay::PreferPlaying : SelectionDisplay::PreferSelection;
@@ -243,7 +233,6 @@ void GuiDisplayPageWidget::reset()
     m_settings->reset<Style>();
     m_settings->reset<IconTheme>();
     m_settings->reset<WindowTitleTrackScript>();
-    m_settings->reset<Settings::Core::Internal::VBRUpdateInterval>();
     m_settings->reset<InfoDisplayPrefer>();
     m_settings->reset<StarRatingSize>();
     m_settings->reset<ImageAllocationLimit>();

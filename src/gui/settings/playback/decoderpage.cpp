@@ -24,6 +24,7 @@
 #include <core/engine/audioloader.h>
 #include <core/internalcoresettings.h>
 #include <gui/guiconstants.h>
+#include <gui/widgets/specialvaluespinbox.h>
 #include <utils/settings/settingsmanager.h>
 
 #include <QCheckBox>
@@ -79,6 +80,7 @@ private:
     DecoderModel* m_readerModel;
 
     QCheckBox* m_ffmpegAllExts;
+    SpecialValueSpinBox* m_vbrInterval;
 };
 
 DecoderPageWidget::DecoderPageWidget(AudioLoader* audioLoader, SettingsManager* settings)
@@ -89,6 +91,7 @@ DecoderPageWidget::DecoderPageWidget(AudioLoader* audioLoader, SettingsManager* 
     , m_readerList{new QListView(this)}
     , m_readerModel{new DecoderModel(this)}
     , m_ffmpegAllExts{new QCheckBox(tr("Enable all supported extensions"), this)}
+    , m_vbrInterval{new SpecialValueSpinBox(this)}
 {
     auto setupModel = [](QAbstractItemView* view) {
         view->setDragDropMode(QAbstractItemView::InternalMove);
@@ -106,17 +109,32 @@ DecoderPageWidget::DecoderPageWidget(AudioLoader* audioLoader, SettingsManager* 
 
     auto* ffmpegGroup       = new QGroupBox(u"FFmpeg"_s, this);
     auto* ffmpegGroupLayout = new QGridLayout(ffmpegGroup);
+    auto* generalGroup      = new QGroupBox(tr("General"), this);
+    auto* generalLayout     = new QGridLayout(generalGroup);
 
     ffmpegGroupLayout->addWidget(m_ffmpegAllExts);
 
-    auto* layout = new QGridLayout(this);
-    layout->addWidget(new QLabel(tr("Decoders") + ":"_L1, this), 0, 0);
-    layout->addWidget(m_decoderList, 1, 0);
-    layout->addWidget(new QLabel(tr("Tag readers") + ":"_L1, this), 0, 1);
-    layout->addWidget(m_readerList, 1, 1);
-    layout->addWidget(ffmpegGroup, 2, 0, 1, 2);
+    m_vbrInterval->setRange(0, 300000);
+    m_vbrInterval->setSingleStep(100);
+    m_vbrInterval->setSpecialSuffix(u" ms"_s);
+    m_vbrInterval->addSpecialValue(0, tr("Disabled"));
 
-    layout->setRowStretch(1, 1);
+    generalLayout->addWidget(new QLabel(tr("VBR update interval") + u":"_s, this), 0, 0);
+    generalLayout->addWidget(m_vbrInterval, 0, 1);
+    generalLayout->addWidget(new QLabel(u"🛈 "_s + tr("Set to '0' to disable VBR updates."), this), 1, 0, 1, 2);
+    generalLayout->setColumnStretch(2, 1);
+
+    auto* layout = new QGridLayout(this);
+
+    int row{0};
+    layout->addWidget(new QLabel(tr("Decoders") + ":"_L1, this), row, 0);
+    layout->addWidget(new QLabel(tr("Tag readers") + ":"_L1, this), row++, 1);
+    layout->addWidget(m_decoderList, row, 0);
+    layout->addWidget(m_readerList, row, 1);
+    layout->setRowStretch(row++, 1);
+    layout->addWidget(generalGroup, row++, 0, 1, 2);
+    layout->addWidget(ffmpegGroup, row++, 0, 1, 2);
+
     layout->setColumnStretch(0, 1);
     layout->setColumnStretch(1, 1);
 }
@@ -126,6 +144,7 @@ void DecoderPageWidget::load()
     m_decoderModel->setup(m_audioLoader->decoders());
     m_readerModel->setup(m_audioLoader->readers());
     m_ffmpegAllExts->setChecked(m_settings->fileValue(Settings::Core::Internal::FFmpegAllExtensions).toBool());
+    m_vbrInterval->setValue(m_settings->value<Settings::Core::Internal::VBRUpdateInterval>());
 }
 
 void DecoderPageWidget::apply()
@@ -144,6 +163,7 @@ void DecoderPageWidget::apply()
         m_audioLoader->reloadDecoderExtensions(u"FFmpeg"_s);
         m_audioLoader->reloadReaderExtensions(u"FFmpeg"_s);
     }
+    m_settings->set<Settings::Core::Internal::VBRUpdateInterval>(m_vbrInterval->value());
 
     load();
 }
@@ -152,6 +172,7 @@ void DecoderPageWidget::reset()
 {
     m_audioLoader->reset();
     m_settings->fileRemove(Settings::Core::Internal::FFmpegAllExtensions);
+    m_settings->reset<Settings::Core::Internal::VBRUpdateInterval>();
 }
 
 DecoderPage::DecoderPage(AudioLoader* audioLoader, SettingsManager* settings, QObject* parent)

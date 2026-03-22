@@ -31,6 +31,7 @@
 #include <cstdint>
 
 #include <atomic>
+#include <deque>
 #include <memory>
 #include <mutex>
 #include <unordered_map>
@@ -179,8 +180,22 @@ public:
     [[nodiscard]] bool bufferEmpty() const;
     //! Buffered duration estimate in milliseconds.
     [[nodiscard]] uint64_t bufferedDurationMs() const;
+    //! Forward-looking audible-window bitrate from the current stream position.
+    [[nodiscard]] int audibleWindowBitrate(int windowMs) const;
+    //! Append raw bitrate metadata for a buffered sample range.
+    void appendBitrateSpan(uint64_t startSample, uint64_t endSample, int bitrate);
+    //! Drop all buffered bitrate metadata.
+    void clearBitrateSpans();
 
 private:
+    struct BitrateSpan
+    {
+        uint64_t startSample{0};
+        uint64_t endSample{0};
+        int bitrate{0};
+    };
+    void trimConsumedBitrateSpans(uint64_t currentSample) const;
+
     void handleCommand(Command cmd, int param);
     void startFadeInternal(int durationMs, bool fadeIn);
     void resetBufferForSeek();
@@ -199,6 +214,8 @@ private:
     double m_fadeEndGain;
 
     mutable std::mutex m_metadataMutex;
+    mutable std::mutex m_bitrateMutex;
+    mutable std::deque<BitrateSpan> m_bitrateSpans;
 
     const StreamId m_id;
 

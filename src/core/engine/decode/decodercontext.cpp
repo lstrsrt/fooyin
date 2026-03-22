@@ -380,10 +380,16 @@ int DecoderContext::decodeChunk(size_t maxFrames)
         }
         std::memcpy(m_decodeScratch.data(), inputBytes.data(), byteCount);
 
+        const uint64_t bufferedStartSample = m_activeStream->position() + m_activeStream->bufferedSamples();
+
         const size_t samplesWritten = writer.write(m_decodeScratch.data(), sampleCount);
         if(samplesWritten < sampleCount) {
             qCWarning(ENGINE) << "Buffer overflow: tried to write" << sampleCount << "samples but only wrote"
                               << samplesWritten;
+        }
+
+        if(const int bitrate = m_decoder->bitrate(); bitrate > 0 && samplesWritten > 0) {
+            m_activeStream->appendBitrateSpan(bufferedStartSample, bufferedStartSample + samplesWritten, bitrate);
         }
 
         m_currentPos = windowBounded ? std::min(boundedInput->endTime(), windowEnd) : boundedInput->endTime();
