@@ -270,27 +270,37 @@ void UnifiedMusicLibraryPrivate::removeLibrary(const LibraryInfo& library, const
         return;
     }
 
-    TrackList newTracks;
     TrackList removedTracks;
     TrackList updatedTracks;
+    TrackList remainingTracks;
+
+    remainingTracks.reserve(m_tracks.size());
+    removedTracks.reserve(tracksRemoved.size());
 
     for(auto& track : m_tracks) {
-        if(track.libraryId() == library.id) {
-            if(tracksRemoved.contains(track.id())) {
-                removedTracks.push_back(track);
-                continue;
-            }
+        const bool isInRemovedLibrary = track.libraryId() == library.id;
+
+        if(isInRemovedLibrary && tracksRemoved.contains(track.id())) {
+            removedTracks.push_back(track);
+            continue;
+        }
+
+        if(isInRemovedLibrary) {
             track.setLibraryId(-1);
             updatedTracks.push_back(track);
-            newTracks.push_back(track);
         }
-        newTracks.push_back(track);
+
+        remainingTracks.push_back(track);
     }
 
-    m_tracks = newTracks;
+    m_tracks = std::move(remainingTracks);
 
-    emit m_self->tracksDeleted(removedTracks);
-    emit m_self->tracksMetadataChanged(updatedTracks);
+    if(!removedTracks.empty()) {
+        emit m_self->tracksDeleted(removedTracks);
+    }
+    if(!updatedTracks.empty()) {
+        emit m_self->tracksMetadataChanged(updatedTracks);
+    }
 }
 
 void UnifiedMusicLibraryPrivate::libraryStatusChanged(const LibraryInfo& library) const
