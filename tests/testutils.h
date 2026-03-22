@@ -31,6 +31,8 @@ class SettingsManager;
 } // namespace Fooyin
 
 namespace Fooyin::Testing {
+[[nodiscard]] QString testFilePath(const QString& relativePath);
+
 class TempResource : public QTemporaryFile
 {
 public:

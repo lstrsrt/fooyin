@@ -34,6 +34,7 @@ public:
     struct ReadPlaylistEntry
     {
         std::function<Track(const Track& filepath)> readTrack;
+        std::function<bool(const Track& track)> canLoadTrack;
         bool cancel{false};
     };
 

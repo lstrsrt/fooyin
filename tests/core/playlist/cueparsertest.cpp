@@ -18,12 +18,14 @@
  */
 
 #include "core/playlist/parsers/cueparser.h"
+#include "testutils.h"
 
 #include <core/track.h>
 
 #include <gtest/gtest.h>
 
 #include <QDir>
+#include <QFile>
 
 using namespace Qt::StringLiterals;
 
@@ -53,7 +55,10 @@ TEST_F(CueParserTest, SingleCue)
             return track;
         };
 
-        const auto tracks = m_parser->readPlaylist(&file, filepath, dir, {readTrack}, false);
+        PlaylistParser::ReadPlaylistEntry readEntry;
+        readEntry.readTrack = readTrack;
+
+        const auto tracks = m_parser->readPlaylist(&file, filepath, dir, readEntry, false);
         ASSERT_EQ(2, tracks.size());
 
         EXPECT_EQ(1991, tracks.at(0).year());
@@ -64,5 +69,50 @@ TEST_F(CueParserTest, SingleCue)
         EXPECT_EQ(tracks.at(1).discNumber(), u"1"_s);
         EXPECT_EQ(tracks.at(1).trackNumber(), u"02"_s);
     }
+}
+
+TEST_F(CueParserTest, UnreadableCueImageTracksAreDisabled)
+{
+    const QString cuePath = testFilePath(u"data/playlists/unreadableimage.cue"_s);
+    QFile cueFile{cuePath};
+    ASSERT_TRUE(cueFile.open(QIODevice::ReadOnly | QIODevice::Text));
+    QDir dir{cuePath};
+    dir.cdUp();
+
+    PlaylistParser::ReadPlaylistEntry readEntry;
+    readEntry.readTrack = [](const Track& track) {
+        return track;
+    };
+    readEntry.canLoadTrack = [](const Track&) {
+        return false;
+    };
+
+    const auto tracks = m_parser->readPlaylist(&cueFile, cuePath, dir, readEntry, true);
+    ASSERT_EQ(2, tracks.size());
+    EXPECT_FALSE(tracks.at(0).isEnabled());
+    EXPECT_FALSE(tracks.at(1).isEnabled());
+    EXPECT_EQ(testFilePath(u"data/playlists/unreadableimage.flac"_s), tracks.at(0).filepath());
+    EXPECT_EQ(u"Track 1"_s, tracks.at(0).title());
+    EXPECT_EQ(u"Track 2"_s, tracks.at(1).title());
+}
+
+TEST_F(CueParserTest, MissingCueImageIsSkippedWhenConfigured)
+{
+    const QString cuePath = testFilePath(u"data/playlists/missingimage.cue"_s);
+    QFile cueFile{cuePath};
+    ASSERT_TRUE(cueFile.open(QIODevice::ReadOnly | QIODevice::Text));
+    QDir dir{cuePath};
+    dir.cdUp();
+
+    PlaylistParser::ReadPlaylistEntry readEntry;
+    readEntry.readTrack = [](const Track& track) {
+        return track;
+    };
+    readEntry.canLoadTrack = [](const Track&) {
+        return false;
+    };
+
+    const auto tracks = m_parser->readPlaylist(&cueFile, cuePath, dir, readEntry, true);
+    EXPECT_TRUE(tracks.empty());
 }
 } // namespace Fooyin::Testing

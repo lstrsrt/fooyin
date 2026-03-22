@@ -175,6 +175,9 @@ TrackList LibraryTrackResolver::readPlaylistTracks(const QString& path)
 
         return readTrack;
     };
+    readEntry.canLoadTrack = [this](const Track& playlistTrack) {
+        return static_cast<bool>(m_audioLoader->loadDecoderForTrack(playlistTrack).decoder);
+    };
 
     if(auto* parser = m_playlistLoader->parserForExtension(info.suffix())) {
         return parser->readPlaylist(&playlistFile, path, dir, readEntry, m_playlistSkipMissing);
@@ -214,6 +217,9 @@ TrackList LibraryTrackResolver::readEmbeddedPlaylistTracks(const Track& track)
         m_state->progressScanned(readTrack.prettyFilepath());
 
         return readTrack;
+    };
+    readEntry.canLoadTrack = [this](const Track& playlistTrack) {
+        return static_cast<bool>(m_audioLoader->loadDecoderForTrack(playlistTrack).decoder);
     };
 
     if(auto* parser = m_playlistLoader->parserForExtension(u"cue"_s)) {

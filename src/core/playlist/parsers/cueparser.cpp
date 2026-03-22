@@ -63,6 +63,13 @@ struct CueSheet
 };
 
 namespace {
+Fooyin::Track unreadableCueTrack(const QString& path)
+{
+    Fooyin::Track track{path};
+    track.setIsEnabled(false);
+    return track;
+}
+
 float parseGain(const QString& gainStr)
 {
     static const QRegularExpression regex{uR"([+-]?\d+(\.\d+))"_s};
@@ -147,12 +154,22 @@ QString findMatchingFile(const QString& filepath)
 
     // Else find matching filename without extension
     for(const QString& file : files) {
-        if(QFileInfo{file}.completeBaseName().compare(baseName, Qt::CaseInsensitive) == 0) {
+        const QFileInfo candidateInfo{file};
+        if(candidateInfo.suffix().compare(u"cue"_s, Qt::CaseInsensitive) == 0) {
+            continue;
+        }
+
+        if(candidateInfo.completeBaseName().compare(baseName, Qt::CaseInsensitive) == 0) {
             return dir.absoluteFilePath(file);
         }
     }
 
     return filepath;
+}
+
+bool shouldKeepUnreadableTrack(const CueSheet& sheet, const QString& trackPath)
+{
+    return QFile::exists(trackPath) || !sheet.skipNotFound;
 }
 
 void readRemLine(CueSheet& sheet, Fooyin::Track& track, const QStringList& lineParts)
@@ -393,17 +410,33 @@ void CueParser::processCueLine(CueSheet& sheet, const QString& line, Track& trac
         }
     }
     else if(field.compare("FILE"_L1, Qt::CaseInsensitive) == 0) {
+        const QString cueFileValue{value};
+
         if(!sheet.skipFile && dir.exists()) {
+            const QString requestedPath
+                = QDir::isAbsolutePath(value) ? QDir::cleanPath(value) : QDir::cleanPath(dir.absoluteFilePath(value));
+
             if(QDir::isAbsolutePath(value)) {
                 trackPath = QDir::cleanPath(value);
             }
             else {
                 trackPath = QDir::cleanPath(dir.absoluteFilePath(value));
             }
+
             if(!QFile::exists(trackPath)) {
                 trackPath = findMatchingFile(trackPath);
             }
+
+            if(trackPath != requestedPath) {
+                qCInfo(CUE) << "Matched alternate CUE image file:" << requestedPath << "->" << trackPath
+                            << "cue=" << sheet.cuePath;
+            }
         }
+
+        const bool fileExists = QFile::exists(trackPath);
+
+        qCDebug(CUE) << "Resolved CUE FILE entry:" << cueFileValue << "to" << trackPath << "exists=" << fileExists
+                     << "cue=" << sheet.cuePath;
 
         if(track.isValid() && !sheet.addedTrack && sheet.hasValidIndex) {
             finaliseLastTrack(sheet, track, trackPath, tracks);
@@ -411,8 +444,27 @@ void CueParser::processCueLine(CueSheet& sheet, const QString& line, Track& trac
             sheet.addedTrack = true;
         }
 
-        if(QFile::exists(trackPath) || !sheet.skipNotFound) {
+        if(fileExists || !sheet.skipNotFound) {
             sheet.currentFile = readEntry.readTrack(Track{trackPath});
+
+            if(!sheet.currentFile.metadataWasRead()) {
+                const bool canLoadTrack = !readEntry.canLoadTrack || readEntry.canLoadTrack(sheet.currentFile);
+
+                if(!canLoadTrack) {
+                    qCWarning(CUE) << "Unable to read CUE image file:" << trackPath << "cue=" << sheet.cuePath
+                                   << "exists=" << fileExists;
+                    if(shouldKeepUnreadableTrack(sheet, trackPath)) {
+                        sheet.currentFile = unreadableCueTrack(trackPath);
+                    }
+                    else {
+                        sheet.currentFile = {};
+                    }
+                }
+                else {
+                    qCInfo(CUE) << "Using CUE metadata fallback for playable file:" << trackPath
+                                << "cue=" << sheet.cuePath;
+                }
+            }
 
             if(!track.trackNumber().isEmpty()) {
                 sheet.singleTrackFile = true;
@@ -423,6 +475,9 @@ void CueParser::processCueLine(CueSheet& sheet, const QString& line, Track& trac
             if(parts.size() > 2) {
                 sheet.type = parts.at(2);
             }
+        }
+        else {
+            qCWarning(CUE) << "Referenced CUE image file not found:" << trackPath << "cue=" << sheet.cuePath;
         }
     }
     else if(field.compare("REM"_L1, Qt::CaseInsensitive) == 0) {

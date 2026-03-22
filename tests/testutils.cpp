@@ -26,6 +26,13 @@
 #include <gtest/gtest.h>
 
 namespace Fooyin::Testing {
+QString testFilePath(const QString& relativePath)
+{
+    const QFileInfo thisFile{QString::fromUtf8(__FILE__)};
+    const QDir testsDir{thisFile.absolutePath()};
+    return testsDir.absoluteFilePath(relativePath);
+}
+
 TempResource::TempResource(const QString& filename, QObject* parent)
     : QTemporaryFile{parent}
     , m_file{filename}
