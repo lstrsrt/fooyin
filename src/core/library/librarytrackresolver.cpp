@@ -42,6 +42,20 @@ using namespace Qt::StringLiterals;
 
 constexpr auto ArchivePath = R"(unpack://%1|%2|file://%3!)";
 
+namespace {
+void applyExistingTrackState(Fooyin::Track& track, const Fooyin::Track& existingTrack)
+{
+    track.setId(existingTrack.id());
+    track.setLibraryId(existingTrack.libraryId());
+    track.setAddedTime(existingTrack.addedTime());
+    track.setPlayCount(existingTrack.playCount());
+    track.setFirstPlayed(existingTrack.firstPlayed());
+    track.setLastPlayed(existingTrack.lastPlayed());
+    track.setRating(existingTrack.rating());
+    track.setIsEnabled(existingTrack.isEnabled());
+}
+} // namespace
+
 namespace Fooyin {
 LibraryTrackResolver::LibraryTrackResolver(LibraryInfo currentLibrary, PlaylistLoader* playlistLoader,
                                            AudioLoader* audioLoader, const bool playlistSkipMissing,
@@ -104,15 +118,13 @@ TrackList LibraryTrackResolver::readPlaylist(const QString& filepath)
     TrackList tracks;
 
     const TrackList playlistTracks = readPlaylistTracks(filepath);
-    for(const Track& playlistTrack : playlistTracks) {
+    for(Track playlistTrack : playlistTracks) {
         if(const auto existingTrack = m_state->findExistingTrackByUniqueFilepath(playlistTrack)) {
-            tracks.push_back(existingTrack.value());
+            applyExistingTrackState(playlistTrack, existingTrack.value());
         }
-        else {
-            Track track{playlistTrack};
-            track.generateHash();
-            tracks.push_back(track);
-        }
+
+        playlistTrack.generateHash();
+        tracks.push_back(playlistTrack);
     }
 
     return tracks;

@@ -212,7 +212,18 @@ bool TrackDatabase::storeTracks(TrackList& tracks)
 
     for(auto& track : tracks) {
         if(track.id() < 0) {
-            insertTrack(track);
+            if(!insertTrack(track, true)) {
+                return false;
+            }
+
+            if(track.id() < 0) {
+                if(const int existingTrackId = idForTrack(track); existingTrackId >= 0) {
+                    track.setId(existingTrackId);
+                }
+                else {
+                    return false;
+                }
+            }
         }
     }
 
@@ -597,10 +608,10 @@ int TrackDatabase::trackCount() const
     return -1;
 }
 
-bool TrackDatabase::insertTrack(Track& track) const
+bool TrackDatabase::insertTrack(Track& track, bool ignoreDuplicates) const
 {
-    const auto statement = u"INSERT INTO Tracks ("
-                           "FilePath,"
+    const auto statement = (ignoreDuplicates ? u"INSERT OR IGNORE INTO Tracks ("_s : u"INSERT INTO Tracks ("_s)
+                         + u"FilePath,"
                            "Subsong,"
                            "Title,"
                            "TrackNumber,"
@@ -687,6 +698,10 @@ bool TrackDatabase::insertTrack(Track& track) const
 
     if(!query.exec()) {
         return false;
+    }
+
+    if(ignoreDuplicates && query.numRowsAffected() == 0) {
+        return true;
     }
 
     track.setId(query.lastInsertId().toInt());

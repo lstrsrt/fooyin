@@ -191,8 +191,8 @@ void ApplicationPrivate::initialise()
 
 void ApplicationPrivate::registerPlaylistParsers()
 {
-    m_playlistLoader->addParser(std::make_unique<CueParser>(m_audioLoader));
-    m_playlistLoader->addParser(std::make_unique<M3uParser>(m_audioLoader));
+    m_playlistLoader->addParser(std::make_unique<CueParser>());
+    m_playlistLoader->addParser(std::make_unique<M3uParser>());
 }
 
 void ApplicationPrivate::registerInputs()

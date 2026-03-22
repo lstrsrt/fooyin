@@ -59,7 +59,7 @@ public:
 
 private:
     [[nodiscard]] int trackCount() const;
-    bool insertTrack(Track& track) const;
+    bool insertTrack(Track& track, bool ignoreDuplicates = false) const;
     bool insertOrUpdateStats(const Track& track) const;
     void removeUnmanagedTracks() const;
     void updateLastSeenStats() const;

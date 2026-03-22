@@ -27,10 +27,6 @@
 using namespace Qt::StringLiterals;
 
 namespace Fooyin {
-PlaylistParser::PlaylistParser(std::shared_ptr<AudioLoader> audioLoader)
-    : m_audioLoader{std::move(audioLoader)}
-{ }
-
 size_t PlaylistParser::countEntries(QIODevice* /*device*/, const QString& /*filepath*/, const QDir& /*dir*/) const
 {
     return 0;

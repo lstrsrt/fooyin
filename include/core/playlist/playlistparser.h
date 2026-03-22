@@ -45,7 +45,6 @@ public:
         Relative
     };
 
-    explicit PlaylistParser(std::shared_ptr<AudioLoader> audioLoader);
     virtual ~PlaylistParser() = default;
 
     [[nodiscard]] virtual QString name() const                    = 0;
@@ -60,8 +59,5 @@ public:
 
     static QByteArray toUtf8(QIODevice* file);
     static QString determineTrackPath(const QUrl& url, const QDir& dir, PathType type);
-
-private:
-    std::shared_ptr<AudioLoader> m_audioLoader;
 };
 } // namespace Fooyin
