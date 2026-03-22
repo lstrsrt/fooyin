@@ -80,6 +80,7 @@ public:
     bool operator==(const Track& other) const;
     bool operator!=(const Track& other) const;
     bool operator<(const Track& other) const;
+    [[nodiscard]] bool sameIdentityAs(const Track& other) const;
 
     QString generateHash();
 

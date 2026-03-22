@@ -19,6 +19,7 @@
 
 #include <core/player/playercontroller.h>
 
+#include <core/coresettings.h>
 #include <core/track.h>
 #include <utils/settings/settingsmanager.h>
 
@@ -30,6 +31,17 @@ using namespace Qt::StringLiterals;
 
 namespace Fooyin::Testing {
 namespace {
+void registerControllerSettings(SettingsManager& settings)
+{
+    settings.createSetting<Settings::Core::PlayMode>(0, QString::fromLatin1(Settings::Core::PlayModeKey));
+    settings.createSetting<Settings::Core::StopAfterCurrent>(false, u"Playback/StopAfterCurrent"_s);
+    settings.createSetting<Settings::Core::ResetStopAfterCurrent>(false, u"Playback/ResetStopAfterCurrent"_s);
+    settings.createSetting<Settings::Core::PlayedThreshold>(0.5, u"Playback/PlayedThreshold"_s);
+    settings.createSetting<Settings::Core::RewindPreviousTrack>(false, u"Playlist/RewindPreviousTrack"_s);
+    settings.createSetting<Settings::Core::PlaybackQueueStopWhenFinished>(false,
+                                                                          u"Playback/PlaybackQueueStopWhenFinished"_s);
+}
+
 Track makeTrack(const QString& path, int id, uint64_t durationMs)
 {
     Track track{path, 0};
@@ -43,6 +55,7 @@ Track makeTrack(const QString& path, int id, uint64_t durationMs)
 TEST(PlayerControllerTest, ChangeAndCommitTrackUpdatePublicState)
 {
     SettingsManager settings{QDir::tempPath() + u"/fooyin_playercontroller_change_commit_test.ini"_s};
+    registerControllerSettings(settings);
     PlayerController controller{&settings, nullptr};
 
     int requestCount{0};
@@ -75,6 +88,7 @@ TEST(PlayerControllerTest, ChangeAndCommitTrackUpdatePublicState)
 TEST(PlayerControllerTest, PlayAndPauseEmitTransportStateChanges)
 {
     SettingsManager settings{QDir::tempPath() + u"/fooyin_playercontroller_play_pause_test.ini"_s};
+    registerControllerSettings(settings);
     PlayerController controller{&settings, nullptr};
 
     int transportPlayCount{0};
@@ -105,6 +119,7 @@ TEST(PlayerControllerTest, PlayAndPauseEmitTransportStateChanges)
 TEST(PlayerControllerTest, TrackPlayedEmitsOnceAfterCrossingThreshold)
 {
     SettingsManager settings{QDir::tempPath() + u"/fooyin_playercontroller_track_played_test.ini"_s};
+    registerControllerSettings(settings);
     PlayerController controller{&settings, nullptr};
 
     int playedCount{0};
@@ -117,5 +132,63 @@ TEST(PlayerControllerTest, TrackPlayedEmitsOnceAfterCrossingThreshold)
     controller.setCurrentPosition(800);
 
     EXPECT_EQ(playedCount, 1);
+}
+
+TEST(PlayerControllerTest, NextClearsStopAfterCurrentWhenResetEnabled)
+{
+    SettingsManager settings{QDir::tempPath() + u"/fooyin_playercontroller_next_clears_stop_current_test.ini"_s};
+    registerControllerSettings(settings);
+    PlayerController controller{&settings, nullptr};
+
+    settings.set<Settings::Core::StopAfterCurrent>(true);
+    settings.set<Settings::Core::ResetStopAfterCurrent>(true);
+
+    controller.next();
+
+    EXPECT_FALSE(settings.value<Settings::Core::StopAfterCurrent>());
+    EXPECT_TRUE(controller.trackEndAutoTransitionsEnabled());
+}
+
+TEST(PlayerControllerTest, PreviousClearsStopAfterCurrentWhenResetEnabled)
+{
+    SettingsManager settings{QDir::tempPath() + u"/fooyin_playercontroller_prev_clears_stop_current_test.ini"_s};
+    registerControllerSettings(settings);
+    PlayerController controller{&settings, nullptr};
+
+    settings.set<Settings::Core::StopAfterCurrent>(true);
+    settings.set<Settings::Core::ResetStopAfterCurrent>(true);
+    settings.set<Settings::Core::RewindPreviousTrack>(true);
+
+    controller.commitCurrentTrack(makeTrack(u"/tmp/prev-stop-current.flac"_s, 15, 10000));
+    controller.setCurrentPosition(6000);
+    controller.previous();
+
+    EXPECT_FALSE(settings.value<Settings::Core::StopAfterCurrent>());
+    EXPECT_TRUE(controller.trackEndAutoTransitionsEnabled());
+}
+
+TEST(PlayerControllerTest, StopAfterCurrentResetWaitsForEngineStoppedState)
+{
+    SettingsManager settings{QDir::tempPath() + u"/fooyin_playercontroller_deferred_stop_current_reset_test.ini"_s};
+    registerControllerSettings(settings);
+    PlayerController controller{&settings, nullptr};
+
+    settings.set<Settings::Core::StopAfterCurrent>(true);
+    settings.set<Settings::Core::ResetStopAfterCurrent>(true);
+
+    EXPECT_TRUE(settings.value<Settings::Core::StopAfterCurrent>());
+    EXPECT_FALSE(controller.trackEndAutoTransitionsEnabled());
+
+    controller.commitCurrentTrack(makeTrack(u"/tmp/stop-current.flac"_s, 14, 1000));
+    controller.play();
+    controller.advance(Player::AdvanceReason::NaturalEnd);
+
+    EXPECT_TRUE(settings.value<Settings::Core::StopAfterCurrent>());
+    EXPECT_FALSE(controller.trackEndAutoTransitionsEnabled());
+
+    controller.syncPlayStateFromEngine(Player::PlayState::Stopped);
+
+    EXPECT_FALSE(settings.value<Settings::Core::StopAfterCurrent>());
+    EXPECT_TRUE(controller.trackEndAutoTransitionsEnabled());
 }
 } // namespace Fooyin::Testing

@@ -430,6 +430,20 @@ bool Track::operator<(const Track& other) const
     return uniqueFilepath() < other.uniqueFilepath();
 }
 
+bool Track::sameIdentityAs(const Track& other) const
+{
+    if(!isValid() || !other.isValid()) {
+        return false;
+    }
+
+    if(id() >= 0 && other.id() >= 0) {
+        return id() == other.id();
+    }
+
+    return uniqueFilepath() == other.uniqueFilepath() && subsong() == other.subsong() && offset() == other.offset()
+        && duration() == other.duration();
+}
+
 QString Track::generateHash()
 {
     QString title = p->title;

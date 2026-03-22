@@ -1212,7 +1212,7 @@ AutoTransitionMode AudioEngine::configuredTrackEndAutoTransitionMode() const
 
 AutoTransitionMode AudioEngine::configuredTrackEndAutoTransitionMode(const Track& track) const
 {
-    if(m_settings->value<Settings::Core::StopAfterCurrent>()) {
+    if(!m_trackEndAutoTransitionEnabled) {
         return AutoTransitionMode::None;
     }
 
@@ -2127,26 +2127,12 @@ void AudioEngine::setupSettings()
         }
     };
 
-    const auto cancelTrackEndAutoTransitions = [this]() {
-        m_upcomingTrackCandidate       = {};
-        m_upcomingTrackCandidateItemId = 0;
-        clearAutoAdvanceState();
-        clearPreparedCrossfadeTransition();
-        clearPreparedGaplessTransition();
-        clearPreparedNextTrackAndCancelPendingJobs();
-    };
-
     refreshReplayGainSettings();
     refreshDecoderPlaybackHints(false);
 
     m_settings->subscribe<Settings::Core::PlayMode>(this, refreshReplayGainSettings);
     m_settings->subscribe<Settings::Core::PlayMode>(
         this, [refreshDecoderPlaybackHints]() { refreshDecoderPlaybackHints(true); });
-    m_settings->subscribe<Settings::Core::StopAfterCurrent>(this, [cancelTrackEndAutoTransitions](bool enabled) {
-        if(enabled) {
-            cancelTrackEndAutoTransitions();
-        }
-    });
     m_settings->subscribe<Settings::Core::RGMode>(this, refreshReplayGainSettings);
     m_settings->subscribe<Settings::Core::RGType>(this, refreshReplayGainSettings);
     m_settings->subscribe<Settings::Core::RGPreAmp>(this, refreshReplayGainSettings);
@@ -3145,6 +3131,27 @@ void AudioEngine::setUpcomingTrackCandidate(const Engine::PlaybackItem& item)
     qCDebug(ENGINE) << "Upcoming track candidate stored for deferred end-of-track preparation:"
                     << "candidateTrackId=" << track.id() << "candidateItemId=" << itemId
                     << "mode=" << Utils::Enum::toString(configuredMode);
+}
+
+void AudioEngine::setTrackEndAutoTransitionEnabled(bool enabled)
+{
+    if(std::exchange(m_trackEndAutoTransitionEnabled, enabled) == enabled) {
+        return;
+    }
+
+    if(!enabled) {
+        clearTrackEndAutoTransitions();
+    }
+}
+
+void AudioEngine::clearTrackEndAutoTransitions()
+{
+    m_upcomingTrackCandidate       = {};
+    m_upcomingTrackCandidateItemId = 0;
+    clearAutoAdvanceState();
+    clearPreparedCrossfadeTransition();
+    clearPreparedGaplessTransition();
+    clearPreparedNextTrackAndCancelPendingJobs();
 }
 
 void AudioEngine::prepareNextTrack(const Engine::PlaybackItem& item, uint64_t requestId)

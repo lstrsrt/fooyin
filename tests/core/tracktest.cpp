@@ -97,6 +97,37 @@ TEST(TrackTest, LazilyLoadsExtraTagsFromSerialisedData)
     EXPECT_EQ(loaded.extraTag(u"ANOTHER"_s), (QStringList{u"entry"_s}));
 }
 
+TEST(TrackTest, SameIdentityAsUsesIdThenSegmentIdentity)
+{
+    Track dbTrackA{u"/music/a.flac"_s, 0};
+    dbTrackA.setId(100);
+    dbTrackA.setDuration(2000);
+    dbTrackA.setOffset(0);
+    dbTrackA.generateHash();
+
+    Track dbTrackB{u"/music/b.flac"_s, 0};
+    dbTrackB.setId(100);
+    dbTrackB.setDuration(3000);
+    dbTrackB.setOffset(1000);
+    dbTrackB.generateHash();
+
+    EXPECT_TRUE(dbTrackA.sameIdentityAs(dbTrackB));
+
+    Track segmentTrackA{u"/music/cue.flac"_s, 0};
+    segmentTrackA.setDuration(1500);
+    segmentTrackA.setOffset(500);
+    segmentTrackA.generateHash();
+
+    Track segmentTrackB = segmentTrackA;
+    EXPECT_TRUE(segmentTrackA.sameIdentityAs(segmentTrackB));
+
+    segmentTrackB.setOffset(750);
+    EXPECT_FALSE(segmentTrackA.sameIdentityAs(segmentTrackB));
+
+    Track invalidTrack;
+    EXPECT_FALSE(segmentTrackA.sameIdentityAs(invalidTrack));
+}
+
 TEST(TrackTest, MigratesPooledMetadataToExplicitStore)
 {
     Track track;

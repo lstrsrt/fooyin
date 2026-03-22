@@ -30,22 +30,6 @@
 #include <algorithm>
 
 namespace Fooyin {
-namespace {
-bool sameTrackIdentity(const Track& lhs, const Track& rhs)
-{
-    if(!lhs.isValid() || !rhs.isValid()) {
-        return false;
-    }
-
-    if(lhs.id() >= 0 && rhs.id() >= 0) {
-        return lhs.id() == rhs.id();
-    }
-
-    return lhs.uniqueFilepath() == rhs.uniqueFilepath() && lhs.subsong() == rhs.subsong()
-        && lhs.offset() == rhs.offset() && lhs.duration() == rhs.duration();
-}
-} // namespace
-
 PlaybackOrderNavigator::PlaybackOrderNavigator(SettingsManager* settings, PlaylistHandler* playlistHandler,
                                                PlaybackQueue* queue, PlaybackOrderState state)
     : m_settings{settings}
@@ -67,7 +51,7 @@ Playlist* PlaybackOrderNavigator::playbackPlaylist() const
     }
 
     const auto playlistTrack = playlist->playlistTrack(m_state.currentTrack->indexInPlaylist);
-    if(!playlistTrack.has_value() || !sameTrackIdentity(playlistTrack->track, m_state.currentTrack->track)) {
+    if(!playlistTrack.has_value() || !playlistTrack->track.sameIdentityAs(m_state.currentTrack->track)) {
         return nullptr;
     }
 
@@ -184,14 +168,20 @@ void PlaybackOrderNavigator::activatePlaylistTrack(const PlaylistTrack& track)
     }
 }
 
-void PlaybackOrderNavigator::followQueuedTrackSelection(const PlaylistTrack& track)
+PlaylistTrack PlaybackOrderNavigator::followQueuedTrackIndex(int delta)
 {
-    if(!m_playlistHandler || !m_playlistHandler->activePlaylist() || m_queue->trackCount() != 1
-       || !m_settings->value<Settings::Core::FollowPlaybackQueue>()) {
-        return;
+    if(!m_playlistHandler) {
+        return {};
     }
 
-    activatePlaylistTrack(track);
+    if(auto* playlist = m_playlistHandler->activePlaylist()) {
+        const int nextIndex = playlist->nextIndexFrom(m_state.currentTrack->indexInPlaylist, delta, *m_state.playMode);
+        if(const auto track = playlist->playlistTrack(nextIndex)) {
+            return *track;
+        }
+    }
+
+    return {};
 }
 
 std::optional<PlaybackOrderNavigator::RequestedTrack> PlaybackOrderNavigator::selectScheduledTrack()
@@ -220,6 +210,13 @@ std::optional<PlaybackOrderNavigator::RequestedTrack> PlaybackOrderNavigator::se
     }
 
     if(m_queue->empty() && m_playlistHandler) {
+        if(m_settings->value<Settings::Core::FollowPlaybackQueue>() && *m_state.isQueueTrack) {
+            return RequestedTrack{
+                .track        = followQueuedTrackIndex(delta),
+                .isQueueTrack = false,
+            };
+        }
+
         return RequestedTrack{
             .track        = advancePlaybackRelativeTrack(delta),
             .isQueueTrack = false,
@@ -243,11 +240,8 @@ std::optional<PlaybackOrderNavigator::RequestedTrack> PlaybackOrderNavigator::se
     }
 
     if(!m_queue->empty()) {
-        const auto nextTrack = m_queue->nextTrack();
-        followQueuedTrackSelection(nextTrack);
-
         return RequestedTrack{
-            .track        = nextTrack,
+            .track        = m_queue->nextTrack(),
             .isQueueTrack = true,
         };
     }

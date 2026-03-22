@@ -67,7 +67,6 @@ EngineHandler::EngineHandler(std::shared_ptr<AudioLoader> audioLoader, PlayerCon
     , m_engineOwnedTransitionItemId{9}
     , m_engineOwnedTransitionGen{0}
     , m_endAdvanceSuppressed{false}
-    , m_stopAfterCurrentPending{false}
     , m_pendingBoundaryAdvanceGen{0}
     , m_lastPreparedNextTrackReady{false}
     , m_nextPrepareTrackRequestId{1}
@@ -108,9 +107,17 @@ EngineHandler::EngineHandler(std::shared_ptr<AudioLoader> audioLoader, PlayerCon
                      &EngineHandler::handleTrackChangeRequest);
     QObject::connect(m_playerController, &PlayerController::upcomingTrackChanged, this,
                      &EngineHandler::handleUpcomingTrackChanged);
+    QObject::connect(m_playerController, &PlayerController::trackEndAutoTransitionsEnabledChanged, this,
+                     [this](bool enabled) {
+                         clearPendingBoundaryAdvance();
+                         clearEngineOwnedTransition();
+                         dispatchCommand(&AudioEngine::setTrackEndAutoTransitionEnabled, enabled);
+                     });
 
     m_engineThread.start();
     updateLevelReadyRelay();
+    dispatchCommand(&AudioEngine::setTrackEndAutoTransitionEnabled,
+                    m_playerController->trackEndAutoTransitionsEnabled());
 
     updateVolume(m_settings->value<Settings::Core::OutputVolume>());
 
@@ -129,14 +136,6 @@ EngineHandler::EngineHandler(std::shared_ptr<AudioLoader> audioLoader, PlayerCon
 
     m_settings->subscribe<Settings::Core::AudioOutput>(this, &EngineHandler::changeOutput);
     m_settings->subscribe<Settings::Core::OutputVolume>(this, &EngineHandler::updateVolume);
-    m_settings->subscribe<Settings::Core::StopAfterCurrent>(this, [this](bool enabled) {
-        clearPendingBoundaryAdvance();
-        clearEngineOwnedTransition();
-        dispatchCommand(&AudioEngine::setUpcomingTrackCandidate,
-                        (enabled || m_stopAfterCurrentPending)
-                            ? Engine::PlaybackItem{}
-                            : makePlaybackItem(m_playerController->upcomingTrack(), uint64_t{0}));
-    });
 }
 
 EngineHandler::~EngineHandler()
@@ -274,7 +273,6 @@ void EngineHandler::handleStateChange(Engine::PlaybackState state)
         case Engine::PlaybackState::Error:
         case Engine::PlaybackState::Stopped:
             clearPositionAcceptanceFloor();
-            m_stopAfterCurrentPending = false;
             m_playerController->syncPlayStateFromEngine(Player::PlayState::Stopped);
             break;
         case Engine::PlaybackState::Paused:
@@ -299,8 +297,7 @@ void EngineHandler::handleTrackChangeRequest(const Player::TrackChangeRequest& r
     clearPositionAcceptanceFloor();
     clearPendingBoundaryAdvance();
     clearEngineOwnedTransition();
-    m_stopAfterCurrentPending = false;
-    m_pendingTrackChange      = request;
+    m_pendingTrackChange = request;
     dispatchCommand(&AudioEngine::loadTrack, makePlaybackItem(track, request.itemId), request.context.userInitiated);
 }
 
@@ -312,21 +309,14 @@ void EngineHandler::handleUpcomingTrackChanged(const Player::UpcomingTrack& upco
                          << "currentItemId=" << m_currentTrackItemId
                          << "upcomingTrackId=" << upcomingTrack.track.track.id()
                          << "upcomingItemId=" << upcomingTrack.itemId << "isQueueTrack=" << upcomingTrack.isQueueTrack
-                         << "stopAfterCurrent=" << stopAfterCurrentEnabled();
+                         << "stopAfterCurrent=" << !m_playerController->trackEndAutoTransitionsEnabled();
     dispatchCommand(&AudioEngine::setUpcomingTrackCandidate,
-                    (stopAfterCurrentEnabled() || m_stopAfterCurrentPending)
-                        ? Engine::PlaybackItem{}
-                        : makePlaybackItem(upcomingTrack.track.track, upcomingTrack.itemId));
-}
-
-bool EngineHandler::stopAfterCurrentEnabled() const
-{
-    return m_settings->value<Settings::Core::StopAfterCurrent>();
+                    makePlaybackItem(upcomingTrack.track.track, upcomingTrack.itemId));
 }
 
 bool EngineHandler::hasAutoTrackEndTransitionEnabled() const
 {
-    if(stopAfterCurrentEnabled()) {
+    if(!m_playerController->trackEndAutoTransitionsEnabled()) {
         return false;
     }
 
@@ -402,7 +392,6 @@ void EngineHandler::handleTrackBoundaryReached(const Track& track, uint64_t gene
     clearEngineOwnedTransition();
     if(remainingOutputMs == 0) {
         clearPendingBoundaryAdvance();
-        m_stopAfterCurrentPending = stopAfterCurrentEnabled();
         m_playerController->advance(Player::AdvanceReason::NaturalEnd);
         return;
     }
@@ -423,7 +412,6 @@ void EngineHandler::handleTrackBoundaryReached(const Track& track, uint64_t gene
         }
 
         clearPendingBoundaryAdvance();
-        m_stopAfterCurrentPending = stopAfterCurrentEnabled();
         m_playerController->advance(Player::AdvanceReason::NaturalEnd);
     });
 }
@@ -486,7 +474,7 @@ void EngineHandler::handleTrackCommitted(const Engine::TrackCommitContext& conte
     if(m_upcomingTrack.track.isValid()
        && samePlaybackItem(makePlaybackItem(m_upcomingTrack.track.track, m_upcomingTrack.itemId),
                            makePlaybackItem(context.track, context.itemId))) {
-        if(stopAfterCurrentEnabled()) {
+        if(!m_playerController->trackEndAutoTransitionsEnabled()) {
             clearEngineOwnedTransition();
             m_playerController->advance(Player::AdvanceReason::NaturalEnd);
             return;
@@ -510,7 +498,6 @@ void EngineHandler::handleTrackStatus(Engine::TrackStatus status, const Track& t
             clearPositionAcceptanceFloor();
             clearPendingBoundaryAdvance();
             clearEngineOwnedTransition();
-            m_stopAfterCurrentPending = false;
             m_pendingTrackChange.reset();
             m_playerController->syncPlayStateFromEngine(Player::PlayState::Stopped);
             break;

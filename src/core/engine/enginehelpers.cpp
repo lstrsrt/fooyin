@@ -24,16 +24,7 @@
 namespace Fooyin {
 bool sameTrackIdentity(const Track& lhs, const Track& rhs)
 {
-    if(!lhs.isValid() || !rhs.isValid()) {
-        return false;
-    }
-
-    if(lhs.id() >= 0 && rhs.id() >= 0) {
-        return lhs.id() == rhs.id();
-    }
-
-    return lhs.uniqueFilepath() == rhs.uniqueFilepath() && lhs.subsong() == rhs.subsong()
-        && lhs.offset() == rhs.offset() && lhs.duration() == rhs.duration();
+    return lhs.sameIdentityAs(rhs);
 }
 
 bool sameTrackSegment(const Track& lhs, const Track& rhs)

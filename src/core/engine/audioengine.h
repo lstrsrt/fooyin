@@ -136,6 +136,7 @@ public:
 
 public slots:
     void loadTrack(const Fooyin::Engine::PlaybackItem& item, bool manualChange = false);
+    void setTrackEndAutoTransitionEnabled(bool enabled);
     void setUpcomingTrackCandidate(const Fooyin::Engine::PlaybackItem& item);
     //! Schedule/prepare candidate next track for seamless transition.
     void prepareNextTrack(const Fooyin::Engine::PlaybackItem& item, uint64_t requestId = 0);
@@ -221,6 +222,7 @@ private:
     void applyAutoBoundaryFadeIn(bool allowFadeInOnly = false);
     void clearAutoCrossfadeTailFadeState();
     void clearAutoBoundaryFadeState(bool restoreOutput = false);
+    void clearTrackEndAutoTransitions();
     void clearAutoAdvanceState();
 
     void rememberAutoTransitionMode(AutoTransitionMode mode);
@@ -384,6 +386,7 @@ private:
     bool m_fadingEnabled;
     bool m_crossfadeEnabled;
     bool m_gaplessEnabled;
+    bool m_trackEndAutoTransitionEnabled{true};
     Engine::CrossfadeSwitchPolicy m_crossfadeSwitchPolicy;
     AudioDecoder::PlaybackHints m_decoderPlaybackHints{AudioDecoder::NoHints};
     Engine::FadingValues m_fadingValues;

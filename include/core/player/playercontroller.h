@@ -114,6 +114,7 @@ public:
     [[nodiscard]] PlaylistTrack upcomingPlaylistTrack() const;
     [[nodiscard]] bool hasNextTrack() const;
     [[nodiscard]] bool hasPreviousTrack() const;
+    [[nodiscard]] bool trackEndAutoTransitionsEnabled() const;
     [[nodiscard]] Player::TrackChangeContext lastTrackChangeContext() const;
     [[nodiscard]] Player::PlaybackSnapshot playbackSnapshot() const;
 
@@ -159,6 +160,7 @@ signals:
     void trackPlayed(const Fooyin::Track& track);
     void trackChangeRequested(const Fooyin::Player::TrackChangeRequest& request);
     void upcomingTrackChanged(const Fooyin::Player::UpcomingTrack& upcomingTrack);
+    void trackEndAutoTransitionsEnabledChanged(bool enabled);
 
     void tracksQueued(const Fooyin::QueueTracks& tracks, int index);
     void tracksDequeued(const Fooyin::QueueTracks& tracks);

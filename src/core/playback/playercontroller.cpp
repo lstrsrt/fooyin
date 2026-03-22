@@ -51,6 +51,7 @@ public:
             Stop,
             ResetAndStop,
             StopAtBoundary,
+            KeepCurrentTrack,
             RequestSelection,
             RestartAtBoundary,
             ClearCurrentTrack,
@@ -66,6 +67,12 @@ public:
 
     [[nodiscard]] uint64_t nextPlaybackItemId();
     bool updateBitrate(int bitrate);
+
+    void setStopAfterCurrentArmed(bool armed);
+    void queueStopAfterCurrentReset();
+    void finishPendingStopAfterCurrentReset();
+    void clearStopAfterCurrentForManualSkip();
+    [[nodiscard]] bool trackEndAutoTransitionsEnabled() const;
 
     [[nodiscard]] Player::UpcomingTrack resolveUpcomingTrack() const;
     void emitUpcomingTrackChangedIfNeeded();
@@ -96,6 +103,8 @@ public:
     PlaybackSession m_session;
     PlaybackProgressTracker m_progressTracker;
     bool m_stopCurrentSkip{false};
+    bool m_stopAfterCurrentArmed{false};
+    bool m_resetStopAfterCurrentPending{false};
     PlaybackCursor m_cursor;
 
     Player::UpcomingTrack m_lastUpcomingTrack;
@@ -111,6 +120,7 @@ PlayerControllerPrivate::PlayerControllerPrivate(PlayerController* self, Setting
     , m_settings{settings}
     , m_playlistHandler{playlistHandler}
     , m_playMode{static_cast<Playlist::PlayModes>(m_settings->value<Settings::Core::PlayMode>())}
+    , m_stopAfterCurrentArmed{m_settings->value<Settings::Core::StopAfterCurrent>()}
     , m_navigator{m_settings,
                   m_playlistHandler,
                   &m_queue,
@@ -144,9 +154,47 @@ bool PlayerControllerPrivate::updateBitrate(int bitrate)
     return false;
 }
 
+void PlayerControllerPrivate::setStopAfterCurrentArmed(bool armed)
+{
+    if(std::exchange(m_stopAfterCurrentArmed, armed) != armed) {
+        emit m_self->trackEndAutoTransitionsEnabledChanged(trackEndAutoTransitionsEnabled());
+    }
+
+    if(!armed) {
+        m_resetStopAfterCurrentPending = false;
+    }
+}
+
+void PlayerControllerPrivate::queueStopAfterCurrentReset()
+{
+    m_resetStopAfterCurrentPending
+        = m_stopAfterCurrentArmed && m_settings->value<Settings::Core::ResetStopAfterCurrent>();
+}
+
+void PlayerControllerPrivate::finishPendingStopAfterCurrentReset()
+{
+    if(m_resetStopAfterCurrentPending && m_settings->value<Settings::Core::StopAfterCurrent>()) {
+        m_settings->set<Settings::Core::StopAfterCurrent>(false);
+    }
+
+    m_resetStopAfterCurrentPending = false;
+}
+
+void PlayerControllerPrivate::clearStopAfterCurrentForManualSkip()
+{
+    if(m_stopAfterCurrentArmed && m_settings->value<Settings::Core::ResetStopAfterCurrent>()) {
+        m_settings->set<Settings::Core::StopAfterCurrent>(false);
+    }
+}
+
+bool PlayerControllerPrivate::trackEndAutoTransitionsEnabled() const
+{
+    return !m_stopAfterCurrentArmed;
+}
+
 Player::UpcomingTrack PlayerControllerPrivate::resolveUpcomingTrack() const
 {
-    if(m_settings->value<Settings::Core::StopAfterCurrent>()) {
+    if(m_stopAfterCurrentArmed) {
         return {};
     }
 
@@ -166,6 +214,21 @@ Player::UpcomingTrack PlayerControllerPrivate::resolveUpcomingTrack() const
 
     if(!m_playlistHandler) {
         return {};
+    }
+
+    if(m_queue.empty() && m_session.isQueueTrack()) {
+        if(m_settings->value<Settings::Core::PlaybackQueueStopWhenFinished>()) {
+            return {};
+        }
+        if(m_session.currentTrack().isInPlaylist() && m_settings->value<Settings::Core::FollowPlaybackQueue>()) {
+            if(auto* playlist = m_playlistHandler->activePlaylist()) {
+                const int nextIndex = playlist->nextIndexFrom(m_session.currentTrack().indexInPlaylist, 1, m_playMode);
+                return {
+                    .track        = playlist->playlistTrack(nextIndex).value_or(PlaylistTrack{}),
+                    .isQueueTrack = false,
+                };
+            }
+        }
     }
 
     if(auto* playbackPlaylist = m_navigator.playbackPlaylist()) {
@@ -298,6 +361,8 @@ bool PlayerControllerPrivate::applyTransportAction(const TransportAction& action
             return false;
         case TransportAction::Type::StopAtBoundary:
             return stopAtBoundary(action.boundary);
+        case TransportAction::Type::KeepCurrentTrack:
+            return false;
         case TransportAction::Type::RequestSelection:
             return requestSelectedTrack(action.selection);
         case TransportAction::Type::RestartAtBoundary:
@@ -320,11 +385,8 @@ bool PlayerControllerPrivate::stopAtBoundary(PlaybackCursor::BoundaryStop bounda
 
 PlayerControllerPrivate::TransportAction PlayerControllerPrivate::selectAdvanceAction(Player::AdvanceReason reason)
 {
-    if(!m_stopCurrentSkip && m_settings->value<Settings::Core::StopAfterCurrent>()) {
-        if(m_settings->value<Settings::Core::ResetStopAfterCurrent>()) {
-            m_settings->set<Settings::Core::StopAfterCurrent>(false);
-        }
-
+    if(!m_stopCurrentSkip && m_stopAfterCurrentArmed) {
+        queueStopAfterCurrentReset();
         return {
             .type      = TransportAction::Type::ResetAndStop,
             .selection = std::nullopt,
@@ -351,8 +413,28 @@ PlayerControllerPrivate::TransportAction PlayerControllerPrivate::selectAdvanceA
         };
     }
 
-    if(reason == Player::AdvanceReason::ManualNext && !m_self->hasNextTrack() && m_queue.empty()
-       && !m_session.scheduledTrack().isValid() && !m_session.isQueueTrack()) {
+    if(reason == Player::AdvanceReason::ManualNext && m_session.canAcceptRequest()) {
+        if(m_session.scheduledTrack().isValid()) {
+            return {
+                .type      = TransportAction::Type::RequestSelection,
+                .selection = m_navigator.selectScheduledTrack(),
+            };
+        }
+
+        if(const auto selection = m_navigator.selectPlaybackOrderTrack(1); selection && selection->track.isValid()) {
+            return {
+                .type      = TransportAction::Type::RequestSelection,
+                .selection = selection,
+            };
+        }
+
+        if(m_navigator.previewPlaybackRelativeTrack(1).isValid()) {
+            return {
+                .type      = TransportAction::Type::KeepCurrentTrack,
+                .selection = std::nullopt,
+            };
+        }
+
         return {
             .type      = TransportAction::Type::StopAtBoundary,
             .boundary  = PlaybackCursor::BoundaryStop::End,
@@ -396,7 +478,14 @@ PlayerControllerPrivate::TransportAction PlayerControllerPrivate::selectPrevious
         };
     }
 
-    if(!m_self->hasPreviousTrack() && !m_session.isQueueTrack()) {
+    if(!m_self->hasPreviousTrack()) {
+        if(m_navigator.previewPlaybackRelativeTrack(-1).isValid()) {
+            return {
+                .type      = TransportAction::Type::KeepCurrentTrack,
+                .selection = std::nullopt,
+            };
+        }
+
         return {
             .type      = TransportAction::Type::StopAtBoundary,
             .boundary  = PlaybackCursor::BoundaryStop::Start,
@@ -455,7 +544,10 @@ PlayerController::PlayerController(SettingsManager* settings, PlaylistHandler* p
             p->emitUpcomingTrackChangedIfNeeded();
         }
     });
-    settings->subscribe<Settings::Core::StopAfterCurrent>(this, [this]() { p->emitUpcomingTrackChangedIfNeeded(); });
+    settings->subscribe<Settings::Core::StopAfterCurrent>(this, [this](bool enabled) {
+        p->setStopAfterCurrentArmed(enabled);
+        p->emitUpcomingTrackChangedIfNeeded();
+    });
 
     if(!playlistHandler) {
         return;
@@ -544,6 +636,8 @@ void PlayerController::pause()
 
 void PlayerController::previous()
 {
+    p->clearStopAfterCurrentForManualSkip();
+
     if(p->m_settings->value<Settings::Core::RewindPreviousTrack>() && currentPosition() > 5000) {
         seek(0);
         return;
@@ -557,7 +651,8 @@ void PlayerController::previous()
     const PlayerControllerPrivate::TransportAction action = p->selectPreviousAction();
     p->applyTransportAction(action);
 
-    if(action.type == PlayerControllerPrivate::TransportAction::Type::StopAtBoundary) {
+    if(action.type == PlayerControllerPrivate::TransportAction::Type::StopAtBoundary
+       || action.type == PlayerControllerPrivate::TransportAction::Type::KeepCurrentTrack) {
         return;
     }
 
@@ -574,6 +669,7 @@ void PlayerController::next()
 
     p->m_playMode &= ~Playlist::RepeatTrack;
     p->m_stopCurrentSkip = true;
+    p->clearStopAfterCurrentForManualSkip();
 
     advance(Player::AdvanceReason::ManualNext);
 }
@@ -589,7 +685,8 @@ void PlayerController::advance(Player::AdvanceReason reason)
 
     if(action.type == PlayerControllerPrivate::TransportAction::Type::Stop
        || action.type == PlayerControllerPrivate::TransportAction::Type::ResetAndStop
-       || action.type == PlayerControllerPrivate::TransportAction::Type::StopAtBoundary) {
+       || action.type == PlayerControllerPrivate::TransportAction::Type::StopAtBoundary
+       || action.type == PlayerControllerPrivate::TransportAction::Type::KeepCurrentTrack) {
         return;
     }
 
@@ -608,6 +705,7 @@ Player::TrackChangeContext PlayerController::lastTrackChangeContext() const
 
 void PlayerController::stop()
 {
+    p->queueStopAfterCurrentReset();
     p->enterStoppedState(true);
 }
 
@@ -622,6 +720,7 @@ void PlayerController::syncPlayStateFromEngine(Player::PlayState state)
             break;
         case Player::PlayState::Stopped:
             p->enterStoppedState(false);
+            p->finishPendingStopAfterCurrentReset();
             break;
     }
 }
@@ -784,6 +883,11 @@ bool PlayerController::hasNextTrack() const
 bool PlayerController::hasPreviousTrack() const
 {
     return p->m_navigator.previewPlaybackRelativeTrack(-1).isValid();
+}
+
+bool PlayerController::trackEndAutoTransitionsEnabled() const
+{
+    return p->trackEndAutoTransitionsEnabled();
 }
 
 Player::PlaybackSnapshot PlayerController::playbackSnapshot() const
