@@ -868,6 +868,15 @@ void PlaylistWidget::addSortMenu(QMenu* parent, bool disabled)
                              [this, script]() { m_session->sortTracks(sessionHost(), script.script); });
             sortMenu->addAction(switchSort);
         }
+
+        auto* moreSettings = new QAction(tr("More…"), sortMenu);
+        QObject::connect(moreSettings, &QAction::triggered, this,
+                         [this]() { m_settingsDialog->openAtPage(Constants::Page::LibrarySorting); });
+
+        if(!groups.empty()) {
+            sortMenu->addSeparator();
+        }
+        sortMenu->addAction(moreSettings);
     }
 
     parent->addMenu(sortMenu);
