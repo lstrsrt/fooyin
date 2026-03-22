@@ -18,6 +18,7 @@
  */
 
 #include "core/engine/audioengine.h"
+#include "core/engine/decode/decodercontext.h"
 
 #include "core/engine/dsp/dspregistry.h"
 #include "core/internalcoresettings.h"
@@ -47,6 +48,8 @@ namespace {
 struct DecoderStats
 {
     std::atomic<int> initCalls{0};
+    std::atomic<int> startCalls{0};
+    std::atomic<int> stopCalls{0};
     std::atomic<int> seekCalls{0};
     std::atomic<int> bitrate{320};
 };
@@ -232,11 +235,13 @@ public:
 
     void start() override
     {
+        ++m_stats->startCalls;
         m_started = true;
     }
 
     void stop() override
     {
+        ++m_stats->stopCalls;
         m_started = false;
     }
 
@@ -478,6 +483,40 @@ TEST(AudioEngineTest, LoadTrackFullReinitInitialisesDecoderAndOutput)
     EXPECT_GE(harness.decoderStats->initCalls.load(), 1);
     EXPECT_EQ(harness.outputStats->initCalls.load(), 1);
     EXPECT_EQ(harness.outputStats->uninitCalls.load(), 0);
+}
+
+TEST(AudioEngineTest, AdoptPreparedDecoderPreservesDecodeStateAcrossTransfer)
+{
+    auto stats = std::make_shared<DecoderStats>();
+
+    auto decoder      = std::make_unique<FakeDecoder>(stats);
+    const Track track = makeTrack(u"prepared-decoder-state.fyt"_s, 0, 1000);
+
+    LoadedDecoder loaded;
+    loaded.format  = decoder->init(AudioSource{}, track, AudioDecoder::None);
+    loaded.decoder = std::move(decoder);
+    ASSERT_TRUE(loaded.format.has_value());
+
+    DecoderContext preparingContext;
+    ASSERT_TRUE(preparingContext.init(std::move(loaded), track));
+
+    preparingContext.start();
+    EXPECT_TRUE(preparingContext.isDecoding());
+    EXPECT_EQ(1, stats->startCalls.load());
+    EXPECT_EQ(0, stats->stopCalls.load());
+
+    LoadedDecoder prepared = preparingContext.takeLoadedDecoder();
+    EXPECT_TRUE(prepared.isDecoding);
+
+    DecoderContext adoptedContext;
+    ASSERT_TRUE(adoptedContext.adoptPreparedDecoder(std::move(prepared), track));
+    EXPECT_TRUE(adoptedContext.isDecoding());
+
+    adoptedContext.start();
+    EXPECT_EQ(1, stats->startCalls.load());
+
+    adoptedContext.stop();
+    EXPECT_EQ(1, stats->stopCalls.load());
 }
 
 TEST(AudioEngineTest, ContiguousSegmentSwitchDoesNotReinitDecoderOrOutput)

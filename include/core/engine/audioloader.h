@@ -52,6 +52,8 @@ struct LoadedDecoder
     std::optional<AudioFormat> format;
     //! Initialised decoder selected for the input source.
     std::unique_ptr<AudioDecoder> decoder;
+    //! True when the decoder has already been started and should remain in that state after transfer.
+    bool isDecoding{false};
 };
 
 struct LoadedReader

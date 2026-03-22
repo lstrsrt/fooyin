@@ -172,6 +172,8 @@ bool DecoderContext::init(LoadedDecoder decoder, const Track& track)
         return false;
     }
 
+    const bool isDecoding = decoder.isDecoding;
+
     m_track   = track;
     m_decoder = std::move(decoder.decoder);
     m_input   = std::move(decoder.input);
@@ -183,6 +185,7 @@ bool DecoderContext::init(LoadedDecoder decoder, const Track& track)
     m_startPos = track.offset();
     setEndPolicy(EndPolicy::DecoderEofOnly);
     m_currentPos = m_startPos;
+    m_isDecoding = isDecoding;
 
     return true;
 }
@@ -192,6 +195,8 @@ bool DecoderContext::adoptPreparedDecoder(LoadedDecoder decoder, const Track& tr
     if(!decoder.decoder || !decoder.format) {
         return false;
     }
+
+    const bool isDecoding = decoder.isDecoding;
 
     m_decoder = std::move(decoder.decoder);
     m_decoder->setPlaybackHints(m_playbackHints);
@@ -203,8 +208,7 @@ bool DecoderContext::adoptPreparedDecoder(LoadedDecoder decoder, const Track& tr
     m_startPos = track.offset();
     setEndPolicy(EndPolicy::DecoderEofOnly);
     m_currentPos = m_startPos;
-
-    m_isDecoding = false;
+    m_isDecoding = isDecoding;
 
     return true;
 }
@@ -518,12 +522,14 @@ int DecoderContext::bitrate() const
 LoadedDecoder DecoderContext::takeLoadedDecoder()
 {
     LoadedDecoder loaded;
-    loaded.decoder = std::exchange(m_decoder, nullptr);
+    loaded.isDecoding = m_isDecoding;
+    loaded.decoder    = std::exchange(m_decoder, nullptr);
     if(loaded.decoder) {
         loaded.format = m_format;
     }
     loaded.input = std::exchange(m_input, {});
     loaded.input.rebind();
+    m_isDecoding = false;
     return loaded;
 }
 
