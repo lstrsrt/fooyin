@@ -28,6 +28,8 @@ struct FakePipeline : Fooyin::AudioPipelineFader
     bool fading{false};
     int lastFadeInDurationMs{0};
     int lastFadeOutDurationMs{0};
+    int stopCalls{0};
+    int resetCalls{0};
 
     void setFaderCurve(Fooyin::Engine::FadeCurve /*curve*/) override { }
 
@@ -46,11 +48,13 @@ struct FakePipeline : Fooyin::AudioPipelineFader
     void faderStop() override
     {
         fading = false;
+        ++stopCalls;
     }
 
     void faderReset() override
     {
         fading = false;
+        ++resetCalls;
     }
 
     [[nodiscard]] bool faderIsFading() const override
@@ -242,6 +246,26 @@ TEST(FadeControllerTest, PauseFadeCompletionArmsResumeFadeIn)
 
     EXPECT_TRUE(controller.applyPlayFade(Engine::PlaybackState::Playing, true, values, 0.75));
     EXPECT_EQ(pipeline.lastFadeInDurationMs, 420);
+    EXPECT_FALSE(controller.hasPendingResumeFadeIn());
+}
+
+TEST(FadeControllerTest, ResumeWithoutPauseFadeResetsFader)
+{
+    FakePipeline pipeline;
+    FadeController controller{&pipeline};
+
+    Engine::FadingValues values;
+    values.pause.out = 250;
+    values.pause.in  = 0;
+
+    ASSERT_TRUE(controller.beginPauseFade(true, values, 0.75, 1));
+    const auto result = controller.handlePipelineFadeEvent(true, 1);
+    ASSERT_TRUE(result.pauseNow);
+    EXPECT_TRUE(controller.hasPendingResumeFadeIn());
+
+    EXPECT_FALSE(controller.applyPlayFade(Engine::PlaybackState::Paused, true, values, 0.75));
+    EXPECT_EQ(pipeline.stopCalls, 1);
+    EXPECT_EQ(pipeline.resetCalls, 1);
     EXPECT_FALSE(controller.hasPendingResumeFadeIn());
 }
 

@@ -148,10 +148,11 @@ bool FadeController::handleManualChangeFade(const Track& track, bool fadingEnabl
 bool FadeController::applyPlayFade(Engine::PlaybackState prevState, bool fadingEnabled,
                                    const Engine::FadingValues& fadingValues, double volume)
 {
-    const bool wasFadingToPause = (m_state == FadeState::FadingToPause);
-    const bool wasFadingToStop  = (m_state == FadeState::FadingToStop);
-    const bool wasFadingOut     = (wasFadingToPause || wasFadingToStop);
-    const bool fromStopped      = (prevState == Engine::PlaybackState::Stopped);
+    const bool wasFadingToPause     = (m_state == FadeState::FadingToPause);
+    const bool wasFadingToStop      = (m_state == FadeState::FadingToStop);
+    const bool wasFadingOut         = (wasFadingToPause || wasFadingToStop);
+    const bool fromStopped          = (prevState == Engine::PlaybackState::Stopped);
+    const bool hadPendingResumeFade = m_resumeFadePending;
 
     if(m_state == FadeState::FadingToPause || m_state == FadeState::FadingToStop) {
         m_state = FadeState::Idle;
@@ -184,7 +185,10 @@ bool FadeController::applyPlayFade(Engine::PlaybackState prevState, bool fadingE
         return true;
     }
 
-    if(fromStopped) {
+    const bool resumedPlayback = (prevState == Engine::PlaybackState::Paused) || fromStopped || wasFadingOut;
+    const bool shouldReset     = resumedPlayback || hadPendingResumeFade || isFading();
+
+    if(shouldReset) {
         m_pipelineFader->faderStop();
         m_pipelineFader->faderReset();
         m_resumeFadePending  = false;
