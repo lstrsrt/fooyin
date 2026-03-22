@@ -55,6 +55,8 @@ constexpr auto StatsUpdateInterval = 100ms;
 constexpr auto StatsUpdateInterval = 100;
 #endif
 
+constexpr auto ProgressUpdateInterval = 100;
+
 namespace {
 int nextRequestId()
 {
@@ -148,6 +150,7 @@ public:
     void applyPendingWatcherSetup();
 
     void updateProgress(const ScanProgress& progress);
+    void flushPendingProgress();
     void finishScanRequest();
     void completeCurrentScanRequest();
     void cancelScanRequest(int id);
@@ -171,7 +174,9 @@ public:
     LibraryScanner m_scanner;
     TrackDatabaseManager m_trackDatabaseManager;
 
+    QBasicTimer m_progressTimer;
     QBasicTimer m_statsTimer;
+    std::optional<ScanProgress> m_pendingProgress;
     std::unordered_map<QString, PendingTrackStatsUpdate> m_pendingTrackStats;
 
     std::deque<LibraryScanRequest> m_scanRequests;
@@ -424,7 +429,29 @@ void LibraryThreadHandlerPrivate::updateProgress(const ScanProgress& scannerProg
         progress.info = request.library;
     }
 
-    emit m_self->progressChanged(progress);
+    if(progress.phase == ScanProgress::Phase::Finished) {
+        m_pendingProgress.reset();
+        m_progressTimer.stop();
+        emit m_self->progressChanged(progress);
+        return;
+    }
+
+    m_pendingProgress = std::move(progress);
+    if(!m_progressTimer.isActive()) {
+        m_progressTimer.start(ProgressUpdateInterval, m_self);
+    }
+}
+
+void LibraryThreadHandlerPrivate::flushPendingProgress()
+{
+    if(!m_pendingProgress.has_value()) {
+        m_progressTimer.stop();
+        return;
+    }
+
+    emit m_self->progressChanged(*m_pendingProgress);
+    m_pendingProgress.reset();
+    m_progressTimer.stop();
 }
 
 void LibraryThreadHandlerPrivate::finishScanRequest()
@@ -883,7 +910,10 @@ void LibraryThreadHandler::libraryRemoved(int id)
 
 void LibraryThreadHandler::timerEvent(QTimerEvent* event)
 {
-    if(event->timerId() == p->m_statsTimer.timerId()) {
+    if(event->timerId() == p->m_progressTimer.timerId()) {
+        p->flushPendingProgress();
+    }
+    else if(event->timerId() == p->m_statsTimer.timerId()) {
         p->m_statsTimer.stop();
         p->flushTrackStatsUpdates();
     }

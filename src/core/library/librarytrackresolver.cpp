@@ -556,8 +556,6 @@ void LibraryTrackResolver::updateExistingTrack(Track& track, const QString& file
 
 void LibraryTrackResolver::readNewTrack(const QString& file)
 {
-    qCDebug(LIB_SCANNER) << "Indexing new file:" << file;
-
     const TrackList tracks = readTracks(file);
     if(tracks.empty()) {
         return;
