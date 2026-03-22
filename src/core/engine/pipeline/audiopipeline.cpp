@@ -179,6 +179,7 @@ AudioPipeline::AudioPipeline()
     , m_analysisBus{nullptr}
     , m_playbackState{PipelinePlaybackState::Stopped}
     , m_playing{false}
+    , m_pauseDrainActive{false}
     , m_renderPhase{RenderPhase::Stopped}
     , m_outputBitdepth{SampleFormat::Unknown}
     , m_ditherEnabled{false}
@@ -649,6 +650,7 @@ void AudioPipeline::play()
     enqueueAsync([](AudioPipeline& pipeline) {
         const auto previousState = pipeline.m_playbackState.load(std::memory_order_acquire);
         pipeline.m_playing.store(true, std::memory_order_release);
+        pipeline.m_pauseDrainActive.store(false, std::memory_order_release);
         pipeline.m_playbackState.store(PipelinePlaybackState::Playing, std::memory_order_release);
         pipeline.m_renderPhase = RenderPhase::Preroll;
 
@@ -664,10 +666,22 @@ void AudioPipeline::play()
     });
 }
 
+void AudioPipeline::beginPauseDrain()
+{
+    enqueueAsync([](AudioPipeline& pipeline) {
+        pipeline.m_playing.store(false, std::memory_order_release);
+        pipeline.m_pauseDrainActive.store(true, std::memory_order_release);
+        pipeline.m_playbackState.store(PipelinePlaybackState::Paused, std::memory_order_release);
+        pipeline.m_renderPhase = RenderPhase::Stopped;
+        pipeline.m_renderer.pauseAll();
+    });
+}
+
 void AudioPipeline::pause()
 {
     enqueueAsync([](AudioPipeline& pipeline) {
         pipeline.m_playing.store(false, std::memory_order_release);
+        pipeline.m_pauseDrainActive.store(false, std::memory_order_release);
         pipeline.m_playbackState.store(PipelinePlaybackState::Paused, std::memory_order_release);
         pipeline.m_renderPhase = RenderPhase::Stopped;
 
@@ -683,6 +697,7 @@ void AudioPipeline::stopPlayback()
 {
     enqueueAsync([](AudioPipeline& pipeline) {
         pipeline.m_playing.store(false, std::memory_order_release);
+        pipeline.m_pauseDrainActive.store(false, std::memory_order_release);
         pipeline.m_playbackState.store(PipelinePlaybackState::Stopped, std::memory_order_release);
         pipeline.m_renderPhase = RenderPhase::Stopped;
 
@@ -718,6 +733,7 @@ void AudioPipeline::resetOutput()
         }
 
         pipeline.m_renderPhase = RenderPhase::Stopped;
+        pipeline.m_pauseDrainActive.store(false, std::memory_order_release);
         pipeline.resetPendingOutputState(true, true);
     });
 }
@@ -1342,8 +1358,8 @@ void AudioPipeline::audioThreadFunc()
             break;
         }
 
-        if(m_playing.load(std::memory_order_acquire) && m_outputUnit.isOutputInitialized() && m_outputUnit.output()
-           && m_outputUnit.output()->initialised()) {
+        if((m_playing.load(std::memory_order_acquire) || m_pauseDrainActive.load(std::memory_order_acquire))
+           && m_outputUnit.isOutputInitialized() && m_outputUnit.output() && m_outputUnit.output()->initialised()) {
             processAudio();
         }
         else if(hasMoreCommands) {
@@ -1425,6 +1441,31 @@ void AudioPipeline::processAudio()
     int freeFrames = state.freeFrames;
     int framesWrittenThisCycle{0};
     resetCycleRenderedPosition();
+
+    if(m_pauseDrainActive.load(std::memory_order_acquire)) {
+        if(handleNoFreeFrames(state, freeFrames, framesWrittenThisCycle)) {
+            clearUnderrunWarningLatches();
+            m_pendingWriteStallLogActive = false;
+            return;
+        }
+
+        if(drainPendingOutput(state, freeFrames, framesWrittenThisCycle, 0)) {
+            clearUnderrunWarningLatches();
+            return;
+        }
+
+        const auto outputStateWithWrites = stateWithWrites(state, framesWrittenThisCycle);
+        const auto basis
+            = m_timelineUnit.positionIsMapped() ? PositionBasis::RenderedSource : PositionBasis::DecodeHead;
+        updatePlaybackDelay(outputStateWithWrites, basis);
+        notifyDataDemand(false);
+        clearUnderrunWarningLatches();
+        m_pendingWriteStallLogActive = false;
+
+        const auto waitDuration = m_outputUnit.writeBackoff(m_renderer.outputFormat(), outputStateWithWrites);
+        m_threadHost.waitFor(waitDuration);
+        return;
+    }
 
     if(handleNoFreeFrames(state, freeFrames, framesWrittenThisCycle)) {
         clearUnderrunWarningLatches();

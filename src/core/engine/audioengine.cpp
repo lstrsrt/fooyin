@@ -71,6 +71,11 @@ constexpr auto DecodeHighWatermarkMaxRatio  = 0.99;
 constexpr auto DecodeWatermarkMinHeadroomMs = 20;
 constexpr auto DecodeWatermarkMinGapMs      = 30;
 constexpr auto PrefillSafetyMarginMs        = 100;
+constexpr auto AudiblePauseDrainPollMs      = 10;
+constexpr auto AudiblePauseDrainThresholdMs = 5;
+constexpr auto AudiblePauseWatchdogMinMs    = 250;
+constexpr auto AudiblePauseWatchdogMaxMs    = 1500;
+constexpr auto AudiblePauseWatchdogMarginMs = 100;
 
 std::pair<double, double> sanitiseWatermarkRatios(double lowRatio, double highRatio)
 {
@@ -180,6 +185,51 @@ uint64_t scaledDelayMs(uint64_t delay, double scale)
     const auto scaledDelay = std::llround(static_cast<long double>(delay) * delayToTrackScale);
     return static_cast<uint64_t>(
         std::clamp<long double>(scaledDelay, 0.0, static_cast<long double>(std::numeric_limits<uint64_t>::max())));
+}
+
+bool audiblePauseDrainComplete(const Fooyin::AudioPipeline::OutputQueueSnapshot& snapshot,
+                               const Fooyin::AudioFormat& outputFormat)
+{
+    if(!snapshot.valid) {
+        return true;
+    }
+
+    const double delaySeconds = std::isfinite(snapshot.state.delay) ? std::max(0.0, snapshot.state.delay) : 0.0;
+    const int queuedFrames    = std::max(0, snapshot.state.queuedFrames);
+    const int outputRate      = outputFormat.sampleRate();
+
+    if(queuedFrames == 0) {
+        return true;
+    }
+
+    if(outputRate <= 0) {
+        return queuedFrames == 0 && delaySeconds <= (static_cast<double>(AudiblePauseDrainThresholdMs) / 1000.0);
+    }
+
+    const int delayFrames = std::max(0, static_cast<int>(std::llround(delaySeconds * outputRate)));
+    const int thresholdFrames
+        = std::max(1, static_cast<int>((static_cast<int64_t>(outputRate) * AudiblePauseDrainThresholdMs) / 1000));
+
+    return std::max(queuedFrames, delayFrames) <= thresholdFrames;
+}
+
+int audiblePauseWatchdogMs(int playbackBufferLengthMs, const Fooyin::AudioPipeline::OutputQueueSnapshot& snapshot,
+                           const Fooyin::AudioFormat& outputFormat)
+{
+    int initialDelayMs{0};
+    if(snapshot.valid) {
+        if(std::isfinite(snapshot.state.delay) && snapshot.state.delay > 0.0) {
+            initialDelayMs = std::max(initialDelayMs, static_cast<int>(std::llround(snapshot.state.delay * 1000.0)));
+        }
+
+        if(outputFormat.isValid() && outputFormat.sampleRate() > 0) {
+            initialDelayMs = std::max(static_cast<uint64_t>(initialDelayMs),
+                                      outputFormat.durationForFrames(std::max(0, snapshot.state.queuedFrames)));
+        }
+    }
+
+    const int requestedMs = std::max({0, playbackBufferLengthMs, initialDelayMs}) + AudiblePauseWatchdogMarginMs;
+    return std::clamp(requestedMs, AudiblePauseWatchdogMinMs, AudiblePauseWatchdogMaxMs);
 }
 
 bool samePlaybackItem(const Fooyin::Engine::PlaybackItem& lhs, const Fooyin::Engine::PlaybackItem& rhs)
@@ -868,19 +918,107 @@ void AudioEngine::applyFadeResult(const FadeController::FadeResult& result)
         stopImmediate();
     }
     else if(result.pauseNow) {
-        clearTransportTransition();
-        m_pipeline.pause();
-        m_pipeline.resetOutput();
-        clearPendingAnalysisData();
-        m_audioClock.stop();
-        m_fadeController.setState(FadeState::Idle);
-        m_fadeController.setFadeOnNext(false);
-        updatePlaybackState(Engine::PlaybackState::Paused);
+        beginAudiblePauseCompletion(result.transportTransitionId);
     }
     if(result.loadTrack) {
         loadTrack({.track = *result.loadTrack, .itemId = std::exchange(m_pendingManualTrackItemId, uint64_t{0})},
                   false);
     }
+}
+
+void AudioEngine::beginAudiblePauseCompletion(const uint64_t transportTransitionId)
+{
+    const auto outputSnapshot = m_pipeline.outputQueueSnapshot();
+    const auto outputFormat   = m_pipeline.outputFormat();
+
+    m_decoder.stopDecodeTimer();
+    m_pipeline.beginPauseDrain();
+    clearPendingAnalysisData();
+    m_audioClock.stop();
+    updatePlaybackState(Engine::PlaybackState::Paused);
+
+    m_pendingAudiblePause.active       = true;
+    m_pendingAudiblePause.transitionId = transportTransitionId;
+    m_pendingAudiblePause.serial       = ++m_nextPendingAudiblePauseSerial;
+    m_pendingAudiblePause.startedAt    = std::chrono::steady_clock::now();
+    m_pendingAudiblePause.watchdogMs   = audiblePauseWatchdogMs(m_playbackBufferLengthMs, outputSnapshot, outputFormat);
+
+    maybeCompletePendingAudiblePause(m_pendingAudiblePause.serial);
+}
+
+void AudioEngine::maybeCompletePendingAudiblePause(const uint64_t serial)
+{
+    if(!m_pendingAudiblePause.active || m_pendingAudiblePause.serial != serial) {
+        return;
+    }
+
+    if(m_pendingAudiblePause.transitionId != 0
+       && !m_transitions.isActiveTransportTransition(m_pendingAudiblePause.transitionId)) {
+        clearPendingAudiblePause();
+        return;
+    }
+
+    const auto outputSnapshot = m_pipeline.outputQueueSnapshot();
+    const auto outputFormat   = m_pipeline.outputFormat();
+    const bool drainComplete  = audiblePauseDrainComplete(outputSnapshot, outputFormat);
+    const auto elapsedMs      = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now()
+                                                                                      - m_pendingAudiblePause.startedAt)
+                                    .count();
+    const bool watchdogExpired = m_pendingAudiblePause.watchdogMs > 0 && elapsedMs >= m_pendingAudiblePause.watchdogMs;
+
+    if(!drainComplete && !watchdogExpired) {
+        QTimer::singleShot(std::chrono::milliseconds{AudiblePauseDrainPollMs}, this,
+                           [this, serial]() { maybeCompletePendingAudiblePause(serial); });
+        return;
+    }
+
+    if(!drainComplete && watchdogExpired) {
+        const int queuedFrames = outputSnapshot.valid ? std::max(0, outputSnapshot.state.queuedFrames) : -1;
+        const int delayMs      = outputSnapshot.valid && std::isfinite(outputSnapshot.state.delay)
+                                   ? std::max(0, static_cast<int>(std::llround(outputSnapshot.state.delay * 1000.0)))
+                                   : -1;
+        qCWarning(ENGINE) << "Audible pause drain watchdog expired:"
+                          << "watchdogMs=" << m_pendingAudiblePause.watchdogMs << "elapsedMs=" << elapsedMs
+                          << "queuedFrames=" << queuedFrames << "delayMs=" << delayMs;
+    }
+
+    clearPendingAudiblePause();
+    finalisePausedState();
+}
+
+void AudioEngine::finalisePausedState()
+{
+    clearTransportTransition();
+    m_pipeline.pause();
+    m_fadeController.setState(FadeState::Idle);
+    m_fadeController.setFadeOnNext(false);
+    setPhase(Playback::Phase::Paused, PhaseChangeReason::PlaybackStatePaused);
+}
+
+void AudioEngine::clearPendingAudiblePause()
+{
+    m_pendingAudiblePause.active       = false;
+    m_pendingAudiblePause.transitionId = 0;
+    m_pendingAudiblePause.watchdogMs   = 0;
+}
+
+bool AudioEngine::cancelPendingAudiblePause()
+{
+    if(!m_pendingAudiblePause.active) {
+        return false;
+    }
+
+    clearPendingAudiblePause();
+    clearTransportTransition();
+
+    m_fadeController.applyPlayFade(Engine::PlaybackState::Paused, m_fadingEnabled, m_fadingValues, m_volume);
+    m_decoder.startDecoding();
+    m_pipeline.play();
+
+    updatePosition();
+    m_audioClock.start();
+    updatePlaybackState(Engine::PlaybackState::Playing);
+    return true;
 }
 
 void AudioEngine::handlePipelineFadeEvent(const AudioPipeline::FadeEvent& event)
@@ -3061,6 +3199,8 @@ void AudioEngine::executeLoadPlan(const Engine::PlaybackItem& item, bool manualC
 
 void AudioEngine::loadTrack(const Engine::PlaybackItem& item, bool manualChange)
 {
+    clearPendingAudiblePause();
+
     const Track& track = item.track;
     if(manualChange) {
         m_pendingManualTrackItemId = 0;
@@ -3592,6 +3732,10 @@ void AudioEngine::play()
         return;
     }
 
+    if(cancelPendingAudiblePause()) {
+        return;
+    }
+
     const auto prevState  = m_playbackState.load(std::memory_order_relaxed);
     const auto playAction = reducePlaybackIntent(
         {
@@ -3657,6 +3801,10 @@ void AudioEngine::play()
 
 void AudioEngine::pause()
 {
+    if(m_pendingAudiblePause.active) {
+        return;
+    }
+
     const auto state       = m_playbackState.load(std::memory_order_relaxed);
     const auto pauseAction = reducePlaybackIntent(
         {
@@ -3686,7 +3834,6 @@ void AudioEngine::pause()
     }
 
     m_pipeline.pause();
-    m_pipeline.resetOutput();
     clearPendingAnalysisData();
     m_audioClock.stop();
     updatePlaybackState(Engine::PlaybackState::Paused);
@@ -3694,6 +3841,7 @@ void AudioEngine::pause()
 
 void AudioEngine::stop()
 {
+    clearPendingAudiblePause();
     m_transitions.cancelPendingSeek();
 
     if(auto stream = m_decoder.activeStream()) {
@@ -3756,6 +3904,7 @@ void AudioEngine::stop()
 
 void AudioEngine::stopImmediate()
 {
+    clearPendingAudiblePause();
     clearAutoCrossfadeTailFadeState();
     clearAutoBoundaryFadeState();
     m_upcomingTrackCandidate       = {};

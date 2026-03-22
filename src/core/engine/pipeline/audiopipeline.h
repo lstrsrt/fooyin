@@ -196,6 +196,8 @@ public:
 
     //! Start output processing loop.
     void play();
+    //! Stop rendering new audio but keep draining queued output until final pause.
+    void beginPauseDrain();
     //! Pause output processing loop.
     void pause();
     //! Stop playback state and clear stream activity.
@@ -649,6 +651,7 @@ private:
 
     std::atomic<PipelinePlaybackState> m_playbackState;
     std::atomic<bool> m_playing;
+    std::atomic<bool> m_pauseDrainActive;
 
     RenderPhase m_renderPhase;
 

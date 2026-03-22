@@ -59,6 +59,17 @@ struct OutputStats
     std::atomic<int> writeCalls{0};
     std::atomic<int> setVolumeCalls{0};
     std::atomic<int> setDeviceCalls{0};
+    std::atomic<int> setPausedCalls{0};
+    std::atomic<int> freeFrames{256};
+    std::atomic<int> queuedFrames{0};
+    std::atomic<int> delayMs{0};
+
+    void setOutputState(int free, int queued, int delay)
+    {
+        freeFrames.store(std::max(0, free), std::memory_order_relaxed);
+        queuedFrames.store(std::max(0, queued), std::memory_order_relaxed);
+        delayMs.store(std::max(0, delay), std::memory_order_relaxed);
+    }
 
     void recordVolume(double volume)
     {
@@ -318,7 +329,9 @@ public:
 
     OutputState currentState() override
     {
-        return {.freeFrames = m_bufferFrames, .queuedFrames = 0, .delay = 0.0};
+        return {.freeFrames   = m_stats->freeFrames.load(std::memory_order_relaxed),
+                .queuedFrames = m_stats->queuedFrames.load(std::memory_order_relaxed),
+                .delay        = static_cast<double>(m_stats->delayMs.load(std::memory_order_relaxed)) / 1000.0};
     }
 
     [[nodiscard]] int bufferSize() const override
@@ -348,6 +361,7 @@ public:
     void setPaused(bool pause) override
     {
         m_paused = pause;
+        ++m_stats->setPausedCalls;
     }
 
     void setVolume(double volume) override
@@ -521,6 +535,139 @@ TEST(AudioEngineTest, PlayPauseStopWithFadeCompletesStateTransitions)
     EXPECT_EQ(harness.engine.trackStatus(), Engine::TrackStatus::NoTrack);
     EXPECT_TRUE(pumpUntil([&harness]() { return harness.engine.position() == 0; }, 1000ms));
     EXPECT_EQ(harness.engine.position(), 0U);
+}
+
+TEST(AudioEngineTest, PauseDoesNotResetOutputQueue)
+{
+    ensureCoreApplication();
+    EngineHarness harness{false};
+
+    const Track track = harness.createTrack(u"pause-preserves-output.fyt"_s, 0, 100000);
+    harness.engine.loadTrack(makePlaybackItem(track, 1), false);
+    ASSERT_TRUE(pumpUntil([&harness]() { return harness.engine.trackStatus() == Engine::TrackStatus::Loaded; }));
+
+    harness.engine.play();
+    ASSERT_TRUE(pumpUntil([&harness]() { return harness.engine.playbackState() == Engine::PlaybackState::Playing; }));
+
+    const int resetCallsBeforePause = harness.outputStats->resetCalls.load();
+
+    harness.engine.pause();
+    ASSERT_TRUE(
+        pumpUntil([&harness]() { return harness.engine.playbackState() == Engine::PlaybackState::Paused; }, 3000ms));
+
+    EXPECT_EQ(harness.outputStats->resetCalls.load(), resetCallsBeforePause);
+}
+
+TEST(AudioEngineTest, FadePauseDoesNotResetOutputQueueAfterDrain)
+{
+    ensureCoreApplication();
+    EngineHarness harness{/*enablePauseStopFade=*/true};
+
+    const Track track = harness.createTrack(u"fade-pause-preserves-output.fyt"_s, 0, 100000);
+    harness.engine.loadTrack(makePlaybackItem(track, 1), false);
+    ASSERT_TRUE(pumpUntil([&harness]() { return harness.engine.trackStatus() == Engine::TrackStatus::Loaded; }));
+
+    harness.engine.play();
+    ASSERT_TRUE(pumpUntil([&harness]() { return harness.engine.playbackState() == Engine::PlaybackState::Playing; }));
+
+    const int resetCallsBeforePause = harness.outputStats->resetCalls.load();
+    harness.outputStats->setOutputState(256, 256, 120);
+
+    harness.engine.pause();
+    std::this_thread::sleep_for(120ms);
+    QCoreApplication::processEvents(QEventLoop::AllEvents, 10);
+
+    EXPECT_EQ(harness.engine.playbackState(), Engine::PlaybackState::Paused);
+    EXPECT_EQ(harness.outputStats->resetCalls.load(), resetCallsBeforePause);
+
+    harness.outputStats->setOutputState(256, 0, 0);
+    std::this_thread::sleep_for(120ms);
+    QCoreApplication::processEvents(QEventLoop::AllEvents, 10);
+
+    EXPECT_EQ(harness.engine.playbackState(), Engine::PlaybackState::Paused);
+    EXPECT_EQ(harness.outputStats->resetCalls.load(), resetCallsBeforePause);
+}
+
+TEST(AudioEngineTest, FadePauseFinalisesWhenQueuedFramesDrainEvenIfDelayRemains)
+{
+    ensureCoreApplication();
+    EngineHarness harness{/*enablePauseStopFade=*/true};
+
+    const Track track = harness.createTrack(u"fade-pause-delay-residual.fyt"_s, 0, 100000);
+    harness.engine.loadTrack(makePlaybackItem(track, 1), false);
+    ASSERT_TRUE(pumpUntil([&harness]() { return harness.engine.trackStatus() == Engine::TrackStatus::Loaded; }));
+
+    harness.engine.play();
+    ASSERT_TRUE(pumpUntil([&harness]() { return harness.engine.playbackState() == Engine::PlaybackState::Playing; }));
+
+    const int setPausedCallsBeforePause = harness.outputStats->setPausedCalls.load();
+    harness.outputStats->setOutputState(256, 256, 120);
+
+    harness.engine.pause();
+    ASSERT_TRUE(pumpUntil([&harness]() { return harness.engine.playbackState() == Engine::PlaybackState::Paused; }));
+
+    harness.outputStats->setOutputState(256, 0, 53);
+    ASSERT_TRUE(pumpUntil(
+        [&harness, setPausedCallsBeforePause]() {
+            return harness.outputStats->setPausedCalls.load() > setPausedCallsBeforePause;
+        },
+        500ms));
+}
+
+TEST(AudioEngineTest, PlayCancelsPendingAudiblePauseCompletion)
+{
+    ensureCoreApplication();
+    EngineHarness harness{/*enablePauseStopFade=*/true};
+
+    const Track track = harness.createTrack(u"fade-pause-cancelled-by-play.fyt"_s, 0, 100000);
+    harness.engine.loadTrack(makePlaybackItem(track, 1), false);
+    ASSERT_TRUE(pumpUntil([&harness]() { return harness.engine.trackStatus() == Engine::TrackStatus::Loaded; }));
+
+    harness.engine.play();
+    ASSERT_TRUE(pumpUntil([&harness]() { return harness.engine.playbackState() == Engine::PlaybackState::Playing; }));
+
+    const int resetCallsBeforePause = harness.outputStats->resetCalls.load();
+    harness.outputStats->setOutputState(256, 256, 120);
+
+    harness.engine.pause();
+    std::this_thread::sleep_for(80ms);
+    QCoreApplication::processEvents(QEventLoop::AllEvents, 10);
+
+    EXPECT_EQ(harness.engine.playbackState(), Engine::PlaybackState::Paused);
+
+    harness.engine.play();
+    harness.outputStats->setOutputState(256, 0, 0);
+
+    std::this_thread::sleep_for(120ms);
+    QCoreApplication::processEvents(QEventLoop::AllEvents, 10);
+
+    EXPECT_EQ(harness.engine.playbackState(), Engine::PlaybackState::Playing);
+    EXPECT_EQ(harness.outputStats->resetCalls.load(), resetCallsBeforePause);
+}
+
+TEST(AudioEngineTest, FadePauseWatchdogFinalisesPauseWhenDelaySticks)
+{
+    ensureCoreApplication();
+    EngineHarness harness{/*enablePauseStopFade=*/true};
+
+    const Track track = harness.createTrack(u"fade-pause-watchdog.fyt"_s, 0, 100000);
+    harness.engine.loadTrack(makePlaybackItem(track, 1), false);
+    ASSERT_TRUE(pumpUntil([&harness]() { return harness.engine.trackStatus() == Engine::TrackStatus::Loaded; }));
+
+    harness.engine.play();
+    ASSERT_TRUE(pumpUntil([&harness]() { return harness.engine.playbackState() == Engine::PlaybackState::Playing; }));
+
+    const int setPausedCallsBeforePause = harness.outputStats->setPausedCalls.load();
+    harness.outputStats->setOutputState(256, 256, 120);
+
+    harness.engine.pause();
+    ASSERT_TRUE(pumpUntil([&harness]() { return harness.engine.playbackState() == Engine::PlaybackState::Paused; }));
+
+    ASSERT_TRUE(pumpUntil(
+        [&harness, setPausedCallsBeforePause]() {
+            return harness.outputStats->setPausedCalls.load() > setPausedCallsBeforePause;
+        },
+        2500ms));
 }
 
 TEST(AudioEngineTest, SeekDiscontinuityPublishesNearTargetQuickly)

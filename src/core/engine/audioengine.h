@@ -210,6 +210,11 @@ private:
     void cancelFadesForReinit();
     void reinitOutputForCurrentFormat();
     void applyFadeResult(const FadeController::FadeResult& result);
+    void beginAudiblePauseCompletion(uint64_t transportTransitionId);
+    void maybeCompletePendingAudiblePause(uint64_t serial);
+    void finalisePausedState();
+    void clearPendingAudiblePause();
+    [[nodiscard]] bool cancelPendingAudiblePause();
     void handlePipelineFadeEvent(const AudioPipeline::FadeEvent& event);
     void syncDecoderTrackMetadata();
     void publishBitrate(int bitrate);
@@ -436,5 +441,16 @@ private:
         StreamId streamId{InvalidStreamId};
     };
     PendingAudibleTrackCommit m_pendingAudibleTrackCommit;
+
+    struct PendingAudiblePause
+    {
+        bool active{false};
+        uint64_t transitionId{0};
+        uint64_t serial{0};
+        std::chrono::steady_clock::time_point startedAt;
+        int watchdogMs{0};
+    };
+    PendingAudiblePause m_pendingAudiblePause;
+    uint64_t m_nextPendingAudiblePauseSerial{0};
 };
 } // namespace Fooyin
