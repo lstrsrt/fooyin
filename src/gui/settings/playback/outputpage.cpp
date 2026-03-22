@@ -19,6 +19,8 @@
 
 #include "outputpage.h"
 
+#include "playbacksettingsutils.h"
+
 #include <core/coresettings.h>
 #include <core/engine/enginehandler.h>
 #include <core/internalcoresettings.h>
@@ -35,7 +37,6 @@
 
 using namespace Qt::StringLiterals;
 
-constexpr auto MinBufferSize                 = 500;
 constexpr auto DecodeHighWatermarkMaxRatio   = 0.99;
 constexpr auto DecodeHighWatermarkMaxPercent = 99;
 
@@ -55,6 +56,8 @@ public:
     void setupDevices(const QString& output);
 
 private:
+    void refreshBufferConstraints();
+
     EngineController* m_engine;
     SettingsManager* m_settings;
 
@@ -95,7 +98,7 @@ OutputPageWidget::OutputPageWidget(EngineController* engine, SettingsManager* se
 
     m_bufferSize->setSuffix(u" ms"_s);
     m_bufferSize->setSingleStep(100);
-    m_bufferSize->setMinimum(MinBufferSize);
+    m_bufferSize->setMinimum(PlaybackSettings::MinBufferSize);
     m_bufferSize->setMaximum(30000);
     m_bufferSize->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
 
@@ -183,8 +186,38 @@ OutputPageWidget::OutputPageWidget(EngineController* engine, SettingsManager* se
     QObject::connect(m_decodeHighWatermark, &QSpinBox::valueChanged, this,
                      [updateWatermarkHint]() { updateWatermarkHint(); });
 
+    m_settings->subscribe<Settings::Core::Internal::EngineFading>(this, &OutputPageWidget::refreshBufferConstraints);
+    m_settings->subscribe<Settings::Core::Internal::FadingValues>(this, &OutputPageWidget::refreshBufferConstraints);
+    m_settings->subscribe<Settings::Core::Internal::EngineCrossfading>(this,
+                                                                       &OutputPageWidget::refreshBufferConstraints);
+    m_settings->subscribe<Settings::Core::Internal::CrossfadingValues>(this,
+                                                                       &OutputPageWidget::refreshBufferConstraints);
+    m_settings->subscribe<Settings::Core::BufferLength>(this, [this](const int bufferLength) {
+        if(m_bufferSize->value() != bufferLength) {
+            m_bufferSize->setValue(bufferLength);
+        }
+    });
+
     syncWatermarkRatioBounds();
     updateWatermarkHint();
+}
+
+void OutputPageWidget::refreshBufferConstraints()
+{
+    const bool fadingEnabled = m_settings->value<Settings::Core::Internal::EngineFading>();
+    const auto fadingValues = m_settings->value<Settings::Core::Internal::FadingValues>().value<Engine::FadingValues>();
+    const bool crossfadeEnabled = m_settings->value<Settings::Core::Internal::EngineCrossfading>();
+    const auto crossfadingValues
+        = m_settings->value<Settings::Core::Internal::CrossfadingValues>().value<Engine::CrossfadingValues>();
+
+    const int minBufferLength = PlaybackSettings::minimumBufferLengthForFades(fadingEnabled, fadingValues,
+                                                                              crossfadeEnabled, crossfadingValues);
+    const int bufferLength    = std::max(m_settings->value<Settings::Core::BufferLength>(), minBufferLength);
+
+    m_bufferSize->setMinimum(minBufferLength);
+    if(m_bufferSize->value() != bufferLength) {
+        m_bufferSize->setValue(bufferLength);
+    }
 }
 
 void OutputPageWidget::load()
@@ -201,7 +234,8 @@ void OutputPageWidget::load()
     setupOutputs();
     setupDevices(m_outputBox->currentText());
     m_gaplessPlayback->setChecked(m_settings->value<Settings::Core::GaplessPlayback>());
-    m_bufferSize->setValue(m_settings->value<Settings::Core::BufferLength>());
+
+    refreshBufferConstraints();
 
     const auto [lowWatermarkRatio, highWatermarkRatio]
         = sanitiseRatios(m_settings->value<Settings::Core::Internal::DecodeLowWatermarkRatio>(),

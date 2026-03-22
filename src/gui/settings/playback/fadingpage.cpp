@@ -19,6 +19,9 @@
 
 #include "fadingpage.h"
 
+#include "playbacksettingsutils.h"
+
+#include <core/coresettings.h>
 #include <core/engine/enginedefs.h>
 #include <core/internalcoresettings.h>
 #include <gui/guiconstants.h>
@@ -390,6 +393,11 @@ void FadingPageWidget::apply()
     m_settings->set<Settings::Core::Internal::CrossfadingValues>(QVariant::fromValue(crossfadingValues));
     m_settings->set<Settings::Core::Internal::CrossfadeSwitchPolicy>(
         m_crossfadeAutoSwitchPolicy->currentData().toInt());
+
+    const int minBufferLength = PlaybackSettings::minimumBufferLengthForFades(
+        m_fadingBox->isChecked(), fadingValues, m_crossfadeBox->isChecked(), crossfadingValues);
+    const int bufferLength = m_settings->value<Settings::Core::BufferLength>();
+    m_settings->set<Settings::Core::BufferLength>(std::max(bufferLength, minBufferLength));
 }
 
 void FadingPageWidget::reset()
