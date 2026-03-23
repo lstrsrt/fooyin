@@ -142,6 +142,9 @@ LyricsWidget::LyricsWidget(PlayerController* playerController, EngineController*
     QObject::connect(m_playerController, &PlayerController::positionChanged, this, &LyricsWidget::setCurrentTime);
     QObject::connect(m_playerController, &PlayerController::positionMoved, this,
                      qOverload<uint64_t>(&LyricsWidget::checkStartAutoScrollPos));
+    QObject::connect(m_lyricsView, &LyricsView::viewportResized, this, &LyricsWidget::updateViewportPadding);
+    QObject::connect(m_lyricsFinder, &LyricsFinder::lyricsSearchFinished, this,
+                     &LyricsWidget::handleLyricsSearchFinished);
 
     QObject::connect(m_lyricsView, &LyricsView::lineClicked, this, &LyricsWidget::seekTo);
     QObject::connect(m_lyricsView->verticalScrollBar(), &QScrollBar::rangeChanged, this,
@@ -187,23 +190,38 @@ void LyricsWidget::updateLyrics(const Track& track, bool force)
 {
     QObject::disconnect(m_finderConnection);
 
-    if(m_scrollAnim) {
-        m_scrollAnim->stop();
-    }
-    m_lyricsView->verticalScrollBar()->setValue(0);
+    const Track previousTrack{m_currentTrack};
 
-    if(std::exchange(m_currentTrack, track) == track && !force) {
+    const bool sameTrack      = previousTrack.sameIdentityAs(track);
+    const bool preserveLyrics = sameTrack && force && m_currentLyrics.isValid();
+
+    m_currentTrack = track;
+
+    if(previousTrack == track && !force) {
         return;
     }
 
     m_lyrics.clear();
-    m_model->setLyrics({});
+
+    if(!preserveLyrics) {
+        if(m_scrollAnim) {
+            m_scrollAnim->stop();
+        }
+        m_lyricsView->verticalScrollBar()->setValue(0);
+
+        m_currentLyrics    = {};
+        m_currentLineStart = -1;
+        m_currentLineEnd   = -1;
+        m_model->setLyrics({});
+    }
 
     if(!track.isValid()) {
         return;
     }
 
-    m_lyricsView->setDisplayString(m_parser.evaluate(m_config.noLyricsScript, track));
+    if(!preserveLyrics) {
+        m_lyricsView->setDisplayString(m_parser.evaluate(m_config.noLyricsScript, track));
+    }
 
     m_finderConnection = QObject::connect(m_lyricsFinder, &LyricsFinder::lyricsFound, this, &LyricsWidget::loadLyrics);
 
@@ -351,11 +369,11 @@ void LyricsWidget::applyConfig(const ConfigData& config)
     m_config = validated;
 
     m_lyricsView->setVerticalScrollBarPolicy(m_config.showScrollbar ? Qt::ScrollBarAsNeeded : Qt::ScrollBarAlwaysOff);
-    m_model->setMargins(m_config.margins);
     m_model->setLineSpacing(m_config.lineSpacing);
     m_model->setAlignment(static_cast<Qt::Alignment>(m_config.alignment));
     m_model->setColours(m_config.colours.isValid() ? m_config.colours.value<Colours>() : Colours{});
     m_model->setFonts(m_config.lineFont, m_config.wordLineFont, m_config.wordFont);
+    updateViewportPadding();
 
     updateScrollMode(static_cast<ScrollMode>(m_config.scrollMode));
 
@@ -589,6 +607,28 @@ void LyricsWidget::loadLyrics(const Lyrics& lyrics)
     }
 }
 
+void LyricsWidget::handleLyricsSearchFinished(const Track& track, bool foundAny)
+{
+    if(foundAny || !track.sameIdentityAs(m_currentTrack)) {
+        return;
+    }
+
+    m_currentLyrics    = {};
+    m_currentLineStart = -1;
+    m_currentLineEnd   = -1;
+    m_lyrics.clear();
+    m_model->setLyrics({});
+
+    if(track.isValid()) {
+        m_lyricsView->setDisplayString(m_parser.evaluate(m_config.noLyricsScript, track));
+    }
+    else {
+        m_lyricsView->setDisplayString({});
+    }
+
+    updateViewportPadding();
+}
+
 void LyricsWidget::changeLyrics(const Lyrics& lyrics)
 {
     m_currentLyrics = lyrics;
@@ -605,6 +645,8 @@ void LyricsWidget::changeLyrics(const Lyrics& lyrics)
         m_lyricsView->setDisplayString(m_parser.evaluate(m_config.noLyricsScript, m_currentTrack));
         m_model->setLyrics({});
     }
+
+    updateViewportPadding();
 }
 
 void LyricsWidget::openEditor(const Lyrics& lyrics)
@@ -652,6 +694,24 @@ void LyricsWidget::setCurrentTime(uint64_t time)
     m_currentTime = time;
     m_model->setCurrentTime(time);
     highlightCurrentLine();
+}
+
+void LyricsWidget::updateViewportPadding()
+{
+    auto margins = m_config.margins;
+    if(m_currentLyrics.isSynced()) {
+        margins.setTop(0);
+        margins.setBottom(0);
+    }
+
+    m_model->setMargins(margins);
+    m_model->setViewportPadding(m_currentLyrics.isSynced() ? m_lyricsView->viewport()->height() / 2 : 0);
+
+    if(m_currentLyrics.isSynced()) {
+        m_currentLineStart = -1;
+        m_currentLineEnd   = -1;
+        highlightCurrentLine();
+    }
 }
 
 void LyricsWidget::seekTo(const QModelIndex& index, const QPoint& pos)
@@ -713,7 +773,7 @@ void LyricsWidget::highlightCurrentLine()
             if(firstRect.isValid() && lastRect.isValid()) {
                 const int scrollOffset = m_lyricsView->verticalScrollBar()->value();
                 const int absoluteY    = m_currentLineStart == m_currentLineEnd
-                                           ? firstRect.top() + scrollOffset
+                                           ? firstRect.center().y() + scrollOffset
                                            : (firstRect.top() + lastRect.bottom()) / 2 + scrollOffset;
                 scrollToCurrentLine(absoluteY);
             }
@@ -726,7 +786,8 @@ void LyricsWidget::highlightCurrentLine()
                 }
 
                 if(m_currentLineStart == m_currentLineEnd) {
-                    scrollToCurrentLine(topY);
+                    const QModelIndex idx = m_model->index(m_currentLineStart, 0);
+                    scrollToCurrentLine(topY + (m_lyricsView->sizeHintForIndex(idx).height() / 2));
                     return;
                 }
 

@@ -53,6 +53,7 @@ LyricsFinder::LyricsFinder(std::shared_ptr<NetworkAccessManager> networkManager,
     : QObject{parent}
     , m_networkManager{std::move(networkManager)}
     , m_settings{settings}
+    , m_foundAnyResults{false}
     , m_localOnly{false}
     , m_currentSourceIndex{-1}
     , m_currentSource{nullptr}
@@ -155,6 +156,7 @@ void LyricsFinder::startLyricsSearch(const Track& track)
            .album  = m_parser.evaluate(m_settings->fileValue(Settings::AlbumField, u"%album%"_s).toString(), track),
            .artist = m_parser.evaluate(m_settings->fileValue(Settings::ArtistField, u"%artist%"_s).toString(), track)};
 
+    m_foundAnyResults    = false;
     m_currentSourceIndex = -1;
     m_currentSource      = nullptr;
     finishOrStartNextSource();
@@ -170,7 +172,10 @@ void LyricsFinder::finishOrStartNextSource(bool forceFinish)
         QObject::connect(m_currentSource, &LyricSource::searchResult, this, &LyricsFinder::onSearchResult,
                          Qt::SingleShotConnection);
         m_currentSource->search(m_params);
+        return;
     }
+
+    emit lyricsSearchFinished(m_params.track, m_foundAnyResults);
 }
 
 bool LyricsFinder::findNextAvailableSource()
@@ -222,9 +227,10 @@ void LyricsFinder::onSearchResult(const std::vector<LyricData>& data)
             continue;
         }
 
-        lyrics.data    = lyricData.data;
-        lyrics.source  = m_currentSource->name();
-        lyrics.isLocal = m_currentSource->isLocal();
+        lyrics.data       = lyricData.data;
+        lyrics.source     = m_currentSource->name();
+        lyrics.isLocal    = m_currentSource->isLocal();
+        m_foundAnyResults = true;
 
         if(lyrics.metadata.title.isEmpty()) {
             lyrics.metadata.title = lyricData.title;

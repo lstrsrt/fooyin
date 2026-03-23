@@ -93,6 +93,7 @@ protected:
 
 private:
     void loadLyrics(const Lyrics& lyrics);
+    void handleLyricsSearchFinished(const Track& track, bool foundAny);
     void changeLyrics(const Lyrics& lyrics);
     void openEditor(const Lyrics& lyrics);
 
@@ -104,6 +105,7 @@ private:
 
     void setCurrentTime(uint64_t time);
     void seekTo(const QModelIndex& index, const QPoint& pos);
+    void updateViewportPadding();
 
     void highlightCurrentLine();
     void scrollToCurrentLine(int scrollValue);

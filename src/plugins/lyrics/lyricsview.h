@@ -40,10 +40,12 @@ public:
 signals:
     void lineClicked(const QModelIndex& index, const QPoint& pos);
     void userScrolling();
+    void viewportResized();
 
 protected:
     void paintEvent(QPaintEvent* event) override;
     void mouseReleaseEvent(QMouseEvent* event) override;
+    void resizeEvent(QResizeEvent* event) override;
     void wheelEvent(QWheelEvent* event) override;
 
 private:

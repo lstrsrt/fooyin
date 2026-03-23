@@ -73,6 +73,12 @@ void LyricsView::mouseReleaseEvent(QMouseEvent* event)
     }
 }
 
+void LyricsView::resizeEvent(QResizeEvent* event)
+{
+    QListView::resizeEvent(event);
+    emit viewportResized();
+}
+
 void LyricsView::wheelEvent(QWheelEvent* event)
 {
     emit userScrolling();

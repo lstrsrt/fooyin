@@ -154,6 +154,9 @@ LyricsConfigDialog::LyricsConfigDialog(LyricsWidget* lyricsWidget, QWidget* pare
     marginsLayout->addWidget(m_topMargin, row, 1);
     marginsLayout->addWidget(new QLabel(tr("Bottom") + u":"_s, appearancePage), row, 2);
     marginsLayout->addWidget(m_bottomMargin, row++, 3);
+    marginsLayout->addWidget(
+        new QLabel(u"🛈 "_s + tr("Top and bottom margins only apply to unsynced lyrics."), appearancePage), row++, 0, 1,
+        5);
     marginsLayout->setColumnStretch(4, 1);
 
     auto* fontsGroup             = new QGroupBox(tr("Fonts"), appearancePage);

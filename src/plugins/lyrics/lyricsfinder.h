@@ -50,6 +50,7 @@ public:
 
 signals:
     void lyricsFound(const Fooyin::Lyrics::Lyrics& lyrics);
+    void lyricsSearchFinished(const Fooyin::Track& track, bool foundAny);
 
 private:
     void loadDefaults();
@@ -65,6 +66,7 @@ private:
 
     ScriptParser m_parser;
     SearchParams m_params;
+    bool m_foundAnyResults;
     bool m_localOnly;
     int m_currentSourceIndex;
     LyricSource* m_currentSource;
