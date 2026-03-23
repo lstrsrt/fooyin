@@ -89,6 +89,8 @@ public:
     void setDspChain(const Engine::DspChains& chain);
     void updateLiveDspSettings(const Engine::LiveDspSettingsUpdate& update);
 
+    void restorePausedPosition(uint64_t positionMs) const;
+
 protected:
     void connectNotify(const QMetaMethod& signal) override;
     void disconnectNotify(const QMetaMethod& signal) override;

@@ -791,6 +791,11 @@ void EngineHandler::updateLiveDspSettings(const Engine::LiveDspSettingsUpdate& u
     dispatchCommand(&AudioEngine::updateLiveDspSettings, update);
 }
 
+void EngineHandler::restorePausedPosition(uint64_t positionMs) const
+{
+    dispatchCommand(&AudioEngine::restorePausedPosition, positionMs);
+}
+
 Engine::NextTrackPrepareRequest EngineHandler::prepareNextTrackForPlayback(const Track& track)
 {
     return requestPrepareNextTrack(track);

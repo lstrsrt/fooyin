@@ -4002,6 +4002,34 @@ void AudioEngine::stopImmediate()
     emit finished();
 }
 
+void AudioEngine::restorePausedPosition(uint64_t positionMs)
+{
+    clearPendingAudiblePause();
+
+    if(!m_currentTrack.isValid()) {
+        return;
+    }
+
+    if(!m_decoder.isValid() || !m_decoder.activeStream()) {
+        m_transitions.queueInitialSeek(positionMs, m_currentTrack.id(), 0);
+        loadTrack(currentPlaybackItem(), false);
+        if(!m_decoder.isValid() || !m_decoder.activeStream()) {
+            return;
+        }
+    }
+    else {
+        performSimpleSeek(positionMs, 0);
+        if(!m_decoder.isValid() || !m_decoder.activeStream()) {
+            return;
+        }
+    }
+
+    m_pipeline.pause();
+    clearPendingAnalysisData();
+    m_audioClock.stop();
+    updatePlaybackState(Engine::PlaybackState::Paused);
+}
+
 void AudioEngine::seek(uint64_t positionMs)
 {
     seekWithRequest(positionMs, 0);

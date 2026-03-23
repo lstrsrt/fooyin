@@ -155,6 +155,7 @@ public slots:
     void pause();
     void stop();
     void stopImmediate();
+    void restorePausedPosition(uint64_t positionMs);
 
     void seek(uint64_t positionMs);
     void seekWithRequest(uint64_t positionMs, uint64_t requestId);

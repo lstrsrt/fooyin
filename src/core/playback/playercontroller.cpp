@@ -574,7 +574,10 @@ PlayerController::PlayerController(SettingsManager* settings, PlaylistHandler* p
     });
 
     QObject::connect(playlistHandler, &PlaylistHandler::restoreCurrentTrackRequested, this,
-                     [this](const PlaylistTrack& track) { commitCurrentTrack(track); });
+                     [this](const PlaylistTrack& track) {
+                         commitCurrentTrack(track);
+                         changeCurrentTrack(track);
+                     });
 
     QObject::connect(playlistHandler, &PlaylistHandler::playlistReferencesRemapRequested, this,
                      [this](const UId& fromPlaylistId, const UId& toPlaylistId) {
