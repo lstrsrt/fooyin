@@ -190,6 +190,7 @@ LibraryTreeWidget::LibraryTreeWidget(ActionManager* actionManager, PlaylistContr
     , m_library{core->library()}
     , m_playlistHandler{playlistController->playlistHandler()}
     , m_playerController{playlistController->playerController()}
+    , m_playlistController{playlistController}
     , m_groupsRegistry{controller->groupRegistry()}
     , m_trackSelection{playlistController->selectionController()}
     , m_settings{core->settingsManager()}
@@ -455,17 +456,37 @@ void LibraryTreeWidget::selectionChanged(const QItemSelection& selected, const Q
         queuedTracks, [&trackIndexes](const PlaylistTrack& track) { return trackIndexes.contains(track.track); });
     m_removeFromQueueAction->setVisible(canDeque);
 
-    if(m_config.playlistEnabled) {
-        PlaylistAction::ActionOptions options{PlaylistAction::None};
+    syncSelectionPlaylist(tracks);
+}
 
-        if(m_config.keepAlive) {
-            options |= PlaylistAction::KeepActive;
+void LibraryTreeWidget::syncSelectionPlaylist(const TrackList& tracks) const
+{
+    if(!m_config.playlistEnabled || tracks.empty()) {
+        return;
+    }
+
+    const QString playlistName{m_config.playlistName};
+
+    if(m_config.keepAlive) {
+        if(const auto* activePlaylist = m_playlistHandler->activePlaylist();
+           activePlaylist && activePlaylist->name() == playlistName) {
+            const QString keepActiveName = playlistName + u" ("_s + tr("Playback") + u")"_s;
+
+            if(auto* keepActivePlaylist = m_playlistHandler->playlistByName(keepActiveName)) {
+                m_playlistHandler->movePlaylistTracks(activePlaylist->id(), keepActivePlaylist->id());
+            }
+            else {
+                m_playlistHandler->renamePlaylist(activePlaylist->id(), keepActiveName);
+            }
         }
+    }
+
+    if(auto* playlist = m_playlistHandler->createPlaylist(playlistName, tracks)) {
+        playlist->changeCurrentIndex(-1);
+
         if(m_config.autoSwitch) {
-            options |= PlaylistAction::Switch;
+            m_playlistController->changeCurrentPlaylist(playlist);
         }
-
-        m_trackSelection->executeAction(TrackAction::SendNewPlaylist, options, m_config.playlistName);
     }
 }
 
@@ -564,6 +585,8 @@ void LibraryTreeWidget::handlePlayback(const QModelIndexList& indexes, int row)
         return;
     }
 
+    syncSelectionPlaylist(tracks);
+
     if(parent.isValid() && m_playlistGroups.empty()) {
         m_playlistGroups[0] = parent.data(Qt::DisplayRole).toString();
     }
@@ -575,14 +598,11 @@ void LibraryTreeWidget::handlePlayback(const QModelIndexList& indexes, int row)
     }
 }
 
-void LibraryTreeWidget::handlePlayTrack()
+void LibraryTreeWidget::handlePlayTrack(const QModelIndex& index)
 {
-    const QModelIndexList selectedIndexes = m_libraryTree->selectionModel()->selectedIndexes();
-    if(selectedIndexes.empty()) {
+    if(!index.isValid()) {
         return;
     }
-
-    const QModelIndex index = selectedIndexes.front();
 
     if(m_sortProxy->hasChildren(index)) {
         return;
@@ -612,7 +632,7 @@ void LibraryTreeWidget::handleDoubleClick(const QModelIndex& index)
     }
 
     if(m_doubleClickAction == TrackAction::Play) {
-        handlePlayTrack();
+        handlePlayTrack(index);
         return;
     }
 

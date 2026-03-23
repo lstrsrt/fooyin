@@ -120,13 +120,14 @@ private:
     void setScrollbarEnabled(bool enabled) const;
     void setupHeaderContextMenu(const QPoint& pos);
     void selectionChanged(const QItemSelection& selected, const QItemSelection& deselected) const;
+    void syncSelectionPlaylist(const TrackList& tracks) const;
     void queueSelectedTracks(bool next) const;
     void dequeueSelectedTracks() const;
 
     void searchChanged(const QString& search);
 
     void handlePlayback(const QModelIndexList& indexes, int row = 0);
-    void handlePlayTrack();
+    void handlePlayTrack(const QModelIndex& index);
     void handleDoubleClick(const QModelIndex& index);
     void handleMiddleClick(const QModelIndex& index) const;
 
@@ -146,6 +147,7 @@ private:
     MusicLibrary* m_library;
     PlaylistHandler* m_playlistHandler;
     PlayerController* m_playerController;
+    PlaylistController* m_playlistController;
     LibraryTreeGroupRegistry* m_groupsRegistry;
     TrackSelectionController* m_trackSelection;
     SettingsManager* m_settings;
