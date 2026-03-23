@@ -54,6 +54,18 @@ bool samePlaybackItem(const Engine::PlaybackItem& lhs, const Engine::PlaybackIte
     }
     return sameTrackIdentity(lhs.track, rhs.track);
 }
+
+int engineOwnedTransitionWatchdogDelayMs(int bufferLengthMs)
+{
+    const int safeBufferMs = std::max(250, bufferLengthMs);
+    return std::clamp(safeBufferMs / 2, 250, 2000);
+}
+
+int engineOwnedTransitionWatchdogHardLimitMs(int bufferLengthMs)
+{
+    const int safeBufferMs = std::max(250, bufferLengthMs);
+    return std::clamp(safeBufferMs * 2, 1000, 6000);
+}
 } // namespace
 
 EngineHandler::EngineHandler(std::shared_ptr<AudioLoader> audioLoader, PlayerController* playerController,
@@ -424,20 +436,44 @@ void EngineHandler::clearPendingBoundaryAdvance()
 
 void EngineHandler::armEndAdvanceWatchdog(const Track& track, const uint64_t generation)
 {
-    const int bufferLengthMs = std::max(250, m_settings->value<Settings::Core::BufferLength>());
-    const int watchdogMs     = std::clamp(bufferLengthMs / 2, 250, 2000);
+    const int armBufferLengthMs = std::max(250, m_settings->value<Settings::Core::BufferLength>());
+    const int armWatchdogMs     = engineOwnedTransitionWatchdogDelayMs(armBufferLengthMs);
 
-    QTimer::singleShot(watchdogMs, this, [this, track, generation]() {
+    QTimer::singleShot(armWatchdogMs, this, [this, track, generation]() {
         if(!m_endAdvanceSuppressed || m_engineOwnedTransitionGen != generation
            || !sameTrackIdentity(m_engineOwnedTransitionTrack, track)
            || !sameTrackIdentity(m_playerController->currentTrack(), track)) {
             return;
         }
 
+        const auto elapsedMs     = static_cast<int>(std::chrono::duration_cast<std::chrono::milliseconds>(
+                                                        std::chrono::steady_clock::now() - m_endAdvanceSuppressedSince)
+                                                        .count());
+        const int bufferLengthMs = std::max(250, m_settings->value<Settings::Core::BufferLength>());
+        const int watchdogMs     = engineOwnedTransitionWatchdogDelayMs(bufferLengthMs);
+        const int hardLimitMs    = engineOwnedTransitionWatchdogHardLimitMs(bufferLengthMs);
+        const bool transitionTargetStillCurrentUpcoming
+            = m_upcomingTrack.track.isValid() && m_upcomingTrack.itemId == m_engineOwnedTransitionItemId;
+        const bool transitionTargetStillReady
+            = transitionTargetStillCurrentUpcoming
+           && cachedNextTrackReadyFor(makePlaybackItem(m_upcomingTrack.track.track, m_upcomingTrack.itemId));
+
+        if(transitionTargetStillReady && elapsedMs < hardLimitMs) {
+            qCDebug(ENG_HANDLER) << "Engine-owned transition watchdog extended while waiting for audible handoff:"
+                                 << "trackId=" << track.id() << "generation=" << generation
+                                 << "upcomingTrackId=" << m_upcomingTrack.track.track.id()
+                                 << "upcomingItemId=" << m_upcomingTrack.itemId << "elapsedMs=" << elapsedMs
+                                 << "watchdogMs=" << watchdogMs << "hardLimitMs=" << hardLimitMs;
+            armEndAdvanceWatchdog(track, generation);
+            return;
+        }
+
         qCWarning(ENG_HANDLER) << "Engine-owned transition watchdog expired, resuming controller natural-end advance:"
                                << "trackId=" << track.id() << "generation=" << generation
                                << "upcomingTrackId=" << m_upcomingTrack.track.track.id()
-                               << "upcomingItemId=" << m_upcomingTrack.itemId;
+                               << "upcomingItemId=" << m_upcomingTrack.itemId << "elapsedMs=" << elapsedMs
+                               << "watchdogMs=" << watchdogMs << "hardLimitMs=" << hardLimitMs
+                               << "nextTrackStillReady=" << transitionTargetStillReady;
         clearEngineOwnedTransition();
         m_playerController->advance(Player::AdvanceReason::NaturalEnd);
     });
@@ -449,6 +485,7 @@ void EngineHandler::clearEngineOwnedTransition()
     m_engineOwnedTransitionItemId = 0;
     m_engineOwnedTransitionGen    = 0;
     m_endAdvanceSuppressed        = false;
+    m_endAdvanceSuppressedSince   = {};
 }
 
 void EngineHandler::handleTrackCommitted(const Engine::TrackCommitContext& context)
@@ -522,7 +559,8 @@ void EngineHandler::handleTrackStatus(Engine::TrackStatus status, const Track& t
                                      << "trackId=" << track.id() << "generation=" << generation
                                      << "upcomingTrackId=" << m_upcomingTrack.track.track.id()
                                      << "upcomingItemId=" << m_upcomingTrack.itemId;
-                m_endAdvanceSuppressed = true;
+                m_endAdvanceSuppressed      = true;
+                m_endAdvanceSuppressedSince = std::chrono::steady_clock::now();
                 armEndAdvanceWatchdog(track, generation);
                 break;
             }

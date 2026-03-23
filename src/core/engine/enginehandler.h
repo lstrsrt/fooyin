@@ -186,6 +186,7 @@ private:
     uint64_t m_engineOwnedTransitionItemId;
     uint64_t m_engineOwnedTransitionGen;
     bool m_endAdvanceSuppressed;
+    std::chrono::steady_clock::time_point m_endAdvanceSuppressedSince;
     Track m_pendingBoundaryAdvanceTrack;
     uint64_t m_pendingBoundaryAdvanceGen;
 
