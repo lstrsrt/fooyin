@@ -102,10 +102,23 @@ struct Playlist::PrivateKey
 class PlaylistPrivate
 {
 public:
+    struct NavigationState
+    {
+        int currentTrackIndex{-1};
+        int trackShuffleIndex{-1};
+        std::vector<int> trackShuffleOrder;
+        int albumShuffleIndex{-1};
+        int trackInAlbumIndex{-1};
+        std::vector<AlbumTracks> albumShuffleOrder;
+    };
+
     PlaylistPrivate(int dbId, QString name, int index, SettingsManager* settings);
 
     [[nodiscard]] TrackList filteredAutoTracks(const TrackList& tracks);
     [[nodiscard]] TrackList updatedAutoTracks(const TrackList& tracks);
+
+    [[nodiscard]] NavigationState navigationState() const;
+    void restoreNavigationState(NavigationState state);
 
     void createShuffleOrder(bool anchorCurrentTrack = true);
     void createAlbumShuffleOrder(bool anchorCurrentTrack = true);
@@ -210,6 +223,28 @@ TrackList PlaylistPrivate::updatedAutoTracks(const TrackList& tracks)
     }
 
     return updatedTracks;
+}
+
+PlaylistPrivate::NavigationState PlaylistPrivate::navigationState() const
+{
+    return {
+        .currentTrackIndex = m_currentTrackIndex,
+        .trackShuffleIndex = m_trackShuffleIndex,
+        .trackShuffleOrder = m_trackShuffleOrder,
+        .albumShuffleIndex = m_albumShuffleIndex,
+        .trackInAlbumIndex = m_trackInAlbumIndex,
+        .albumShuffleOrder = m_albumShuffleOrder,
+    };
+}
+
+void PlaylistPrivate::restoreNavigationState(NavigationState state)
+{
+    m_currentTrackIndex = state.currentTrackIndex;
+    m_trackShuffleIndex = state.trackShuffleIndex;
+    m_trackShuffleOrder = std::move(state.trackShuffleOrder);
+    m_albumShuffleIndex = state.albumShuffleIndex;
+    m_trackInAlbumIndex = state.trackInAlbumIndex;
+    m_albumShuffleOrder = std::move(state.albumShuffleOrder);
 }
 
 void PlaylistPrivate::createShuffleOrder(const bool anchorCurrentTrack)
@@ -567,9 +602,15 @@ int PlaylistPrivate::getNextIndex(int delta, Playlist::PlayModes mode, bool only
 int PlaylistPrivate::getNextIndexFrom(const int currentIndex, const int delta, const Playlist::PlayModes mode,
                                       const bool onlyCheck)
 {
-    const int prevTrackIndex = std::exchange(m_currentTrackIndex, currentIndex);
-    const int nextIndex      = getNextIndex(delta, mode, onlyCheck);
-    m_currentTrackIndex      = prevTrackIndex;
+    NavigationState prevState = navigationState();
+
+    m_currentTrackIndex = currentIndex;
+    syncShuffleStateToCurrentTrack();
+
+    const int nextIndex = getNextIndex(delta, mode, onlyCheck);
+
+    restoreNavigationState(std::move(prevState));
+
     return nextIndex;
 }
 

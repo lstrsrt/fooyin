@@ -115,4 +115,43 @@ TEST(PlaylistNavigatorTest, PreviewFromExplicitIndexDoesNotDependOnPlaylistCurre
     EXPECT_EQ(preview.track.uniqueFilepath(), tracks[2].uniqueFilepath());
     EXPECT_EQ(playlist->currentTrackIndex(), 0);
 }
+
+TEST(PlaylistNavigatorTest, ShufflePreviewFromIndexUsesThatTrackAsTheAnchor)
+{
+    SettingsManager settings{QDir::tempPath() + u"/fooyin_playlistnavigator_shuffle_preview_test.ini"_s};
+    auto playlist = PlaylistTestUtils::createPlaylist(u"ShufflePreview"_s, &settings);
+    ASSERT_TRUE(playlist);
+
+    const TrackList tracks{
+        makeTrack(u"/tmp/a.flac"_s, 0, 2000), makeTrack(u"/tmp/b.flac"_s, 0, 3000),
+        makeTrack(u"/tmp/c.flac"_s, 0, 4000), makeTrack(u"/tmp/d.flac"_s, 0, 5000),
+        makeTrack(u"/tmp/e.flac"_s, 0, 6000),
+    };
+    PlaylistTestUtils::replaceTracks(*playlist, tracks);
+    PlaylistTestUtils::changeCurrentIndex(*playlist, 0);
+
+    const PlaylistNavigator navigator{nullptr};
+    const auto mode = Playlist::PlayModes(Playlist::ShuffleTracks | Playlist::RepeatPlaylist);
+
+    const PlaylistTrack firstPreview = navigator.previewRelativeTrackFrom(playlist.get(), 0, mode, 1);
+    ASSERT_TRUE(firstPreview.isValid());
+    PlaylistTestUtils::changeCurrentIndex(*playlist, firstPreview.indexInPlaylist);
+
+    const PlaylistTrack secondPreview
+        = navigator.previewRelativeTrackFrom(playlist.get(), firstPreview.indexInPlaylist, mode, 1);
+    ASSERT_TRUE(secondPreview.isValid());
+    ASSERT_NE(secondPreview.indexInPlaylist, firstPreview.indexInPlaylist);
+
+    const PlaylistTrack staleStatePreview
+        = navigator.previewRelativeTrackFrom(playlist.get(), secondPreview.indexInPlaylist, mode, 1);
+    ASSERT_TRUE(staleStatePreview.isValid());
+    EXPECT_NE(staleStatePreview.indexInPlaylist, secondPreview.indexInPlaylist);
+    EXPECT_EQ(playlist->currentTrackIndex(), firstPreview.indexInPlaylist);
+
+    PlaylistTestUtils::changeCurrentIndex(*playlist, secondPreview.indexInPlaylist);
+    const PlaylistTrack syncedStatePreview
+        = navigator.previewRelativeTrackFrom(playlist.get(), secondPreview.indexInPlaylist, mode, 1);
+    ASSERT_TRUE(syncedStatePreview.isValid());
+    EXPECT_NE(syncedStatePreview.indexInPlaylist, secondPreview.indexInPlaylist);
+}
 } // namespace Fooyin::Testing
