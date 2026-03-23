@@ -23,6 +23,7 @@
 #include "dsp/dspsettingsregistry.h"
 #include "dspdelegate.h"
 #include "dspmodel.h"
+#include "widgets/titletooltipgroupbox.h"
 
 #include <core/engine/dsp/dspchainstore.h>
 #include <core/engine/dsp/dspnode.h>
@@ -32,7 +33,6 @@
 #include <QComboBox>
 #include <QGroupBox>
 #include <QHeaderView>
-#include <QLabel>
 #include <QListWidget>
 #include <QMenu>
 #include <QMessageBox>
@@ -231,13 +231,13 @@ DspManagerPageWidget::DspManagerPageWidget(DspChainStore* chainStore, DspPresetR
     auto* layout = new QVBoxLayout(this);
 
     auto* listsLayout   = new QHBoxLayout();
-    auto* perTrackGroup = new QGroupBox(tr("Per-Track DSPs"), this);
-    auto* masterGroup   = new QGroupBox(tr("Master DSPs"), this);
+    auto* perTrackGroup = new TitleToolTipGroupBox(tr("Per-Track DSPs"), this);
+    auto* masterGroup   = new TitleToolTipGroupBox(tr("Master DSPs"), this);
 
-    perTrackGroup->setToolTip(tr("Per-track DSPs are applied to each stream separately before tracks are mixed.\n"
-                                 "During crossfades, each track is processed independently."));
-    masterGroup->setToolTip(tr("Master DSPs are applied after all active tracks are mixed into one signal.\n"
-                               "Effects here process the final combined output."));
+    perTrackGroup->setTitleToolTip(tr("Per-track DSPs are applied to each stream separately before tracks are mixed.\n"
+                                      "During crossfades, each track is processed independently."));
+    masterGroup->setTitleToolTip(tr("Master DSPs are applied after all active tracks are mixed into one signal.\n"
+                                    "Effects here process the final combined output."));
 
     auto* availGroup = new QGroupBox(tr("Available DSPs"), this);
 

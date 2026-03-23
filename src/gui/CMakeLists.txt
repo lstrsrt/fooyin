@@ -433,6 +433,8 @@ set(SOURCES
     widgets/spacer.cpp
     widgets/spacer.h
     widgets/specialvaluespinbox.cpp
+    widgets/titletooltipgroupbox.cpp
+    widgets/titletooltipgroupbox.h
     widgets/statuswidget.cpp
     widgets/statuswidget.h
     widgets/toolbutton.cpp
