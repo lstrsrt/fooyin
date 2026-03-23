@@ -144,7 +144,7 @@ public:
     void showSearchLibraryDialog();
     void focusSearchBar() const;
     void showQuickSearch() const;
-    void showPropertiesDialog() const;
+    void showPropertiesDialog(const TrackList& tracks) const;
     void showEngineError(const QString& error) const;
     void showMessage(const QString& title, const Track& track) const;
     void showTrackNotFoundMessage(const Track& track) const;
@@ -329,7 +329,7 @@ void GuiApplicationPrivate::setupConnections()
     QObject::connect(&m_selectionController, &TrackSelectionController::actionExecuted, m_playlistController.get(),
                      &PlaylistController::handleTrackSelectionAction);
     QObject::connect(&m_selectionController, &TrackSelectionController::requestPropertiesDialog, m_self,
-                     [this]() { showPropertiesDialog(); });
+                     [this](const TrackList& tracks) { showPropertiesDialog(tracks); });
     QObject::connect(
         &m_selectionController, &TrackSelectionController::requestArtworkSearch, m_self,
         [this](const TrackList& tracks, bool quick) { m_self->searchForArtwork(tracks, Track::Cover::Front, quick); });
@@ -959,9 +959,8 @@ void GuiApplicationPrivate::showQuickSearch() const
     searchBar->show();
 }
 
-void GuiApplicationPrivate::showPropertiesDialog() const
+void GuiApplicationPrivate::showPropertiesDialog(const TrackList& tracks) const
 {
-    const auto tracks = m_selectionController.selectedTracks();
     if(!tracks.empty()) {
         m_propertiesDialog->show(tracks);
     }

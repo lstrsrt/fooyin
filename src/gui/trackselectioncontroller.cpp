@@ -42,6 +42,7 @@
 #include <QFileInfo>
 #include <QMenuBar>
 
+#include <functional>
 #include <ranges>
 
 using namespace Qt::StringLiterals;
@@ -86,8 +87,18 @@ public:
     void startPlayback(PlaylistAction::ActionOptions options);
     void addToQueue() const;
     void queueNext() const;
+    void openFolder(const TrackSelection& selection) const;
+    void searchArtwork(const TrackSelection& selection, bool quick) const;
+    void extractArtwork(const TrackSelection& selection) const;
+    void attachArtwork(const TrackSelection& selection, Track::Cover coverType, QWidget* parent) const;
+    void removeArtwork(const TrackSelection& selection) const;
+    void openProperties(const TrackSelection& selection) const;
     void sendToQueue(PlaylistAction::ActionOptions options) const;
     [[nodiscard]] QueueTracks queueTracksForSelection(const TrackSelection& selection) const;
+    [[nodiscard]] bool canDequeue(const TrackSelection& selection) const;
+    [[nodiscard]] bool allTracksInSameFolder(const TrackSelection& selection) const;
+    [[nodiscard]] bool canWrite(const TrackSelection& selection) const;
+    [[nodiscard]] bool canWriteCover(const TrackSelection& selection) const;
 
     const TrackSelection* currentSelection() const;
     TrackSelection* currentSelection();
@@ -252,14 +263,7 @@ void TrackSelectionControllerPrivate::setupMenu()
     openFolderCmd->setCategories(tracksCategory);
     QObject::connect(m_openFolder, &QAction::triggered, m_tracksMenu, [this]() {
         if(hasTracks()) {
-            const auto selection = m_self->selectedTracks();
-            const Track& track   = selection.front();
-            if(track.isInArchive()) {
-                Utils::File::openDirectory(QFileInfo{track.archivePath()}.absolutePath());
-            }
-            else {
-                Utils::File::openDirectory(track.path());
-            }
+            openFolder(m_self->selectedSelection());
         }
     });
     m_tracksMenu->addAction(openFolderCmd);
@@ -273,7 +277,7 @@ void TrackSelectionControllerPrivate::setupMenu()
     searchArtworkCmd->setCategories(tracksCategory);
     QObject::connect(m_searchArtwork, &QAction::triggered, m_tracksMenu, [this]() {
         if(hasTracks()) {
-            emit m_self->requestArtworkSearch(m_self->selectedTracks(), false);
+            searchArtwork(m_self->selectedSelection(), false);
         }
     });
     artworkMenu->addAction(searchArtworkCmd);
@@ -299,10 +303,7 @@ void TrackSelectionControllerPrivate::setupMenu()
     extractArtworkCmd->setCategories(tracksCategory);
     QObject::connect(m_extractArtwork, &QAction::triggered, m_tracksMenu, [this]() {
         if(hasTracks()) {
-            const auto summary
-                = ArtworkExporter::extractTracks(m_audioLoader, m_self->selectedTracks(),
-                                                 {Track::Cover::Front, Track::Cover::Back, Track::Cover::Artist});
-            StatusEvent::post(ArtworkExporter::statusMessage(summary));
+            extractArtwork(m_self->selectedSelection());
         }
     });
     artworkMenu->addAction(extractArtworkCmd);
@@ -314,10 +315,7 @@ void TrackSelectionControllerPrivate::setupMenu()
         if(!hasTracks()) {
             return;
         }
-        const QString filepath = promptForArtworkPath(m_tracksMenu->menu());
-        if(!filepath.isEmpty()) {
-            emit m_self->requestArtworkAttach(m_self->selectedTracks(), Track::Cover::Front, filepath);
-        }
+        attachArtwork(m_self->selectedSelection(), Track::Cover::Front, m_tracksMenu->menu());
     });
     attachPictureMenu->addAction(m_attachFrontArtwork);
 
@@ -326,10 +324,7 @@ void TrackSelectionControllerPrivate::setupMenu()
         if(!hasTracks()) {
             return;
         }
-        const QString filepath = promptForArtworkPath(m_tracksMenu->menu());
-        if(!filepath.isEmpty()) {
-            emit m_self->requestArtworkAttach(m_self->selectedTracks(), Track::Cover::Back, filepath);
-        }
+        attachArtwork(m_self->selectedSelection(), Track::Cover::Back, m_tracksMenu->menu());
     });
     attachPictureMenu->addAction(m_attachBackArtwork);
 
@@ -338,10 +333,7 @@ void TrackSelectionControllerPrivate::setupMenu()
         if(!hasTracks()) {
             return;
         }
-        const QString filepath = promptForArtworkPath(m_tracksMenu->menu());
-        if(!filepath.isEmpty()) {
-            emit m_self->requestArtworkAttach(m_self->selectedTracks(), Track::Cover::Artist, filepath);
-        }
+        attachArtwork(m_self->selectedSelection(), Track::Cover::Artist, m_tracksMenu->menu());
     });
     attachPictureMenu->addAction(m_attachArtistArtwork);
 
@@ -354,7 +346,7 @@ void TrackSelectionControllerPrivate::setupMenu()
     removeArtworkCmd->setCategories(tracksCategory);
     QObject::connect(m_removeArtwork, &QAction::triggered, m_tracksMenu, [this]() {
         if(hasTracks()) {
-            emit m_self->requestArtworkRemoval(m_self->selectedTracks());
+            removeArtwork(m_self->selectedSelection());
         }
     });
     artworkMenu->addAction(removeArtworkCmd);
@@ -364,9 +356,8 @@ void TrackSelectionControllerPrivate::setupMenu()
     m_openProperties->setStatusTip(tr("Open the properties dialog"));
     auto* openPropsCmd = m_actionManager->registerAction(m_openProperties, Constants::Actions::OpenProperties);
     openPropsCmd->setCategories(tracksCategory);
-    QObject::connect(m_openProperties, &QAction::triggered, m_self, [this]() {
-        QMetaObject::invokeMethod(m_self, &TrackSelectionController::requestPropertiesDialog);
-    });
+    QObject::connect(m_openProperties, &QAction::triggered, m_self,
+                     [this]() { openProperties(m_self->selectedSelection()); });
     m_tracksMenu->addAction(openPropsCmd, Actions::Groups::Three);
 }
 
@@ -600,6 +591,72 @@ void TrackSelectionControllerPrivate::queueNext() const
     emit m_self->actionExecuted(TrackAction::QueueNext);
 }
 
+void TrackSelectionControllerPrivate::openFolder(const TrackSelection& selection) const
+{
+    if(selection.tracks.empty()) {
+        return;
+    }
+
+    const Track& track = selection.tracks.front();
+    if(track.isInArchive()) {
+        Utils::File::openDirectory(QFileInfo{track.archivePath()}.absolutePath());
+    }
+    else {
+        Utils::File::openDirectory(track.path());
+    }
+}
+
+void TrackSelectionControllerPrivate::searchArtwork(const TrackSelection& selection, bool quick) const
+{
+    if(selection.tracks.empty()) {
+        return;
+    }
+
+    emit m_self->requestArtworkSearch(selection.tracks, quick);
+}
+
+void TrackSelectionControllerPrivate::extractArtwork(const TrackSelection& selection) const
+{
+    if(selection.tracks.empty()) {
+        return;
+    }
+
+    const auto summary = ArtworkExporter::extractTracks(
+        m_audioLoader, selection.tracks, {Track::Cover::Front, Track::Cover::Back, Track::Cover::Artist});
+    StatusEvent::post(ArtworkExporter::statusMessage(summary));
+}
+
+void TrackSelectionControllerPrivate::attachArtwork(const TrackSelection& selection, Track::Cover coverType,
+                                                    QWidget* parent) const
+{
+    if(selection.tracks.empty()) {
+        return;
+    }
+
+    const QString filepath = promptForArtworkPath(parent);
+    if(!filepath.isEmpty()) {
+        emit m_self->requestArtworkAttach(selection.tracks, coverType, filepath);
+    }
+}
+
+void TrackSelectionControllerPrivate::removeArtwork(const TrackSelection& selection) const
+{
+    if(selection.tracks.empty()) {
+        return;
+    }
+
+    emit m_self->requestArtworkRemoval(selection.tracks);
+}
+
+void TrackSelectionControllerPrivate::openProperties(const TrackSelection& selection) const
+{
+    if(selection.tracks.empty()) {
+        return;
+    }
+
+    emit m_self->requestPropertiesDialog(selection.tracks);
+}
+
 void TrackSelectionControllerPrivate::sendToQueue(PlaylistAction::ActionOptions options) const
 {
     if(!hasTracks()) {
@@ -639,6 +696,53 @@ QueueTracks TrackSelectionControllerPrivate::queueTracksForSelection(const Track
     return queueTracks;
 }
 
+bool TrackSelectionControllerPrivate::canDequeue(const TrackSelection& selection) const
+{
+    if(selection.tracks.empty()) {
+        return false;
+    }
+
+    std::set<Track> selectedTracks;
+    for(const Track& track : selection.tracks) {
+        selectedTracks.emplace(track);
+    }
+
+    const auto queuedTracks = m_playlistController->playerController()->playbackQueue().tracks();
+    return std::ranges::any_of(
+        queuedTracks, [&selectedTracks](const PlaylistTrack& track) { return selectedTracks.contains(track.track); });
+}
+
+bool TrackSelectionControllerPrivate::allTracksInSameFolder(const TrackSelection& selection) const
+{
+    if(selection.tracks.empty()) {
+        return false;
+    }
+
+    const Track& firstTrack = selection.tracks.front();
+    const QString firstPath = firstTrack.isInArchive() ? firstTrack.archivePath() : firstTrack.path();
+    return std::ranges::all_of(selection.tracks | std::ranges::views::transform([](const Track& track) {
+                                   return track.isInArchive() ? track.archivePath() : track.path();
+                               }),
+                               [&firstPath](const QString& folderPath) { return folderPath == firstPath; });
+}
+
+bool TrackSelectionControllerPrivate::canWrite(const TrackSelection& selection) const
+{
+    return !selection.tracks.empty() && std::ranges::all_of(selection.tracks, [this](const Track& track) {
+        return !track.hasCue() && !track.isInArchive() && m_audioLoader->canWriteMetadata(track);
+    });
+}
+
+bool TrackSelectionControllerPrivate::canWriteCover(const TrackSelection& selection) const
+{
+    return canWrite(selection)
+        || m_settings->value<Settings::Gui::Internal::ArtworkSaveMethods>()
+                   .value<ArtworkSaveMethods>()
+                   .value(Track::Cover::Front)
+                   .method
+               == ArtworkSaveMethod::Directory;
+}
+
 const TrackSelection* TrackSelectionControllerPrivate::currentSelection() const
 {
     if(!m_tracks.tracks.empty()) {
@@ -659,60 +763,24 @@ TrackSelection* TrackSelectionControllerPrivate::currentSelection()
 
 void TrackSelectionControllerPrivate::updateActionState()
 {
-    const bool haveTracks = hasTracks();
-
-    const auto canDequeue = [this]() {
-        const auto selection = m_self->selectedTracks();
-        std::set<Track> selectedTracks;
-        for(const Track& track : selection) {
-            selectedTracks.emplace(track);
-        }
-        const auto queuedTracks = m_playlistController->playerController()->playbackQueue().tracks();
-        return std::ranges::any_of(queuedTracks, [&selectedTracks](const PlaylistTrack& track) {
-            return selectedTracks.contains(track.track);
-        });
-    };
-
-    const auto allTracksInSameFolder = [this]() {
-        const auto selection    = m_self->selectedTracks();
-        const Track& firstTrack = selection.front();
-        const QString firstPath = firstTrack.isInArchive() ? firstTrack.archivePath() : firstTrack.path();
-        return std::ranges::all_of(selection | std::ranges::views::transform([](const Track& track) {
-                                       return track.isInArchive() ? track.archivePath() : track.path();
-                                   }),
-                                   [&firstPath](const QString& folderPath) { return folderPath == firstPath; });
-    };
-
-    const auto canWrite = [this]() {
-        return std::ranges::all_of(m_self->selectedTracks(), [this](const Track& track) {
-            return !track.hasCue() && !track.isInArchive() && m_audioLoader->canWriteMetadata(track);
-        });
-    };
-
-    const auto canWriteCover = [this, canWrite]() {
-        return canWrite()
-            || m_settings->value<Settings::Gui::Internal::ArtworkSaveMethods>()
-                       .value<ArtworkSaveMethods>()
-                       .value(Track::Cover::Front)
-                       .method
-                   == ArtworkSaveMethod::Directory;
-    };
+    const auto* selection = currentSelection();
+    const bool haveTracks = selection && !selection->tracks.empty();
 
     m_addCurrent->setEnabled(haveTracks);
     m_addActive->setEnabled(haveTracks && m_playlistHandler->activePlaylist());
     m_sendCurrent->setEnabled(haveTracks);
     m_sendNew->setEnabled(haveTracks);
-    m_openFolder->setEnabled(haveTracks && allTracksInSameFolder());
-    m_searchArtwork->setEnabled(haveTracks && canWriteCover());
-    m_searchArtworkQuick->setEnabled(haveTracks && canWriteCover());
+    m_openFolder->setEnabled(haveTracks && allTracksInSameFolder(*selection));
+    m_searchArtwork->setEnabled(haveTracks && canWriteCover(*selection));
+    m_searchArtworkQuick->setEnabled(haveTracks && canWriteCover(*selection));
     m_extractArtwork->setEnabled(haveTracks);
-    m_attachFrontArtwork->setEnabled(haveTracks && canWrite());
-    m_attachBackArtwork->setEnabled(haveTracks && canWrite());
-    m_attachArtistArtwork->setEnabled(haveTracks && canWrite());
+    m_attachFrontArtwork->setEnabled(haveTracks && canWrite(*selection));
+    m_attachBackArtwork->setEnabled(haveTracks && canWrite(*selection));
+    m_attachArtistArtwork->setEnabled(haveTracks && canWrite(*selection));
     m_openProperties->setEnabled(haveTracks);
     m_addToQueue->setEnabled(haveTracks);
     m_queueNext->setEnabled(haveTracks);
-    m_removeFromQueue->setVisible(haveTracks && canDequeue());
+    m_removeFromQueue->setVisible(haveTracks && canDequeue(*selection));
 }
 
 TrackSelectionController::TrackSelectionController(ActionManager* actionManager, AudioLoader* audioLoader,
@@ -812,6 +880,20 @@ void TrackSelectionController::addTrackContextMenu(QMenu* menu) const
     Utils::appendMenuActions(p->m_tracksMenu->menu(), menu);
 }
 
+void TrackSelectionController::addTrackContextMenu(QMenu* menu, const TrackSelection& selection) const
+{
+    const bool haveTracks = !selection.tracks.empty();
+
+    auto* openFolder = Utils::cloneMenuAction(menu, p->m_openFolder, [this, selection]() { p->openFolder(selection); });
+    openFolder->setEnabled(haveTracks && p->allTracksInSameFolder(selection));
+    menu->addAction(openFolder);
+
+    auto* properties
+        = Utils::cloneMenuAction(menu, p->m_openProperties, [this, selection]() { p->openProperties(selection); });
+    properties->setEnabled(haveTracks);
+    menu->addAction(properties);
+}
+
 void TrackSelectionController::addTrackQueueContextMenu(QMenu* menu) const
 {
     Utils::appendMenuActions(p->m_tracksQueueMenu->menu(), menu);
@@ -826,31 +908,31 @@ void TrackSelectionController::executeAction(TrackAction action, PlaylistAction:
                                              const QString& playlistName)
 {
     switch(action) {
-        case(TrackAction::SendCurrentPlaylist):
+        case TrackAction::SendCurrentPlaylist:
             p->sendToCurrentPlaylist(options);
             break;
-        case(TrackAction::SendNewPlaylist):
+        case TrackAction::SendNewPlaylist:
             p->sendToNewPlaylist(options, playlistName);
             break;
-        case(TrackAction::AddCurrentPlaylist):
+        case TrackAction::AddCurrentPlaylist:
             p->addToCurrentPlaylist();
             break;
-        case(TrackAction::AddActivePlaylist):
+        case TrackAction::AddActivePlaylist:
             p->addToActivePlaylist();
             break;
-        case(TrackAction::Play):
+        case TrackAction::Play:
             p->startPlayback(options);
             break;
-        case(TrackAction::AddToQueue):
+        case TrackAction::AddToQueue:
             p->addToQueue();
             break;
-        case(TrackAction::QueueNext):
+        case TrackAction::QueueNext:
             p->queueNext();
             break;
-        case(TrackAction::SendToQueue):
+        case TrackAction::SendToQueue:
             p->sendToQueue(options);
             break;
-        case(TrackAction::None):
+        case TrackAction::None:
             break;
     }
 }

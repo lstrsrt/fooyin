@@ -19,6 +19,7 @@
 
 #include <utils/utils.h>
 
+#include <QAction>
 #include <QApplication>
 #include <QHeaderView>
 #include <QIcon>
@@ -256,6 +257,16 @@ void appendMenuActions(QMenu* originalMenu, QMenu* menu)
     for(QAction* action : actions) {
         menu->addAction(action);
     }
+}
+
+QAction* cloneMenuAction(QMenu* menu, const QAction* source, const std::function<void()>& handler)
+{
+    auto* action = new QAction(source->icon(), source->text(), menu);
+    action->setStatusTip(source->statusTip());
+    action->setEnabled(source->isEnabled());
+    action->setVisible(source->isVisible());
+    QObject::connect(action, &QAction::triggered, menu, handler);
+    return action;
 }
 
 int visibleSectionCount(const QHeaderView* headerView)

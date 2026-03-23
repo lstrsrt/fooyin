@@ -24,6 +24,7 @@
 #include <QDateTime>
 #include <QStringList>
 
+class QAction;
 class QColor;
 class QHeaderView;
 class QIcon;
@@ -60,6 +61,7 @@ FYUTILS_EXPORT double windowDpr();
 FYUTILS_EXPORT QSize proportionateSize(const QWidget* widget, double widthFactor, double heightFactor);
 FYUTILS_EXPORT void showMessageBox(const QString& text, const QString& infoText);
 FYUTILS_EXPORT void appendMenuActions(QMenu* originalMenu, QMenu* menu);
+FYUTILS_EXPORT QAction* cloneMenuAction(QMenu* menu, const QAction* source, const std::function<void()>& handler);
 FYUTILS_EXPORT int visibleSectionCount(const QHeaderView* headerView);
 FYUTILS_EXPORT int firstVisualIndex(const QHeaderView* headerView);
 FYUTILS_EXPORT int realVisualIndex(const QHeaderView* headerView, int logicalIndex);

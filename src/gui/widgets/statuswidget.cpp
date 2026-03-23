@@ -479,6 +479,29 @@ void StatusWidget::contextMenuEvent(QContextMenuEvent* event)
     menu->addAction(showSelection);
     menu->addAction(showTips);
 
+    const QPoint playingPoint = p->m_playingText->mapFrom(this, event->pos());
+    const bool clickedPlaying = p->m_playingText->isVisible() && p->m_playingText->rect().contains(playingPoint);
+
+    TrackSelection playingSelection;
+
+    if(clickedPlaying) {
+        if(const auto playlistTrack = p->m_playerController->currentPlaylistTrack(); playlistTrack.isValid()) {
+            playingSelection.tracks.push_back(playlistTrack.track);
+            playingSelection.playlistId           = playlistTrack.playlistId;
+            playingSelection.primaryPlaylistIndex = playlistTrack.indexInPlaylist;
+            playingSelection.playlistIndexes.push_back(playlistTrack.indexInPlaylist);
+            playingSelection.playlistBacked = true;
+        }
+        else if(const Track currentTrack = p->m_playerController->currentTrack(); currentTrack.isValid()) {
+            playingSelection.tracks.push_back(currentTrack);
+        }
+    }
+
+    if(!playingSelection.tracks.empty()) {
+        menu->addSeparator();
+        p->m_selectionController->addTrackContextMenu(menu, playingSelection);
+    }
+
     menu->popup(event->globalPos());
 }
 

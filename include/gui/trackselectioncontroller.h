@@ -96,6 +96,7 @@ public:
     void changePlaybackOnSend(WidgetContext* context, bool enabled);
 
     void addTrackContextMenu(QMenu* menu) const;
+    void addTrackContextMenu(QMenu* menu, const TrackSelection& selection) const;
     void addTrackQueueContextMenu(QMenu* menu) const;
     void addTrackPlaylistContextMenu(QMenu* menu) const;
     void executeAction(TrackAction action, PlaylistAction::ActionOptions options = {},
@@ -104,7 +105,7 @@ public:
 signals:
     void actionExecuted(TrackAction action);
     void selectionChanged();
-    void requestPropertiesDialog();
+    void requestPropertiesDialog(const Fooyin::TrackList& tracks);
     void requestArtworkSearch(const Fooyin::TrackList& tracks, bool quick);
     void requestArtworkAttach(const Fooyin::TrackList& tracks, Fooyin::Track::Cover type, const QString& filepath);
     void requestArtworkRemoval(const Fooyin::TrackList& tracks);
