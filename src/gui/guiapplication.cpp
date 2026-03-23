@@ -113,9 +113,9 @@ QString pluginIdentifierForRoot(const PluginManager* pluginManager, const QObjec
         return {};
     }
 
-    for(const auto& pluginInfo : pluginManager->allPluginInfo() | std::views::values) {
+    for(const auto& [pluginId, pluginInfo] : pluginManager->allPluginInfo()) {
         if(pluginInfo && pluginInfo->root() == root) {
-            return pluginInfo->identifier();
+            return pluginId;
         }
     }
 
