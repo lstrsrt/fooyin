@@ -25,7 +25,7 @@ namespace Fooyin {
 DspDelegate::DspDelegate(QAbstractItemView* view, QObject* parent)
     : ActionDelegate{view, parent}
 {
-    QObject::connect(this, &ActionDelegate::buttonClicked, this, &DspDelegate::buttonClicked);
+    QObject::connect(this, &ActionDelegate::buttonClicked, this, &DspDelegate::buttonWasClicked);
 }
 
 std::vector<ActionButton> DspDelegate::buttons(const QModelIndex& index) const
@@ -41,7 +41,7 @@ std::vector<ActionButton> DspDelegate::buttons(const QModelIndex& index) const
     return btns;
 }
 
-void DspDelegate::buttonClicked(const QModelIndex& index, int buttonId)
+void DspDelegate::buttonWasClicked(const QModelIndex& index, int buttonId)
 {
     switch(buttonId) {
         case(Button::Remove):

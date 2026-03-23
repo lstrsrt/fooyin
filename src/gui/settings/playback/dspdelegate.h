@@ -27,9 +27,9 @@ class DspDelegate : public ActionDelegate
     Q_OBJECT
 
 public:
-    enum Button : uint8_t
+    enum Button
     {
-        Remove,
+        Remove = Qt::UserRole + 100,
         Configure
     };
 
@@ -43,6 +43,6 @@ protected:
     [[nodiscard]] std::vector<ActionButton> buttons(const QModelIndex& index) const override;
 
 private:
-    void buttonClicked(const QModelIndex& index, int buttonId);
+    void buttonWasClicked(const QModelIndex& index, int buttonId);
 };
 } // namespace Fooyin
