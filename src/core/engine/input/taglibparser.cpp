@@ -668,7 +668,7 @@ void readGeneralProperties(const TagLib::PropertyMap& props, Fooyin::Track& trac
         else if(field == DiscTotal || field == DiscTotalAlt) {
             track.setDiscTotal(convertString(value.toString()));
         }
-        else if(field == Rating) {
+        else if(field == Rating && !value.isEmpty()) {
             const int rating = value.front().toInt();
             if(rating > 0 && rating <= 100) {
                 float adjustedRating = static_cast<float>(rating) / 10;
@@ -992,12 +992,15 @@ void readId3Tags(const TagLib::ID3v2::Tag* id3Tags, Fooyin::Track& track)
 
     if(frames.contains("POPM")) {
         // Use only first rating
-        if(auto* ratingFrame = dynamic_cast<TagLib::ID3v2::PopularimeterFrame*>(frames["POPM"].front())) {
-            if(track.playCount() <= 0 && ratingFrame->counter() > 0) {
-                track.setPlayCount(static_cast<int>(ratingFrame->counter()));
-            }
-            if(track.rating() <= 0 && ratingFrame->rating() > 0) {
-                track.setRating(popmToRating(ratingFrame->rating()));
+        const TagLib::ID3v2::FrameList& popmFrames = frames["POPM"];
+        if(!popmFrames.isEmpty()) {
+            if(auto* ratingFrame = dynamic_cast<TagLib::ID3v2::PopularimeterFrame*>(popmFrames.front())) {
+                if(track.playCount() <= 0 && ratingFrame->counter() > 0) {
+                    track.setPlayCount(static_cast<int>(ratingFrame->counter()));
+                }
+                if(track.rating() <= 0 && ratingFrame->rating() > 0) {
+                    track.setRating(popmToRating(ratingFrame->rating()));
+                }
             }
         }
     }
@@ -1108,11 +1111,11 @@ bool writeId3Cover(TagLib::ID3v2::Tag* id3Tags, const Fooyin::TrackCovers& cover
 
     const auto toCoverType = [](PictureFrame::Type type) {
         switch(type) {
-            case(PictureFrame::FrontCover):
+            case PictureFrame::FrontCover:
                 return Fooyin::Track::Cover::Front;
-            case(PictureFrame::BackCover):
+            case PictureFrame::BackCover:
                 return Fooyin::Track::Cover::Back;
-            case(PictureFrame::Artist):
+            case PictureFrame::Artist:
                 return Fooyin::Track::Cover::Artist;
             default:
                 return Fooyin::Track::Cover::Other;
@@ -1121,11 +1124,11 @@ bool writeId3Cover(TagLib::ID3v2::Tag* id3Tags, const Fooyin::TrackCovers& cover
 
     const auto fromCoverType = [](Fooyin::Track::Cover type) {
         switch(type) {
-            case(Fooyin::Track::Cover::Front):
+            case Fooyin::Track::Cover::Front:
                 return PictureFrame::FrontCover;
-            case(Fooyin::Track::Cover::Back):
+            case Fooyin::Track::Cover::Back:
                 return PictureFrame::BackCover;
-            case(Fooyin::Track::Cover::Artist):
+            case Fooyin::Track::Cover::Artist:
                 return PictureFrame::Artist;
             default:
                 return PictureFrame::Other;
@@ -1264,11 +1267,11 @@ bool writeApeCover(TagLib::APE::Tag* apeTags, const Fooyin::TrackCovers& covers)
 {
     const auto fromCoverType = [](Fooyin::Track::Cover type) {
         switch(type) {
-            case(Fooyin::Track::Cover::Front):
+            case Fooyin::Track::Cover::Front:
                 return "COVER ART (FRONT)";
-            case(Fooyin::Track::Cover::Back):
+            case Fooyin::Track::Cover::Back:
                 return "COVER ART (BACK)";
-            case(Fooyin::Track::Cover::Artist):
+            case Fooyin::Track::Cover::Artist:
                 return "COVER ART (ARTIST)";
             default:
                 return "";
@@ -1865,11 +1868,11 @@ bool writeXiphCover(auto* file, const Fooyin::TrackCovers& covers)
 
     const auto toCoverType = [](Picture::Type type) {
         switch(type) {
-            case(Picture::FrontCover):
+            case Picture::FrontCover:
                 return Fooyin::Track::Cover::Front;
-            case(Picture::BackCover):
+            case Picture::BackCover:
                 return Fooyin::Track::Cover::Back;
-            case(Picture::Artist):
+            case Picture::Artist:
                 return Fooyin::Track::Cover::Artist;
             default:
                 return Fooyin::Track::Cover::Other;
@@ -1878,11 +1881,11 @@ bool writeXiphCover(auto* file, const Fooyin::TrackCovers& covers)
 
     const auto fromCoverType = [](Fooyin::Track::Cover type) {
         switch(type) {
-            case(Fooyin::Track::Cover::Front):
+            case Fooyin::Track::Cover::Front:
                 return Picture::FrontCover;
-            case(Fooyin::Track::Cover::Back):
+            case Fooyin::Track::Cover::Back:
                 return Picture::BackCover;
-            case(Fooyin::Track::Cover::Artist):
+            case Fooyin::Track::Cover::Artist:
                 return Picture::Artist;
             default:
                 return Picture::Other;
@@ -2056,11 +2059,11 @@ bool writeAsfCover(TagLib::ASF::Tag* asfTags, const Fooyin::TrackCovers& covers)
 
     const auto toCoverType = [](Picture::Type type) {
         switch(type) {
-            case(Picture::FrontCover):
+            case Picture::FrontCover:
                 return Fooyin::Track::Cover::Front;
-            case(Picture::BackCover):
+            case Picture::BackCover:
                 return Fooyin::Track::Cover::Back;
-            case(Picture::Artist):
+            case Picture::Artist:
                 return Fooyin::Track::Cover::Artist;
             default:
                 return Fooyin::Track::Cover::Other;
@@ -2069,11 +2072,11 @@ bool writeAsfCover(TagLib::ASF::Tag* asfTags, const Fooyin::TrackCovers& covers)
 
     const auto fromCoverType = [](Fooyin::Track::Cover type) {
         switch(type) {
-            case(Fooyin::Track::Cover::Front):
+            case Fooyin::Track::Cover::Front:
                 return Picture::FrontCover;
-            case(Fooyin::Track::Cover::Back):
+            case Fooyin::Track::Cover::Back:
                 return Picture::BackCover;
-            case(Fooyin::Track::Cover::Artist):
+            case Fooyin::Track::Cover::Artist:
                 return Picture::Artist;
             default:
                 return Picture::Other;
@@ -2210,7 +2213,7 @@ void checkXingHeader(TagLib::MPEG::File* file, Fooyin::Track& track)
     const auto len = stream.readRawData(encoderData.data(), 9);
 
     if(len == 9) {
-        auto encoder = QString::fromLatin1(encoderData.constData(), encoderData.size()).simplified().remove(u'\0');
+        auto encoder = QString::fromLatin1(encoderData.constData(), encoderData.size()).simplified().remove(u"\0"_s);
         if(encoder.endsWith(u'.')) {
             encoder.chop(1);
         }
@@ -2356,8 +2359,10 @@ bool TagLibReader::readTrack(const AudioSource& source, Track& track)
             readProperties(file);
             track.setEncoding(u"Lossless"_s);
 
-            if(const int bps = file.audioProperties()->bitsPerSample(); bps > 0) {
-                track.setBitDepth(bps);
+            if(const auto* props = file.audioProperties()) {
+                if(const int bps = props->bitsPerSample(); bps > 0) {
+                    track.setBitDepth(bps);
+                }
             }
             if(file.hasID3v2Tag()) {
                 const auto* id3Tag = file.tag();
@@ -2372,8 +2377,10 @@ bool TagLibReader::readTrack(const AudioSource& source, Track& track)
             readProperties(file);
             track.setEncoding(u"Lossless"_s);
 
-            if(const int bps = file.audioProperties()->bitsPerSample(); bps > 0) {
-                track.setBitDepth(bps);
+            if(const auto* props = file.audioProperties()) {
+                if(const int bps = props->bitsPerSample(); bps > 0) {
+                    track.setBitDepth(bps);
+                }
             }
             if(file.hasID3v2Tag()) {
                 const auto* id3Tag = file.ID3v2Tag();
@@ -2408,8 +2415,10 @@ bool TagLibReader::readTrack(const AudioSource& source, Track& track)
             readProperties(file);
             track.setEncoding(u"Lossless"_s);
 
-            if(const int bps = file.audioProperties()->bitsPerSample(); bps > 0) {
-                track.setBitDepth(bps);
+            if(const auto* props = file.audioProperties()) {
+                if(const int bps = props->bitsPerSample(); bps > 0) {
+                    track.setBitDepth(bps);
+                }
             }
 
             QStringList types;
@@ -2432,11 +2441,12 @@ bool TagLibReader::readTrack(const AudioSource& source, Track& track)
         if(file.isValid()) {
             readProperties(file);
 
-            if(const int bps = file.audioProperties()->bitsPerSample(); bps > 0) {
-                track.setBitDepth(bps);
+            if(const auto* props = file.audioProperties()) {
+                if(const int bps = props->bitsPerSample(); bps > 0) {
+                    track.setBitDepth(bps);
+                }
+                track.setEncoding(props->isLossless() ? u"Lossless"_s : u"Lossy"_s);
             }
-
-            track.setEncoding(file.audioProperties()->isLossless() ? u"Lossless"_s : u"Lossy"_s);
 
             QStringList types;
 
@@ -2456,22 +2466,24 @@ bool TagLibReader::readTrack(const AudioSource& source, Track& track)
         if(file.isValid()) {
             readProperties(file);
 
-            if(const int bps = file.audioProperties()->bitsPerSample(); bps > 0) {
-                track.setBitDepth(bps);
-            }
+            if(const auto* props = file.audioProperties()) {
+                if(const int bps = props->bitsPerSample(); bps > 0) {
+                    track.setBitDepth(bps);
+                }
 
-            const auto codec = file.audioProperties()->codec();
-            switch(codec) {
-                case(TagLib::MP4::Properties::AAC):
-                    track.setCodec(u"AAC"_s);
-                    track.setEncoding(u"Lossy"_s);
-                    break;
-                case(TagLib::MP4::Properties::ALAC):
-                    track.setCodec(u"ALAC"_s);
-                    track.setEncoding(u"Lossless"_s);
-                    break;
-                case(TagLib::MP4::Properties::Unknown):
-                    break;
+                const auto codec = props->codec();
+                switch(codec) {
+                    case TagLib::MP4::Properties::AAC:
+                        track.setCodec(u"AAC"_s);
+                        track.setEncoding(u"Lossy"_s);
+                        break;
+                    case TagLib::MP4::Properties::ALAC:
+                        track.setCodec(u"ALAC"_s);
+                        track.setEncoding(u"Lossless"_s);
+                        break;
+                    case TagLib::MP4::Properties::Unknown:
+                        break;
+                }
             }
 
             if(file.hasMP4Tag()) {
@@ -2489,8 +2501,10 @@ bool TagLibReader::readTrack(const AudioSource& source, Track& track)
             readProperties(file);
             track.setEncoding(u"Lossless"_s);
 
-            if(const int bps = file.audioProperties()->bitsPerSample(); bps > 0) {
-                track.setBitDepth(bps);
+            if(const auto* props = file.audioProperties()) {
+                if(const int bps = props->bitsPerSample(); bps > 0) {
+                    track.setBitDepth(bps);
+                }
             }
             if(file.hasXiphComment()) {
                 readXiphComment(file.xiphComment(), track);
@@ -2529,29 +2543,31 @@ bool TagLibReader::readTrack(const AudioSource& source, Track& track)
         if(file.isValid()) {
             readProperties(file);
 
-            switch(file.audioProperties()->codec()) {
-                case(TagLib::ASF::Properties::WMA1):
-                    track.setCodecProfile(u"V1"_s);
-                    track.setEncoding(u"Lossy"_s);
-                    break;
-                case(TagLib::ASF::Properties::WMA2):
-                    track.setCodecProfile(u"V2"_s);
-                    track.setEncoding(u"Lossy"_s);
-                    break;
-                case(TagLib::ASF::Properties::WMA9Pro):
-                    track.setCodecProfile(u"V9"_s);
-                    track.setEncoding(u"Lossy"_s);
-                    break;
-                case(TagLib::ASF::Properties::WMA9Lossless):
-                    track.setCodecProfile(u"V9"_s);
-                    track.setEncoding(u"Lossless"_s);
-                    break;
-                default:
-                    break;
-            }
+            if(const auto* props = file.audioProperties()) {
+                switch(props->codec()) {
+                    case TagLib::ASF::Properties::WMA1:
+                        track.setCodecProfile(u"V1"_s);
+                        track.setEncoding(u"Lossy"_s);
+                        break;
+                    case TagLib::ASF::Properties::WMA2:
+                        track.setCodecProfile(u"V2"_s);
+                        track.setEncoding(u"Lossy"_s);
+                        break;
+                    case TagLib::ASF::Properties::WMA9Pro:
+                        track.setCodecProfile(u"V9"_s);
+                        track.setEncoding(u"Lossy"_s);
+                        break;
+                    case TagLib::ASF::Properties::WMA9Lossless:
+                        track.setCodecProfile(u"V9"_s);
+                        track.setEncoding(u"Lossless"_s);
+                        break;
+                    default:
+                        break;
+                }
 
-            if(const int bps = file.audioProperties()->bitsPerSample(); bps > 0) {
-                track.setBitDepth(bps);
+                if(const int bps = props->bitsPerSample(); bps > 0) {
+                    track.setBitDepth(bps);
+                }
             }
             if(file.tag()) {
                 readAsfTags(file.tag(), track);
@@ -2565,8 +2581,10 @@ bool TagLibReader::readTrack(const AudioSource& source, Track& track)
             readProperties(file);
             track.setEncoding(u"Lossless"_s);
 
-            if(const int bps = file.audioProperties()->bitsPerSample(); bps > 0) {
-                track.setBitDepth(bps);
+            if(const auto* props = file.audioProperties()) {
+                if(const int bps = props->bitsPerSample(); bps > 0) {
+                    track.setBitDepth(bps);
+                }
             }
 
             if(file.tag()) {
@@ -2581,8 +2599,10 @@ bool TagLibReader::readTrack(const AudioSource& source, Track& track)
             readProperties(file);
             track.setEncoding(u"Lossless"_s);
 
-            if(const int bps = file.audioProperties()->bitsPerSample(); bps > 0) {
-                track.setBitDepth(bps);
+            if(const auto* props = file.audioProperties()) {
+                if(const int bps = props->bitsPerSample(); bps > 0) {
+                    track.setBitDepth(bps);
+                }
             }
             if(file.hasID3v2Tag()) {
                 readId3Tags(file.ID3v2Tag(), track);
