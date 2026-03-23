@@ -75,13 +75,13 @@ Fooyin::DecoderModel::SettingsHandlerMap inputSettingsHandlers(Fooyin::PluginMan
     }
 
     if(registry) {
-        for(const auto& pluginInfo : pluginManager->allPluginInfo() | std::views::values) {
+        for(const auto& [pluginId, pluginInfo] : pluginManager->allPluginInfo()) {
             auto* const inputPlugin = pluginInfo ? qobject_cast<Fooyin::InputPlugin*>(pluginInfo->root()) : nullptr;
             if(!inputPlugin) {
                 continue;
             }
 
-            auto* provider = registry->providerFor(pluginInfo->identifier());
+            auto* provider = registry->providerFor(pluginId);
             if(!provider) {
                 continue;
             }
@@ -93,7 +93,7 @@ Fooyin::DecoderModel::SettingsHandlerMap inputSettingsHandlers(Fooyin::PluginMan
     }
 
     const auto& plugins = pluginManager->allPluginInfo();
-    for(const auto& pluginInfo : plugins | std::views::values) {
+    for(const auto& [_, pluginInfo] : plugins) {
         auto* plugin      = pluginInfo ? pluginInfo->plugin() : nullptr;
         auto* inputPlugin = pluginInfo ? qobject_cast<Fooyin::InputPlugin*>(pluginInfo->root()) : nullptr;
 
