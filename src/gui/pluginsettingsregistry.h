@@ -21,6 +21,8 @@
 
 #include <gui/plugins/pluginsettingsprovider.h>
 
+#include <QHash>
+
 #include <memory>
 #include <unordered_map>
 #include <vector>
