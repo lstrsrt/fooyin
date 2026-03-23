@@ -25,6 +25,19 @@
 using namespace Qt::StringLiterals;
 
 namespace Fooyin::Gme {
+namespace {
+class GmePluginSettingsProvider : public PluginSettingsProvider
+{
+public:
+    void showSettings(QWidget* parent) override
+    {
+        auto* dialog = new GmeSettings(parent);
+        dialog->setAttribute(Qt::WA_DeleteOnClose);
+        dialog->show();
+    }
+};
+} // namespace
+
 QString GmePlugin::inputName() const
 {
     return u"Game Music Emu"_s;
@@ -40,6 +53,11 @@ InputCreator GmePlugin::inputCreator() const
         return std::make_unique<GmeReader>();
     };
     return creator;
+}
+
+std::unique_ptr<PluginSettingsProvider> GmePlugin::settingsProvider() const
+{
+    return std::make_unique<GmePluginSettingsProvider>();
 }
 
 bool GmePlugin::hasSettings() const

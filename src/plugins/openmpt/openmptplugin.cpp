@@ -28,6 +28,26 @@
 using namespace Qt::StringLiterals;
 
 namespace Fooyin::OpenMpt {
+namespace {
+class OpenMptPluginSettingsProvider : public PluginSettingsProvider
+{
+public:
+    explicit OpenMptPluginSettingsProvider(SettingsManager* settings)
+        : m_settings{settings}
+    { }
+
+    void showSettings(QWidget* parent) override
+    {
+        auto* dialog = new OpenMptSettings(m_settings, parent);
+        dialog->setAttribute(Qt::WA_DeleteOnClose);
+        dialog->show();
+    }
+
+private:
+    SettingsManager* m_settings;
+};
+} // namespace
+
 void OpenMptPlugin::initialise(const CorePluginContext& context)
 {
     m_settings = context.settingsManager;
@@ -55,6 +75,11 @@ InputCreator OpenMptPlugin::inputCreator() const
         return std::make_unique<OpenMptReader>(m_settings);
     };
     return creator;
+}
+
+std::unique_ptr<PluginSettingsProvider> OpenMptPlugin::settingsProvider() const
+{
+    return std::make_unique<OpenMptPluginSettingsProvider>(m_settings);
 }
 
 bool OpenMptPlugin::hasSettings() const

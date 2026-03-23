@@ -23,22 +23,25 @@
 #include <core/engine/inputplugin.h>
 #include <core/plugins/coreplugin.h>
 #include <core/plugins/plugin.h>
+#include <gui/plugins/pluginconfigguiplugin.h>
 
 namespace Fooyin::OpenMpt {
 class OpenMptPlugin : public QObject,
                       public Plugin,
                       public CorePlugin,
-                      public InputPlugin
+                      public InputPlugin,
+                      public PluginConfigGuiPlugin
 {
     Q_OBJECT
     Q_PLUGIN_METADATA(IID "org.fooyin.fooyin.plugin" FILE "openmpt.json")
-    Q_INTERFACES(Fooyin::Plugin Fooyin::CorePlugin Fooyin::InputPlugin)
+    Q_INTERFACES(Fooyin::Plugin Fooyin::CorePlugin Fooyin::InputPlugin Fooyin::PluginConfigGuiPlugin)
 
 public:
     void initialise(const CorePluginContext& context) override;
 
     [[nodiscard]] QString inputName() const override;
     [[nodiscard]] InputCreator inputCreator() const override;
+    [[nodiscard]] std::unique_ptr<PluginSettingsProvider> settingsProvider() const override;
 
     [[nodiscard]] bool hasSettings() const override;
     void showSettings(QWidget* parent) override;

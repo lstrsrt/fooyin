@@ -21,19 +21,22 @@
 
 #include <core/engine/inputplugin.h>
 #include <core/plugins/plugin.h>
+#include <gui/plugins/pluginconfigguiplugin.h>
 
 namespace Fooyin::Gme {
 class GmePlugin : public QObject,
                   public Plugin,
-                  public InputPlugin
+                  public InputPlugin,
+                  public PluginConfigGuiPlugin
 {
     Q_OBJECT
     Q_PLUGIN_METADATA(IID "org.fooyin.fooyin.plugin" FILE "gmeinput.json")
-    Q_INTERFACES(Fooyin::Plugin Fooyin::InputPlugin)
+    Q_INTERFACES(Fooyin::Plugin Fooyin::InputPlugin Fooyin::PluginConfigGuiPlugin)
 
 public:
     [[nodiscard]] QString inputName() const override;
     [[nodiscard]] InputCreator inputCreator() const override;
+    [[nodiscard]] std::unique_ptr<PluginSettingsProvider> settingsProvider() const override;
 
     [[nodiscard]] bool hasSettings() const override;
     void showSettings(QWidget* parent) override;

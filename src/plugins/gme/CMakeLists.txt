@@ -8,6 +8,7 @@ endif()
 create_fooyin_plugin_internal(
     gmeinput
     DEPENDS Fooyin::Core
+            Fooyin::Gui
             ${LIBGME_LIBRARIES}
     SOURCES gmedefs.h
             gmeinput.cpp
