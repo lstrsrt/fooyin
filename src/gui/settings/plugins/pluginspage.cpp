@@ -19,6 +19,7 @@
 
 #include "pluginspage.h"
 
+#include "pluginsettingsregistry.h"
 #include "pluginsmodel.h"
 #include "settings/plugins/pluginaboutdialog.h"
 
@@ -68,7 +69,8 @@ class PluginPageWidget : public SettingsPageWidget
     Q_OBJECT
 
 public:
-    explicit PluginPageWidget(PluginManager* pluginManager, SettingsManager* settings);
+    explicit PluginPageWidget(PluginManager* pluginManager, PluginSettingsRegistry* pluginSettingsRegistry,
+                              SettingsManager* settings);
 
     void load() override;
     void apply() override;
@@ -82,8 +84,10 @@ private:
     void aboutPlugin();
     void configurePlugin();
     void installPlugin();
+    [[nodiscard]] bool hasConfigProvider(const PluginInfo* pluginInfo) const;
 
     PluginManager* m_pluginManager;
+    PluginSettingsRegistry* m_pluginSettingsRegistry;
     SettingsManager* m_settings;
 
     QTreeView* m_pluginList;
@@ -94,8 +98,10 @@ private:
     QPushButton* m_installPlugin;
 };
 
-PluginPageWidget::PluginPageWidget(PluginManager* pluginManager, SettingsManager* settings)
+PluginPageWidget::PluginPageWidget(PluginManager* pluginManager, PluginSettingsRegistry* pluginSettingsRegistry,
+                                   SettingsManager* settings)
     : m_pluginManager{pluginManager}
+    , m_pluginSettingsRegistry{pluginSettingsRegistry}
     , m_settings{settings}
     , m_pluginList{new QTreeView(this)}
     , m_model{new PluginsModel(m_pluginManager)}
@@ -191,7 +197,7 @@ void PluginPageWidget::selectionChanged()
 {
     if(const auto* plugin = currentPlugin()) {
         if(plugin->plugin()) {
-            m_configurePlugin->setEnabled(plugin->plugin()->hasSettings());
+            m_configurePlugin->setEnabled(hasConfigProvider(plugin) || plugin->plugin()->hasSettings());
             m_aboutPlugin->setEnabled(true);
             return;
         }
@@ -214,8 +220,20 @@ void PluginPageWidget::aboutPlugin()
 void PluginPageWidget::configurePlugin()
 {
     if(auto* plugin = currentPlugin()) {
+        if(m_pluginSettingsRegistry) {
+            if(auto* provider = m_pluginSettingsRegistry->providerFor(plugin->identifier())) {
+                provider->showSettings(this);
+                return;
+            }
+        }
+
         plugin->plugin()->showSettings(this);
     }
+}
+
+bool PluginPageWidget::hasConfigProvider(const PluginInfo* pluginInfo) const
+{
+    return pluginInfo && m_pluginSettingsRegistry && m_pluginSettingsRegistry->hasProvider(pluginInfo->identifier());
 }
 
 void PluginPageWidget::installPlugin()
@@ -236,13 +254,16 @@ void PluginPageWidget::installPlugin()
     }
 }
 
-PluginPage::PluginPage(PluginManager* pluginManager, SettingsManager* settings, QObject* parent)
+PluginPage::PluginPage(PluginManager* pluginManager, PluginSettingsRegistry* pluginSettingsRegistry,
+                       SettingsManager* settings, QObject* parent)
     : SettingsPage{settings->settingsDialog(), parent}
 {
     setId(Constants::Page::Plugins);
     setName(tr("General"));
     setCategory({tr("Plugins")});
-    setWidgetCreator([pluginManager, settings] { return new PluginPageWidget(pluginManager, settings); });
+    setWidgetCreator([pluginManager, pluginSettingsRegistry, settings] {
+        return new PluginPageWidget(pluginManager, pluginSettingsRegistry, settings);
+    });
 }
 } // namespace Fooyin
 

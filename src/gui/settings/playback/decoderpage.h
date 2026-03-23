@@ -23,6 +23,8 @@
 
 namespace Fooyin {
 class AudioLoader;
+class PluginManager;
+class PluginSettingsRegistry;
 class SettingsManager;
 
 class DecoderPage : public SettingsPage
@@ -30,6 +32,7 @@ class DecoderPage : public SettingsPage
     Q_OBJECT
 
 public:
-    DecoderPage(AudioLoader* audioLoader, SettingsManager* settings, QObject* parent = nullptr);
+    DecoderPage(AudioLoader* audioLoader, PluginManager* pluginManager, PluginSettingsRegistry* pluginSettingsRegistry,
+                SettingsManager* settings, QObject* parent = nullptr);
 };
 } // namespace Fooyin

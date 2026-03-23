@@ -33,16 +33,41 @@ DecoderModel::DecoderModel(QObject* parent)
     : QAbstractListModel{parent}
 { }
 
-void DecoderModel::setup(const LoaderVariant& loaders)
+void DecoderModel::setup(const LoaderVariant& loaders, SettingsHandlerMap settingsHandlers)
 {
     beginResetModel();
-    m_loaders = loaders;
+    m_loaders          = loaders;
+    m_settingsHandlers = std::move(settingsHandlers);
     endResetModel();
 }
 
 DecoderModel::LoaderVariant DecoderModel::loaders() const
 {
     return m_loaders;
+}
+
+bool DecoderModel::showSettings(const QModelIndex& index, QWidget* parent)
+{
+    if(!checkIndex(index, CheckIndexOption::IndexIsValid)) {
+        return false;
+    }
+
+    const auto showSettingsForLoader = [&](const auto& loaders) {
+        if(index.row() < 0 || std::cmp_greater_equal(index.row(), loaders.size())) {
+            return false;
+        }
+
+        const auto& loader    = loaders.at(index.row());
+        const auto settingsIt = m_settingsHandlers.find(loader.name);
+        if(settingsIt == m_settingsHandlers.cend()) {
+            return false;
+        }
+
+        settingsIt->second(parent);
+        return true;
+    };
+
+    return std::visit(showSettingsForLoader, m_loaders);
 }
 
 Qt::ItemFlags DecoderModel::flags(const QModelIndex& index) const
@@ -76,12 +101,14 @@ QVariant DecoderModel::data(const QModelIndex& index, int role) const
         const auto& loader = loaders.at(index.row());
 
         switch(role) {
-            case(Qt::DisplayRole):
+            case Qt::DisplayRole:
                 return loader.name;
-            case(Qt::ToolTipRole):
+            case Qt::ToolTipRole:
                 return u"%1: %2"_s.arg(tr("Supported extensions")).arg(loader.extensions.join(", "_L1));
-            case(Qt::CheckStateRole):
+            case Qt::CheckStateRole:
                 return loader.enabled ? Qt::Checked : Qt::Unchecked;
+            case HasSettings:
+                return m_settingsHandlers.contains(loader.name);
             default:
                 return {};
         }

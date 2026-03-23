@@ -1,6 +1,6 @@
 /*
  * Fooyin
- * Copyright © 2023, Luke Taylor <LukeT1@proton.me>
+ * Copyright © 2026, Luke Taylor <luket@pm.me>
  *
  * Fooyin is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,19 +19,14 @@
 
 #pragma once
 
-#include <utils/settings/settingspage.h>
+class QWidget;
 
 namespace Fooyin {
-class PluginManager;
-class PluginSettingsRegistry;
-class SettingsManager;
-
-class PluginPage : public SettingsPage
+class PluginSettingsProvider
 {
-    Q_OBJECT
-
 public:
-    PluginPage(PluginManager* pluginManager, PluginSettingsRegistry* pluginSettingsRegistry, SettingsManager* settings,
-               QObject* parent = nullptr);
+    virtual ~PluginSettingsProvider() = default;
+
+    virtual void showSettings(QWidget* parent) = 0;
 };
 } // namespace Fooyin

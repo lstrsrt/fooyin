@@ -57,6 +57,7 @@
 #include <core/playlist/playlisthandler.h>
 #include <core/playlist/playlistloader.h>
 #include <core/playlist/playlistparser.h>
+#include <core/plugins/plugininfo.h>
 #include <core/plugins/pluginmanager.h>
 #include <gui/coverprovider.h>
 #include <gui/editablelayout.h>
@@ -66,6 +67,7 @@
 #include <gui/plugins/dspguiplugin.h>
 #include <gui/plugins/guiplugin.h>
 #include <gui/plugins/guiplugincontext.h>
+#include <gui/plugins/pluginconfigguiplugin.h>
 #include <gui/propertiesdialog.h>
 #include <gui/scripting/scripteditor.h>
 #include <gui/theme/fytheme.h>
@@ -104,6 +106,23 @@ using namespace std::chrono_literals;
 using namespace Qt::StringLiterals;
 
 namespace Fooyin {
+namespace {
+QString pluginIdentifierForRoot(const PluginManager* pluginManager, const QObject* root)
+{
+    if(!pluginManager || !root) {
+        return {};
+    }
+
+    for(const auto& pluginInfo : pluginManager->allPluginInfo() | std::views::values) {
+        if(pluginInfo && pluginInfo->root() == root) {
+            return pluginInfo->identifier();
+        }
+    }
+
+    return {};
+}
+} // namespace
+
 class GuiApplicationPrivate
 {
 public:
@@ -410,6 +429,15 @@ void GuiApplicationPrivate::initialisePlugins()
             if(provider && m_widgets->dspSettingsRegistry()) {
                 m_widgets->dspSettingsRegistry()->registerProvider(std::move(provider));
             }
+        }
+    });
+
+    m_core->pluginManager()->initialisePlugins<PluginConfigGuiPlugin>([this](PluginConfigGuiPlugin* plugin) {
+        auto provider          = plugin->settingsProvider();
+        auto* root             = dynamic_cast<QObject*>(plugin);
+        const QString pluginId = pluginIdentifierForRoot(m_core->pluginManager(), root);
+        if(provider && m_widgets->pluginSettingsRegistry() && !pluginId.isEmpty()) {
+            m_widgets->pluginSettingsRegistry()->registerProvider(pluginId, std::move(provider));
         }
     });
 }

@@ -20,6 +20,7 @@
 #pragma once
 
 #include "dsp/dspsettingsregistry.h"
+#include "pluginsettingsregistry.h"
 
 #include <core/track.h>
 
@@ -58,6 +59,7 @@ public:
     void registerPropertiesTabs();
     void registerFontEntries() const;
     [[nodiscard]] DspSettingsRegistry* dspSettingsRegistry() const;
+    [[nodiscard]] PluginSettingsRegistry* pluginSettingsRegistry() const;
 
     void showArtworkDialog(const TrackList& tracks, Track::Cover type, bool quick);
     void removeArtwork(const TrackList& tracks, Track::Cover type);
@@ -79,6 +81,7 @@ private:
     LibraryTreeController* m_libraryTreeController;
     DspPresetRegistry* m_dspPresetRegistry;
     std::unique_ptr<DspSettingsRegistry> m_dspSettingsRegistry;
+    std::unique_ptr<PluginSettingsRegistry> m_pluginSettingsRegistry;
     ScriptCommandHandler* m_scriptCommandHandler;
 };
 } // namespace Fooyin

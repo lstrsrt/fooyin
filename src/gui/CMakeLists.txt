@@ -15,6 +15,8 @@ set(SOURCES
     ${CMAKE_SOURCE_DIR}/include/gui/plugins/dspguiplugin.h
     ${CMAKE_SOURCE_DIR}/include/gui/plugins/guiplugin.h
     ${CMAKE_SOURCE_DIR}/include/gui/plugins/guiplugincontext.h
+    ${CMAKE_SOURCE_DIR}/include/gui/plugins/pluginconfigguiplugin.h
+    ${CMAKE_SOURCE_DIR}/include/gui/plugins/pluginsettingsprovider.h
     ${CMAKE_SOURCE_DIR}/include/gui/propertiesdialog.h
     ${CMAKE_SOURCE_DIR}/include/gui/scripting/richtext.h
     ${CMAKE_SOURCE_DIR}/include/gui/scripting/richtextutils.h
@@ -142,6 +144,8 @@ set(SOURCES
     internalguisettings.h
     layoutcommands.cpp
     layoutcommands.h
+    pluginsettingsregistry.cpp
+    pluginsettingsregistry.h
     layoutprovider.cpp
     librarytree/librarytreecontroller.cpp
     librarytree/librarytreecontroller.h
@@ -331,6 +335,8 @@ set(SOURCES
     settings/networkpage.h
     settings/playback/decodermodel.cpp
     settings/playback/decodermodel.h
+    settings/playback/decoderdelegate.cpp
+    settings/playback/decoderdelegate.h
     settings/playback/decoderpage.cpp
     settings/playback/decoderpage.h
     settings/playback/dspdelegate.cpp

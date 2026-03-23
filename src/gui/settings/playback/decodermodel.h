@@ -23,19 +23,32 @@
 
 #include <QAbstractListModel>
 
+#include <unordered_map>
+
+class QWidget;
+
 namespace Fooyin {
 class DecoderModel : public QAbstractListModel
 {
     Q_OBJECT
 
 public:
+    enum Role
+    {
+        HasSettings = Qt::UserRole
+    };
+
+    using SettingsHandler    = std::function<void(QWidget*)>;
+    using SettingsHandlerMap = std::unordered_map<QString, SettingsHandler>;
+
     using LoaderVariant = std::variant<std::vector<AudioLoader::LoaderEntry<DecoderCreator>>,
                                        std::vector<AudioLoader::LoaderEntry<ReaderCreator>>>;
 
     explicit DecoderModel(QObject* parent = nullptr);
 
-    void setup(const LoaderVariant& loaders);
+    void setup(const LoaderVariant& loaders, SettingsHandlerMap settingsHandlers = {});
     [[nodiscard]] LoaderVariant loaders() const;
+    bool showSettings(const QModelIndex& index, QWidget* parent);
 
     [[nodiscard]] Qt::ItemFlags flags(const QModelIndex& index) const override;
     [[nodiscard]] int rowCount(const QModelIndex& parent) const override;
@@ -52,5 +65,6 @@ public:
 
 private:
     LoaderVariant m_loaders;
+    SettingsHandlerMap m_settingsHandlers;
 };
 } // namespace Fooyin

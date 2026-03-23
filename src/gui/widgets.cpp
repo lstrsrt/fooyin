@@ -106,6 +106,7 @@ Widgets::Widgets(Application* core, MainWindow* window, GuiApplication* gui, Pla
     , m_libraryTreeController{new LibraryTreeController(m_settings, this)}
     , m_dspPresetRegistry{new DspPresetRegistry(m_settings, this)}
     , m_dspSettingsRegistry{std::make_unique<DspSettingsRegistry>()}
+    , m_pluginSettingsRegistry{std::make_unique<PluginSettingsRegistry>()}
     , m_scriptCommandHandler{scriptCommandHandler}
 { }
 
@@ -281,11 +282,12 @@ void Widgets::registerPages()
     new PlaylistGeneralPage(m_core->playlistLoader()->supportedSaveExtensions(), m_settings, this);
     new PlaylistColumnPage(m_gui->actionManager(), m_playlistController->columnRegistry(), m_settings, this);
     new PlaylistPresetsPage(m_playlistController->presetRegistry(), m_settings, this);
-    new PluginPage(m_core->pluginManager(), m_settings, this);
+    new PluginPage(m_core->pluginManager(), m_pluginSettingsRegistry.get(), m_settings, this);
     new ShellIntegrationPage(m_settings, this);
     new ShortcutsPage(m_gui->actionManager(), m_settings, this);
     new OutputPage(m_core->engine(), m_settings, this);
-    new DecoderPage(m_core->audioLoader().get(), m_settings, this);
+    new DecoderPage(m_core->audioLoader().get(), m_core->pluginManager(), m_pluginSettingsRegistry.get(), m_settings,
+                    this);
     new ReplayGainPage(m_settings, this);
     new NetworkPage(m_settings, this);
     new SearchPage(m_settings, this);
@@ -332,6 +334,11 @@ void Widgets::registerFontEntries() const
 DspSettingsRegistry* Widgets::dspSettingsRegistry() const
 {
     return m_dspSettingsRegistry.get();
+}
+
+PluginSettingsRegistry* Widgets::pluginSettingsRegistry() const
+{
+    return m_pluginSettingsRegistry.get();
 }
 
 void Widgets::showArtworkDialog(const TrackList& tracks, Track::Cover type, bool quick)
