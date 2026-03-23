@@ -59,18 +59,6 @@ std::unique_ptr<PluginSettingsProvider> GmePlugin::settingsProvider() const
 {
     return std::make_unique<GmePluginSettingsProvider>();
 }
-
-bool GmePlugin::hasSettings() const
-{
-    return true;
-}
-
-void GmePlugin::showSettings(QWidget* parent)
-{
-    auto* dialog = new GmeSettings(parent);
-    dialog->setAttribute(Qt::WA_DeleteOnClose);
-    dialog->show();
-}
 } // namespace Fooyin::Gme
 
 #include "moc_gmeplugin.cpp"

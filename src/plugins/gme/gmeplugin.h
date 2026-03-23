@@ -37,8 +37,5 @@ public:
     [[nodiscard]] QString inputName() const override;
     [[nodiscard]] InputCreator inputCreator() const override;
     [[nodiscard]] std::unique_ptr<PluginSettingsProvider> settingsProvider() const override;
-
-    [[nodiscard]] bool hasSettings() const override;
-    void showSettings(QWidget* parent) override;
 };
 } // namespace Fooyin::Gme

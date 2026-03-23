@@ -43,9 +43,6 @@ public:
     [[nodiscard]] InputCreator inputCreator() const override;
     [[nodiscard]] std::unique_ptr<PluginSettingsProvider> settingsProvider() const override;
 
-    [[nodiscard]] bool hasSettings() const override;
-    void showSettings(QWidget* parent) override;
-
 private:
     SettingsManager* m_settings;
 };

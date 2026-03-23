@@ -81,18 +81,6 @@ std::unique_ptr<PluginSettingsProvider> OpenMptPlugin::settingsProvider() const
 {
     return std::make_unique<OpenMptPluginSettingsProvider>(m_settings);
 }
-
-bool OpenMptPlugin::hasSettings() const
-{
-    return true;
-}
-
-void OpenMptPlugin::showSettings(QWidget* parent)
-{
-    auto* dialog = new OpenMptSettings(m_settings, parent);
-    dialog->setAttribute(Qt::WA_DeleteOnClose);
-    dialog->show();
-}
 } // namespace Fooyin::OpenMpt
 
 #include "moc_openmptplugin.cpp"
