@@ -147,6 +147,21 @@ LyricsWidget::LyricsWidget(PlayerController* playerController, EngineController*
                      &LyricsWidget::handleLyricsSearchFinished);
 
     QObject::connect(m_lyricsView, &LyricsView::lineClicked, this, &LyricsWidget::seekTo);
+    QObject::connect(m_lyricsView, &LyricsView::lineDragSeekRequested, this, &LyricsWidget::seekTo);
+    QObject::connect(m_lyricsView, &LyricsView::dragSeekingChanged, this, [this](bool active) {
+        m_isUserScrolling = active;
+
+        if(m_scrollAnim) {
+            m_scrollAnim->stop();
+        }
+
+        if(active) {
+            m_scrollTimer.stop();
+        }
+        else {
+            m_scrollTimer.start(ScrollTimeout, this);
+        }
+    });
     QObject::connect(m_lyricsView->verticalScrollBar(), &QScrollBar::rangeChanged, this,
                      [this]() { checkStartAutoScroll(0); });
 
@@ -163,6 +178,10 @@ LyricsWidget::LyricsWidget(PlayerController* playerController, EngineController*
         m_isUserScrolling = true;
         if(m_scrollAnim) {
             m_scrollAnim->stop();
+        }
+        if(m_lyricsView->isDragSeeking()) {
+            m_scrollTimer.stop();
+            return;
         }
         m_scrollTimer.start(ScrollTimeout, this);
     });
