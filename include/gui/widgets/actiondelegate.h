@@ -30,6 +30,7 @@ struct ActionButton
 {
     int id;
     QString text;
+    QString tooltip;
 };
 
 /*!
@@ -49,6 +50,8 @@ public:
 
     void paint(QPainter* painter, const QStyleOptionViewItem& option, const QModelIndex& index) const override;
     [[nodiscard]] QSize sizeHint(const QStyleOptionViewItem& option, const QModelIndex& index) const override;
+    bool helpEvent(QHelpEvent* event, QAbstractItemView* view, const QStyleOptionViewItem& option,
+                   const QModelIndex& index) override;
 
 signals:
     void buttonClicked(const QModelIndex& index, int buttonId);

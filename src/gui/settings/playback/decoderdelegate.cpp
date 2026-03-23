@@ -34,7 +34,7 @@ std::vector<ActionButton> DecoderDelegate::buttons(const QModelIndex& index) con
         return {};
     }
 
-    return {{.id = Configure, .text = QStringLiteral("…")}};
+    return {{.id = Configure, .text = QStringLiteral("…"), .tooltip = tr("Configure")}};
 }
 
 void DecoderDelegate::buttonWasClicked(const QModelIndex& index, int buttonId)

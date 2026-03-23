@@ -32,10 +32,10 @@ std::vector<ActionButton> DspDelegate::buttons(const QModelIndex& index) const
 {
     std::vector<ActionButton> btns;
 
-    btns.push_back({Button::Remove, QStringLiteral("X")});
+    btns.push_back({Button::Remove, QStringLiteral("X"), tr("Remove")});
 
     if(index.data(DspModel::HasSettings).toBool()) {
-        btns.push_back({Button::Configure, QStringLiteral("…")});
+        btns.push_back({Button::Configure, QStringLiteral("…"), tr("Configure")});
     }
 
     return btns;

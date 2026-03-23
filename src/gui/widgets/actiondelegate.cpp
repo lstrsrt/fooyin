@@ -21,8 +21,10 @@
 
 #include <QAbstractItemView>
 #include <QApplication>
+#include <QHelpEvent>
 #include <QMouseEvent>
 #include <QPainter>
+#include <QToolTip>
 
 constexpr auto ButtonSize    = 20;
 constexpr auto ButtonSpacing = 4;
@@ -134,6 +136,37 @@ QSize ActionDelegate::sizeHint(const QStyleOptionViewItem& option, const QModelI
     QSize size = QStyledItemDelegate::sizeHint(option, index);
     size.setHeight(std::max(size.height(), ButtonSize + (2 * ButtonMargin)));
     return size;
+}
+
+bool ActionDelegate::helpEvent(QHelpEvent* event, QAbstractItemView* view, const QStyleOptionViewItem& option,
+                               const QModelIndex& index)
+{
+    if(!event || !view) {
+        return false;
+    }
+
+    QStyleOptionViewItem opt{option};
+    initStyleOption(&opt, index);
+
+    const auto btns     = buttons(index);
+    const auto btnCount = static_cast<int>(btns.size());
+
+    for(int i{0}; i < btnCount; ++i) {
+        const QRect rect = buttonRect(opt, i);
+        if(!rect.contains(event->pos())) {
+            continue;
+        }
+
+        if(btns[i].tooltip.isEmpty()) {
+            QToolTip::hideText();
+            return true;
+        }
+
+        QToolTip::showText(event->globalPos(), btns[i].tooltip, view->viewport(), rect);
+        return true;
+    }
+
+    return QStyledItemDelegate::helpEvent(event, view, option, index);
 }
 
 bool ActionDelegate::editorEvent(QEvent* event, QAbstractItemModel* model, const QStyleOptionViewItem& option,
