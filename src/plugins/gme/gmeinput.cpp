@@ -65,16 +65,12 @@ QString findM3u(const QString& filepath)
 
 uint64_t getDuration(const gme_info_t* info, bool repeatTrack, Fooyin::AudioDecoder::DecoderOptions options = {})
 {
-    if(info->length > 0) {
-        return static_cast<uint64_t>(info->length);
-    }
-
     using Fooyin::AudioDecoder;
     using namespace Fooyin::Gme;
 
     const Fooyin::FySettings settings;
-    const double maxLengthMinutes = settings.value(MaxLength, DefaultMaxLength).toDouble();
-    const uint64_t maxLengthMs    = static_cast<uint64_t>(std::max(0.0, maxLengthMinutes) * 60.0 * 1000.0);
+    const double defaultLengthMinutes = settings.value(DefaultLength, DefaultLengthMinutes).toDouble();
+    const uint64_t defaultLengthMs    = static_cast<uint64_t>(std::max(0.0, defaultLengthMinutes) * 60.0 * 1000.0);
 
     int loopCount = settings.value(LoopCount, DefaultLoopCount).toInt();
 
@@ -83,14 +79,14 @@ uint64_t getDuration(const gme_info_t* info, bool repeatTrack, Fooyin::AudioDeco
     }
 
     if(repeatTrack) {
-        return maxLengthMs;
+        return defaultLengthMs;
     }
 
     if(info->loop_length > 0) {
         loopCount = std::max(loopCount, 1);
 
-        const uint64_t introLength = static_cast<uint64_t>(std::max(info->intro_length, 0));
-        const uint64_t loopLength  = static_cast<uint64_t>(info->loop_length);
+        const auto introLength = static_cast<uint64_t>(std::max(info->intro_length, 0));
+        const auto loopLength  = static_cast<uint64_t>(info->loop_length);
         return introLength + (loopLength * static_cast<uint64_t>(loopCount));
     }
 
@@ -98,7 +94,7 @@ uint64_t getDuration(const gme_info_t* info, bool repeatTrack, Fooyin::AudioDeco
         return static_cast<uint64_t>(info->length);
     }
 
-    return maxLengthMs;
+    return defaultLengthMs;
 }
 
 QStringList supportedExtensions()

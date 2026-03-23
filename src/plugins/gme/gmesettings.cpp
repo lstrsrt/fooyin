@@ -54,7 +54,7 @@ GmeSettings::GmeSettings(QWidget* parent)
     auto* lengthGroup  = new QGroupBox(tr("Length"), this);
     auto* lengthLayout = new QGridLayout(lengthGroup);
 
-    auto* maxLengthLabel = new QLabel(tr("Maximum length") + u":"_s, this);
+    auto* defaultLengthLabel = new QLabel(tr("Default length") + u":"_s, this);
 
     m_maxLength->setRange(1.0, 60.0);
     m_maxLength->setSingleStep(0.5);
@@ -71,7 +71,7 @@ GmeSettings::GmeSettings(QWidget* parent)
     m_fadeLength->setSuffix(u" ms"_s);
 
     int row{0};
-    lengthLayout->addWidget(maxLengthLabel, row, 0);
+    lengthLayout->addWidget(defaultLengthLabel, row, 0);
     lengthLayout->addWidget(m_maxLength, row++, 1);
     lengthLayout->addWidget(loopLabel, row, 0);
     lengthLayout->addWidget(m_loopCount, row++, 1);
@@ -89,7 +89,7 @@ GmeSettings::GmeSettings(QWidget* parent)
     layout->addWidget(buttons, row++, 0, 1, 4, Qt::AlignBottom);
     layout->setColumnStretch(2, 1);
 
-    m_maxLength->setValue(m_settings.value(MaxLength, DefaultMaxLength).toDouble());
+    m_maxLength->setValue(m_settings.value(DefaultLength, DefaultLengthMinutes).toDouble());
     m_loopCount->setValue(m_settings.value(LoopCount, DefaultLoopCount).toInt());
     m_fadeLength->setValue(m_settings.value(FadeLength, DefaultFadeLength).toInt());
     m_fadeNonLoopingTracks->setChecked(m_settings.value(FadeNonLoopingTracks, DefaultFadeNonLoopingTracks).toBool());
@@ -103,7 +103,7 @@ GmeSettings::GmeSettings(QWidget* parent)
 
 void GmeSettings::accept()
 {
-    m_settings.setValue(MaxLength, m_maxLength->value());
+    m_settings.setValue(DefaultLength, m_maxLength->value());
     m_settings.setValue(LoopCount, m_loopCount->value());
     m_settings.setValue(FadeLength, m_fadeLength->value());
     m_settings.setValue(FadeNonLoopingTracks, m_fadeNonLoopingTracks->isChecked());

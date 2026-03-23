@@ -20,8 +20,8 @@
 #pragma once
 
 namespace Fooyin::Gme {
-constexpr auto DefaultMaxLength            = 3.0;
-constexpr auto MaxLength                   = "Gme/MaxLength";
+constexpr auto DefaultLengthMinutes        = 3.0;
+constexpr auto DefaultLength               = "Gme/MaxLength";
 constexpr auto DefaultLoopCount            = 2;
 constexpr auto LoopCount                   = "Gme/LoopCount";
 constexpr auto DefaultFadeLength           = 4000;
