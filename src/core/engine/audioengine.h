@@ -309,6 +309,7 @@ private:
     void clearPreparedNextTrack();
     void clearPreparedCrossfadeTransition();
     void clearPreparedGaplessTransition();
+    void discardPreparedGaplessTransition(bool preserveDecoderOwnedStream = true);
     void disarmStalePreparedTransitions(const Track& contextTrack, uint64_t contextGeneration);
     void clearPreparedNextTrackAndCancelPendingJobs();
     [[nodiscard]] bool prepareNextTrackImmediate(const Engine::PlaybackItem& item, uint64_t prefillTargetMs = 0);
