@@ -437,10 +437,10 @@ void ApplicationPrivate::loadPlaybackState(uint64_t restoredPosition) const
             QMetaObject::invokeMethod(
                 m_playerController,
                 [this, restoredPosition]() {
-                    m_playerController->play();
                     if(restoredPosition > 0) {
-                        m_playerController->seek(restoredPosition);
+                        m_engine.restorePausedPosition(restoredPosition);
                     }
+                    m_playerController->play();
                 },
                 Qt::QueuedConnection);
             break;
