@@ -223,29 +223,48 @@ bool SndFileReader::readTrack(const AudioSource& source, Track& track)
         return {};
     }
 
+    const auto finish = [sndFile](bool ok) {
+        sf_close(sndFile);
+        return ok;
+    };
+
+    if(info.samplerate <= 0 || info.channels <= 0 || info.frames < 0) {
+        qCWarning(SND_FILE) << "Invalid audio properties for" << track.filepath() << ":"
+                            << "frames=" << info.frames << "samplerate=" << info.samplerate
+                            << "channels=" << info.channels;
+        return finish(false);
+    }
+
     track.setFileSize(QFileInfo{track.filepath()}.size());
-    track.setDuration(static_cast<int>(static_cast<double>(info.frames) / info.samplerate * 1000));
+
+    const auto durationMs = static_cast<uint64_t>(static_cast<double>(info.frames) / info.samplerate * 1000.0);
+    if(durationMs > 0) {
+        track.setDuration(durationMs);
+    }
+
     track.setSampleRate(info.samplerate);
     track.setChannels(info.channels);
-    track.setBitrate(static_cast<int>(track.fileSize() * 8 / track.duration()));
+    if(track.duration() > 0) {
+        track.setBitrate(static_cast<int>(track.fileSize() * 8 / track.duration()));
+    }
     track.setCodec(codecForFormat(info.format & SF_FORMAT_SUBMASK));
 
     switch(info.format & SF_FORMAT_SUBMASK) {
-        case(SF_FORMAT_PCM_U8):
-        case(SF_FORMAT_PCM_S8):
+        case SF_FORMAT_PCM_U8:
+        case SF_FORMAT_PCM_S8:
             track.setBitDepth(8);
             break;
-        case(SF_FORMAT_PCM_16):
+        case SF_FORMAT_PCM_16:
             track.setBitDepth(16);
             break;
-        case(SF_FORMAT_PCM_24):
+        case SF_FORMAT_PCM_24:
             track.setBitDepth(24);
             break;
-        case(SF_FORMAT_PCM_32):
-        case(SF_FORMAT_FLOAT):
+        case SF_FORMAT_PCM_32:
+        case SF_FORMAT_FLOAT:
             track.setBitDepth(32);
             break;
-        case(SF_FORMAT_DOUBLE):
+        case SF_FORMAT_DOUBLE:
             track.setBitDepth(64);
             break;
         default:
@@ -254,9 +273,9 @@ bool SndFileReader::readTrack(const AudioSource& source, Track& track)
 
     bool lossless{true};
     switch(info.format & SF_FORMAT_TYPEMASK) {
-        case(SndFileFormatMpeg):
-        case(SF_FORMAT_OGG):
-        case(SF_FORMAT_VOC):
+        case SndFileFormatMpeg:
+        case SF_FORMAT_OGG:
+        case SF_FORMAT_VOC:
             lossless = false;
             break;
         default:
@@ -293,6 +312,6 @@ bool SndFileReader::readTrack(const AudioSource& source, Track& track)
         track.addExtraTag(u"LICENSE"_s, QString::fromUtf8(license));
     }
 
-    return true;
+    return finish(true);
 }
 } // namespace Fooyin::Snd
