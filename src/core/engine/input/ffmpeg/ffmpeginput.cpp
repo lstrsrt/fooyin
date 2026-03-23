@@ -83,12 +83,12 @@ QStringList fileExtensions(bool allSupported)
     }
 
     static constexpr std::array extensionBlacklist{
-        "ans",       "apc",        "aqt",       "aqtitle", "art",      "asc",  "ass",        "bin",
-        "bmp_pipe",  "bmp",        "dds_pipe",  "diz",     "dpx_pipe", "dss",  "dvbsub",     "exr_pipe",
-        "exr",       "ffmetadata", "gif",       "ice",     "ico",      "ilbc", "image2pipe", "jacosub",
-        "jpeg_pipe", "jpeg",       "jpg",       "mpl2",    "mpsub",    "nfo",  "pjs",        "png_pipe",
-        "png",       "sami",       "smi",       "srt",     "stl",      "sub",  "sub",        "subviewer1",
-        "sup",       "tif",        "tiff_pipe", "tiff",    "txt",      "vt",   "vtt",        "webvtt"};
+        "ans", "apc",      "aqt",   "aqtitle",  "art",        "asc",      "ass",       "bin",       "bmp_pipe",
+        "bmp", "dds_pipe", "diz",   "dpx_pipe", "dss",        "dvbsub",   "exr_pipe",  "exr",       "ffmetadata",
+        "gif", "ice",      "ico",   "ilbc",     "image2pipe", "jacosub",  "jpeg_pipe", "jpeg",      "jpg",
+        "jxl", "mpl2",     "mpsub", "nfo",      "pjs",        "png_pipe", "png",       "sami",      "smi",
+        "srt", "stl",      "sub",   "sub",      "subviewer1", "sup",      "tif",       "tiff_pipe", "tiff",
+        "txt", "vt",       "vtt",   "webvtt"};
 
     for(const auto* ext : extensionBlacklist) {
         extensions.removeAll(QLatin1String{ext});
@@ -888,6 +888,49 @@ std::optional<bool> FFmpegDecoder::isPlanar() const
     return {};
 }
 
+class FFmpegReaderPrivate
+{
+public:
+    void reset()
+    {
+        if(m_context) {
+            m_context.reset();
+        }
+
+        if(m_ioContext) {
+            m_ioContext.reset();
+        }
+
+        m_stream = {};
+    }
+
+    bool setup(const AudioSource& source)
+    {
+        reset();
+
+        FormatContext context = createAVFormatContext(source);
+        m_context             = std::move(context.formatContext);
+        m_ioContext           = std::move(context.ioContext);
+
+        if(!m_context) {
+            return false;
+        }
+
+        m_stream = Utils::findAudioStream(m_context.get());
+        return m_stream.isValid();
+    }
+
+    IOContextPtr m_ioContext;
+    FormatContextPtr m_context;
+    Stream m_stream;
+};
+
+FFmpegReader::FFmpegReader()
+    : p{std::make_unique<FFmpegReaderPrivate>()}
+{ }
+
+FFmpegReader::~FFmpegReader() = default;
+
 QStringList FFmpegReader::extensions() const
 {
     const FySettings settings;
@@ -904,20 +947,19 @@ bool FFmpegReader::canWriteMetaData() const
     return false;
 }
 
-bool FFmpegReader::readTrack(const AudioSource& source, Track& track)
+bool FFmpegReader::init(const AudioSource& source)
 {
-    const FormatContext context = createAVFormatContext(source);
-    if(!context.formatContext) {
+    return p->setup(source);
+}
+
+bool FFmpegReader::readTrack(const AudioSource& /*source*/, Track& track)
+{
+    if(!p->m_context || !p->m_stream.isValid()) {
         return false;
     }
 
-    const Stream stream = Utils::findAudioStream(context.formatContext.get());
-    if(!stream.isValid()) {
-        return false;
-    }
-
-    const auto* avStream = stream.avStream();
-    const auto* codecPar = stream.avStream()->codecpar;
+    const auto* avStream = p->m_stream.avStream();
+    const auto* codecPar = p->m_stream.avStream()->codecpar;
 
     const AVCodec* avCodec = avcodec_find_decoder(avStream->codecpar->codec_id);
     if(!avCodec) {
@@ -945,7 +987,7 @@ bool FFmpegReader::readTrack(const AudioSource& source, Track& track)
         return {};
     }
 
-    const auto format = Utils::audioFormatFromCodec(stream.avStream()->codecpar, avCodecContext->sample_fmt);
+    const auto format = Utils::audioFormatFromCodec(p->m_stream.avStream()->codecpar, avCodecContext->sample_fmt);
 
     track.setCodec(getCodec(codecPar->codec_id));
     track.setSampleRate(format.sampleRate());
@@ -957,7 +999,7 @@ bool FFmpegReader::readTrack(const AudioSource& source, Track& track)
         AVRational timeBase = avStream->time_base;
         auto duration       = avStream->duration;
         if(duration <= 0 || std::cmp_equal(duration, AV_NOPTS_VALUE)) {
-            duration = context.formatContext->duration;
+            duration = p->m_context->duration;
             timeBase = TimeBaseAv;
         }
         const uint64_t durationMs = av_rescale_q(duration, timeBase, TimeBaseMs);
@@ -966,28 +1008,27 @@ bool FFmpegReader::readTrack(const AudioSource& source, Track& track)
 
     auto bitrate = static_cast<int>(codecPar->bit_rate / 1000);
     if(bitrate <= 0) {
-        bitrate = static_cast<int>(context.formatContext->bit_rate / 1000);
+        bitrate = static_cast<int>(p->m_context->bit_rate / 1000);
     }
     if(bitrate > 0) {
         track.setBitrate(bitrate);
     }
 
     AVDictionaryEntry* tag{nullptr};
-    while((tag = av_dict_get(context.formatContext->metadata, "", tag, AV_DICT_IGNORE_SUFFIX))) {
+    while((tag = av_dict_get(p->m_context->metadata, "", tag, AV_DICT_IGNORE_SUFFIX))) {
         parseTag(track, tag);
     }
 
     return true;
 }
 
-QByteArray FFmpegReader::readCover(const AudioSource& source, const Track& /*track*/, Track::Cover cover)
+QByteArray FFmpegReader::readCover(const AudioSource& /*source*/, const Track& /*track*/, Track::Cover cover)
 {
-    const FormatContext context = createAVFormatContext(source);
-    if(!context.formatContext) {
+    if(!p->m_context) {
         return {};
     }
 
-    auto coverData = findCover(context.formatContext.get(), cover);
+    auto coverData = findCover(p->m_context.get(), cover);
 
     return coverData;
 }

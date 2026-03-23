@@ -31,6 +31,7 @@ namespace Fooyin {
 class AudioFormat;
 class AudioBuffer;
 class FFmpegInputPrivate;
+class FFmpegReaderPrivate;
 
 class FYCORE_EXPORT FFmpegDecoder : public AudioDecoder
 {
@@ -60,12 +61,19 @@ private:
 class FFmpegReader : public AudioReader
 {
 public:
+    FFmpegReader();
+    ~FFmpegReader() override;
+
     [[nodiscard]] QStringList extensions() const override;
     [[nodiscard]] bool canReadCover() const override;
     [[nodiscard]] bool canWriteMetaData() const override;
 
+    [[nodiscard]] bool init(const AudioSource& source) override;
     [[nodiscard]] bool readTrack(const AudioSource& source, Track& track) override;
     [[nodiscard]] QByteArray readCover(const AudioSource& source, const Track& track, Track::Cover cover) override;
     [[nodiscard]] bool writeTrack(const AudioSource& source, const Track& track, WriteOptions options) override;
+
+private:
+    std::unique_ptr<FFmpegReaderPrivate> p;
 };
 } // namespace Fooyin
