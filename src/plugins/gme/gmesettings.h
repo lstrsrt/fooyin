@@ -43,5 +43,6 @@ private:
     QDoubleSpinBox* m_maxLength;
     QSpinBox* m_loopCount;
     QSpinBox* m_fadeLength;
+    QCheckBox* m_fadeNonLoopingTracks;
 };
 } // namespace Fooyin::Gme

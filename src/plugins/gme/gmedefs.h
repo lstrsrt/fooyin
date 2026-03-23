@@ -20,10 +20,12 @@
 #pragma once
 
 namespace Fooyin::Gme {
-constexpr auto DefaultMaxLength  = 3.0;
-constexpr auto MaxLength         = "Gme/MaxLength";
-constexpr auto DefaultLoopCount  = 2;
-constexpr auto LoopCount         = "Gme/LoopCount";
-constexpr auto DefaultFadeLength = 4000;
-constexpr auto FadeLength        = "Gme/FadeLength";
+constexpr auto DefaultMaxLength            = 3.0;
+constexpr auto MaxLength                   = "Gme/MaxLength";
+constexpr auto DefaultLoopCount            = 2;
+constexpr auto LoopCount                   = "Gme/LoopCount";
+constexpr auto DefaultFadeLength           = 4000;
+constexpr auto FadeLength                  = "Gme/FadeLength";
+constexpr auto DefaultFadeNonLoopingTracks = false;
+constexpr auto FadeNonLoopingTracks        = "Gme/FadeNonLoopingTracks";
 } // namespace Fooyin::Gme

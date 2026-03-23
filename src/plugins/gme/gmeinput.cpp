@@ -233,6 +233,14 @@ std::optional<AudioFormat> GmeDecoder::init(const AudioSource& source, const Tra
         gme_set_fade(m_emu.get(), -1);
     }
     else {
+        const bool fadeNonLoopingTracks = m_settings.value(FadeNonLoopingTracks, DefaultFadeNonLoopingTracks).toBool();
+        const bool shouldFade           = m_loopLength != 0 || fadeNonLoopingTracks;
+
+        if(!shouldFade) {
+            gme_set_fade(m_emu.get(), -1);
+            return m_format;
+        }
+
 #if defined(GME_VERSION) && GME_VERSION >= 0x000604
         const int fadeLength = std::clamp(m_settings.value(FadeLength, DefaultFadeLength).toInt(), 0, m_duration);
         const int fadeStart  = std::max(m_duration - fadeLength, 0);

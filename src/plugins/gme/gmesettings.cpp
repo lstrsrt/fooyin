@@ -42,6 +42,7 @@ GmeSettings::GmeSettings(QWidget* parent)
     , m_maxLength{new QDoubleSpinBox(this)}
     , m_loopCount{new QSpinBox(this)}
     , m_fadeLength{new QSpinBox(this)}
+    , m_fadeNonLoopingTracks{new QCheckBox(tr("Fade non-looping tracks"), this)}
 {
     setWindowTitle(tr("GME Settings"));
     setModal(true);
@@ -76,6 +77,7 @@ GmeSettings::GmeSettings(QWidget* parent)
     lengthLayout->addWidget(m_loopCount, row++, 1);
     lengthLayout->addWidget(fadeLabel, row, 0);
     lengthLayout->addWidget(m_fadeLength, row++, 1);
+    lengthLayout->addWidget(m_fadeNonLoopingTracks, row++, 0, 1, 2);
     lengthLayout->setColumnStretch(3, 1);
     lengthLayout->setRowStretch(row++, 1);
 
@@ -90,10 +92,12 @@ GmeSettings::GmeSettings(QWidget* parent)
     m_maxLength->setValue(m_settings.value(MaxLength, DefaultMaxLength).toDouble());
     m_loopCount->setValue(m_settings.value(LoopCount, DefaultLoopCount).toInt());
     m_fadeLength->setValue(m_settings.value(FadeLength, DefaultFadeLength).toInt());
+    m_fadeNonLoopingTracks->setChecked(m_settings.value(FadeNonLoopingTracks, DefaultFadeNonLoopingTracks).toBool());
 
 #if defined(GME_VERSION) && GME_VERSION < 0x000604
     fadeLabel->setVisible(false);
     m_fadeLength->setVisible(false);
+    m_fadeNonLoopingTracks->setVisible(false);
 #endif
 }
 
@@ -102,6 +106,7 @@ void GmeSettings::accept()
     m_settings.setValue(MaxLength, m_maxLength->value());
     m_settings.setValue(LoopCount, m_loopCount->value());
     m_settings.setValue(FadeLength, m_fadeLength->value());
+    m_settings.setValue(FadeNonLoopingTracks, m_fadeNonLoopingTracks->isChecked());
 
     done(Accepted);
 }
