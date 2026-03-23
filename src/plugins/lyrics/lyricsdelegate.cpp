@@ -25,12 +25,65 @@
 
 #include <QApplication>
 #include <QPainter>
+#include <QTextBoundaryFinder>
 
-#include <ranges>
+#include <algorithm>
 
 namespace {
-void calculateWordRects(const QModelIndex& index, const QRect& boundingRect,
-                        std::vector<std::pair<QRect, int>>& wordRects, int& totalHeight)
+struct LaidOutChunk
+{
+    QRect rect;
+    int blockIndex{0};
+    QString text;
+};
+
+int firstGraphemeLength(const QString& text)
+{
+    QTextBoundaryFinder boundary{QTextBoundaryFinder::BoundaryType::Grapheme, text};
+    boundary.toStart();
+
+    const int next = boundary.toNextBoundary();
+    return next > 0 ? next : 1;
+}
+
+int fittingLength(const QString& text, int maxWidth, const QFontMetrics& fm)
+{
+    if(text.isEmpty() || maxWidth <= 0) {
+        return 0;
+    }
+
+    QTextBoundaryFinder boundary{QTextBoundaryFinder::BoundaryType::Grapheme, text};
+    boundary.toStart();
+
+    int bestLength{0};
+    for(int next = boundary.toNextBoundary(); next >= 0; next = boundary.toNextBoundary()) {
+        if(fm.horizontalAdvance(text.left(next)) > maxWidth) {
+            break;
+        }
+        bestLength = next;
+    }
+
+    return bestLength;
+}
+
+int preferredSplitLength(const QString& text, int maxWidth, const QFontMetrics& fm)
+{
+    const int splitLength = fittingLength(text, maxWidth, fm);
+    if(splitLength <= 0) {
+        return firstGraphemeLength(text);
+    }
+
+    for(int i{splitLength - 1}; i >= 0; --i) {
+        if(text.at(i).isSpace()) {
+            return i + 1;
+        }
+    }
+
+    return splitLength;
+}
+
+void calculateWordRects(const QModelIndex& index, const QRect& boundingRect, std::vector<LaidOutChunk>& wordRects,
+                        int& totalHeight)
 {
     const auto lineSpacing = index.data(Fooyin::Lyrics::LyricsModel::LineSpacingRole).toInt();
     const auto alignment   = index.data(Qt::TextAlignmentRole).toInt();
@@ -41,33 +94,33 @@ void calculateWordRects(const QModelIndex& index, const QRect& boundingRect,
         return;
     }
 
-    const int rightEdge = boundingRect.width();
+    const int rightEdge = std::max(boundingRect.width(), 1);
     int currentY{0};
     int lineHeight{0};
-    std::vector<std::pair<QRect, int>> currentLineRects;
+    std::vector<LaidOutChunk> currentLineRects;
     int currentLineWidth{0};
 
     const auto flushLine = [&](bool addSpacing) {
         int lineStartX{0};
         switch(alignment) {
-            case(Qt::AlignRight):
+            case Qt::AlignRight:
                 lineStartX = rightEdge - currentLineWidth;
                 break;
-            case(Qt::AlignCenter):
+            case Qt::AlignCenter:
                 lineStartX = (rightEdge - currentLineWidth) / 2;
                 break;
-            case(Qt::AlignLeft):
+            case Qt::AlignLeft:
             default:
                 lineStartX = 0;
                 break;
         }
 
         int x = lineStartX + boundingRect.left();
-        for(auto& [rect, idx] : currentLineRects) {
-            rect.moveLeft(x);
-            rect.moveTop(currentY);
-            wordRects.emplace_back(rect, idx);
-            x += rect.width();
+        for(auto& chunk : currentLineRects) {
+            chunk.rect.moveLeft(x);
+            chunk.rect.moveTop(currentY);
+            wordRects.emplace_back(chunk);
+            x += chunk.rect.width();
         }
 
         currentY += lineHeight + (addSpacing ? lineSpacing : 0);
@@ -79,16 +132,49 @@ void calculateWordRects(const QModelIndex& index, const QRect& boundingRect,
     for(size_t i{0}; i < richText.blocks.size(); ++i) {
         const auto& block = richText.blocks[i];
         const QFontMetrics fm{block.format.font};
-        const int wordWidth  = fm.horizontalAdvance(block.text);
-        const int wordHeight = fm.height();
+        const int wordHeight{fm.height()};
+        QString remainingText{block.text};
 
-        if(currentLineWidth + wordWidth > rightEdge && !currentLineRects.empty()) {
-            flushLine(true);
+        while(!remainingText.isEmpty()) {
+            const int remainingWidth = fm.horizontalAdvance(remainingText);
+
+            if(currentLineWidth >= rightEdge && !currentLineRects.empty()) {
+                flushLine(true);
+            }
+
+            if(!currentLineRects.empty() && currentLineWidth + remainingWidth > rightEdge) {
+                flushLine(true);
+                continue;
+            }
+
+            if(remainingWidth <= rightEdge - currentLineWidth) {
+                currentLineRects.emplace_back(QRect{0, 0, remainingWidth, wordHeight}, static_cast<int>(i),
+                                              remainingText);
+                currentLineWidth += remainingWidth;
+                lineHeight = std::max(lineHeight, wordHeight);
+                break;
+            }
+
+            const int availableWidth  = rightEdge - currentLineWidth;
+            const int segmentLength   = preferredSplitLength(remainingText, availableWidth, fm);
+            const QString segmentText = remainingText.left(segmentLength);
+            const int segmentWidth    = fm.horizontalAdvance(segmentText);
+
+            if(currentLineWidth + segmentWidth > rightEdge && !currentLineRects.empty()) {
+                flushLine(true);
+                continue;
+            }
+
+            currentLineRects.emplace_back(QRect{0, 0, segmentWidth, wordHeight}, static_cast<int>(i), segmentText);
+            currentLineWidth += segmentWidth;
+            lineHeight = std::max(lineHeight, wordHeight);
+
+            remainingText.remove(0, segmentLength);
+
+            if(!remainingText.isEmpty()) {
+                flushLine(true);
+            }
         }
-
-        currentLineRects.emplace_back(QRect{0, 0, wordWidth, wordHeight}, static_cast<int>(i));
-        currentLineWidth += wordWidth;
-        lineHeight = std::max(lineHeight, wordHeight);
     }
 
     if(!currentLineRects.empty()) {
@@ -125,24 +211,23 @@ void LyricsDelegate::paint(QPainter* painter, const QStyleOptionViewItem& option
     // Apply left/right padding
     const QRect contentRect = option.rect.adjusted(margins.left(), 0, -margins.right(), 0);
 
-    std::vector<std::pair<QRect, int>> wordRects;
+    std::vector<LaidOutChunk> wordRects;
     int totalHeight{0};
 
     calculateWordRects(index, contentRect, wordRects, totalHeight);
 
     // Offset word rects
-    for(auto& rect : wordRects | std::views::keys) {
-        rect.translate(0, option.rect.top());
+    for(auto& chunk : wordRects) {
+        chunk.rect.translate(0, option.rect.top());
     }
 
-    for(size_t i{0}; i < wordRects.size() && i < richText.blocks.size(); ++i) {
-        const auto& [rect, wordIdx] = wordRects[i];
-        const auto& [text, format]  = richText.blocks[wordIdx];
+    for(const auto& chunk : wordRects) {
+        const auto& format = richText.blocks[chunk.blockIndex].format;
 
         painter->setFont(format.font);
         painter->setPen(format.colour);
 
-        painter->drawText(rect, Qt::AlignLeft | Qt::AlignVCenter, text);
+        painter->drawText(chunk.rect, Qt::AlignLeft | Qt::AlignVCenter, chunk.text);
     }
 
     painter->restore();
@@ -180,7 +265,7 @@ QSize LyricsDelegate::sizeHint(const QStyleOptionViewItem& option, const QModelI
 
     const QRect boundingRect{0, 0, availableWidth, 10000};
 
-    std::vector<std::pair<QRect, int>> wordRects;
+    std::vector<LaidOutChunk> wordRects;
     int totalHeight{0};
     calculateWordRects(index, boundingRect, wordRects, totalHeight);
 
@@ -207,18 +292,18 @@ int LyricsDelegate::wordIndexAt(const QModelIndex& index, const QPoint& pos, con
 
     const QRect contentRect = opt.rect.adjusted(margins.left(), 0, -margins.right(), 0);
 
-    std::vector<std::pair<QRect, int>> wordRects;
+    std::vector<LaidOutChunk> wordRects;
     int totalHeight{0};
 
     calculateWordRects(index, contentRect, wordRects, totalHeight);
 
-    for(auto& rect : wordRects | std::views::keys) {
-        rect.translate(0, opt.rect.top());
+    for(auto& chunk : wordRects) {
+        chunk.rect.translate(0, opt.rect.top());
     }
 
-    for(const auto& [rect, idx] : wordRects) {
-        if(rect.contains(pos)) {
-            return idx;
+    for(const auto& chunk : wordRects) {
+        if(chunk.rect.contains(pos)) {
+            return chunk.blockIndex;
         }
     }
 

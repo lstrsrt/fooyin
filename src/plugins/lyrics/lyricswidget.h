@@ -126,7 +126,8 @@ private:
 
     Lyrics m_currentLyrics;
     uint64_t m_currentTime;
-    int m_currentLine;
+    int m_currentLineStart;
+    int m_currentLineEnd;
 
     Track m_currentTrack;
     std::vector<Lyrics> m_lyrics;

@@ -58,6 +58,7 @@ public:
     [[nodiscard]] uint64_t currentTime() const;
 
     [[nodiscard]] int currentLineIndex() const;
+    [[nodiscard]] int currentLineLastIndex() const;
 
     [[nodiscard]] int rowCount(const QModelIndex& parent) const override;
     [[nodiscard]] QVariant data(const QModelIndex& index, int role) const override;
@@ -65,6 +66,7 @@ public:
 private:
     void updateCurrentLine();
 
+    [[nodiscard]] bool isLineHighlighted(const ParsedLine& line) const;
     [[nodiscard]] RichText textForLine(const ParsedLine& line) const;
     [[nodiscard]] std::vector<ParsedLine>::const_iterator lineForTimestamp(uint64_t timestamp) const;
     [[nodiscard]] std::vector<ParsedWord>::const_iterator wordForTimestamp(const ParsedLine& line,
@@ -76,6 +78,7 @@ private:
     int m_lineSpacing;
     uint64_t m_currentTime;
     int m_currentLine;
+    int m_currentLineEnd;
     int m_currentWord;
 
     std::vector<RichText> m_text;

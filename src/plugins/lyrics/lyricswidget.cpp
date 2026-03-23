@@ -115,7 +115,8 @@ LyricsWidget::LyricsWidget(PlayerController* playerController, EngineController*
     , m_lyricsFinder{lyricsFinder}
     , m_lyricsSaver{lyricsSaver}
     , m_currentTime{0}
-    , m_currentLine{-1}
+    , m_currentLineStart{-1}
+    , m_currentLineEnd{-1}
     , m_scrollMode{ScrollMode::Synced}
     , m_isUserScrolling{false}
 {
@@ -687,35 +688,54 @@ void LyricsWidget::highlightCurrentLine()
         return;
     }
 
-    const int newLine      = m_model->currentLineIndex();
-    const int prevLine     = std::exchange(m_currentLine, newLine);
-    const bool lineChanged = m_currentLine != prevLine;
+    const int newLineStart  = m_model->currentLineIndex();
+    const int newLineEnd    = m_model->currentLineLastIndex();
+    const int prevLineStart = std::exchange(m_currentLineStart, newLineStart);
+    const int prevLineEnd   = std::exchange(m_currentLineEnd, newLineEnd);
+    const bool lineChanged  = m_currentLineStart != prevLineStart || m_currentLineEnd != prevLineEnd;
 
     if(!lineChanged) {
         return;
     }
 
-    if(m_currentLine <= 0) {
+    if(m_currentLineStart <= 0) {
         scrollToCurrentLine(0);
         return;
     }
 
-    if(m_currentLine >= 0) {
-        const QModelIndex currentIndex = m_model->index(m_currentLine, 0);
-        if(currentIndex.isValid()) {
-            const QRect rect = m_lyricsView->visualRect(currentIndex);
-            if(rect.isValid()) {
-                const int absoluteY = rect.top() + m_lyricsView->verticalScrollBar()->value();
+    if(m_currentLineStart >= 0) {
+        const QModelIndex firstIndex = m_model->index(m_currentLineStart, 0);
+        const QModelIndex lastIndex  = m_model->index(m_currentLineEnd, 0);
+
+        if(firstIndex.isValid() && lastIndex.isValid()) {
+            const QRect firstRect = m_lyricsView->visualRect(firstIndex);
+            const QRect lastRect  = m_lyricsView->visualRect(lastIndex);
+            if(firstRect.isValid() && lastRect.isValid()) {
+                const int scrollOffset = m_lyricsView->verticalScrollBar()->value();
+                const int absoluteY    = m_currentLineStart == m_currentLineEnd
+                                           ? firstRect.top() + scrollOffset
+                                           : (firstRect.top() + lastRect.bottom()) / 2 + scrollOffset;
                 scrollToCurrentLine(absoluteY);
             }
             else {
                 // Item not visible
-                int y{0};
-                for(int i{0}; i < m_currentLine; ++i) {
+                int topY{0};
+                for(int i{0}; i < m_currentLineStart; ++i) {
                     const QModelIndex idx = m_model->index(i, 0);
-                    y += m_lyricsView->sizeHintForIndex(idx).height();
+                    topY += m_lyricsView->sizeHintForIndex(idx).height();
                 }
-                scrollToCurrentLine(y);
+
+                if(m_currentLineStart == m_currentLineEnd) {
+                    scrollToCurrentLine(topY);
+                    return;
+                }
+
+                int groupHeight{0};
+                for(int i{m_currentLineStart}; i <= m_currentLineEnd; ++i) {
+                    const QModelIndex idx = m_model->index(i, 0);
+                    groupHeight += m_lyricsView->sizeHintForIndex(idx).height();
+                }
+                scrollToCurrentLine(topY + (groupHeight / 2));
             }
         }
     }

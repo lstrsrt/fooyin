@@ -21,6 +21,9 @@
 
 #include <QSize>
 
+#include <algorithm>
+#include <utility>
+
 namespace Fooyin::Lyrics {
 LyricsModel::LyricsModel(QObject* parent)
     : QAbstractListModel{parent}
@@ -28,6 +31,7 @@ LyricsModel::LyricsModel(QObject* parent)
     , m_lineSpacing{5}
     , m_currentTime{0}
     , m_currentLine{-1}
+    , m_currentLineEnd{-1}
     , m_currentWord{-1}
     , m_lineFont{Lyrics::defaultFont()}
     , m_wordLineFont{Lyrics::defaultFont()}
@@ -41,10 +45,11 @@ void LyricsModel::setLyrics(const Lyrics& lyrics)
 {
     beginResetModel();
 
-    m_lyrics      = lyrics;
-    m_currentLine = -1;
-    m_currentWord = -1;
-    m_currentTime = 0;
+    m_lyrics         = lyrics;
+    m_currentLine    = -1;
+    m_currentLineEnd = -1;
+    m_currentWord    = -1;
+    m_currentTime    = 0;
 
     m_text.clear();
 
@@ -129,9 +134,17 @@ uint64_t LyricsModel::currentTime() const
 
 int LyricsModel::currentLineIndex() const
 {
-    // Return row index (including padding offset)
     if(m_currentLine >= 0) {
         return m_currentLine + 1;
+    }
+
+    return -1;
+}
+
+int LyricsModel::currentLineLastIndex() const
+{
+    if(m_currentLineEnd >= 0) {
+        return m_currentLineEnd + 1;
     }
 
     return -1;
@@ -187,21 +200,21 @@ QVariant LyricsModel::data(const QModelIndex& index, int role) const
     const auto& line = m_lyrics.lines.at(lineIndex);
 
     switch(role) {
-        case(Qt::DisplayRole):
+        case Qt::DisplayRole:
             return line.joinedWords();
-        case(Qt::FontRole):
+        case Qt::FontRole:
             return Lyrics::defaultFont();
-        case(Qt::TextAlignmentRole):
+        case Qt::TextAlignmentRole:
             return QVariant::fromValue(m_alignment);
-        case(RichTextRole):
+        case RichTextRole:
             return QVariant::fromValue(m_text.at(lineIndex));
-        case(TimestampRole):
+        case TimestampRole:
             return QVariant::fromValue(line.timestamp);
-        case(WordsRole):
+        case WordsRole:
             return QVariant::fromValue(line.words);
-        case(MarginsRole):
+        case MarginsRole:
             return QVariant::fromValue(m_margins);
-        case(LineSpacingRole):
+        case LineSpacingRole:
             return QVariant::fromValue(m_lineSpacing);
         default:
             return {};
@@ -217,11 +230,22 @@ void LyricsModel::updateCurrentLine()
     }
 
     int newLine{-1};
+    int newLineEnd{-1};
     int newWord{-1};
 
     const auto line = lineForTimestamp(m_currentTime);
     if(line != m_lyrics.lines.cend()) {
         newLine = static_cast<int>(std::distance(m_lyrics.lines.cbegin(), line));
+
+        while(newLine > 0 && m_lyrics.lines.at(newLine - 1).timestamp == line->timestamp) {
+            --newLine;
+        }
+
+        newLineEnd = newLine;
+        while(std::cmp_less(newLineEnd + 1, m_lyrics.lines.size())
+              && m_lyrics.lines.at(newLineEnd + 1).timestamp == line->timestamp) {
+            ++newLineEnd;
+        }
 
         if(m_lyrics.type == Lyrics::Type::SyncedWords) {
             const auto word = wordForTimestamp(*line, m_currentTime);
@@ -232,35 +256,44 @@ void LyricsModel::updateCurrentLine()
         }
     }
 
-    const int prevLine = std::exchange(m_currentLine, newLine);
-    const int prevWord = std::exchange(m_currentWord, newWord);
+    const int prevLine    = std::exchange(m_currentLine, newLine);
+    const int prevLineEnd = std::exchange(m_currentLineEnd, newLineEnd);
+    const int prevWord    = std::exchange(m_currentWord, newWord);
 
-    if(newLine >= 0) {
-        auto& text = m_text[newLine];
-        text       = textForLine(*line);
-    }
-    if(prevLine >= 0) {
-        auto& text = m_text[prevLine];
-        text       = textForLine(m_lyrics.lines.at(prevLine));
-    }
+    if(prevLine != m_currentLine || prevLineEnd != m_currentLineEnd || prevWord != m_currentWord) {
+        int changedStart{-1};
+        int changedEnd{-1};
 
-    if(prevLine != m_currentLine || prevWord != m_currentWord) {
-        if(prevLine >= 0 && std::cmp_less(prevLine, m_lyrics.lines.size())) {
-            const int prevRow = prevLine + 1; // padding
-            emit dataChanged(index(prevRow, 0), index(prevRow, 0), {RichTextRole});
+        if(prevLine >= 0) {
+            changedStart = prevLine;
+            changedEnd   = prevLineEnd;
         }
 
-        if(m_currentLine >= 0 && std::cmp_less(m_currentLine, m_lyrics.lines.size())) {
-            const int currentRow = m_currentLine + 1; // padding
-            emit dataChanged(index(currentRow, 0), index(currentRow, 0), {RichTextRole});
+        if(m_currentLine >= 0) {
+            changedStart = changedStart < 0 ? m_currentLine : std::min(changedStart, m_currentLine);
+            changedEnd   = std::max(changedEnd, m_currentLineEnd);
+        }
+
+        if(changedStart >= 0 && std::cmp_less(changedEnd, m_lyrics.lines.size())) {
+            for(int lineIndex{changedStart}; lineIndex <= changedEnd; ++lineIndex) {
+                m_text[lineIndex] = textForLine(m_lyrics.lines.at(lineIndex));
+            }
+
+            emit dataChanged(index(changedStart + 1, 0), index(changedEnd + 1, 0), {RichTextRole});
         }
     }
 }
 
+bool LyricsModel::isLineHighlighted(const ParsedLine& line) const
+{
+    return m_currentLine >= 0 && std::cmp_less(m_currentLine, m_lyrics.lines.size())
+        && line.timestamp == m_lyrics.lines.at(m_currentLine).timestamp;
+}
+
 RichText LyricsModel::textForLine(const ParsedLine& line) const
 {
-    const bool highlightLine = line.isCurrent(m_currentTime);
-    const bool linePlayed    = (line.endTimestamp() < m_currentTime);
+    const bool highlightLine = isLineHighlighted(line);
+    const bool linePlayed    = !highlightLine && line.timestamp < m_currentTime;
 
     RichText formattedText;
 
