@@ -602,6 +602,7 @@ PlaylistModel::PlaylistModel(PlaylistInteractor* playlistInteractor, CoverProvid
 
     QObject::connect(&m_populator, &PlaylistPopulator::finished, this, [this]() {
         m_playlistLoaded = true;
+        syncPlayingTrackIndex();
         emit playlistLoaded();
     });
 
@@ -986,6 +987,7 @@ void PlaylistModel::reset(const PlaylistTrackList& tracks)
 
         m_resetting      = false;
         m_playlistLoaded = true;
+        syncPlayingTrackIndex();
         emit playlistLoaded();
         return;
     }
@@ -2610,6 +2612,17 @@ void PlaylistModel::coverUpdated(const Track& track)
             }
         }
     }
+}
+
+void PlaylistModel::syncPlayingTrackIndex()
+{
+    if(!m_currentPlaylist || m_playingTrack.playlistId != m_currentPlaylist->id()
+       || m_playingTrack.indexInPlaylist < 0) {
+        m_playingIndex = QPersistentModelIndex{};
+        return;
+    }
+
+    m_playingIndex = indexAtPlaylistIndex(m_playingTrack.indexInPlaylist, true);
 }
 
 bool PlaylistModel::trackIsPlaying(const Track& track, int index) const

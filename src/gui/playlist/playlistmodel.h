@@ -233,6 +233,7 @@ private:
     void refreshTracksForDependency(const std::vector<int>& indexes, PlaybackDependency dependency);
     void refreshTracksForDependencies(const std::vector<int>& indexes, PlaybackDependencies dependencies);
     void coverUpdated(const Track& track);
+    void syncPlayingTrackIndex();
     bool trackIsPlaying(const Track& track, int index) const;
 
     ParentChildRangesList determineRowGroups(const QModelIndexList& indexes);
