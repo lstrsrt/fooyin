@@ -39,21 +39,24 @@ ViewMenu::ViewMenu(ActionManager* actionManager, SettingsManager* settings, QObj
 
     const QStringList viewCategory = {tr("View")};
 
-    auto* openQuickSetup = new QAction(Gui::iconFromTheme(Constants::Icons::QuickSetup), tr("&Quick setup"), this);
+    auto* openQuickSetup = new QAction(tr("&Quick setup"), this);
+    Gui::setThemeIcon(openQuickSetup, Constants::Icons::QuickSetup);
     openQuickSetup->setStatusTip(tr("Open the quick setup dialog"));
     auto* quickSetupCmd = m_actionManager->registerAction(openQuickSetup, Constants::Actions::QuickSetup);
     quickSetupCmd->setCategories(viewCategory);
     viewMenu->addAction(quickSetupCmd, Actions::Groups::One);
     QObject::connect(openQuickSetup, &QAction::triggered, this, &ViewMenu::openQuickSetup);
 
-    auto* showLog = new QAction(Gui::iconFromTheme(Constants::Icons::Log), tr("&Log"), this);
+    auto* showLog = new QAction(tr("&Log"), this);
+    Gui::setThemeIcon(showLog, Constants::Icons::Log);
     showLog->setStatusTip(tr("Open the log dialog"));
     auto* showLogCmd = m_actionManager->registerAction(showLog, Constants::Actions::Log);
     showLogCmd->setCategories(viewCategory);
     viewMenu->addAction(showLogCmd);
     QObject::connect(showLog, &QAction::triggered, this, &ViewMenu::openLog);
 
-    auto* showEditor = new QAction(Gui::iconFromTheme(Constants::Icons::ScriptEditor), tr("&Script editor"), this);
+    auto* showEditor = new QAction(tr("&Script editor"), this);
+    Gui::setThemeIcon(showEditor, Constants::Icons::ScriptEditor);
     showEditor->setStatusTip(tr("Open the script editor dialog"));
     auto* showEditorCmd = m_actionManager->registerAction(showEditor, Constants::Actions::ScriptEditor);
     showEditorCmd->setCategories(viewCategory);

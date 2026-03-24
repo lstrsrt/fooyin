@@ -71,7 +71,8 @@ HelpMenu::HelpMenu(ActionManager* actionManager, QObject* parent)
     QObject::connect(faq, &QAction::triggered, this,
                      []() { QDesktopServices::openUrl(u"https://www.fooyin.org/faq"_s); });
 
-    auto* about = new QAction(Gui::iconFromTheme(Constants::Icons::Fooyin), tr("&About"), this);
+    auto* about = new QAction(tr("&About"), this);
+    Gui::setThemeIcon(about, Constants::Icons::Fooyin);
     about->setStatusTip(tr("Open the about dialog"));
     QObject::connect(about, &QAction::triggered, this, showAboutDialog);
 

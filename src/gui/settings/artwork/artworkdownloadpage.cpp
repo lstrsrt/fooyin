@@ -148,7 +148,8 @@ ArtworkDownloadPageWidget::ArtworkDownloadPageWidget(SettingsManager* settings)
         typeLayout->addWidget(formatGroup, row++, 0);
         typeLayout->addWidget(locationGroup, row++, 0);
 
-        auto* browseAction = new QAction(Gui::iconFromTheme(::Fooyin::Constants::Icons::Options), {}, widget);
+        auto* browseAction = new QAction(widget);
+        Gui::setThemeIcon(browseAction, ::Fooyin::Constants::Icons::Options);
         QObject::connect(browseAction, &QAction::triggered, widget, [this, type]() { browseDestination(type); });
         controls.path->addAction(browseAction, QLineEdit::TrailingPosition);
 

@@ -40,6 +40,7 @@
 #include <gui/guiconstants.h>
 #include <gui/guisettings.h>
 #include <gui/guiutils.h>
+#include <gui/iconloader.h>
 #include <gui/trackselectioncontroller.h>
 #include <utils/actions/actionmanager.h>
 #include <utils/actions/command.h>
@@ -224,6 +225,10 @@ LibraryTreeWidget::LibraryTreeWidget(ActionManager* actionManager, PlaylistContr
     m_actionManager->addContextObject(m_widgetContext);
 
     m_model->setPlayState(playlistController->playerController()->playState());
+
+    Gui::setThemeIcon(m_addToQueueAction, Constants::Icons::Add);
+    Gui::setThemeIcon(m_removeFromQueueAction, Constants::Icons::Remove);
+    Gui::setThemeIcon(m_playAction, Constants::Icons::Play);
 
     m_playAction->setStatusTip(tr("Start playback of the selected tracks"));
     QObject::connect(m_playAction, &QAction::triggered, this,

@@ -188,9 +188,9 @@ DirBrowser::DirBrowser(const QStringList& supportedExtensions, ActionManager* ac
     , m_middleClickAction{TrackAction::None}
     , m_context{new WidgetContext(
           this, Context{Id{"Fooyin.Context.DirBrowser."}.append(reinterpret_cast<uintptr_t>(this))}, this)}
-    , m_goUp{new QAction(Gui::iconFromTheme(Constants::Icons::Up), tr("Go up"), this)}
-    , m_goBack{new QAction(Gui::iconFromTheme(Constants::Icons::GoPrevious), tr("Go back"), this)}
-    , m_goForward{new QAction(Gui::iconFromTheme(Constants::Icons::GoNext), tr("Go forwards"), this)}
+    , m_goUp{new QAction(tr("Go up"), this)}
+    , m_goBack{new QAction(tr("Go back"), this)}
+    , m_goForward{new QAction(tr("Go forwards"), this)}
     , m_playAction{new QAction(tr("&Play"), this)}
     , m_addCurrent{new QAction(tr("Add to &current playlist"), this)}
     , m_addActive{new QAction(tr("Add to &active playlist"), this)}
@@ -200,6 +200,14 @@ DirBrowser::DirBrowser(const QStringList& supportedExtensions, ActionManager* ac
     , m_queueNext{new QAction(tr("Queue to play next"), this)}
     , m_sendQueue{new QAction(tr("Replace playback q&ueue"), this)}
 {
+    Gui::setThemeIcon(m_goUp, Constants::Icons::Up);
+    Gui::setThemeIcon(m_goBack, Constants::Icons::GoPrevious);
+    Gui::setThemeIcon(m_goForward, Constants::Icons::GoNext);
+    Gui::setThemeIcon(m_playAction, Constants::Icons::Play);
+    Gui::setThemeIcon(m_sendNew, Constants::Icons::Add);
+    Gui::setThemeIcon(m_addQueue, Constants::Icons::Add);
+    Gui::setThemeIcon(m_queueNext, Constants::Icons::Next);
+
     auto* layout = new QVBoxLayout(this);
     layout->setContentsMargins(0, 0, 0, 0);
 

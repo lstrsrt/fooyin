@@ -385,6 +385,9 @@ QIcon CommandButton::fallbackIcon(const QString& commandId) const
 
     if(auto* command = m_actionManager->command(Id{resolved->id})) {
         if(command->action() && !command->action()->icon().isNull()) {
+            if(const QString iconName = Gui::themeIconName(command->action()); !iconName.isEmpty()) {
+                return Gui::iconFromTheme(iconName);
+            }
             return command->action()->icon();
         }
     }

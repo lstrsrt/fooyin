@@ -68,14 +68,15 @@ LibraryMenu::LibraryMenu(Application* core, ActionManager* actionManager, QObjec
     dbMenu->addAction(removeUnavailable);
     QObject::connect(removeUnavailable, &QAction::triggered, this, &LibraryMenu::removeUnavailbleTracks);
 
-    auto* refreshLibrary
-        = new QAction(Gui::iconFromTheme(Constants::Icons::RescanLibrary), tr("&Scan for changes"), this);
+    auto* refreshLibrary = new QAction(tr("&Scan for changes"), this);
+    Gui::setThemeIcon(refreshLibrary, Constants::Icons::RescanLibrary);
     refreshLibrary->setStatusTip(tr("Update tracks in libraries which have been modified on disk"));
     auto* refreshLibraryCmd = actionManager->registerAction(refreshLibrary, Constants::Actions::Refresh);
     refreshLibraryCmd->setCategories(libraryCategory);
     QObject::connect(refreshLibrary, &QAction::triggered, core->library(), &MusicLibrary::refreshAll);
 
-    auto* rescanLibrary = new QAction(Gui::iconFromTheme(Constants::Icons::RescanLibrary), tr("&Reload tracks"), this);
+    auto* rescanLibrary = new QAction(tr("&Reload tracks"), this);
+    Gui::setThemeIcon(rescanLibrary, Constants::Icons::RescanLibrary);
     rescanLibrary->setStatusTip(tr("Reload metadata from files for all tracks in libraries"));
     auto* rescanLibraryCmd = actionManager->registerAction(rescanLibrary, Constants::Actions::Rescan);
     rescanLibraryCmd->setCategories(libraryCategory);
@@ -93,7 +94,8 @@ LibraryMenu::LibraryMenu(Application* core, ActionManager* actionManager, QObjec
     quickSearchCmd->setCategories(libraryCategory);
     QObject::connect(quickSearch, &QAction::triggered, this, &LibraryMenu::requestQuickSearch);
 
-    auto* openSettings = new QAction(Gui::iconFromTheme(Constants::Icons::Settings), tr("&Configure"), this);
+    auto* openSettings = new QAction(tr("&Configure"), this);
+    Gui::setThemeIcon(openSettings, Constants::Icons::Settings);
     openSettings->setStatusTip(tr("Open the library page in the settings dialog"));
     auto* openSettingsCmd = actionManager->registerAction(openSettings, "Library.Configure");
     openSettingsCmd->setCategories(libraryCategory);
@@ -101,7 +103,8 @@ LibraryMenu::LibraryMenu(Application* core, ActionManager* actionManager, QObjec
         core->settingsManager()->settingsDialog()->openAtPage(Constants::Page::LibraryGeneral);
     });
 
-    auto* cancelScan = new QAction(Gui::iconFromTheme(Constants::Icons::Close), tr("Cancel current scan"), this);
+    auto* cancelScan = new QAction(tr("Cancel current scan"), this);
+    Gui::setThemeIcon(cancelScan, Constants::Icons::Close);
     cancelScan->setVisible(false);
     cancelScan->setStatusTip(tr("Cancel the current library scan"));
 

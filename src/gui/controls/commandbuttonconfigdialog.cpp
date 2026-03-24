@@ -79,9 +79,12 @@ CommandButtonConfigDialog::CommandButtonConfigDialog(CommandButton* button, Acti
     , m_buttonStyle{new QComboBox(this)}
     , m_iconPreview{new QPushButton(this)}
     , m_iconPath{new QLineEdit(this)}
-    , m_browseIconAction{new QAction(Gui::iconFromTheme(Constants::Icons::Options), {}, this)}
-    , m_clearIconAction{new QAction(Gui::iconFromTheme(Constants::Icons::Clear), {}, this)}
+    , m_browseIconAction{new QAction(this)}
+    , m_clearIconAction{new QAction(this)}
 {
+    Gui::setThemeIcon(m_browseIconAction, Constants::Icons::Options);
+    Gui::setThemeIcon(m_clearIconAction, Constants::Icons::Clear);
+
     m_command->setEditable(true);
     m_command->setInsertPolicy(QComboBox::NoInsert);
 

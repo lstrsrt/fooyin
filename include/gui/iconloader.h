@@ -24,6 +24,7 @@
 class QIcon;
 class QPixmap;
 class QAction;
+class QObject;
 class QSize;
 class QString;
 
@@ -48,6 +49,10 @@ FYGUI_EXPORT void setThemeIcon(QAction* action, const QString& icon);
 FYGUI_EXPORT void setThemeIcon(QAction* action, const char* icon);
 /*! Returns the stored theme icon name for an action, if any. */
 FYGUI_EXPORT QString themeIconName(const QAction* action);
+/*! Reapplies a stored themed icon to an action. Returns false if no theme icon name is stored. */
+FYGUI_EXPORT bool refreshThemeIcon(QAction* action);
+/*! Reapplies stored themed icons for all descendant actions of the given object. */
+FYGUI_EXPORT void refreshThemeIcons(QObject* object);
 
 /*! Returns a cached pixmap using the default icon size. */
 FYGUI_EXPORT QPixmap pixmapFromTheme(const char* icon);

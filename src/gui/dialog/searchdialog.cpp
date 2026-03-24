@@ -71,7 +71,8 @@ SearchDialog::SearchDialog(ActionManager* actionManager, PlaylistInteractor* pla
     layout->addWidget(m_searchBar);
     layout->addWidget(m_view);
 
-    auto* searchMenu = new QAction(Gui::iconFromTheme(Constants::Icons::Options), tr("Options"), this);
+    auto* searchMenu = new QAction(tr("Options"), this);
+    Gui::setThemeIcon(searchMenu, Constants::Icons::Options);
     QObject::connect(searchMenu, &QAction::triggered, this, &SearchDialog::showOptionsMenu);
     m_searchBar->addAction(searchMenu, QLineEdit::TrailingPosition);
 

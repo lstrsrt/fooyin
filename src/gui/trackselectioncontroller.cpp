@@ -29,6 +29,7 @@
 #include <core/playlist/playlisthandler.h>
 #include <core/track.h>
 #include <gui/guiconstants.h>
+#include <gui/iconloader.h>
 #include <utils/actions/actioncontainer.h>
 #include <utils/actions/actionmanager.h>
 #include <utils/actions/command.h>
@@ -179,6 +180,9 @@ TrackSelectionControllerPrivate::TrackSelectionControllerPrivate(TrackSelectionC
 void TrackSelectionControllerPrivate::setupMenu()
 {
     m_tracksPlaylistMenu->addSeparator();
+
+    Gui::setThemeIcon(m_addToQueue, Constants::Icons::Add);
+    Gui::setThemeIcon(m_removeFromQueue, Constants::Icons::Remove);
 
     const QStringList tracksCategory = {tr("Tracks")};
 

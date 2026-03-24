@@ -136,7 +136,8 @@ void FileOpsDialogPrivate::setup()
 {
     auto* layout = new QGridLayout(m_self);
 
-    auto* browseAction = new QAction(Gui::iconFromTheme(Constants::Icons::Options), {}, m_self);
+    auto* browseAction = new QAction({}, m_self);
+    Gui::setThemeIcon(browseAction, Constants::Icons::Options);
     QObject::connect(browseAction, &QAction::triggered, this, &FileOpsDialogPrivate::browseDestination);
     m_destination->addAction(browseAction, QLineEdit::TrailingPosition);
 

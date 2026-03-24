@@ -23,6 +23,8 @@
 
 #include <QPointer>
 
+constexpr auto ThemeIconNameProperty = "_fy_themeIconName";
+
 namespace Fooyin {
 class ProxyActionPrivate
 {
@@ -78,6 +80,7 @@ void ProxyActionPrivate::update(QAction* updateAction, bool initialise)
         m_self->setSeparator(updateAction->isSeparator());
         m_self->setMenuRole(updateAction->menuRole());
     }
+    m_self->setProperty(ThemeIconNameProperty, updateAction->property(ThemeIconNameProperty));
     if(initialise || m_self->hasAttribute(ProxyAction::UpdateIcon)) {
         m_self->setIcon(updateAction->icon());
         m_self->setIconText(updateAction->iconText());

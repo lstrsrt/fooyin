@@ -100,7 +100,8 @@ FileMenu::FileMenu(ActionManager* actionManager, SettingsManager* settings, QObj
 
     fileMenu->addSeparator();
 
-    auto* quit = new QAction(Gui::iconFromTheme(Constants::Icons::Quit), tr("&Quit"), this);
+    auto* quit = new QAction(tr("&Quit"), this);
+    Gui::setThemeIcon(quit, Constants::Icons::Quit);
     quit->setStatusTip(tr("Quit fooyin"));
     auto* quitCommand = m_actionManager->registerAction(quit, Constants::Actions::Exit);
     quitCommand->setCategories(fileCategory);

@@ -234,9 +234,11 @@ PlaylistWidget::PlaylistWidget(ActionManager* actionManager, PlaylistInteractor*
     , m_header{new AutoHeaderView(Qt::Horizontal, this)}
     , m_playlistContext{new WidgetContext(this, Context{Id{Constants::Context::Playlist}.append(id())}, this)}
     , m_middleClickAction{static_cast<TrackAction>(m_settings->value<PlaylistMiddleClick>())}
-    , m_playAction{new QAction(Gui::iconFromTheme(Constants::Icons::Play), tr("&Play"), this)}
+    , m_playAction{new QAction(tr("&Play"), this)}
     , m_host{std::make_unique<PlaylistWidgetHost>(this)}
 {
+    Gui::setThemeIcon(m_playAction, Constants::Icons::Play);
+
     const auto modeCaps = m_session->capabilities();
 
     m_layout->setContentsMargins(0, 0, 0, 0);

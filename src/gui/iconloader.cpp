@@ -20,6 +20,7 @@
 #include <QAction>
 #include <QFile>
 #include <QIcon>
+#include <QObject>
 #include <QPixmap>
 #include <QPixmapCache>
 #include <gui/iconloader.h>
@@ -144,6 +145,36 @@ void setThemeIcon(QAction* action, const char* icon)
 QString themeIconName(const QAction* action)
 {
     return action ? action->property(ThemeIconNameProperty).toString() : QString{};
+}
+
+bool refreshThemeIcon(QAction* action)
+{
+    if(!action) {
+        return false;
+    }
+
+    const QString iconName = themeIconName(action);
+    if(iconName.isEmpty()) {
+        return false;
+    }
+
+    action->setIcon(iconFromTheme(iconName));
+    return true;
+}
+
+void refreshThemeIcons(QObject* object)
+{
+    if(!object) {
+        return;
+    }
+
+    if(auto* action = qobject_cast<QAction*>(object)) {
+        refreshThemeIcon(action);
+    }
+
+    for(QAction* action : object->findChildren<QAction*>()) {
+        refreshThemeIcon(action);
+    }
 }
 
 QPixmap pixmapFromTheme(const char* icon)

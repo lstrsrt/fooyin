@@ -86,7 +86,8 @@ void LibraryTableView::setupContextActions(QMenu* menu, const QPoint& pos)
     menu->addAction(rescan);
 
     if(isScanning) {
-        auto* cancel = new QAction(Gui::iconFromTheme(Constants::Icons::Close), tr("&Cancel scan"), menu);
+        auto* cancel = new QAction(tr("&Cancel scan"), menu);
+        Gui::setThemeIcon(cancel, Constants::Icons::Close);
         QObject::connect(cancel, &QAction::triggered, this, [this, scanId]() { emit cancelLibraryScan(scanId); });
         menu->addSeparator();
         menu->addAction(cancel);

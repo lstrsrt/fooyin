@@ -41,12 +41,10 @@ PlaybackMenu::PlaybackMenu(ActionManager* actionManager, PlayerController* playe
     , m_actionManager{actionManager}
     , m_playerController{playerController}
     , m_settings{settings}
-    , m_playIcon{Gui::iconFromTheme(Constants::Icons::Play)}
-    , m_pauseIcon{Gui::iconFromTheme(Constants::Icons::Pause)}
-    , m_stop{new QAction(Gui::iconFromTheme(Constants::Icons::Stop), tr("&Stop"), this)}
-    , m_playPause{new QAction(m_playIcon, tr("&Play"), this)}
-    , m_previous{new QAction(Gui::iconFromTheme(Constants::Icons::Prev), tr("P&revious"), this)}
-    , m_next{new QAction(Gui::iconFromTheme(Constants::Icons::Next), tr("&Next"), this)}
+    , m_stop{new QAction(tr("&Stop"), this)}
+    , m_playPause{new QAction(tr("&Play"), this)}
+    , m_previous{new QAction(tr("P&revious"), this)}
+    , m_next{new QAction(tr("&Next"), this)}
     , m_defaultPlayback{new QAction(tr("&Default"), this)}
     , m_repeatTrack{new QAction(tr("Repeat &track"), this)}
     , m_repeatAlbum{new QAction(tr("Repeat &album"), this)}
@@ -57,6 +55,10 @@ PlaybackMenu::PlaybackMenu(ActionManager* actionManager, PlayerController* playe
     , m_stopAfterCurrent{new QAction(tr("Stop &after current"), this)}
     , m_resetStopAfterCurrent{new QAction(tr("&Reset the above after stopping"), this)}
 {
+    Gui::setThemeIcon(m_stop, Constants::Icons::Stop);
+    Gui::setThemeIcon(m_previous, Constants::Icons::Prev);
+    Gui::setThemeIcon(m_next, Constants::Icons::Next);
+
     auto* playbackMenu = m_actionManager->actionContainer(Constants::Menus::Playback);
 
     const QStringList playbackCategory = {tr("Playback")};
@@ -228,11 +230,11 @@ void PlaybackMenu::updatePlayPause(Player::PlayState state) const
 {
     if(state == Player::PlayState::Playing) {
         m_playPause->setText(tr("&Pause"));
-        m_playPause->setIcon(m_pauseIcon);
+        Gui::setThemeIcon(m_playPause, Constants::Icons::Pause);
     }
     else {
         m_playPause->setText(tr("&Play"));
-        m_playPause->setIcon(m_playIcon);
+        Gui::setThemeIcon(m_playPause, Constants::Icons::Play);
     }
 }
 

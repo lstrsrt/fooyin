@@ -42,8 +42,8 @@ ScriptLineEdit::ScriptLineEdit(const QString& script, QWidget* parent)
 ScriptLineEdit::ScriptLineEdit(const QString& script, const Track& track, QWidget* parent)
     : QLineEdit{script, parent}
 {
-    auto* openEditor
-        = new QAction(Gui::iconFromTheme(Constants::Icons::ScriptEditor), tr("Open in script editor"), this);
+    auto* openEditor = new QAction(tr("Open in script editor"), this);
+    Gui::setThemeIcon(openEditor, Constants::Icons::ScriptEditor);
     QObject::connect(openEditor, &QAction::triggered, this, [this, track]() {
         ScriptEditor::openEditor(
             text(),
@@ -67,8 +67,9 @@ ScriptTextEdit::ScriptTextEdit(const QString& script, QWidget* parent)
 
 ScriptTextEdit::ScriptTextEdit(const QString& script, const Track& track, QWidget* parent)
     : QPlainTextEdit{script, parent}
-    , m_openEditor{new QAction(Gui::iconFromTheme(Constants::Icons::ScriptEditor), tr("Open in script editor"), this)}
+    , m_openEditor{new QAction(tr("Open in script editor"), this)}
 {
+    Gui::setThemeIcon(m_openEditor, Constants::Icons::ScriptEditor);
     QObject::connect(m_openEditor, &QAction::triggered, this, [this, track]() {
         ScriptEditor::openEditor(
             text(),

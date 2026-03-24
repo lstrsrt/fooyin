@@ -48,7 +48,8 @@ EditMenu::EditMenu(ActionManager* actionManager, SettingsManager* settings, QObj
     editMenu->addAction(searchCommand, Actions::Groups::Three);
     QObject::connect(search, &QAction::triggered, this, &EditMenu::requestSearch);
 
-    auto* openSettings = new QAction(Gui::iconFromTheme(Constants::Icons::Settings), tr("&Settings"), this);
+    auto* openSettings = new QAction(tr("&Settings"), this);
+    Gui::setThemeIcon(openSettings, Constants::Icons::Settings);
     openSettings->setStatusTip(tr("Open the settings dialog"));
     auto* settingsCommand = actionManager->registerAction(openSettings, Constants::Actions::Settings);
     settingsCommand->setCategories(editCategory);

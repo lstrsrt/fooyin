@@ -21,7 +21,6 @@
 
 #include <core/player/playercontroller.h>
 
-#include <QIcon>
 #include <QObject>
 
 class QAction;
@@ -47,9 +46,6 @@ private:
     ActionManager* m_actionManager;
     PlayerController* m_playerController;
     SettingsManager* m_settings;
-
-    QIcon m_playIcon;
-    QIcon m_pauseIcon;
 
     QAction* m_stop;
     QAction* m_playPause;

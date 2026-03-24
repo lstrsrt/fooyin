@@ -446,9 +446,21 @@ void GuiApplicationPrivate::setupConnections()
                      [this](const Engine::TrackStatusContext& context) { handleTrackStatus(context.status); });
 
     m_settings->subscribe<Settings::Gui::LayoutEditing>(m_self, [this]() { updateWindowTitle(); });
-    m_settings->subscribe<Settings::Gui::IconTheme>(m_self, [this]() {
+    const auto refreshThemedActions = [this]() {
+        Gui::refreshThemeIcons(m_actionManager);
+        for(Command* command : m_actionManager->commands()) {
+            Gui::refreshThemeIcon(command ? command->action() : nullptr);
+        }
+        Gui::refreshThemeIcons(m_self);
+        for(QWidget* widget : QApplication::topLevelWidgets()) {
+            Gui::refreshThemeIcons(widget);
+        }
+    };
+
+    m_settings->subscribe<Settings::Gui::IconTheme>(m_self, [this, refreshThemedActions]() {
         setIconTheme();
         QPixmapCache::clear();
+        refreshThemedActions();
     });
     m_settings->subscribe<Settings::Gui::Theme>(m_self, [this]() {
         setTheme();
@@ -600,22 +612,22 @@ void GuiApplicationPrivate::registerActions()
 {
     const QStringList volumeCategory = {GuiApplication::tr("Volume")};
 
-    auto* volumeUp    = new QAction(Gui::iconFromTheme(Constants::Icons::VolumeHigh), GuiApplication::tr("Volume up"),
-                                    m_mainWindow.get());
+    auto* volumeUp = new QAction(GuiApplication::tr("Volume up"), m_mainWindow.get());
+    Gui::setThemeIcon(volumeUp, Constants::Icons::VolumeHigh);
     auto* volumeUpCmd = m_actionManager->registerAction(volumeUp, Constants::Actions::VolumeUp);
     volumeUpCmd->setCategories(volumeCategory);
     QObject::connect(volumeUp, &QAction::triggered, m_mainWindow.get(),
                      [this]() { changeVolume(m_settings->value<Settings::Gui::VolumeStep>()); });
 
-    auto* volumeDown = new QAction(Gui::iconFromTheme(Constants::Icons::VolumeLow), GuiApplication::tr("Volume down"),
-                                   m_mainWindow.get());
+    auto* volumeDown = new QAction(GuiApplication::tr("Volume down"), m_mainWindow.get());
+    Gui::setThemeIcon(volumeDown, Constants::Icons::VolumeLow);
     auto* volumeDownCmd = m_actionManager->registerAction(volumeDown, Constants::Actions::VolumeDown);
     volumeDownCmd->setCategories(volumeCategory);
     QObject::connect(volumeDown, &QAction::triggered, m_mainWindow.get(),
                      [this]() { changeVolume(-m_settings->value<Settings::Gui::VolumeStep>()); });
 
-    auto* muteAction
-        = new QAction(Gui::iconFromTheme(Constants::Icons::VolumeMute), GuiApplication::tr("Mute"), m_mainWindow.get());
+    auto* muteAction = new QAction(GuiApplication::tr("Mute"), m_mainWindow.get());
+    Gui::setThemeIcon(muteAction, Constants::Icons::VolumeMute);
     auto* muteCmd = m_actionManager->registerAction(muteAction, Constants::Actions::Mute);
     muteCmd->setCategories(volumeCategory);
     QObject::connect(muteAction, &QAction::triggered, m_mainWindow.get(), [this]() { mute(); });
