@@ -105,27 +105,31 @@ void ActionDelegate::paint(QPainter* painter, const QStyleOptionViewItem& option
         textRect.setLeft(indicatorRect.right() + ButtonSpacing);
     }
 
-    const auto textRole = opt.state & QStyle::State_Selected ? QPalette::HighlightedText : QPalette::NoRole;
-    const QString text  = index.data(Qt::DisplayRole).toString();
+    const auto itemTextRole = opt.state & QStyle::State_Selected ? QPalette::HighlightedText : QPalette::NoRole;
+    const QString text      = index.data(Qt::DisplayRole).toString();
     style->drawItemText(painter, textRect, Qt::AlignVCenter | Qt::AlignLeft, opt.palette,
-                        opt.state & QStyle::State_Enabled, text, textRole);
+                        opt.state & QStyle::State_Enabled, text, itemTextRole);
 
     const bool isHoveredRow = (m_hoveredIndex.isValid() && m_hoveredIndex == index);
 
     painter->setRenderHint(QPainter::Antialiasing);
 
-    for(int i{0}; i < btnCount; ++i) {
-        const QRect rect = buttonRect(opt, i);
+    const bool itemEnabled = (opt.state & QStyle::State_Enabled);
+    const QPalette::ColorRole itemRole
+        = (opt.state & QStyle::State_Selected) ? QPalette::HighlightedText : QPalette::Text;
 
-        if(isHoveredRow && m_hoveredButton == i) {
-            painter->setPen(Qt::NoPen);
+    for(int i{0}; i < btnCount; ++i) {
+        const QRect rect     = buttonRect(opt, i);
+        const bool isHovered = isHoveredRow && m_hoveredButton == i;
+
+        if(isHovered) {
+            painter->setPen(opt.palette.color(QPalette::ButtonText));
             painter->setBrush(opt.palette.color(QPalette::Button));
             painter->drawRoundedRect(rect, ButtonRadius, ButtonRadius);
         }
 
-        painter->setPen(opt.palette.color(QPalette::ButtonText));
-        painter->setBrush(Qt::NoBrush);
-        painter->drawText(rect, Qt::AlignCenter, btns[i].text);
+        const auto textRole = isHovered ? QPalette::ButtonText : itemRole;
+        style->drawItemText(painter, rect, Qt::AlignCenter, opt.palette, itemEnabled, btns[i].text, textRole);
     }
 
     painter->restore();
