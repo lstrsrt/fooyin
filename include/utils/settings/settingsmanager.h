@@ -319,6 +319,34 @@ public:
     }
 
     /*!
+     * Re-emits the current value of the setting to all subscribers without changing the stored value.
+     * @tparam key an enum value representing a setting key.
+     * @returns true if the setting exists and subscribers were notified.
+     */
+    template <auto key>
+    bool refresh()
+    {
+        const auto mapKey = getMapKey(key);
+
+        std::shared_lock lock{m_lock};
+
+        if(!m_settings.contains(mapKey)) {
+            return false;
+        }
+
+        SettingsEntry* setting = m_settings.at(mapKey);
+
+        lock.unlock();
+
+        if(setting) {
+            setting->notifySubscribers();
+            return true;
+        }
+
+        return false;
+    }
+
+    /*!
      * Subscribes to a setting. A Qt signal-slot connection is made using the @p obj and @p func.
      * The @p func is then called whenever the setting is changed.
      * @param obj a QObject-derived class (controls connection lifetime).
