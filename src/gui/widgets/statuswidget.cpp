@@ -303,7 +303,6 @@ void StatusWidgetPrivate::updateScripts()
 void StatusWidgetPrivate::setRichLabelText(StatusLabel* label, const QString& text, ScriptFormatter& formatter)
 {
     formatter.setBaseFont(label->font());
-    formatter.setBaseColour(label->palette().color(QPalette::WindowText));
     label->setRichText(formatter.evaluate(text));
 }
 

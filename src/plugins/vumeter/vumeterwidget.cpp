@@ -364,8 +364,8 @@ void VuMeterWidgetPrivate::createGradient()
         pattern = {0, m_meterHeight, 0, 0};
     }
 
-    pattern.setColorAt(dbScale(-60), m_colours.colour(Colours::Type::Gradient1));
-    pattern.setColorAt(dbScale(3), m_colours.colour(Colours::Type::Gradient2));
+    pattern.setColorAt(dbScale(-60), m_colours.colour(Colours::Type::Gradient1, m_self->palette()));
+    pattern.setColorAt(dbScale(3), m_colours.colour(Colours::Type::Gradient2, m_self->palette()));
 
     m_gradient = pattern;
 }
@@ -459,7 +459,7 @@ void VuMeterWidgetPrivate::ensureStaticLayer()
                             static_cast<int>(static_cast<qreal>(targetSize.height()) * targetDpr)};
 
     m_staticLayer.setDevicePixelRatio(targetDpr);
-    m_staticLayer.fill(m_colours.colour(Colours::Type::Background));
+    m_staticLayer.fill(m_colours.colour(Colours::Type::Background, m_self->palette()));
 
     QPainter staticPainter{&m_staticLayer};
     drawLegend(staticPainter);
@@ -527,7 +527,7 @@ void VuMeterWidgetPrivate::drawLegend(QPainter& painter)
         return;
     }
 
-    const QColor legendColour = m_colours.colour(Colours::Type::Legend);
+    const QColor legendColour = m_colours.colour(Colours::Type::Legend, m_self->palette());
     painter.setPen(legendColour);
 
     const auto dbToLegendPos = [this](int db) -> int {
@@ -622,7 +622,7 @@ void VuMeterWidgetPrivate::drawChannel(QPainter& painter, float start, int chann
     }
 
     if(m_showPeaks && channelPeak > MinDb) {
-        painter.setPen(m_colours.colour(Colours::Type::Peak));
+        painter.setPen(m_colours.colour(Colours::Type::Peak, m_self->palette()));
         if(isHorizontal()) {
             const auto peakX = m_labelsSize + dbToSize(channelPeak);
             painter.drawLine(QLineF{peakX, y, peakX, y + channelSize - m_channelSpacing});
@@ -745,7 +745,8 @@ VuMeterWidget::VuMeterWidget(Type type, PlayerController* playerController, Sett
     applyConfig(m_config);
 
     auto updateThemeColours = [this]() {
-        if(m_config.meterColours.isValid()) {
+        if(m_config.meterColours.isValid() && m_config.meterColours.canConvert<Colours>()
+           && !m_config.meterColours.value<Colours>().isEmpty()) {
             return;
         }
 
@@ -852,7 +853,8 @@ void VuMeterWidget::saveDefaults(const ConfigData& config) const
     validated.barSections    = std::clamp(validated.barSections, 1, 20);
     validated.sectionSpacing = std::clamp(validated.sectionSpacing, 1, 20);
 
-    if(!validated.meterColours.canConvert<Colours>()) {
+    if(!validated.meterColours.canConvert<Colours>()
+       || (validated.meterColours.isValid() && validated.meterColours.value<Colours>().isEmpty())) {
         validated.meterColours = QVariant{};
     }
 
@@ -893,7 +895,8 @@ void VuMeterWidget::applyConfig(const ConfigData& config)
     validated.barSections    = std::clamp(validated.barSections, 1, 20);
     validated.sectionSpacing = std::clamp(validated.sectionSpacing, 1, 20);
 
-    if(!validated.meterColours.canConvert<Colours>()) {
+    if(!validated.meterColours.canConvert<Colours>()
+       || (validated.meterColours.isValid() && validated.meterColours.value<Colours>().isEmpty())) {
         validated.meterColours = QVariant{};
     }
 
@@ -963,7 +966,10 @@ VuMeterWidget::ConfigData VuMeterWidget::configFromLayout(const QJsonObject& lay
             setColour(u"LegendColour"_s, Colours::Type::Legend);
             setColour(u"Gradient1Colour"_s, Colours::Type::Gradient1);
             setColour(u"Gradient2Colour"_s, Colours::Type::Gradient2);
-            config.meterColours = QVariant::fromValue(colours);
+
+            if(!colours.isEmpty()) {
+                config.meterColours = QVariant::fromValue(colours);
+            }
         }
         else {
             config.meterColours = QVariant{};
@@ -984,16 +990,33 @@ void VuMeterWidget::saveConfigToLayout(const ConfigData& config, QJsonObject& la
     layout["BarSections"_L1]    = config.barSections;
     layout["SectionSpacing"_L1] = config.sectionSpacing;
 
-    const bool customColours      = config.meterColours.isValid() && config.meterColours.canConvert<Colours>();
+    const bool customColours      = config.meterColours.isValid() && config.meterColours.canConvert<Colours>()
+                                 && !config.meterColours.value<Colours>().isEmpty();
     layout["UseCustomColours"_L1] = customColours;
 
     if(customColours) {
-        const Colours colours         = config.meterColours.value<Colours>();
-        layout["BackgroundColour"_L1] = colours.colour(Colours::Type::Background).name(QColor::HexArgb);
-        layout["PeakColour"_L1]       = colours.colour(Colours::Type::Peak).name(QColor::HexArgb);
-        layout["LegendColour"_L1]     = colours.colour(Colours::Type::Legend).name(QColor::HexArgb);
-        layout["Gradient1Colour"_L1]  = colours.colour(Colours::Type::Gradient1).name(QColor::HexArgb);
-        layout["Gradient2Colour"_L1]  = colours.colour(Colours::Type::Gradient2).name(QColor::HexArgb);
+        const Colours colours = config.meterColours.value<Colours>();
+        const auto saveColour = [&layout, &colours](const QString& key, Colours::Type type) {
+            if(colours.hasOverride(type)) {
+                layout[key] = colours.meterColours.value(type).name(QColor::HexArgb);
+            }
+            else {
+                layout.remove(key);
+            }
+        };
+
+        saveColour(u"BackgroundColour"_s, Colours::Type::Background);
+        saveColour(u"PeakColour"_s, Colours::Type::Peak);
+        saveColour(u"LegendColour"_s, Colours::Type::Legend);
+        saveColour(u"Gradient1Colour"_s, Colours::Type::Gradient1);
+        saveColour(u"Gradient2Colour"_s, Colours::Type::Gradient2);
+    }
+    else {
+        layout.remove("BackgroundColour"_L1);
+        layout.remove("PeakColour"_L1);
+        layout.remove("LegendColour"_L1);
+        layout.remove("Gradient1Colour"_L1);
+        layout.remove("Gradient2Colour"_L1);
     }
 }
 
@@ -1131,7 +1154,7 @@ void VuMeterWidget::paintEvent(QPaintEvent* event)
         painter.drawPixmap(dirty, p->m_staticLayer, dirty);
     }
     else {
-        painter.fillRect(0, 0, width(), height(), p->m_colours.colour(Colours::Type::Background));
+        painter.fillRect(0, 0, width(), height(), p->m_colours.colour(Colours::Type::Background, palette()));
         p->drawLegend(painter);
     }
 

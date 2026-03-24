@@ -22,6 +22,7 @@
 #include "queuevieweritem.h"
 
 #include <gui/scripting/richtext.h>
+#include <gui/scripting/richtextutils.h>
 
 #include <QApplication>
 #include <QPainter>
@@ -30,11 +31,6 @@ constexpr auto RightContentPadding = 5;
 
 namespace Fooyin {
 namespace {
-QFont resolvedBlockFont(const QStyleOptionViewItem& option, const RichFormatting& formatting)
-{
-    return formatting.font == QFont{} ? option.font : formatting.font.resolve(option.font);
-}
-
 struct PreparedTextBlock
 {
     QString text;
@@ -107,6 +103,7 @@ PreparedTextLines prepareTextLines(const QStyleOptionViewItem& option, int maxWi
 
     const QColor selectedColor = option.palette.color(QPalette::HighlightedText);
     const QColor defaultColour = option.palette.color(QPalette::Text);
+    const QColor linkColour    = option.palette.color(QPalette::Link);
     const int defaultHeight    = QFontMetrics{option.font}.height();
 
     const auto lineBlocks = splitRichTextLines(richText);
@@ -121,12 +118,8 @@ PreparedTextLines prepareTextLines(const QStyleOptionViewItem& option, int maxWi
                 continue;
             }
 
-            const QFont font = resolvedBlockFont(option, block.format);
-
-            QColor colour{block.format.colour};
-            if(!colour.isValid()) {
-                colour = defaultColour;
-            }
+            const QFont font = resolvedRichTextFont(block.format, option.font);
+            QColor colour    = resolvedRichTextColour(block.format, defaultColour, linkColour);
             if(option.state & QStyle::State_Selected) {
                 colour = selectedColor;
             }
@@ -181,7 +174,7 @@ QSize richTextNaturalSize(const QStyleOptionViewItem& option, const RichText& ri
                 continue;
             }
 
-            const QFont font = resolvedBlockFont(option, block.format);
+            const QFont font = resolvedRichTextFont(block.format, option.font);
             const QFontMetrics metrics{font};
 
             lineWidth += metrics.boundingRect(block.text).width();

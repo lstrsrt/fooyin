@@ -696,7 +696,6 @@ void ScriptEditorPrivate::updateResults(const Expression& expression)
     script.expressions = {expression};
 
     m_formatter.setBaseFont(m_results->font());
-    m_formatter.setBaseColour(m_results->palette().color(QPalette::Text));
 
     const Track track      = m_track.isValid() ? m_track : m_placeholderTrack;
     const auto result      = m_parser.evaluate(script, track, m_scriptContext);

@@ -22,6 +22,7 @@
 #include "lyricsmodel.h"
 
 #include <gui/scripting/richtext.h>
+#include <gui/scripting/richtextutils.h>
 
 #include <QApplication>
 #include <QPainter>
@@ -224,8 +225,8 @@ void LyricsDelegate::paint(QPainter* painter, const QStyleOptionViewItem& option
     for(const auto& chunk : wordRects) {
         const auto& format = richText.blocks[chunk.blockIndex].format;
 
-        painter->setFont(format.font);
-        painter->setPen(format.colour);
+        painter->setFont(resolvedRichTextFont(format, option.font));
+        painter->setPen(resolvedRichTextColour(format, option.palette.color(QPalette::Text)));
 
         painter->drawText(chunk.rect, Qt::AlignLeft | Qt::AlignVCenter, chunk.text);
     }

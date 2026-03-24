@@ -25,7 +25,6 @@
 #include <utils/crypto.h>
 #include <utils/worker.h>
 
-#include <QColor>
 #include <QFont>
 
 #include <memory>
@@ -63,7 +62,6 @@ public:
     ~LibraryTreePopulator() override;
 
     void setFont(const QFont& font);
-    void setColour(const QColor& colour);
 
     void run(const LibraryTreeGrouping& grouping, const TrackList& tracks, bool useVarious);
 

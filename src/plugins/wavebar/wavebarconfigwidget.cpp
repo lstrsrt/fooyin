@@ -247,23 +247,23 @@ WaveBarWidget::ConfigData WaveBarConfigDialog::config() const
 
     if(m_colourGroup->isChecked()) {
         Colours colours;
-        colours.bgUnplayed     = m_bgUnplayed->colour();
-        colours.bgPlayed       = m_bgPlayed->colour();
-        colours.maxUnplayed    = m_maxUnplayed->colour();
-        colours.maxPlayed      = m_maxPlayed->colour();
-        colours.maxBorder      = m_maxBorder->colour();
-        colours.minUnplayed    = m_minUnplayed->colour();
-        colours.minPlayed      = m_minPlayed->colour();
-        colours.minBorder      = m_minBorder->colour();
-        colours.rmsMaxUnplayed = m_rmsMaxUnplayed->colour();
-        colours.rmsMaxPlayed   = m_rmsMaxPlayed->colour();
-        colours.rmsMaxBorder   = m_rmsMaxBorder->colour();
-        colours.rmsMinUnplayed = m_rmsMinUnplayed->colour();
-        colours.rmsMinPlayed   = m_rmsMinPlayed->colour();
-        colours.rmsMinBorder   = m_rmsMinBorder->colour();
-        colours.cursor         = m_cursorColour->colour();
-        colours.seekingCursor  = m_seekingCursorColour->colour();
-        config.colourOptions   = QVariant::fromValue(colours);
+        colours.setColour(Colours::Type::BgUnplayed, m_bgUnplayed->colour());
+        colours.setColour(Colours::Type::BgPlayed, m_bgPlayed->colour());
+        colours.setColour(Colours::Type::MaxUnplayed, m_maxUnplayed->colour());
+        colours.setColour(Colours::Type::MaxPlayed, m_maxPlayed->colour());
+        colours.setColour(Colours::Type::MaxBorder, m_maxBorder->colour());
+        colours.setColour(Colours::Type::MinUnplayed, m_minUnplayed->colour());
+        colours.setColour(Colours::Type::MinPlayed, m_minPlayed->colour());
+        colours.setColour(Colours::Type::MinBorder, m_minBorder->colour());
+        colours.setColour(Colours::Type::RmsMaxUnplayed, m_rmsMaxUnplayed->colour());
+        colours.setColour(Colours::Type::RmsMaxPlayed, m_rmsMaxPlayed->colour());
+        colours.setColour(Colours::Type::RmsMaxBorder, m_rmsMaxBorder->colour());
+        colours.setColour(Colours::Type::RmsMinUnplayed, m_rmsMinUnplayed->colour());
+        colours.setColour(Colours::Type::RmsMinPlayed, m_rmsMinPlayed->colour());
+        colours.setColour(Colours::Type::RmsMinBorder, m_rmsMinBorder->colour());
+        colours.setColour(Colours::Type::Cursor, m_cursorColour->colour());
+        colours.setColour(Colours::Type::SeekingCursor, m_seekingCursorColour->colour());
+        config.colourOptions = QVariant::fromValue(colours);
     }
 
     return config;
@@ -297,26 +297,27 @@ void WaveBarConfigDialog::setConfig(const WaveBarWidget::ConfigData& config)
         m_downmixMono->setChecked(true);
     }
 
-    const bool customColours = config.colourOptions.isValid() && config.colourOptions.canConvert<Colours>();
+    const bool customColours = config.colourOptions.isValid() && config.colourOptions.canConvert<Colours>()
+                            && !config.colourOptions.value<Colours>().isEmpty();
     const Colours colours    = customColours ? config.colourOptions.value<Colours>() : Colours{};
     m_colourGroup->setChecked(customColours);
 
-    m_bgUnplayed->setColour(colours.bgUnplayed);
-    m_bgPlayed->setColour(colours.bgPlayed);
-    m_maxUnplayed->setColour(colours.maxUnplayed);
-    m_maxPlayed->setColour(colours.maxPlayed);
-    m_maxBorder->setColour(colours.maxBorder);
-    m_minUnplayed->setColour(colours.minUnplayed);
-    m_minPlayed->setColour(colours.minPlayed);
-    m_minBorder->setColour(colours.minBorder);
-    m_rmsMaxUnplayed->setColour(colours.rmsMaxUnplayed);
-    m_rmsMaxPlayed->setColour(colours.rmsMaxPlayed);
-    m_rmsMaxBorder->setColour(colours.rmsMaxBorder);
-    m_rmsMinUnplayed->setColour(colours.rmsMinUnplayed);
-    m_rmsMinPlayed->setColour(colours.rmsMinPlayed);
-    m_rmsMinBorder->setColour(colours.rmsMinBorder);
-    m_cursorColour->setColour(colours.cursor);
-    m_seekingCursorColour->setColour(colours.seekingCursor);
+    m_bgUnplayed->setColour(colours.colour(Colours::Type::BgUnplayed, palette()));
+    m_bgPlayed->setColour(colours.colour(Colours::Type::BgPlayed, palette()));
+    m_maxUnplayed->setColour(colours.colour(Colours::Type::MaxUnplayed, palette()));
+    m_maxPlayed->setColour(colours.colour(Colours::Type::MaxPlayed, palette()));
+    m_maxBorder->setColour(colours.colour(Colours::Type::MaxBorder, palette()));
+    m_minUnplayed->setColour(colours.colour(Colours::Type::MinUnplayed, palette()));
+    m_minPlayed->setColour(colours.colour(Colours::Type::MinPlayed, palette()));
+    m_minBorder->setColour(colours.colour(Colours::Type::MinBorder, palette()));
+    m_rmsMaxUnplayed->setColour(colours.colour(Colours::Type::RmsMaxUnplayed, palette()));
+    m_rmsMaxPlayed->setColour(colours.colour(Colours::Type::RmsMaxPlayed, palette()));
+    m_rmsMaxBorder->setColour(colours.colour(Colours::Type::RmsMaxBorder, palette()));
+    m_rmsMinUnplayed->setColour(colours.colour(Colours::Type::RmsMinUnplayed, palette()));
+    m_rmsMinPlayed->setColour(colours.colour(Colours::Type::RmsMinPlayed, palette()));
+    m_rmsMinBorder->setColour(colours.colour(Colours::Type::RmsMinBorder, palette()));
+    m_cursorColour->setColour(colours.colour(Colours::Type::Cursor, palette()));
+    m_seekingCursorColour->setColour(colours.colour(Colours::Type::SeekingCursor, palette()));
 }
 
 void WaveBarConfigDialog::apply()

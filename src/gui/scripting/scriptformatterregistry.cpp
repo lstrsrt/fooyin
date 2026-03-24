@@ -199,7 +199,6 @@ bool linkHref(RichFormatting& formatting, const QString& option)
 
     formatting.link = option;
     formatting.font.setUnderline(true);
-    formatting.colour = QApplication::palette().link().color();
     return true;
 }
 

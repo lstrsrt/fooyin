@@ -53,11 +53,6 @@ QFont libraryTreeFont()
     return QApplication::font("Fooyin::LibraryTreeView");
 }
 
-QColor libraryTreeTextColour()
-{
-    return QApplication::palette().color(QPalette::Text);
-}
-
 bool cmpItemsReverse(Fooyin::LibraryTreeItem* pItem1, Fooyin::LibraryTreeItem* pItem2)
 {
     Fooyin::LibraryTreeItem* item1{pItem1};
@@ -502,7 +497,6 @@ void LibraryTreeModel::resetPalette()
 
     ScriptFormatter formatter;
     formatter.setBaseFont(libraryTreeFont());
-    formatter.setBaseColour(libraryTreeTextColour());
 
     QModelIndexList changedIndexes;
     changedIndexes.reserve(p->m_nodes.size());
@@ -788,7 +782,6 @@ void LibraryTreeModel::addTracks(const TrackList& tracks)
 
     QMetaObject::invokeMethod(&p->m_populator, [this, tracksToAdd = std::move(tracksToAdd)] {
         p->m_populator.setFont(libraryTreeFont());
-        p->m_populator.setColour(libraryTreeTextColour());
         p->m_populator.run(p->m_grouping, tracksToAdd,
                            p->m_settings->value<Settings::Core::UseVariousForCompilations>());
     });
@@ -812,7 +805,6 @@ void LibraryTreeModel::updateTracks(const TrackList& tracks)
 
     QMetaObject::invokeMethod(&p->m_populator, [this, tracksToUpdate = std::move(tracksToUpdate)] {
         p->m_populator.setFont(libraryTreeFont());
-        p->m_populator.setColour(libraryTreeTextColour());
         p->m_populator.run(p->m_grouping, tracksToUpdate,
                            p->m_settings->value<Settings::Core::UseVariousForCompilations>());
     });
@@ -867,7 +859,6 @@ void LibraryTreeModel::reset(const TrackList& tracks)
 
     QMetaObject::invokeMethod(&p->m_populator, [this, tracks] {
         p->m_populator.setFont(libraryTreeFont());
-        p->m_populator.setColour(libraryTreeTextColour());
         p->m_populator.run(p->m_grouping, tracks, p->m_settings->value<Settings::Core::UseVariousForCompilations>());
     });
 }

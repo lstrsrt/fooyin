@@ -21,6 +21,7 @@
 
 #include "playlistitem.h"
 
+#include <gui/scripting/richtextutils.h>
 #include <gui/widgets/expandedtreeview.h>
 #include <utils/utils.h>
 
@@ -41,12 +42,21 @@ DrawTextResult drawTextBlocks(QPainter* painter, const QStyleOptionViewItem& opt
 {
     DrawTextResult result;
 
-    QStyle* style     = option.widget ? option.widget->style() : QApplication::style();
-    const auto colour = option.state & QStyle::State_Selected ? QPalette::HighlightedText : QPalette::NoRole;
+    QStyle* style               = option.widget ? option.widget->style() : QApplication::style();
+    const auto selected         = option.state & QStyle::State_Selected;
+    const auto colour           = selected ? QPalette::HighlightedText : QPalette::NoRole;
+    const QColor defaultColour  = option.palette.color(QPalette::Text);
+    const QColor selectedColour = option.palette.color(QPalette::HighlightedText);
+    const QColor linkColour     = option.palette.color(QPalette::Link);
 
     for(const auto& block : blocks) {
-        painter->setFont(block.format.font);
-        painter->setPen(block.format.colour);
+        painter->setFont(resolvedRichTextFont(block.format, option.font));
+
+        QColor blockColour = resolvedRichTextColour(block.format, defaultColour, linkColour);
+        if(selected) {
+            blockColour = selectedColour;
+        }
+        painter->setPen(blockColour);
 
         result.bound = painter->boundingRect(rect, alignment | Qt::TextWrapAnywhere, block.text);
         style->drawItemText(painter, rect, alignment, option.palette, true,

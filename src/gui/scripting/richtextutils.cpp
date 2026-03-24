@@ -22,6 +22,22 @@
 using namespace Qt::StringLiterals;
 
 namespace Fooyin {
+QColor resolvedRichTextColour(const RichFormatting& formatting, const QColor& baseColour, const QColor& linkColour)
+{
+    if(formatting.colour.isValid()) {
+        return formatting.colour;
+    }
+    if(!formatting.link.isEmpty() && linkColour.isValid()) {
+        return linkColour;
+    }
+    return baseColour;
+}
+
+QFont resolvedRichTextFont(const RichFormatting& formatting, const QFont& baseFont)
+{
+    return formatting.font == QFont{} ? baseFont : formatting.font.resolve(baseFont);
+}
+
 RichText trimRichText(RichText richText)
 {
     while(!richText.blocks.empty()) {

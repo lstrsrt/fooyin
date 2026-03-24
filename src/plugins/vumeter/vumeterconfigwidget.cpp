@@ -172,14 +172,15 @@ void VuMeterConfigDialog::setConfig(const VuMeterWidget::ConfigData& config)
     m_barSections->setValue(config.barSections);
     m_sectionSpacing->setValue(config.sectionSpacing);
 
-    const bool customColours = config.meterColours.isValid() && config.meterColours.canConvert<Colours>();
+    const bool customColours = config.meterColours.isValid() && config.meterColours.canConvert<Colours>()
+                            && !config.meterColours.value<Colours>().isEmpty();
     const Colours colours    = customColours ? config.meterColours.value<Colours>() : Colours{};
 
     m_colourGroup->setChecked(customColours);
-    m_bgColour->setColour(colours.colour(Colours::Type::Background));
-    m_peakColour->setColour(colours.colour(Colours::Type::Peak));
-    m_legendColour->setColour(colours.colour(Colours::Type::Legend));
-    m_leftColour->setColour(colours.colour(Colours::Type::Gradient1));
-    m_rightColour->setColour(colours.colour(Colours::Type::Gradient2));
+    m_bgColour->setColour(colours.colour(Colours::Type::Background, palette()));
+    m_peakColour->setColour(colours.colour(Colours::Type::Peak, palette()));
+    m_legendColour->setColour(colours.colour(Colours::Type::Legend, palette()));
+    m_leftColour->setColour(colours.colour(Colours::Type::Gradient1, palette()));
+    m_rightColour->setColour(colours.colour(Colours::Type::Gradient2, palette()));
 }
 } // namespace Fooyin::VuMeter

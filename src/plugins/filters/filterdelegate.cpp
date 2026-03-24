@@ -22,6 +22,7 @@
 #include "filteritem.h"
 
 #include <gui/scripting/richtext.h>
+#include <gui/scripting/richtextutils.h>
 #include <gui/widgets/expandedtreeview.h>
 
 #include <QApplication>
@@ -31,11 +32,6 @@ constexpr auto IconCaptionMargin     = 20;
 constexpr auto RightCaptionTextWidth = 180;
 
 namespace {
-QFont resolvedBlockFont(const QStyleOptionViewItem& option, const Fooyin::RichFormatting& formatting)
-{
-    return formatting.font == QFont{} ? option.font : formatting.font.resolve(option.font);
-}
-
 struct PreparedTextBlock
 {
     QString text;
@@ -73,6 +69,7 @@ PreparedTextLine prepareTextBlocks(const QStyleOptionViewItem& option, int maxWi
 
     const auto selectedColour = option.palette.color(QPalette::HighlightedText);
     const auto defaultColour  = option.palette.color(QPalette::Text);
+    const auto linkColour     = option.palette.color(QPalette::Link);
     int remainingWidth        = maxWidth;
 
     for(const auto& block : blocks) {
@@ -80,12 +77,8 @@ PreparedTextLine prepareTextBlocks(const QStyleOptionViewItem& option, int maxWi
             continue;
         }
 
-        const QFont font = resolvedBlockFont(option, block.format);
-
-        QColor colour = block.format.colour;
-        if(!colour.isValid()) {
-            colour = defaultColour;
-        }
+        const QFont font = Fooyin::resolvedRichTextFont(block.format, option.font);
+        QColor colour    = Fooyin::resolvedRichTextColour(block.format, defaultColour, linkColour);
         if(option.state & QStyle::State_Selected) {
             colour = selectedColour;
         }
@@ -344,7 +337,7 @@ QSize richTextNaturalSize(const QStyleOptionViewItem& option, const RichText& ri
     QSize size{0, 0};
 
     for(const auto& block : richText.blocks) {
-        const QFont font = resolvedBlockFont(option, block.format);
+        const QFont font = resolvedRichTextFont(block.format, option.font);
         const QFontMetrics metrics{font};
 
         size.rwidth() += metrics.horizontalAdvance(block.text);
@@ -372,9 +365,8 @@ RichText FilterDelegate::fallbackRichText(const QStyleOptionViewItem& option, co
     }
 
     RichTextBlock block;
-    block.text          = text;
-    block.format.font   = option.font;
-    block.format.colour = option.palette.color(QPalette::Text);
+    block.text        = text;
+    block.format.font = option.font;
 
     fallback.blocks.push_back(std::move(block));
     return fallback;
@@ -414,7 +406,7 @@ QSize FilterDelegate::richTextSize(const QStyleOptionViewItem& option, const QMo
     QSize size{0, 0};
 
     for(const auto& block : richText.blocks) {
-        const QFont font = resolvedBlockFont(option, block.format);
+        const QFont font = resolvedRichTextFont(block.format, option.font);
         const QFontMetrics metrics{font};
         const QRect bound = metrics.boundingRect(block.text);
 

@@ -22,43 +22,99 @@
 #include <QApplication>
 #include <QColor>
 #include <QDataStream>
+#include <QMap>
 #include <QMetaType>
 #include <QPalette>
+
+#include <tuple>
+
+constexpr quint8 SerialisationVersion = 1;
 
 namespace Fooyin::WaveBar {
 struct Colours
 {
-    QColor bgUnplayed{Qt::transparent};
-    QColor bgPlayed{Qt::transparent};
+    enum class Type : uint8_t
+    {
+        BgUnplayed = 0,
+        BgPlayed,
+        MaxUnplayed,
+        MaxPlayed,
+        MaxBorder,
+        MinUnplayed,
+        MinPlayed,
+        MinBorder,
+        RmsMaxUnplayed,
+        RmsMaxPlayed,
+        RmsMaxBorder,
+        RmsMinUnplayed,
+        RmsMinPlayed,
+        RmsMinBorder,
+        Cursor,
+        SeekingCursor
+    };
 
-    QColor maxUnplayed{140, 140, 140};
-    QColor maxPlayed{QApplication::palette().highlight().color()};
-    QColor maxBorder{Qt::transparent};
+    QMap<Type, QColor> waveColours;
 
-    QColor minUnplayed{maxUnplayed};
-    QColor minPlayed{maxPlayed};
-    QColor minBorder{maxBorder};
+    [[nodiscard]] static QColor defaultColour(Type type, const QPalette& palette = QApplication::palette())
+    {
+        const QColor highlight = palette.highlight().color();
+        const QColor rmsPlayed = highlight.darker(150);
 
-    QColor rmsMaxUnplayed{65, 65, 65};
-    QColor rmsMaxPlayed{maxPlayed.darker(150)};
-    QColor rmsMaxBorder{Qt::transparent};
+        switch(type) {
+            case Type::BgUnplayed:
+            case Type::BgPlayed:
+            case Type::MaxBorder:
+            case Type::MinBorder:
+            case Type::RmsMaxBorder:
+            case Type::RmsMinBorder:
+                return Qt::transparent;
+            case Type::MaxUnplayed:
+            case Type::MinUnplayed:
+                return {140, 140, 140};
+            case Type::MaxPlayed:
+            case Type::MinPlayed:
+            case Type::Cursor:
+                return highlight;
+            case Type::RmsMaxUnplayed:
+            case Type::RmsMinUnplayed:
+                return {65, 65, 65};
+            case Type::RmsMaxPlayed:
+            case Type::RmsMinPlayed:
+            case Type::SeekingCursor:
+                return rmsPlayed;
+        }
 
-    QColor rmsMinUnplayed{rmsMaxUnplayed};
-    QColor rmsMinPlayed{rmsMaxPlayed};
-    QColor rmsMinBorder{rmsMaxBorder};
+        return {};
+    }
 
-    QColor cursor{maxPlayed};
-    QColor seekingCursor{rmsMaxPlayed};
+    [[nodiscard]] QColor colour(Type type, const QPalette& palette = QApplication::palette()) const
+    {
+        return waveColours.value(type, defaultColour(type, palette));
+    }
+
+    [[nodiscard]] bool hasOverride(Type type) const
+    {
+        return waveColours.contains(type);
+    }
+
+    [[nodiscard]] bool isEmpty() const
+    {
+        return waveColours.isEmpty();
+    }
+
+    void setColour(Type type, const QColor& colour)
+    {
+        if(colour.isValid()) {
+            waveColours[type] = colour;
+        }
+        else {
+            waveColours.remove(type);
+        }
+    }
 
     bool operator==(const Colours& other) const
     {
-        return std::tie(bgUnplayed, bgPlayed, maxUnplayed, maxPlayed, maxBorder, minUnplayed, minPlayed, minBorder,
-                        rmsMaxUnplayed, rmsMaxPlayed, rmsMaxBorder, rmsMinUnplayed, rmsMinPlayed, rmsMinBorder, cursor,
-                        seekingCursor)
-            == std::tie(other.bgUnplayed, other.bgPlayed, other.maxUnplayed, other.maxPlayed, other.maxBorder,
-                        other.minUnplayed, other.minPlayed, other.minBorder, other.rmsMaxUnplayed, other.rmsMaxPlayed,
-                        other.rmsMaxBorder, other.rmsMinUnplayed, other.rmsMinPlayed, other.rmsMinBorder, other.cursor,
-                        other.seekingCursor);
+        return std::tie(waveColours) == std::tie(other.waveColours);
     };
 
     bool operator!=(const Colours& other) const
@@ -68,41 +124,80 @@ struct Colours
 
     friend QDataStream& operator<<(QDataStream& stream, const Colours& colours)
     {
-        stream << colours.bgUnplayed;
-        stream << colours.bgPlayed;
-        stream << colours.maxUnplayed;
-        stream << colours.maxPlayed;
-        stream << colours.maxBorder;
-        stream << colours.minUnplayed;
-        stream << colours.minPlayed;
-        stream << colours.minBorder;
-        stream << colours.rmsMaxUnplayed;
-        stream << colours.rmsMaxPlayed;
-        stream << colours.rmsMaxBorder;
-        stream << colours.rmsMinUnplayed;
-        stream << colours.rmsMinPlayed;
-        stream << colours.rmsMinBorder;
-        stream << colours.cursor;
+        stream << SerialisationVersion;
+        stream << colours.waveColours;
         return stream;
     }
 
     friend QDataStream& operator>>(QDataStream& stream, Colours& colours)
     {
-        stream >> colours.bgUnplayed;
-        stream >> colours.bgPlayed;
-        stream >> colours.maxUnplayed;
-        stream >> colours.maxPlayed;
-        stream >> colours.maxBorder;
-        stream >> colours.minUnplayed;
-        stream >> colours.minPlayed;
-        stream >> colours.minBorder;
-        stream >> colours.rmsMaxUnplayed;
-        stream >> colours.rmsMaxPlayed;
-        stream >> colours.rmsMaxBorder;
-        stream >> colours.rmsMinUnplayed;
-        stream >> colours.rmsMinPlayed;
-        stream >> colours.rmsMinBorder;
-        stream >> colours.cursor;
+        colours.waveColours.clear();
+
+        stream.startTransaction();
+
+        quint8 version{0};
+        stream >> version;
+
+        QMap<Type, QColor> savedColours;
+
+        if(version == SerialisationVersion) {
+            stream >> savedColours;
+        }
+
+        if(version == SerialisationVersion && stream.commitTransaction()) {
+            colours.waveColours = std::move(savedColours);
+            return stream;
+        }
+
+        stream.rollbackTransaction();
+
+        QColor bgUnplayed;
+        QColor bgPlayed;
+        QColor maxUnplayed;
+        QColor maxPlayed;
+        QColor maxBorder;
+        QColor minUnplayed;
+        QColor minPlayed;
+        QColor minBorder;
+        QColor rmsMaxUnplayed;
+        QColor rmsMaxPlayed;
+        QColor rmsMaxBorder;
+        QColor rmsMinUnplayed;
+        QColor rmsMinPlayed;
+        QColor rmsMinBorder;
+        QColor cursor;
+
+        stream >> bgUnplayed;
+        stream >> bgPlayed;
+        stream >> maxUnplayed;
+        stream >> maxPlayed;
+        stream >> maxBorder;
+        stream >> minUnplayed;
+        stream >> minPlayed;
+        stream >> minBorder;
+        stream >> rmsMaxUnplayed;
+        stream >> rmsMaxPlayed;
+        stream >> rmsMaxBorder;
+        stream >> rmsMinUnplayed;
+        stream >> rmsMinPlayed;
+        stream >> rmsMinBorder;
+        stream >> cursor;
+
+        colours.setColour(Type::BgUnplayed, bgUnplayed);
+        colours.setColour(Type::BgPlayed, bgPlayed);
+        colours.setColour(Type::MaxUnplayed, maxUnplayed);
+        colours.setColour(Type::MaxPlayed, maxPlayed);
+        colours.setColour(Type::MaxBorder, maxBorder);
+        colours.setColour(Type::MinUnplayed, minUnplayed);
+        colours.setColour(Type::MinPlayed, minPlayed);
+        colours.setColour(Type::MinBorder, minBorder);
+        colours.setColour(Type::RmsMaxUnplayed, rmsMaxUnplayed);
+        colours.setColour(Type::RmsMaxPlayed, rmsMaxPlayed);
+        colours.setColour(Type::RmsMaxBorder, rmsMaxBorder);
+        colours.setColour(Type::RmsMinUnplayed, rmsMinUnplayed);
+        colours.setColour(Type::RmsMinPlayed, rmsMinPlayed);
+        colours.setColour(Type::RmsMinBorder, rmsMinBorder);
+        colours.setColour(Type::Cursor, cursor);
         return stream;
     }
 };

@@ -314,7 +314,7 @@ void ScriptFormatterPrivate::resetFormat()
 {
     m_currentBlock               = {};
     m_currentBlock.format.font   = m_font;
-    m_currentBlock.format.colour = m_colour.isValid() ? m_colour : QApplication::palette().text().color();
+    m_currentBlock.format.colour = m_colour;
 }
 
 ScriptFormatter::ScriptFormatter()

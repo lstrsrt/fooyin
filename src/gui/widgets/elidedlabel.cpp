@@ -19,6 +19,8 @@
 
 #include <gui/widgets/elidedlabel.h>
 
+#include <gui/scripting/richtextutils.h>
+
 #include <QPainter>
 #include <QResizeEvent>
 
@@ -28,11 +30,6 @@ using namespace Qt::StringLiterals;
 
 namespace Fooyin {
 namespace {
-QFont resolvedBlockFont(const QFont& baseFont, const RichFormatting& formatting)
-{
-    return formatting.font == QFont{} ? baseFont : formatting.font.resolve(baseFont);
-}
-
 QString singleLineText(QString text)
 {
     text.replace(u'\n', u' ');
@@ -66,7 +63,7 @@ struct PreparedTextLine
 };
 
 PreparedTextLine prepareRichTextLine(const RichText& richText, const QFont& baseFont, const QColor& baseColour,
-                                     Qt::TextElideMode elideMode, int maxWidth)
+                                     const QColor& linkColour, Qt::TextElideMode elideMode, int maxWidth)
 {
     PreparedTextLine line;
     if(maxWidth <= 0) {
@@ -82,7 +79,7 @@ PreparedTextLine prepareRichTextLine(const RichText& richText, const QFont& base
             continue;
         }
 
-        const QFont font = resolvedBlockFont(baseFont, block.format);
+        const QFont font = resolvedRichTextFont(block.format, baseFont);
         const QFontMetrics fm{font};
         const QString text = elidedSingleLineText(plainText, fm, elideMode, remainingWidth);
 
@@ -93,7 +90,7 @@ PreparedTextLine prepareRichTextLine(const RichText& richText, const QFont& base
         PreparedTextBlock prepared;
         prepared.text   = text;
         prepared.font   = font;
-        prepared.colour = block.format.colour.isValid() ? block.format.colour : baseColour;
+        prepared.colour = resolvedRichTextColour(block.format, baseColour, linkColour);
         prepared.width  = fm.size(Qt::TextSingleLine, text).width();
         prepared.height = fm.height();
 
@@ -130,7 +127,7 @@ QSize richTextNaturalSize(const RichText& richText, const QFont& baseFont)
             continue;
         }
 
-        const QFont font = resolvedBlockFont(baseFont, block.format);
+        const QFont font = resolvedRichTextFont(block.format, baseFont);
         const QFontMetrics fm{font};
 
         width += fm.size(Qt::TextSingleLine, text).width();
@@ -237,7 +234,8 @@ void ElidedLabel::paintEvent(QPaintEvent* event)
 
     const QPalette::ColorGroup group = isEnabled() ? QPalette::Normal : QPalette::Disabled;
     const QColor baseColour          = palette().color(group, foregroundRole());
-    const auto line                  = prepareRichTextLine(m_richText, font(), baseColour, m_elideMode, rect.width());
+    const QColor linkColour          = palette().color(group, QPalette::Link);
+    const auto line = prepareRichTextLine(m_richText, font(), baseColour, linkColour, m_elideMode, rect.width());
     if(line.blocks.empty()) {
         return;
     }

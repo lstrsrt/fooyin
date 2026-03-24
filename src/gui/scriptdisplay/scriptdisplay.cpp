@@ -410,8 +410,9 @@ void ScriptDisplay::updateText()
 
     ScriptFormatter formatter;
     formatter.setBaseFont(m_text->font());
-    formatter.setBaseColour(m_config.fgColour.isEmpty() ? palette().color(QPalette::WindowText)
-                                                        : QColor{m_config.fgColour});
+    if(!m_config.fgColour.isEmpty()) {
+        formatter.setBaseColour(QColor{m_config.fgColour});
+    }
 
     const QColor linkColour = m_config.linkColour.isEmpty() ? QColor{} : QColor{m_config.linkColour};
     const QString body      = richTextToHtml(formatter.evaluate(text), linkColour);

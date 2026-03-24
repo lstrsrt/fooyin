@@ -24,9 +24,13 @@
 #include <gui/scripting/richtext.h>
 
 #include <QColor>
+#include <QFont>
 #include <QString>
 
 namespace Fooyin {
+FYGUI_EXPORT QColor resolvedRichTextColour(const RichFormatting& formatting, const QColor& baseColour,
+                                           const QColor& linkColour = {});
+FYGUI_EXPORT QFont resolvedRichTextFont(const RichFormatting& formatting, const QFont& baseFont);
 FYGUI_EXPORT QString richTextToHtml(const RichText& richText, const QColor& linkColour = {});
 FYGUI_EXPORT RichText trimRichText(RichText richText);
 } // namespace Fooyin

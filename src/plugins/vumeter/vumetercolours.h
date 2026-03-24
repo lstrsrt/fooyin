@@ -37,7 +37,7 @@ struct Colours
         Gradient2,
     };
 
-    static QColor defaultColour(Type type)
+    static QColor defaultColour(Type type, const QPalette& palette = QApplication::palette())
     {
         switch(type) {
             case Type::Background:
@@ -45,34 +45,41 @@ struct Colours
             case Type::Peak:
                 return {190, 40, 10};
             case Type::Legend:
-                return QApplication::palette().text().color();
+                return palette.text().color();
             case Type::Gradient1:
                 return {65, 65, 65};
             case Type::Gradient2:
-                return QApplication::palette().highlight().color();
+                return palette.highlight().color();
         }
 
         return {};
     }
 
-    QMap<Type, QColor> meterColours{{Type::Background, defaultColour(Type::Background)},
-                                    {Type::Peak, defaultColour(Type::Peak)},
-                                    {Type::Legend, defaultColour(Type::Legend)},
-                                    {Type::Gradient1, defaultColour(Type::Gradient1)},
-                                    {Type::Gradient2, defaultColour(Type::Gradient2)}};
+    QMap<Type, QColor> meterColours;
 
-    [[nodiscard]] QColor colour(Type type) const
+    [[nodiscard]] QColor colour(Type type, const QPalette& palette = QApplication::palette()) const
     {
-        if(meterColours.contains(type)) {
-            return meterColours.value(type);
-        }
+        return meterColours.value(type, defaultColour(type, palette));
+    }
 
-        return defaultColour(type);
+    [[nodiscard]] bool hasOverride(Type type) const
+    {
+        return meterColours.contains(type);
+    }
+
+    [[nodiscard]] bool isEmpty() const
+    {
+        return meterColours.isEmpty();
     }
 
     void setColour(Type type, const QColor& colour)
     {
-        meterColours[type] = colour;
+        if(colour.isValid()) {
+            meterColours[type] = colour;
+        }
+        else {
+            meterColours.remove(type);
+        }
     }
 
     bool operator==(const Colours& other) const

@@ -22,6 +22,7 @@
 #include "librarytreeitem.h"
 
 #include <gui/scripting/richtext.h>
+#include <gui/scripting/richtextutils.h>
 
 #include <QApplication>
 #include <QPainter>
@@ -49,9 +50,8 @@ RichText fallbackRichText(const QStyleOptionViewItem& option, const QModelIndex&
     }
 
     RichTextBlock block;
-    block.text          = text;
-    block.format.font   = option.font;
-    block.format.colour = option.palette.color(QPalette::Text);
+    block.text        = text;
+    block.format.font = option.font;
     fallback.blocks.push_back(std::move(block));
     return fallback;
 }
@@ -65,6 +65,7 @@ DrawTextResult drawTextBlocks(QPainter* painter, const QStyleOptionViewItem& opt
 
     const auto selectedColour = option.palette.color(QPalette::HighlightedText);
     const auto defaultColour  = option.palette.color(QPalette::Text);
+    const auto linkColour     = option.palette.color(QPalette::Link);
     const auto colourRole     = option.state & QStyle::State_Selected ? QPalette::HighlightedText : QPalette::NoRole;
 
     for(const auto& block : blocks) {
@@ -72,17 +73,11 @@ DrawTextResult drawTextBlocks(QPainter* painter, const QStyleOptionViewItem& opt
             continue;
         }
 
-        QFont font = block.format.font;
-        if(font == QFont{}) {
-            font = option.font;
-        }
+        const QFont font = resolvedRichTextFont(block.format, option.font);
 
         painter->setFont(font);
 
-        QColor colour = block.format.colour;
-        if(!colour.isValid()) {
-            colour = defaultColour;
-        }
+        QColor colour = resolvedRichTextColour(block.format, defaultColour, linkColour);
         if(option.state & QStyle::State_Selected) {
             colour = selectedColour;
         }
@@ -118,11 +113,7 @@ QSize richTextSize(const QStyleOptionViewItem& option, const QModelIndex& index)
 
     QSize size;
     for(const auto& block : richText.blocks) {
-        QFont font = block.format.font;
-        if(font == QFont{}) {
-            font = option.font;
-        }
-
+        const QFont font = resolvedRichTextFont(block.format, option.font);
         const QFontMetrics metrics{font};
         const QRect bound = metrics.boundingRect(block.text);
         size.setWidth(size.width() + bound.width());

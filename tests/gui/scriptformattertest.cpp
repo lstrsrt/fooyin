@@ -33,6 +33,7 @@ TEST_F(ScriptFormatterTest, NoFormat)
 {
     const auto result = m_formattter.evaluate(QStringLiteral("I am a test."));
     EXPECT_EQ(1, result.size());
+    EXPECT_FALSE(result.blocks.front().format.colour.isValid());
 }
 
 TEST_F(ScriptFormatterTest, Bold)
@@ -70,6 +71,16 @@ TEST_F(ScriptFormatterTest, ColorHex)
     EXPECT_EQ(0, result.blocks.front().format.colour.red());
     EXPECT_EQ(255, result.blocks.front().format.colour.green());
     EXPECT_EQ(0, result.blocks.front().format.colour.blue());
+}
+
+TEST_F(ScriptFormatterTest, BaseColour)
+{
+    const QColor colour{QStringLiteral("#123456")};
+    m_formattter.setBaseColour(colour);
+
+    const auto result = m_formattter.evaluate(QStringLiteral("I am a test."));
+    ASSERT_EQ(1, result.size());
+    EXPECT_EQ(colour, result.blocks.front().format.colour);
 }
 
 TEST_F(ScriptFormatterTest, EscapedLeftAngle)

@@ -205,7 +205,7 @@ void WaveSeekBar::paintEvent(QPaintEvent* event)
     painter.scale(m_scale, 1.0);
 
     if(m_data.empty()) {
-        painter.setPen({m_colours.maxUnplayed, 1, Qt::SolidLine, Qt::FlatCap});
+        painter.setPen({m_colours.colour(Colours::Type::MaxUnplayed, palette()), 1, Qt::SolidLine, Qt::FlatCap});
         const int centreY = height() / 2;
         painter.drawLine(0, centreY, rect().right(), centreY);
         return;
@@ -226,9 +226,10 @@ void WaveSeekBar::paintEvent(QPaintEvent* event)
     const double firstX = first * m_sampleWidth;
     const double posX   = positionFromValue(static_cast<double>(m_position)) / m_scale;
 
-    painter.fillRect(rect, m_colours.bgUnplayed);
+    painter.fillRect(rect, m_colours.colour(Colours::Type::BgUnplayed, palette()));
     const double playedWidth = std::max(0.0, posX - firstX);
-    painter.fillRect(QRectF{firstX, 0.0, playedWidth, static_cast<double>(height())}, m_colours.bgPlayed);
+    painter.fillRect(QRectF{firstX, 0.0, playedWidth, static_cast<double>(height())},
+                     m_colours.colour(Colours::Type::BgPlayed, palette()));
 
     const int channelHeight     = rect.height() / channels;
     const double waveformHeight = (channelHeight - m_centreGap) * m_channelScale;
@@ -241,14 +242,16 @@ void WaveSeekBar::paintEvent(QPaintEvent* event)
     }
 
     if(m_showCursor && m_playState != Player::PlayState::Stopped) {
-        painter.setPen({m_colours.cursor, static_cast<double>(m_cursorWidth), Qt::SolidLine, Qt::FlatCap});
+        painter.setPen({m_colours.colour(Colours::Type::Cursor, palette()), static_cast<double>(m_cursorWidth),
+                        Qt::SolidLine, Qt::FlatCap});
         const QPointF pt1{posX, 0};
         const QPointF pt2{posX, static_cast<double>(height())};
         painter.drawLine(pt1, pt2);
     }
 
     if(isSeeking()) {
-        painter.setPen({m_colours.seekingCursor, static_cast<double>(m_cursorWidth), Qt::SolidLine, Qt::FlatCap});
+        painter.setPen({m_colours.colour(Colours::Type::SeekingCursor, palette()), static_cast<double>(m_cursorWidth),
+                        Qt::SolidLine, Qt::FlatCap});
         const double seekX = static_cast<double>(m_seekPos.x()) / m_scale;
         painter.drawLine(QPointF{seekX, 0}, QPointF{seekX, static_cast<double>(height())});
     }
@@ -450,18 +453,26 @@ void WaveSeekBar::drawChannel(QPainter& painter, int channel, double height, int
         const double barWidth = m_barWidth;
 
         if(m_mode & MinMax) {
-            drawComponent(x, barWidth, centre, max[i], maxScale, drawMax, m_colours.maxUnplayed, m_colours.maxPlayed,
-                          m_colours.maxBorder, inProgress, isPlayed, progress);
-            drawComponent(x, barWidth, centre + centreGap, min[i], minScale, drawMin, m_colours.minUnplayed,
-                          m_colours.minPlayed, m_colours.minBorder, inProgress, isPlayed, progress);
+            drawComponent(x, barWidth, centre, max[i], maxScale, drawMax,
+                          m_colours.colour(Colours::Type::MaxUnplayed, palette()),
+                          m_colours.colour(Colours::Type::MaxPlayed, palette()),
+                          m_colours.colour(Colours::Type::MaxBorder, palette()), inProgress, isPlayed, progress);
+            drawComponent(x, barWidth, centre + centreGap, min[i], minScale, drawMin,
+                          m_colours.colour(Colours::Type::MinUnplayed, palette()),
+                          m_colours.colour(Colours::Type::MinPlayed, palette()),
+                          m_colours.colour(Colours::Type::MinBorder, palette()), inProgress, isPlayed, progress);
         }
 
         if(m_mode & Rms) {
             const double rmsAmp = rms[i] / rmsScale;
-            drawComponent(x, barWidth, centre, rmsAmp, maxScale, drawMax, m_colours.rmsMaxUnplayed,
-                          m_colours.rmsMaxPlayed, m_colours.rmsMaxBorder, inProgress, isPlayed, progress);
-            drawComponent(x, barWidth, centre + centreGap, -rmsAmp, minScale, drawMin, m_colours.rmsMinUnplayed,
-                          m_colours.rmsMinPlayed, m_colours.rmsMinBorder, inProgress, isPlayed, progress);
+            drawComponent(x, barWidth, centre, rmsAmp, maxScale, drawMax,
+                          m_colours.colour(Colours::Type::RmsMaxUnplayed, palette()),
+                          m_colours.colour(Colours::Type::RmsMaxPlayed, palette()),
+                          m_colours.colour(Colours::Type::RmsMaxBorder, palette()), inProgress, isPlayed, progress);
+            drawComponent(x, barWidth, centre + centreGap, -rmsAmp, minScale, drawMin,
+                          m_colours.colour(Colours::Type::RmsMinUnplayed, palette()),
+                          m_colours.colour(Colours::Type::RmsMinPlayed, palette()),
+                          m_colours.colour(Colours::Type::RmsMinBorder, palette()), inProgress, isPlayed, progress);
         }
     };
 
@@ -522,8 +533,10 @@ void WaveSeekBar::drawSilence(QPainter& painter, double first, double last, doub
 {
     const auto currentPosition = positionFromValue(static_cast<double>(m_position)) / m_scale;
     const bool showRms         = m_data.complete && m_mode & Rms;
-    const auto unplayedColour  = showRms ? m_colours.rmsMaxUnplayed : m_colours.maxUnplayed;
-    const auto playedColour    = showRms ? m_colours.rmsMaxPlayed : m_colours.maxPlayed;
+    const auto unplayedColour  = showRms ? m_colours.colour(Colours::Type::RmsMaxUnplayed, palette())
+                                         : m_colours.colour(Colours::Type::MaxUnplayed, palette());
+    const auto playedColour    = showRms ? m_colours.colour(Colours::Type::RmsMaxPlayed, palette())
+                                         : m_colours.colour(Colours::Type::MaxPlayed, palette());
 
     if(currentPosition <= first) {
         painter.setPen(unplayedColour);

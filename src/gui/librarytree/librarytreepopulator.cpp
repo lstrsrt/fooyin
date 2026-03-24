@@ -181,11 +181,6 @@ void LibraryTreePopulator::setFont(const QFont& font)
     p->m_formatter.setBaseFont(font);
 }
 
-void LibraryTreePopulator::setColour(const QColor& colour)
-{
-    p->m_formatter.setBaseColour(colour);
-}
-
 void LibraryTreePopulator::run(const LibraryTreeGrouping& grouping, const TrackList& tracks, bool useVarious)
 {
     setState(Running);
