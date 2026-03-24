@@ -55,6 +55,9 @@ class AudioAnalysisBus;
 class DspRegistry;
 class SettingsManager;
 class AudioEngine;
+namespace Testing {
+class AudioEngineTestAccessor;
+}
 
 /*!
  * Core playback engine orchestrating decode, pipeline, transitions and timing.
@@ -69,6 +72,7 @@ class AudioEngine;
 class FYCORE_EXPORT AudioEngine : public QObject
 {
     Q_OBJECT
+    friend class Testing::AudioEngineTestAccessor;
 
 public:
     using TrackEndingResult = TransitionOrchestrator::TrackEndingResult;
@@ -229,6 +233,7 @@ private:
     void clearAutoCrossfadeTailFadeState();
     void clearAutoBoundaryFadeState(bool restoreOutput = false);
     void clearTrackEndAutoTransitions();
+    void invalidatePreparedAutoTransitionsForSeek();
     void clearAutoAdvanceState();
 
     void rememberAutoTransitionMode(AutoTransitionMode mode);

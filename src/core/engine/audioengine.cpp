@@ -571,6 +571,8 @@ void AudioEngine::performSeek(uint64_t positionMs, uint64_t requestId)
 
     clearAutoCrossfadeTailFadeState();
     clearAutoBoundaryFadeState(true);
+    clearAutoAdvanceState();
+    invalidatePreparedAutoTransitionsForSeek();
 
     if(m_analysisBus) {
         m_analysisBus->flush();
@@ -3394,6 +3396,39 @@ void AudioEngine::clearTrackEndAutoTransitions()
     clearPreparedCrossfadeTransition();
     discardPreparedGaplessTransition(false);
     clearPreparedNextTrackAndCancelPendingJobs();
+}
+
+void AudioEngine::invalidatePreparedAutoTransitionsForSeek()
+{
+    const StreamId preparedCrossfadeStreamId{m_preparedCrossfadeTransition.streamId};
+
+    if(m_preparedCrossfadeTransition.active) {
+        qCDebug(ENGINE) << "Invalidating prepared crossfade transition due to seek:"
+                        << "currentTrackId=" << m_currentTrack.id() << "currentItemId=" << m_currentTrackItemId
+                        << "preparedTrackId=" << m_preparedCrossfadeTransition.targetTrack.id()
+                        << "preparedItemId=" << m_preparedCrossfadeTransition.targetItemId
+                        << "preparedStreamId=" << preparedCrossfadeStreamId
+                        << "generation=" << m_preparedCrossfadeTransition.sourceGeneration;
+        clearPreparedCrossfadeTransition();
+    }
+
+    if(preparedCrossfadeStreamId != InvalidStreamId && m_preparedNext && m_preparedNext->preparedStream
+       && m_preparedNext->preparedStream->id() == preparedCrossfadeStreamId) {
+        qCDebug(ENGINE) << "Discarding prepared next-track state after seek invalidated armed crossfade:"
+                        << "trackId=" << m_preparedNext->item.track.id() << "itemId=" << m_preparedNext->item.itemId
+                        << "preparedStreamId=" << preparedCrossfadeStreamId;
+        m_preparedNext.reset();
+    }
+
+    if(m_preparedGaplessTransition.active) {
+        qCDebug(ENGINE) << "Discarding prepared gapless transition due to seek:"
+                        << "currentTrackId=" << m_currentTrack.id() << "currentItemId=" << m_currentTrackItemId
+                        << "preparedTrackId=" << m_preparedGaplessTransition.targetTrack.id()
+                        << "preparedItemId=" << m_preparedGaplessTransition.targetItemId
+                        << "preparedStreamId=" << m_preparedGaplessTransition.streamId
+                        << "generation=" << m_preparedGaplessTransition.sourceGeneration;
+        discardPreparedGaplessTransition(false);
+    }
 }
 
 void AudioEngine::prepareNextTrack(const Engine::PlaybackItem& item, uint64_t requestId)

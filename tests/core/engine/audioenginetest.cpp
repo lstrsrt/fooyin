@@ -470,6 +470,39 @@ struct EngineHarness
 
 } // namespace
 
+class AudioEngineTestAccessor
+{
+public:
+    static void installPreparedCrossfade(AudioEngine& engine, const Engine::PlaybackItem& item, uint64_t generation,
+                                         const AudioStreamPtr& preparedStream, const AudioFormat& format)
+    {
+        NextTrackPreparationState preparedState;
+        preparedState.item           = item;
+        preparedState.format         = format;
+        preparedState.preparedStream = preparedStream;
+
+        engine.m_preparedNext                                 = std::move(preparedState);
+        engine.m_preparedCrossfadeTransition.active           = true;
+        engine.m_preparedCrossfadeTransition.targetTrack      = item.track;
+        engine.m_preparedCrossfadeTransition.targetItemId     = item.itemId;
+        engine.m_preparedCrossfadeTransition.sourceGeneration = generation;
+        engine.m_preparedCrossfadeTransition.streamId         = preparedStream ? preparedStream->id() : InvalidStreamId;
+        engine.m_preparedCrossfadeTransition.boundaryLeadMs   = 250;
+        engine.m_preparedCrossfadeTransition.bufferedAtArmMs  = 250;
+        engine.m_preparedCrossfadeTransition.boundarySignalled = false;
+    }
+
+    static bool hasPreparedNext(const AudioEngine& engine)
+    {
+        return engine.m_preparedNext.has_value();
+    }
+
+    static bool preparedCrossfadeActive(const AudioEngine& engine)
+    {
+        return engine.m_preparedCrossfadeTransition.active;
+    }
+};
+
 TEST(AudioEngineTest, LoadTrackFullReinitInitialisesDecoderAndOutput)
 {
     ensureCoreApplication();
@@ -766,6 +799,69 @@ TEST(AudioEngineTest, SeekWithRequestPublishesMatchingRequestIds)
     ASSERT_TRUE(pumpUntil([&applied]() { return applied.size() >= 2; }, 3000ms));
     EXPECT_EQ(applied[0].second, 11U);
     EXPECT_EQ(applied[1].second, 12U);
+}
+
+TEST(AudioEngineTest, SeekInvalidatesArmedPreparedCrossfadeTransition)
+{
+    ensureCoreApplication();
+
+    QTemporaryDir tempDir;
+    SettingsManager settings{tempDir.filePath(u"settings.ini"_s)};
+    registerMinimalEngineSettings(settings, false, false);
+
+    Engine::CrossfadingValues crossfadingValues;
+    crossfadingValues.autoChange.in  = 120;
+    crossfadingValues.autoChange.out = 120;
+    settings.set<Settings::Core::Internal::EngineCrossfading>(true);
+    settings.set<Settings::Core::Internal::CrossfadingValues>(QVariant::fromValue(crossfadingValues));
+    settings.set<Settings::Core::Internal::CrossfadeSwitchPolicy>(
+        static_cast<int>(Engine::CrossfadeSwitchPolicy::OverlapStart));
+
+    auto decoderStats = std::make_shared<DecoderStats>();
+    auto outputStats  = std::make_shared<OutputStats>();
+    auto loader       = std::make_shared<AudioLoader>();
+    DspRegistry registry;
+    AudioEngine engine{loader, &settings, &registry};
+
+    loader->addDecoder(u"FakeDecoder"_s, [decoderStats]() { return std::make_unique<FakeDecoder>(decoderStats); });
+    engine.setAudioOutput([outputStats]() { return std::make_unique<FakeAudioOutput>(outputStats); }, QString{});
+
+    const Track currentTrack
+        = makeTrack(createDummyAudioFile(tempDir, u"seek-invalidates-armed-current.fyt"_s), 0, 120000);
+    const Track nextTrack = makeTrack(createDummyAudioFile(tempDir, u"seek-invalidates-armed-next.fyt"_s), 0, 120000);
+    const auto nextItem   = makePlaybackItem(nextTrack, 2);
+
+    uint64_t currentGeneration{0};
+    QObject::connect(&engine, &AudioEngine::trackStatusContextChanged, &engine,
+                     [&currentGeneration, &currentTrack](Engine::TrackStatus, const Track& track, uint64_t generation) {
+                         if(track.filepath() == currentTrack.filepath()) {
+                             currentGeneration = generation;
+                         }
+                     });
+
+    engine.loadTrack(makePlaybackItem(currentTrack, 1), false);
+    ASSERT_TRUE(pumpUntil([&engine]() { return engine.trackStatus() == Engine::TrackStatus::Loaded; }));
+    ASSERT_TRUE(pumpUntil([&currentGeneration]() { return currentGeneration != 0; }));
+
+    engine.play();
+    ASSERT_TRUE(pumpUntil([&engine]() { return engine.playbackState() == Engine::PlaybackState::Playing; }));
+    ASSERT_TRUE(pumpUntil([&engine]() { return engine.position() > 0; }, 3000ms));
+
+    const AudioFormat preparedFormat{SampleFormat::F64, 1000, 2};
+    auto preparedStream = StreamFactory::createStream(preparedFormat, 4000);
+    ASSERT_TRUE(preparedStream);
+    AudioEngineTestAccessor::installPreparedCrossfade(engine, nextItem, currentGeneration, preparedStream,
+                                                      preparedFormat);
+    ASSERT_TRUE(AudioEngineTestAccessor::preparedCrossfadeActive(engine));
+    ASSERT_TRUE(AudioEngineTestAccessor::hasPreparedNext(engine));
+
+    engine.seek(4000);
+
+    ASSERT_TRUE(pumpUntil([&decoderStats]() { return decoderStats->seekCalls.load() >= 1; }, 3000ms));
+    ASSERT_TRUE(pumpUntil([&engine]() { return engine.position() >= 3000; }, 3000ms));
+    EXPECT_FALSE(AudioEngineTestAccessor::preparedCrossfadeActive(engine));
+    EXPECT_FALSE(AudioEngineTestAccessor::hasPreparedNext(engine));
+    EXPECT_FALSE(engine.commitPreparedCrossfadeTransition(nextItem));
 }
 
 TEST(AudioEngineTest, SeekWithRequestFromStoppedLoadsTrackAndStartsPlayback)
