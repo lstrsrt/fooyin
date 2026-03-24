@@ -1889,10 +1889,11 @@ void AudioEngine::handleTrackEndingSignals(const AudioStreamPtr& stream, uint64_
             }
         }
 
-        const Track boundaryTrack               = m_currentTrack;
-        const uint64_t boundaryGeneration       = m_trackGeneration;
-        const bool boundaryEngineOwnsTransition = deferPreparedGaplessCommit || deferRenderedGaplessCommit;
-        const bool cueLogicalBoundary           = cueBoundaryMode && audibleBoundaryReached;
+        const Track boundaryTrack{m_currentTrack};
+        const uint64_t boundaryGeneration{m_trackGeneration};
+        const bool boundaryEngineOwnsTransition
+            = preparedCrossfadeArmed || deferPreparedGaplessCommit || deferRenderedGaplessCommit;
+        const bool cueLogicalBoundary = cueBoundaryMode && audibleBoundaryReached;
 
         if(boundaryEngineOwnsTransition || cueLogicalBoundary) {
             boundaryRemainingOutputMs = 0;
