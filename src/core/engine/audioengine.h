@@ -72,7 +72,6 @@ class AudioEngineTestAccessor;
 class FYCORE_EXPORT AudioEngine : public QObject
 {
     Q_OBJECT
-    friend class Testing::AudioEngineTestAccessor;
 
 public:
     using TrackEndingResult = TransitionOrchestrator::TrackEndingResult;
@@ -200,6 +199,8 @@ protected:
     void timerEvent(QTimerEvent* event) override;
 
 private:
+    friend class Testing::AudioEngineTestAccessor;
+
     void beginShutdown();
 
     bool ensureCrossfadePrepared(const Engine::PlaybackItem& item, bool isManualChange);
