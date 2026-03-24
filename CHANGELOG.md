@@ -1,5 +1,153 @@
 # Changelog
 
+## [Unreleased]
+
+### New Features
+* Discord: Add Rich Presence integration ([#94](https://github.com/fooyin/fooyin/issues/94), [#715](https://github.com/fooyin/fooyin/pull/715))
+* Equaliser
+  - Add a SuperEQ-based equaliser DSP ([#283](https://github.com/fooyin/fooyin/issues/283), [#415](https://github.com/fooyin/fooyin/issues/415), [#867](https://github.com/fooyin/fooyin/pull/867))
+* Playback
+  - Add configurable fading and crossfading for seek, manual track changes, and automatic track transitions ([#123](https://github.com/fooyin/fooyin/issues/123), [#403](https://github.com/fooyin/fooyin/issues/403), [#884](https://github.com/fooyin/fooyin/pull/884))
+* DSP
+  - Add DSP plugin support and a built-in DSP suite including `Skip Silence`, `Resampler (FFmpeg)`, `Convert mono to stereo`, `Reverse stereo channels`, `Downmix to stereo`, and `Downmix to mono`
+  - Add SoundTouch-based DSPs ([#866](https://github.com/fooyin/fooyin/pull/866))
+  - Add a SoX-based resampler DSP ([#880](https://github.com/fooyin/fooyin/pull/880))
+* Interface
+  - Add per-widget configuration for built-in widgets and supported plugins ([#885](https://github.com/fooyin/fooyin/pull/885))
+  - Add a new `CommandButton` widget
+  - Add a new Script Display widget ([#357](https://github.com/fooyin/fooyin/issues/357), [#410](https://github.com/fooyin/fooyin/issues/410), [#844](https://github.com/fooyin/fooyin/issues/844), [#889](https://github.com/fooyin/fooyin/pull/889))
+  - Add support for viewing artwork full size, exporting/extracting artwork, and loading original-size covers ([#791](https://github.com/fooyin/fooyin/issues/791), [#835](https://github.com/fooyin/fooyin/issues/835))
+* Playlist
+  - Add playback queue persistence between sessions
+  - Add CUE support when saving and loading M3U playlists ([#700](https://github.com/fooyin/fooyin/issues/700))
+  - Rework autoplaylists to support incremental updates ([#830](https://github.com/fooyin/fooyin/issues/830), [#847](https://github.com/fooyin/fooyin/issues/847), [#860](https://github.com/fooyin/fooyin/issues/860), [#895](https://github.com/fooyin/fooyin/pull/895))
+* Scripting
+  - Add `$if3`, `$get`, `$put`, and `$puts`
+  - Add playlist-based variables to window title scripts ([#890](https://github.com/fooyin/fooyin/issues/890))
+  - Add richer formatting support across script editing and display tools
+
+### Improvements
+* CLI
+  - Add seek commands ([#760](https://github.com/fooyin/fooyin/pull/760))
+* Directory Browser
+  - Add options to show hidden files/directories and symlinks ([#850](https://github.com/fooyin/fooyin/pull/850))
+* Engine
+  - Complete engine rewrite ([#858](https://github.com/fooyin/fooyin/pull/858))
+  - Add configurable decode buffer watermarks and enforce safe defaults ([#869](https://github.com/fooyin/fooyin/issues/869))
+  - Add manual override of output bit depth
+* Interface
+  - Add rich text/script formatting support to `Status Widget`, `Queue Viewer`, `Library Tree`, `Filters`, and related displays
+  - Split general settings into separate layout and display pages
+  - Add conflict detection for shortcuts and validation error handling for settings pages
+  - Add configure actions for decoders and tag readers that expose plugin settings
+  - Resolve widget colours from the active palette and react better to icon theme/style changes
+  - Allow editing default script-based items in widget registries ([#879](https://github.com/fooyin/fooyin/issues/879))
+  - Add CoverWidget fading options and configuration
+  - Add a dedicated Playback > Fading settings page for fade and crossfade options
+  - Improve status widget double-click behaviour to jump to current playback context ([#808](https://github.com/fooyin/fooyin/pull/808))
+  - Reposition playlist tab remove action ([#809](https://github.com/fooyin/fooyin/issues/809))
+  - Move waveform seekbar to the Visualisations menu
+  - Show WaveBar cursor while paused
+  - Improve WaveBar precision and gradient rendering
+  - Add VU meter FPS and legend colour settings, and cache rendering
+* Library/Metadata
+  - Add support for embedding `webp`, `bmp`, and `gif` artwork ([#855](https://github.com/fooyin/fooyin/issues/855))
+  - Handle tags `ARTIST` and `ARTISTS` separately ([#783](https://github.com/fooyin/fooyin/issues/783))
+  - Improve archive entry metadata handling and preserve entry timestamps where available
+  - Improve metadata read/write handling and tag editing workflows
+  - Improve library scanning and batch progress updates ([#900](https://github.com/fooyin/fooyin/pull/900))
+* Lyrics
+  - Rewrite lyrics list/editor as `QListView` ([#818](https://github.com/fooyin/fooyin/pull/818))
+  - Add quick action to update current line and move to the next ([#770](https://github.com/fooyin/fooyin/pull/770))
+  - Add drag-seek, better centering, multi-line highlighting, and smoother synced-lyrics behaviour
+  - Adjust lyrics panel colours when the theme changes ([#875](https://github.com/fooyin/fooyin/pull/875))
+  - Always save lyrics when applying editor changes
+  - Respect hidden files when searching for local lyrics
+  - Seek only on left-click ([#870](https://github.com/fooyin/fooyin/pull/870))
+* Playlist
+  - Add option to stop playback when queue finishes
+  - Add action to remove unavailable tracks from the database
+  - Add live evaluation of playback variables in playlists
+  - Add a separate sort script option for library viewers ([#117](https://github.com/fooyin/fooyin/issues/117), [#321](https://github.com/fooyin/fooyin/issues/321))
+  - Improve Library Tree performance, grouping, sorting, and playback-following behaviour
+  - Add a `More...` option to the playlist sorting menu
+  - Add queue actions to `Search Playlist` results ([#888](https://github.com/fooyin/fooyin/issues/888))
+* Plugins
+  - Enable `vgm`/`vgz` playback in GME
+  - Make fading of non-looping GME tracks an opt-in setting ([#826](https://github.com/fooyin/fooyin/issues/826))
+* Scrobbler
+  - Submit cached scrobbles on startup
+  - Send "Now Playing" updates at regular intervals ([#861](https://github.com/fooyin/fooyin/issues/861))
+* Scripting
+  - Add more playback queue variables to scripting
+* Utilities
+  - Add actions to copy log entries and full logs to clipboard
+  - Queue log messages to avoid potential main-thread stalls
+  - Use a dedicated `QCache` for cover caching
+
+### Fixes
+* Engine
+  - Fix DSD playback stutters ([#853](https://github.com/fooyin/fooyin/issues/853))
+  - Rework live bitrate reporting for more reliable updates ([#906](https://github.com/fooyin/fooyin/issues/906))
+* Playback
+  - Fix "Send to playback queue" not starting playback
+  - Fix playlist tabs only changing on click ([#693](https://github.com/fooyin/fooyin/issues/693), [#731](https://github.com/fooyin/fooyin/issues/731))
+  - Fix Properties dialog not auto-defaulting to OK ([#752](https://github.com/fooyin/fooyin/pull/752))
+  - Fix multi-column handling issues ([#761](https://github.com/fooyin/fooyin/pull/761))
+* Formats/Decoders
+  - Fix FFmpeg misdetecting some FLAC files as MP3 ([#696](https://github.com/fooyin/fooyin/issues/696))
+  - Reject non-audio inputs earlier in FFmpeg and fix crashes when attempting to index such files
+  - Handle invalid audio properties more safely in TagLib and SndFile
+  - Fix GME loop count handling ([#838](https://github.com/fooyin/fooyin/issues/838))
+* Interface
+  - Reduce artwork flashing during track changes ([#466](https://github.com/fooyin/fooyin/issues/466))
+  - Fix `Status Widget` playing text not updating when playback is paused ([#922](https://github.com/fooyin/fooyin/pull/922))
+  - Fix WaveBar getting stuck in the playing state after seeking during stop fade
+  - Fix Properties/Artwork tab updates not propagating across tabs ([#894](https://github.com/fooyin/fooyin/issues/894))
+  - Fix re-adding removed widgets without switching layouts ([#377](https://github.com/fooyin/fooyin/issues/377))
+  - Fix `Directory Browser` control visibility restoration ([#893](https://github.com/fooyin/fooyin/pull/893))
+  - Fix horizontal scrolling artefacts and several view/layout regressions ([#909](https://github.com/fooyin/fooyin/pull/909), [#910](https://github.com/fooyin/fooyin/pull/910), [#914](https://github.com/fooyin/fooyin/pull/914))
+* Integration
+  - Fix MPRIS metadata typing, seek notifications, stale cover metadata, and temp cover cleanup ([#469](https://github.com/fooyin/fooyin/issues/469), [#670](https://github.com/fooyin/fooyin/issues/670), [#744](https://github.com/fooyin/fooyin/pull/744), [#896](https://github.com/fooyin/fooyin/pull/896))
+  - Fix proxy settings persistence
+* Platform
+  - Fix GME MSVC build with Qt `6.10.1`
+  - Fix Qt `6.10.1` compatibility issues ([#780](https://github.com/fooyin/fooyin/pull/780))
+  - Fix missing VU meter include for `QElapsedTimer` ([#724](https://github.com/fooyin/fooyin/issues/724), [#725](https://github.com/fooyin/fooyin/pull/725))
+  - Fix OGG detection on Windows in TagLib
+  - Correct `StartupWMClass` metadata ([#839](https://github.com/fooyin/fooyin/pull/839))
+* Core/Settings
+  - Fix `%isplaying%` and `%ispaused%` script variables never evaluating to `false` ([#646](https://github.com/fooyin/fooyin/issues/646), [#707](https://github.com/fooyin/fooyin/pull/707))
+
+### Build/System
+* Build/CMake
+  - Add QCoro dependency ([#714](https://github.com/fooyin/fooyin/pull/714))
+  - Add `libqt6concurrent6` to Ubuntu/Debian package dependencies ([#778](https://github.com/fooyin/fooyin/issues/778))
+  - Add optional SDK argument for custom `json.in`
+  - Remove component from plugin install rule
+* CI/Release
+  - Add and refine release workflows
+  - Add and refine translation/source update workflows
+  - Add clang-format workflow and formatting checks
+  - Build Linux arm64 binaries ([#800](https://github.com/fooyin/fooyin/pull/800))
+  - Clean up packaging jobs and workflow actions
+* Translations
+  - Update translation sources and import latest Weblate changes
+
+### Dev/API
+* Core API
+  - Drive repeat-track behaviour via decoder playback hints ([#878](https://github.com/fooyin/fooyin/issues/878))
+  - Add `PlayerController` `positionChanged` and `bitrateChanged` signals
+  - Add original-size cover loading support to `CoverProvider`
+* Plugin/Widget API
+  - Add `PluginConfigGuiPlugin` and `PluginSettingsProvider` for GUI-owned plugin configuration dialogs
+  - Keep the legacy `Plugin::hasSettings()` / `Plugin::showSettings()` path as a fallback during migration
+  - Add `ConfigDialog` and expand `FyWidget` to support per-instance widget configuration, saved defaults, and standard `Configure...` actions ([#885](https://github.com/fooyin/fooyin/pull/885))
+* Repository
+  - Remove in-tree `libvgm` plugin and submodule
+  - Reorganise tests into subdirectories and update test utility include paths
+
+
 ## [0.9.2](https://github.com/fooyin/fooyin/releases/tag/v0.9.2) (2025-09-21)
 
 ### Improvements
@@ -388,6 +536,7 @@
 
 * Playlist: Fix extensions not being automatically added when saving playlists
 * WaveBar: Fix memory leak when generating waveforms
+
 
 ## [0.6.0](https://github.com/fooyin/fooyin/releases/tag/v0.6.0) (2024-08-27)
 
@@ -1005,6 +1154,7 @@
 * Install license, readme to data dir
 * Add a CMake uninstall target
 * Overhaul build instructions; see [BUILD.md](https://github.com/fooyin/fooyin/blob/master/BUILD.md)
+
 
 ## [0.3.3](https://github.com/fooyin/fooyin/releases/tag/v0.3.3) (2024-01-31)
 
