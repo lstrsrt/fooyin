@@ -81,6 +81,7 @@ public:
     bool updatePlaystate(Player::PlayState state);
     bool enterStoppedState(bool requestTransportStop);
     void emitPositionSignals(const PlaybackProgressTracker::PositionUpdate& update);
+    void syncCommittedPlaylistTrack() const;
 
     bool requestSelectedTrack(const RequestedTrack& selection);
     bool requestSelectedTrack(const std::optional<RequestedTrack>& selection);
@@ -311,6 +312,31 @@ void PlayerControllerPrivate::emitPositionSignals(const PlaybackProgressTracker:
 
     if(update.positionSeconds.has_value()) {
         emit m_self->positionChangedSeconds(*update.positionSeconds);
+    }
+}
+
+void PlayerControllerPrivate::syncCommittedPlaylistTrack() const
+{
+    if(!m_playlistHandler || m_session.isQueueTrack()) {
+        return;
+    }
+
+    auto* activePlaylist = m_playlistHandler->activePlaylist();
+    if(!activePlaylist) {
+        return;
+    }
+
+    const PlaylistTrack& currentTrack = m_session.currentTrack();
+    if(!currentTrack.isValid() || !currentTrack.playlistId.isValid() || currentTrack.indexInPlaylist < 0) {
+        return;
+    }
+
+    if(activePlaylist->id() != currentTrack.playlistId) {
+        return;
+    }
+
+    if(activePlaylist->currentTrackIndex() != currentTrack.indexInPlaylist) {
+        activePlaylist->changeCurrentIndex(currentTrack.indexInPlaylist);
     }
 }
 
@@ -784,6 +810,7 @@ void PlayerController::commitCurrentTrack(const Player::TrackChangeRequest& requ
     }
 
     const auto result = p->m_session.commitRequest(requestWithId);
+    p->syncCommittedPlaylistTrack();
     p->m_cursor.onTrackCommitted();
     p->m_progressTracker.onTrackCommitted(p->m_session.currentTrack().track.duration(),
                                           p->m_settings->value<Settings::Core::PlayedThreshold>());
@@ -825,6 +852,7 @@ void PlayerController::updateCurrentTrack(const Track& track)
 void PlayerController::updateCurrentTrackPlaylist(const UId& playlistId)
 {
     if(p->m_session.updateCurrentTrackPlaylist(playlistId)) {
+        p->syncCommittedPlaylistTrack();
         emit playlistTrackChanged(p->m_session.currentTrack());
     }
 }
@@ -832,6 +860,7 @@ void PlayerController::updateCurrentTrackPlaylist(const UId& playlistId)
 void PlayerController::updateCurrentTrackIndex(int index)
 {
     if(p->m_session.updateCurrentTrackIndex(index)) {
+        p->syncCommittedPlaylistTrack();
         emit playlistTrackChanged(p->m_session.currentTrack());
     }
 }
