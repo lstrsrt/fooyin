@@ -22,6 +22,7 @@
 #include <core/player/playercontroller.h>
 #include <gui/guiconstants.h>
 #include <gui/guisettings.h>
+#include <gui/iconloader.h>
 #include <gui/widgets/toolbutton.h>
 #include <utils/actions/actionmanager.h>
 #include <utils/settings/settingsmanager.h>
@@ -212,22 +213,22 @@ void PlaylistControl::setMode(Playlist::PlayModes mode) const
 {
     if(mode & (Playlist::RepeatPlaylist | Playlist::RepeatAlbum)) {
         m_repeat->setIcon(
-            Utils::changePixmapColour(Utils::iconFromTheme(Constants::Icons::Repeat).pixmap({128, 128}), m_iconColour));
+            Utils::changePixmapColour(Gui::iconFromTheme(Constants::Icons::Repeat).pixmap({128, 128}), m_iconColour));
     }
     else if(mode & Playlist::RepeatTrack) {
         m_repeat->setIcon(Utils::changePixmapColour(
-            Utils::iconFromTheme(Constants::Icons::RepeatTrack).pixmap({128, 128}), m_iconColour));
+            Gui::iconFromTheme(Constants::Icons::RepeatTrack).pixmap({128, 128}), m_iconColour));
     }
     else {
-        m_repeat->setIcon(Utils::iconFromTheme(Constants::Icons::Repeat));
+        m_repeat->setIcon(Gui::iconFromTheme(Constants::Icons::Repeat));
     }
 
     if(mode & (Playlist::ShuffleTracks | Playlist::ShuffleAlbums | Playlist::Random)) {
-        m_shuffle->setIcon(Utils::changePixmapColour(Utils::iconFromTheme(Constants::Icons::Shuffle).pixmap({128, 128}),
-                                                     m_iconColour));
+        m_shuffle->setIcon(
+            Utils::changePixmapColour(Gui::iconFromTheme(Constants::Icons::Shuffle).pixmap({128, 128}), m_iconColour));
     }
     else {
-        m_shuffle->setIcon(Utils::iconFromTheme(Constants::Icons::Shuffle));
+        m_shuffle->setIcon(Gui::iconFromTheme(Constants::Icons::Shuffle));
     }
 }
 } // namespace Fooyin

@@ -32,6 +32,7 @@
 #include <core/track.h>
 #include <gui/guiconstants.h>
 #include <gui/guisettings.h>
+#include <gui/iconloader.h>
 #include <gui/trackselectioncontroller.h>
 #include <gui/widgets/toolbutton.h>
 #include <utils/actions/actionmanager.h>
@@ -187,9 +188,9 @@ DirBrowser::DirBrowser(const QStringList& supportedExtensions, ActionManager* ac
     , m_middleClickAction{TrackAction::None}
     , m_context{new WidgetContext(
           this, Context{Id{"Fooyin.Context.DirBrowser."}.append(reinterpret_cast<uintptr_t>(this))}, this)}
-    , m_goUp{new QAction(Utils::iconFromTheme(Constants::Icons::Up), tr("Go up"), this)}
-    , m_goBack{new QAction(Utils::iconFromTheme(Constants::Icons::GoPrevious), tr("Go back"), this)}
-    , m_goForward{new QAction(Utils::iconFromTheme(Constants::Icons::GoNext), tr("Go forwards"), this)}
+    , m_goUp{new QAction(Gui::iconFromTheme(Constants::Icons::Up), tr("Go up"), this)}
+    , m_goBack{new QAction(Gui::iconFromTheme(Constants::Icons::GoPrevious), tr("Go back"), this)}
+    , m_goForward{new QAction(Gui::iconFromTheme(Constants::Icons::GoNext), tr("Go forwards"), this)}
     , m_playAction{new QAction(tr("&Play"), this)}
     , m_addCurrent{new QAction(tr("Add to &current playlist"), this)}
     , m_addActive{new QAction(tr("Add to &active playlist"), this)}

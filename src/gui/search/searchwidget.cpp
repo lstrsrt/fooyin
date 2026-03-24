@@ -31,6 +31,7 @@
 #include <core/scripting/scriptparser.h>
 #include <gui/guiconstants.h>
 #include <gui/guisettings.h>
+#include <gui/iconloader.h>
 #include <gui/widgets/popuplineedit.h>
 #include <utils/actions/actioncontainer.h>
 #include <utils/async.h>
@@ -91,12 +92,12 @@ SearchWidget::SearchWidget(SearchController* controller, PlaylistController* pla
         }
     });
 
-    auto* selectReceiver = new QAction(Utils::iconFromTheme(Constants::Icons::Options), tr("Options"), this);
+    auto* selectReceiver = new QAction(Gui::iconFromTheme(Constants::Icons::Options), tr("Options"), this);
     QObject::connect(selectReceiver, &QAction::triggered, this, [this]() { showOptionsMenu(); });
     m_searchBox->addAction(selectReceiver, QLineEdit::TrailingPosition);
 
     m_settings->subscribe<Settings::Gui::IconTheme>(
-        this, [selectReceiver]() { selectReceiver->setIcon(Utils::iconFromTheme(Constants::Icons::Options)); });
+        this, [selectReceiver]() { selectReceiver->setIcon(Gui::iconFromTheme(Constants::Icons::Options)); });
     m_settings->subscribe<Settings::Gui::SearchErrorBg>(this, &SearchWidget::loadColours);
     m_settings->subscribe<Settings::Gui::SearchErrorFg>(this, &SearchWidget::loadColours);
 }

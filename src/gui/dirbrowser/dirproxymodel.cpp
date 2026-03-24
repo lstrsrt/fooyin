@@ -20,6 +20,7 @@
 #include "dirproxymodel.h"
 
 #include <gui/guiconstants.h>
+#include <gui/iconloader.h>
 #include <utils/modelutils.h>
 #include <utils/utils.h>
 
@@ -164,9 +165,9 @@ QVariant DirProxyModel::data(const QModelIndex& proxyIndex, int role) const
         if(role == Qt::DecorationRole) {
             switch(m_playingState) {
                 case(Player::PlayState::Playing):
-                    return Utils::pixmapFromTheme(Constants::Icons::Play);
+                    return Gui::pixmapFromTheme(Constants::Icons::Play);
                 case(Player::PlayState::Paused):
-                    return Utils::pixmapFromTheme(Constants::Icons::Pause);
+                    return Gui::pixmapFromTheme(Constants::Icons::Pause);
                 case(Player::PlayState::Stopped):
                     break;
             }

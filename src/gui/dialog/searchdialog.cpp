@@ -29,6 +29,7 @@
 #include <core/coresettings.h>
 #include <gui/coverprovider.h>
 #include <gui/guiconstants.h>
+#include <gui/iconloader.h>
 #include <utils/settings/settingsmanager.h>
 #include <utils/signalthrottler.h>
 #include <utils/utils.h>
@@ -70,7 +71,7 @@ SearchDialog::SearchDialog(ActionManager* actionManager, PlaylistInteractor* pla
     layout->addWidget(m_searchBar);
     layout->addWidget(m_view);
 
-    auto* searchMenu = new QAction(Utils::iconFromTheme(Constants::Icons::Options), tr("Options"), this);
+    auto* searchMenu = new QAction(Gui::iconFromTheme(Constants::Icons::Options), tr("Options"), this);
     QObject::connect(searchMenu, &QAction::triggered, this, &SearchDialog::showOptionsMenu);
     m_searchBar->addAction(searchMenu, QLineEdit::TrailingPosition);
 

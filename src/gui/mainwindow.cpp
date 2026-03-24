@@ -30,6 +30,7 @@
 #include <core/library/musiclibrary.h>
 #include <gui/guiconstants.h>
 #include <gui/guisettings.h>
+#include <gui/iconloader.h>
 #include <utils/actions/actionmanager.h>
 #include <utils/enum.h>
 #include <utils/settings/settingsdialogcontroller.h>
@@ -75,7 +76,7 @@ MainWindow::MainWindow(ActionManager* actionManager, MainMenuBar* menubar, Music
 
     resetTitle();
 
-    setWindowIcon(Utils::iconFromTheme(Constants::Icons::FooyinWindow));
+    setWindowIcon(Gui::iconFromTheme(Constants::Icons::FooyinWindow));
 
     if(windowHandle()) {
         QObject::connect(windowHandle(), &QWindow::screenChanged, this,

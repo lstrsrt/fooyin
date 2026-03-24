@@ -20,6 +20,7 @@
 #include "artworkrow.h"
 
 #include <gui/guiconstants.h>
+#include <gui/iconloader.h>
 #include <gui/widgets/overlaywidget.h>
 #include <utils/stringutils.h>
 #include <utils/utils.h>
@@ -46,8 +47,8 @@ ArtworkRow::ArtworkRow(const QString& name, Track::Cover cover, bool readOnly, Q
     , m_name{new QLabel(name, parent)}
     , m_image{new QLabel(parent)}
     , m_details{new QLabel(parent)}
-    , m_addButton{new QPushButton(Utils::iconFromTheme(Constants::Icons::Add), tr("Add"), parent)}
-    , m_removeButton{new QPushButton(Utils::iconFromTheme(Constants::Icons::Remove), tr("Remove"), parent)}
+    , m_addButton{new QPushButton(Gui::iconFromTheme(Constants::Icons::Add), tr("Add"), parent)}
+    , m_removeButton{new QPushButton(Gui::iconFromTheme(Constants::Icons::Remove), tr("Remove"), parent)}
     , m_readOnly{readOnly}
     , m_status{Status::None}
     , m_multipleImages{false}

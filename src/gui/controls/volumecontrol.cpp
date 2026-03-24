@@ -25,6 +25,7 @@
 #include <core/coresettings.h>
 #include <gui/guiconstants.h>
 #include <gui/guisettings.h>
+#include <gui/iconloader.h>
 #include <gui/widgets/toolbutton.h>
 #include <gui/widgets/tooltip.h>
 #include <utils/actions/actionmanager.h>
@@ -209,16 +210,16 @@ void VolumeControlPrivate::updateDisplay(double volume) const
     }
 
     if(volume <= 1.0 && volume >= 0.40) {
-        m_volumeIcon->setIcon(Utils::iconFromTheme(Constants::Icons::VolumeHigh));
+        m_volumeIcon->setIcon(Gui::iconFromTheme(Constants::Icons::VolumeHigh));
     }
     else if(volume < 0.40 && volume >= 0.20) {
-        m_volumeIcon->setIcon(Utils::iconFromTheme(Constants::Icons::VolumeMed));
+        m_volumeIcon->setIcon(Gui::iconFromTheme(Constants::Icons::VolumeMed));
     }
     else if(volume < 0.20 && volume >= MinVolume) {
-        m_volumeIcon->setIcon(Utils::iconFromTheme(Constants::Icons::VolumeLow));
+        m_volumeIcon->setIcon(Gui::iconFromTheme(Constants::Icons::VolumeLow));
     }
     else {
-        m_volumeIcon->setIcon(Utils::iconFromTheme(Constants::Icons::VolumeMute));
+        m_volumeIcon->setIcon(Gui::iconFromTheme(Constants::Icons::VolumeMute));
     }
 }
 

@@ -23,6 +23,7 @@
 #include <core/engine/enginecontroller.h>
 #include <core/player/playercontroller.h>
 #include <gui/guiconstants.h>
+#include <gui/iconloader.h>
 #include <utils/utils.h>
 
 #include <QEvent>
@@ -159,7 +160,7 @@ void ThumbnailToolbarPlugin::updateToolbarButtons()
     }
 
     // Previous button
-    buttons[PREVIOUS_BUTTON_ID].hIcon = QIcon2HICON(Utils::iconFromTheme(Constants::Icons::Prev));
+    buttons[PREVIOUS_BUTTON_ID].hIcon = QIcon2HICON(Gui::iconFromTheme(Constants::Icons::Prev));
     wcscpy_s(buttons[PREVIOUS_BUTTON_ID].szTip,
              reinterpret_cast<LPCWSTR>(tr("Previous").utf16())); // On Windows, wchar_t is UTF-16
     buttons[PREVIOUS_BUTTON_ID].dwFlags = m_playerController->hasPreviousTrack() ? THBF_ENABLED : THBF_DISABLED;
@@ -167,13 +168,13 @@ void ThumbnailToolbarPlugin::updateToolbarButtons()
     // Play/Pause button
     bool isPlaying = m_playerController->playState() == Player::PlayState::Playing;
     buttons[PLAYPAUSE_BUTTON_ID].hIcon
-        = QIcon2HICON(Utils::iconFromTheme(isPlaying ? Constants::Icons::Pause : Constants::Icons::Play));
+        = QIcon2HICON(Gui::iconFromTheme(isPlaying ? Constants::Icons::Pause : Constants::Icons::Play));
     wcscpy_s(buttons[PLAYPAUSE_BUTTON_ID].szTip, reinterpret_cast<LPCWSTR>(tr(isPlaying ? "Pause" : "Play").utf16()));
     buttons[PLAYPAUSE_BUTTON_ID].dwFlags
         = m_playerController->currentPlaylistTrack().isValid() ? THBF_ENABLED : THBF_DISABLED;
 
     // Next button
-    buttons[NEXT_BUTTON_ID].hIcon = QIcon2HICON(Utils::iconFromTheme(Constants::Icons::Next));
+    buttons[NEXT_BUTTON_ID].hIcon = QIcon2HICON(Gui::iconFromTheme(Constants::Icons::Next));
     wcscpy_s(buttons[NEXT_BUTTON_ID].szTip, reinterpret_cast<LPCWSTR>(tr("Next").utf16()));
     buttons[NEXT_BUTTON_ID].dwFlags = m_playerController->hasNextTrack() ? THBF_ENABLED : THBF_DISABLED;
 
@@ -204,14 +205,14 @@ void ThumbnailToolbarPlugin::setupToolbar()
         buttons[i].dwFlags = THBF_DISABLED;
     }
 
-    buttons[PREVIOUS_BUTTON_ID].hIcon = QIcon2HICON(Utils::iconFromTheme(Constants::Icons::Prev));
+    buttons[PREVIOUS_BUTTON_ID].hIcon = QIcon2HICON(Gui::iconFromTheme(Constants::Icons::Prev));
     wcscpy_s(buttons[PREVIOUS_BUTTON_ID].szTip,
              reinterpret_cast<LPCWSTR>(tr("Previous").utf16())); // On Windows, wchar_t is UTF-16
 
-    buttons[PLAYPAUSE_BUTTON_ID].hIcon = QIcon2HICON(Utils::iconFromTheme(Constants::Icons::Play));
+    buttons[PLAYPAUSE_BUTTON_ID].hIcon = QIcon2HICON(Gui::iconFromTheme(Constants::Icons::Play));
     wcscpy_s(buttons[PLAYPAUSE_BUTTON_ID].szTip, reinterpret_cast<LPCWSTR>(tr("Play").utf16()));
 
-    buttons[NEXT_BUTTON_ID].hIcon = QIcon2HICON(Utils::iconFromTheme(Constants::Icons::Next));
+    buttons[NEXT_BUTTON_ID].hIcon = QIcon2HICON(Gui::iconFromTheme(Constants::Icons::Next));
     wcscpy_s(buttons[NEXT_BUTTON_ID].szTip, reinterpret_cast<LPCWSTR>(tr("Next").utf16()));
 
     HRESULT hr = m_taskbarList->ThumbBarAddButtons(hWnd, 3, buttons);

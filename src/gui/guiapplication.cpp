@@ -63,6 +63,7 @@
 #include <gui/editablelayout.h>
 #include <gui/guiconstants.h>
 #include <gui/guisettings.h>
+#include <gui/iconloader.h>
 #include <gui/layoutprovider.h>
 #include <gui/plugins/dspguiplugin.h>
 #include <gui/plugins/guiplugin.h>
@@ -121,6 +122,42 @@ QString pluginIdentifierForRoot(const PluginManager* pluginManager, const QObjec
 
     return {};
 }
+
+std::pair<QString, QString> resolveIconThemes(SettingsManager* settings)
+{
+    if(!settings) {
+        return {};
+    }
+
+    QString primaryTheme;
+    QString fallbackTheme;
+
+    const auto iconTheme = static_cast<IconThemeOption>(settings->value<Settings::Gui::IconTheme>());
+    switch(iconTheme) {
+        case IconThemeOption::AutoDetect:
+            primaryTheme = Utils::isDarkMode() ? QString::fromLatin1(Constants::DarkIconTheme)
+                                               : QString::fromLatin1(Constants::LightIconTheme);
+            break;
+        case IconThemeOption::Light:
+            primaryTheme = QString::fromLatin1(Constants::LightIconTheme);
+            break;
+        case IconThemeOption::Dark:
+            primaryTheme = QString::fromLatin1(Constants::DarkIconTheme);
+            break;
+        case IconThemeOption::System:
+            fallbackTheme = Utils::isDarkMode() ? QString::fromLatin1(Constants::DarkIconTheme)
+                                                : QString::fromLatin1(Constants::LightIconTheme);
+            break;
+    }
+
+    return {primaryTheme, fallbackTheme};
+}
+
+void applyInitialIconThemes(SettingsManager* settings)
+{
+    const auto [primaryTheme, fallbackTheme] = resolveIconThemes(settings);
+    Gui::setThemeIconOverrides(primaryTheme, fallbackTheme);
+}
 } // namespace
 
 class GuiApplicationPrivate
@@ -152,7 +189,7 @@ public:
     void mute() const;
     void setStyle() const;
     void setTheme() const;
-    void setIconTheme() const;
+    bool setIconTheme() const;
     void refreshAutoDetectedIconTheme() const;
     void registerLayouts();
 
@@ -223,6 +260,16 @@ public:
     ScriptParser m_scriptParser;
     CoverProvider m_coverProvider;
 };
+
+namespace {
+std::unique_ptr<GuiApplicationPrivate> createGuiApplicationPrivate(GuiApplication* self, Application* core)
+{
+    // Some widgets and actions resolve icons during GuiApplicationPrivate construction,
+    // so the icon theme overrides must be set up before creating it
+    applyInitialIconThemes(core ? core->settingsManager() : nullptr);
+    return std::make_unique<GuiApplicationPrivate>(self, core);
+}
+} // namespace
 
 GuiApplicationPrivate::GuiApplicationPrivate(GuiApplication* self_, Application* core_)
     : m_self{self_}
@@ -405,12 +452,18 @@ void GuiApplicationPrivate::setupConnections()
     });
     m_settings->subscribe<Settings::Gui::Theme>(m_self, [this]() {
         setTheme();
-        setIconTheme();
+        if(setIconTheme()) {
+            QPixmapCache::clear();
+            m_settings->refresh<Settings::Gui::IconTheme>();
+        }
     });
     m_settings->subscribe<Settings::Gui::Style>(m_self, [this]() {
         setStyle();
         setTheme();
-        setIconTheme();
+        if(setIconTheme()) {
+            QPixmapCache::clear();
+            m_settings->refresh<Settings::Gui::IconTheme>();
+        }
     });
 
     m_settings->subscribe<Settings::Gui::Internal::ImageAllocationLimit>(m_settings, &QImageReader::setAllocationLimit);
@@ -455,7 +508,7 @@ void GuiApplicationPrivate::showPluginsNotFoundMessage()
 
     message.addButton(QMessageBox::Ok);
     QPushButton* quitButton = message.addButton(GuiApplication::tr("Quit"), QMessageBox::ActionRole);
-    quitButton->setIcon(Utils::iconFromTheme(Constants::Icons::Quit));
+    quitButton->setIcon(Gui::iconFromTheme(Constants::Icons::Quit));
     message.setDefaultButton(QMessageBox::Ok);
 
     message.exec();
@@ -547,23 +600,23 @@ void GuiApplicationPrivate::registerActions()
 {
     const QStringList volumeCategory = {GuiApplication::tr("Volume")};
 
-    auto* volumeUp    = new QAction(Utils::iconFromTheme(Constants::Icons::VolumeHigh), GuiApplication::tr("Volume up"),
+    auto* volumeUp    = new QAction(Gui::iconFromTheme(Constants::Icons::VolumeHigh), GuiApplication::tr("Volume up"),
                                     m_mainWindow.get());
     auto* volumeUpCmd = m_actionManager->registerAction(volumeUp, Constants::Actions::VolumeUp);
     volumeUpCmd->setCategories(volumeCategory);
     QObject::connect(volumeUp, &QAction::triggered, m_mainWindow.get(),
                      [this]() { changeVolume(m_settings->value<Settings::Gui::VolumeStep>()); });
 
-    auto* volumeDown = new QAction(Utils::iconFromTheme(Constants::Icons::VolumeLow), GuiApplication::tr("Volume down"),
+    auto* volumeDown = new QAction(Gui::iconFromTheme(Constants::Icons::VolumeLow), GuiApplication::tr("Volume down"),
                                    m_mainWindow.get());
     auto* volumeDownCmd = m_actionManager->registerAction(volumeDown, Constants::Actions::VolumeDown);
     volumeDownCmd->setCategories(volumeCategory);
     QObject::connect(volumeDown, &QAction::triggered, m_mainWindow.get(),
                      [this]() { changeVolume(-m_settings->value<Settings::Gui::VolumeStep>()); });
 
-    auto* muteAction = new QAction(Utils::iconFromTheme(Constants::Icons::VolumeMute), GuiApplication::tr("Mute"),
-                                   m_mainWindow.get());
-    auto* muteCmd    = m_actionManager->registerAction(muteAction, Constants::Actions::Mute);
+    auto* muteAction
+        = new QAction(Gui::iconFromTheme(Constants::Icons::VolumeMute), GuiApplication::tr("Mute"), m_mainWindow.get());
+    auto* muteCmd = m_actionManager->registerAction(muteAction, Constants::Actions::Mute);
     muteCmd->setCategories(volumeCategory);
     QObject::connect(muteAction, &QAction::triggered, m_mainWindow.get(), [this]() { mute(); });
 
@@ -849,27 +902,10 @@ void GuiApplicationPrivate::setTheme() const
     QTimer::singleShot(0, m_self, [updateFonts]() { updateFonts(); });
 }
 
-void GuiApplicationPrivate::setIconTheme() const
+bool GuiApplicationPrivate::setIconTheme() const
 {
-    const auto iconTheme = static_cast<IconThemeOption>(m_settings->value<Settings::Gui::IconTheme>());
-    switch(iconTheme) {
-        case IconThemeOption::AutoDetect:
-            QIcon::setThemeName(Utils::isDarkMode() ? QString::fromLatin1(Constants::DarkIconTheme)
-                                                    : QString::fromLatin1(Constants::LightIconTheme));
-            break;
-        case IconThemeOption::Light:
-            QIcon::setThemeName(QString::fromLatin1(Constants::LightIconTheme));
-            break;
-        case IconThemeOption::Dark:
-            QIcon::setThemeName(QString::fromLatin1(Constants::DarkIconTheme));
-            break;
-        case IconThemeOption::System:
-            QIcon::setThemeName(m_settings->value<Settings::Gui::Internal::SystemIconTheme>());
-            QIcon::setFallbackThemeName(QString::fromLatin1(Constants::DarkIconTheme));
-            return;
-    }
-
-    QIcon::setFallbackThemeName(m_settings->value<Settings::Gui::Internal::SystemIconTheme>());
+    const auto [primaryTheme, fallbackTheme] = resolveIconThemes(m_settings);
+    return Gui::setThemeIconOverrides(primaryTheme, fallbackTheme);
 }
 
 void GuiApplicationPrivate::refreshAutoDetectedIconTheme() const
@@ -878,12 +914,11 @@ void GuiApplicationPrivate::refreshAutoDetectedIconTheme() const
         return;
     }
 
-    const QString detectedTheme = Utils::isDarkMode() ? QString::fromLatin1(Constants::DarkIconTheme)
-                                                      : QString::fromLatin1(Constants::LightIconTheme);
-    if(detectedTheme == QIcon::themeName()) {
+    if(!setIconTheme()) {
         return;
     }
 
+    QPixmapCache::clear();
     m_settings->refresh<Settings::Gui::IconTheme>();
 }
 
@@ -946,7 +981,7 @@ void GuiApplicationPrivate::showNeedReloadMessage() const
         button->setText(GuiApplication::tr("Reload Now"));
     }
     QPushButton* okButton = message.addButton(GuiApplication::tr("OK"), QMessageBox::ActionRole);
-    okButton->setIcon(Utils::iconFromTheme(Constants::Icons::Stop));
+    okButton->setIcon(Gui::iconFromTheme(Constants::Icons::Stop));
     message.setDefaultButton(QMessageBox::Ok);
 
     message.exec();
@@ -1048,7 +1083,7 @@ void GuiApplicationPrivate::showMessage(const QString& title, const Track& track
         button->setText(GuiApplication::tr("Continue"));
     }
     QPushButton* stopButton = message.addButton(GuiApplication::tr("Stop"), QMessageBox::ActionRole);
-    stopButton->setIcon(Utils::iconFromTheme(Constants::Icons::Stop));
+    stopButton->setIcon(Gui::iconFromTheme(Constants::Icons::Stop));
     message.setDefaultButton(QMessageBox::Ok);
 
     auto* alwaysSkip = new QCheckBox(GuiApplication::tr("Always continue playing if a track is unavailable"), &message);
@@ -1254,7 +1289,7 @@ void GuiApplicationPrivate::saveAllPlaylist() const
 }
 
 GuiApplication::GuiApplication(Application* core)
-    : p{std::make_unique<GuiApplicationPrivate>(this, core)}
+    : p{createGuiApplicationPrivate(this, core)}
 {
     QObject::connect(p->m_settings->settingsDialog(), &SettingsDialogController::opening, this, [this]() {
         const bool isLayoutEditing = p->m_settings->value<Settings::Gui::LayoutEditing>();
@@ -1272,6 +1307,17 @@ bool GuiApplication::eventFilter(QObject* watched, QEvent* event)
     if(watched == qApp) {
         switch(event->type()) {
             case QEvent::ApplicationPaletteChange:
+            case QEvent::ThemeChange:
+                p->refreshAutoDetectedIconTheme();
+                break;
+            default:
+                break;
+        }
+    }
+    else if(watched == p->m_mainWindow.get()) {
+        switch(event->type()) {
+            case QEvent::PaletteChange:
+            case QEvent::StyleChange:
             case QEvent::ThemeChange:
                 p->refreshAutoDetectedIconTheme();
                 break;

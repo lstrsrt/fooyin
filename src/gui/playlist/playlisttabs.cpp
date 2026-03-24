@@ -26,6 +26,7 @@
 #include <core/player/playercontroller.h>
 #include <core/playlist/playlisthandler.h>
 #include <gui/guiconstants.h>
+#include <gui/iconloader.h>
 #include <gui/trackselectioncontroller.h>
 #include <gui/widgetprovider.h>
 #include <gui/widgets/editabletabbar.h>
@@ -69,8 +70,8 @@ PlaylistTabs::PlaylistTabs(ActionManager* actionManager, WidgetProvider* widgetP
     , m_buttonsWidget{nullptr}
     , m_buttonsLayout{nullptr}
     , m_currentHoverIndex{-1}
-    , m_playIcon{Utils::iconFromTheme(Constants::Icons::Play)}
-    , m_pauseIcon{Utils::iconFromTheme(Constants::Icons::Pause)}
+    , m_playIcon{Gui::iconFromTheme(Constants::Icons::Play)}
+    , m_pauseIcon{Gui::iconFromTheme(Constants::Icons::Pause)}
 {
     QObject::setObjectName(PlaylistTabs::name());
 
@@ -553,7 +554,7 @@ void PlaylistTabs::setupButtons()
     if(hasAddButton) {
         auto* addButton = new ToolButton(this);
         addButton->setToolTip(tr("Add playlist"));
-        addButton->setIcon(Utils::iconFromTheme(Constants::Icons::Add));
+        addButton->setIcon(Gui::iconFromTheme(Constants::Icons::Add));
         addButton->setAutoRaise(true);
         QObject::connect(addButton, &ToolButton::pressed, this, [this]() { createEmptyPlaylist(); });
         m_buttonsLayout->addWidget(addButton);
@@ -561,7 +562,7 @@ void PlaylistTabs::setupButtons()
     if(hasClearButton) {
         auto* clearButton = new ToolButton(this);
         clearButton->setToolTip(tr("Clear playlist"));
-        clearButton->setIcon(Utils::iconFromTheme(Constants::Icons::Clear));
+        clearButton->setIcon(Gui::iconFromTheme(Constants::Icons::Clear));
         clearButton->setAutoRaise(true);
         QObject::connect(clearButton, &ToolButton::pressed, this, [this]() { clearCurrentPlaylist(); });
         m_buttonsLayout->addWidget(clearButton);

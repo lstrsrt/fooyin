@@ -22,6 +22,7 @@
 #include <core/player/playercontroller.h>
 #include <gui/guiconstants.h>
 #include <gui/guisettings.h>
+#include <gui/iconloader.h>
 #include <gui/widgets/toolbutton.h>
 #include <utils/actions/actionmanager.h>
 #include <utils/actions/command.h>
@@ -107,9 +108,9 @@ void PlayerControl::updateButtonStyle() const
 
 void PlayerControl::updateIcons() const
 {
-    m_stop->setIcon(Utils::iconFromTheme(Constants::Icons::Stop));
-    m_prev->setIcon(Utils::iconFromTheme(Constants::Icons::Prev));
-    m_next->setIcon(Utils::iconFromTheme(Constants::Icons::Next));
+    m_stop->setIcon(Gui::iconFromTheme(Constants::Icons::Stop));
+    m_prev->setIcon(Gui::iconFromTheme(Constants::Icons::Prev));
+    m_next->setIcon(Gui::iconFromTheme(Constants::Icons::Next));
     stateChanged(m_playerController->playState());
 }
 
@@ -117,13 +118,13 @@ void PlayerControl::stateChanged(Player::PlayState state) const
 {
     switch(state) {
         case(Player::PlayState::Stopped):
-            m_playPause->setIcon(Utils::iconFromTheme(Constants::Icons::Play));
+            m_playPause->setIcon(Gui::iconFromTheme(Constants::Icons::Play));
             break;
         case(Player::PlayState::Playing):
-            m_playPause->setIcon(Utils::iconFromTheme(Constants::Icons::Pause));
+            m_playPause->setIcon(Gui::iconFromTheme(Constants::Icons::Pause));
             break;
         case(Player::PlayState::Paused):
-            m_playPause->setIcon(Utils::iconFromTheme(Constants::Icons::Play));
+            m_playPause->setIcon(Gui::iconFromTheme(Constants::Icons::Play));
             break;
     }
 }

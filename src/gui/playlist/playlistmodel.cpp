@@ -35,6 +35,7 @@
 #include <gui/guiconstants.h>
 #include <gui/guisettings.h>
 #include <gui/guiutils.h>
+#include <gui/iconloader.h>
 #include <gui/widgets/autoheaderview.h>
 #include <utils/datastream.h>
 #include <utils/modelutils.h>
@@ -1669,21 +1670,21 @@ QVariant PlaylistModel::trackData(PlaylistItem* item, const QModelIndex& index, 
         case Qt::DecorationRole: {
             if(singleColumnMode || m_columns.at(column).field.contains(QLatin1String(PlayingIcon))) {
                 if(!track.isEnabled()) {
-                    return Utils::pixmapFromTheme(Constants::Icons::Close);
+                    return Gui::pixmapFromTheme(Constants::Icons::Close);
                 }
 
                 if(isPlaying) {
                     switch(m_currentPlayState) {
                         case(Player::PlayState::Playing):
-                            return Utils::pixmapFromTheme(Constants::Icons::Play);
+                            return Gui::pixmapFromTheme(Constants::Icons::Play);
                         case(Player::PlayState::Paused):
-                            return Utils::pixmapFromTheme(Constants::Icons::Pause);
+                            return Gui::pixmapFromTheme(Constants::Icons::Pause);
                         case(Player::PlayState::Stopped):
                             break;
                     }
                 }
                 if(index == m_stopAtIndex) {
-                    return Utils::pixmapFromTheme(Constants::Icons::Stop);
+                    return Gui::pixmapFromTheme(Constants::Icons::Stop);
                 }
             }
             break;

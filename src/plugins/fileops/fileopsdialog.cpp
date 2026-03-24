@@ -23,6 +23,7 @@
 #include "fileopssettings.h"
 
 #include <gui/guiconstants.h>
+#include <gui/iconloader.h>
 #include <gui/widgets/scriptlineedit.h>
 #include <utils/settings/settingsmanager.h>
 #include <utils/utils.h>
@@ -135,7 +136,7 @@ void FileOpsDialogPrivate::setup()
 {
     auto* layout = new QGridLayout(m_self);
 
-    auto* browseAction = new QAction(Utils::iconFromTheme(Constants::Icons::Options), {}, m_self);
+    auto* browseAction = new QAction(Gui::iconFromTheme(Constants::Icons::Options), {}, m_self);
     QObject::connect(browseAction, &QAction::triggered, this, &FileOpsDialogPrivate::browseDestination);
     m_destination->addAction(browseAction, QLineEdit::TrailingPosition);
 

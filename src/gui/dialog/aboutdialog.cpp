@@ -21,6 +21,7 @@
 
 #include <core/constants.h>
 #include <gui/guiconstants.h>
+#include <gui/iconloader.h>
 #include <utils/utils.h>
 
 #include <QApplication>
@@ -93,7 +94,7 @@ AboutDialog::AboutDialog(QWidget* parent)
     QObject::connect(buttonBox, &QDialogButtonBox::accepted, this, &QDialog::accept);
 
     auto* logo = new QLabel(this);
-    logo->setPixmap(Utils::iconFromTheme(Constants::Icons::Fooyin).pixmap(IconSize));
+    logo->setPixmap(Gui::iconFromTheme(Constants::Icons::Fooyin).pixmap(IconSize));
 
     layout->addWidget(logo, 0, 0);
     layout->addWidget(aboutLabel, 0, 1);

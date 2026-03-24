@@ -37,6 +37,7 @@
 #include <core/track.h>
 #include <gui/guiconstants.h>
 #include <gui/guisettings.h>
+#include <gui/iconloader.h>
 #include <gui/trackselectioncontroller.h>
 #include <gui/widgets/autoheaderview.h>
 #include <utils/actions/actioncontainer.h>
@@ -233,7 +234,7 @@ PlaylistWidget::PlaylistWidget(ActionManager* actionManager, PlaylistInteractor*
     , m_header{new AutoHeaderView(Qt::Horizontal, this)}
     , m_playlistContext{new WidgetContext(this, Context{Id{Constants::Context::Playlist}.append(id())}, this)}
     , m_middleClickAction{static_cast<TrackAction>(m_settings->value<PlaylistMiddleClick>())}
-    , m_playAction{new QAction(Utils::iconFromTheme(Constants::Icons::Play), tr("&Play"), this)}
+    , m_playAction{new QAction(Gui::iconFromTheme(Constants::Icons::Play), tr("&Play"), this)}
     , m_host{std::make_unique<PlaylistWidgetHost>(this)}
 {
     const auto modeCaps = m_session->capabilities();

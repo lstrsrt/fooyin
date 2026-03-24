@@ -20,6 +20,7 @@
 #include "expressiontreemodel.h"
 
 #include <gui/guiconstants.h>
+#include <gui/iconloader.h>
 #include <gui/scripting/richtext.h>
 #include <gui/scripting/scriptformatterregistry.h>
 #include <utils/crypto.h>
@@ -70,11 +71,11 @@ bool ExpressionTreeItem::isFormatting() const
 
 ExpressionTreeModel::ExpressionTreeModel(QObject* parent)
     : TreeModel{parent}
-    , m_iconExpression{Utils::iconFromTheme(Constants::Icons::ScriptExpression)}
-    , m_iconLiteral{Utils::iconFromTheme(Constants::Icons::ScriptLiteral)}
-    , m_iconVariable{Utils::iconFromTheme(Constants::Icons::ScriptVariable)}
-    , m_iconFunction{Utils::iconFromTheme(Constants::Icons::ScriptFunction)}
-    , m_iconFormatting{Utils::iconFromTheme(Constants::Icons::ScriptFormatting)}
+    , m_iconExpression{Gui::iconFromTheme(Constants::Icons::ScriptExpression)}
+    , m_iconLiteral{Gui::iconFromTheme(Constants::Icons::ScriptLiteral)}
+    , m_iconVariable{Gui::iconFromTheme(Constants::Icons::ScriptVariable)}
+    , m_iconFunction{Gui::iconFromTheme(Constants::Icons::ScriptFunction)}
+    , m_iconFormatting{Gui::iconFromTheme(Constants::Icons::ScriptFormatting)}
 { }
 
 void ExpressionTreeModel::populate(const ExpressionList& expressions)

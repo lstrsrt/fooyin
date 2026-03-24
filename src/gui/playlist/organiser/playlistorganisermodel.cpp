@@ -22,6 +22,7 @@
 #include <core/player/playercontroller.h>
 #include <core/playlist/playlisthandler.h>
 #include <gui/guiconstants.h>
+#include <gui/iconloader.h>
 #include <utils/datastream.h>
 #include <utils/utils.h>
 
@@ -402,10 +403,10 @@ QVariant PlaylistOrganiserModel::data(const QModelIndex& index, int role) const
             if(currentIsActive) {
                 const auto state = m_playerController->playState();
                 if(state == Player::PlayState::Playing) {
-                    return Utils::pixmapFromTheme(Constants::Icons::Play);
+                    return Gui::pixmapFromTheme(Constants::Icons::Play);
                 }
                 if(state == Player::PlayState::Paused) {
-                    return Utils::pixmapFromTheme(Constants::Icons::Pause);
+                    return Gui::pixmapFromTheme(Constants::Icons::Pause);
                 }
             }
             break;

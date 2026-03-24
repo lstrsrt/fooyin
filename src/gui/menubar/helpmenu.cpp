@@ -22,6 +22,7 @@
 #include "dialog/aboutdialog.h"
 
 #include <gui/guiconstants.h>
+#include <gui/iconloader.h>
 #include <utils/actions/actioncontainer.h>
 #include <utils/actions/actionmanager.h>
 #include <utils/utils.h>
@@ -70,7 +71,7 @@ HelpMenu::HelpMenu(ActionManager* actionManager, QObject* parent)
     QObject::connect(faq, &QAction::triggered, this,
                      []() { QDesktopServices::openUrl(u"https://www.fooyin.org/faq"_s); });
 
-    auto* about = new QAction(Utils::iconFromTheme(Constants::Icons::Fooyin), tr("&About"), this);
+    auto* about = new QAction(Gui::iconFromTheme(Constants::Icons::Fooyin), tr("&About"), this);
     about->setStatusTip(tr("Open the about dialog"));
     QObject::connect(about, &QAction::triggered, this, showAboutDialog);
 

@@ -24,6 +24,7 @@
 #include <core/player/playercontroller.h>
 #include <gui/guiconstants.h>
 #include <gui/guisettings.h>
+#include <gui/iconloader.h>
 #include <gui/scripting/scriptcommandhandler.h>
 #include <gui/widgets/toolbutton.h>
 #include <utils/actions/actionmanager.h>
@@ -370,7 +371,7 @@ QIcon CommandButton::customIcon(const QString& iconPath) const
 QIcon CommandButton::fallbackIcon(const QString& commandId) const
 {
     const auto fallback = []() {
-        return Utils::iconFromTheme(Constants::Icons::Command);
+        return Gui::iconFromTheme(Constants::Icons::Command);
     };
 
     const auto resolved = ScriptCommandHandler::resolveCommand(commandId);

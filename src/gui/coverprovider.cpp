@@ -27,6 +27,7 @@
 #include <gui/guiconstants.h>
 #include <gui/guipaths.h>
 #include <gui/guisettings.h>
+#include <gui/iconloader.h>
 #include <utils/async.h>
 #include <utils/crypto.h>
 #include <utils/settings/settingsmanager.h>
@@ -403,7 +404,7 @@ QPixmap CoverProvider::CoverProviderPrivate::loadNoCover() const
         return *cover;
     }
 
-    const QIcon icon = Fooyin::Utils::iconFromTheme(Fooyin::Constants::Icons::NoCover);
+    const QIcon icon = Fooyin::Gui::iconFromTheme(Fooyin::Constants::Icons::NoCover);
     static constexpr QSize CoverSize{MaxSize, MaxSize};
 
     auto* cover    = new QPixmap(icon.pixmap(CoverSize, Utils::windowDpr()));

@@ -27,7 +27,6 @@
 class QAction;
 class QColor;
 class QHeaderView;
-class QIcon;
 class QImage;
 class QMainWindow;
 class QMenu;
@@ -71,8 +70,4 @@ FYUTILS_EXPORT void saveState(QWidget* widget, QSettings& settings, const QStrin
 FYUTILS_EXPORT void restoreState(QWidget* widget, const QSettings& settings, const QString& name = {});
 
 FYUTILS_EXPORT bool isDarkMode();
-FYUTILS_EXPORT QIcon iconFromTheme(const QString& icon);
-FYUTILS_EXPORT QIcon iconFromTheme(const char* icon);
-FYUTILS_EXPORT QPixmap pixmapFromTheme(const char* icon);
-FYUTILS_EXPORT QPixmap pixmapFromTheme(const char* icon, const QSize& size);
 } // namespace Fooyin::Utils

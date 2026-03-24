@@ -22,6 +22,7 @@
 #include "gui/scripting/scripteditor.h"
 
 #include <gui/guiconstants.h>
+#include <gui/iconloader.h>
 #include <utils/utils.h>
 
 #include <QAction>
@@ -42,7 +43,7 @@ ScriptLineEdit::ScriptLineEdit(const QString& script, const Track& track, QWidge
     : QLineEdit{script, parent}
 {
     auto* openEditor
-        = new QAction(Utils::iconFromTheme(Constants::Icons::ScriptEditor), tr("Open in script editor"), this);
+        = new QAction(Gui::iconFromTheme(Constants::Icons::ScriptEditor), tr("Open in script editor"), this);
     QObject::connect(openEditor, &QAction::triggered, this, [this, track]() {
         ScriptEditor::openEditor(
             text(),
@@ -66,7 +67,7 @@ ScriptTextEdit::ScriptTextEdit(const QString& script, QWidget* parent)
 
 ScriptTextEdit::ScriptTextEdit(const QString& script, const Track& track, QWidget* parent)
     : QPlainTextEdit{script, parent}
-    , m_openEditor{new QAction(Utils::iconFromTheme(Constants::Icons::ScriptEditor), tr("Open in script editor"), this)}
+    , m_openEditor{new QAction(Gui::iconFromTheme(Constants::Icons::ScriptEditor), tr("Open in script editor"), this)}
 {
     QObject::connect(m_openEditor, &QAction::triggered, this, [this, track]() {
         ScriptEditor::openEditor(

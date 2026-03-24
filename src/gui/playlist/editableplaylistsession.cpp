@@ -30,6 +30,7 @@
 #include <core/playlist/playlisthandler.h>
 #include <gui/guiconstants.h>
 #include <gui/guisettings.h>
+#include <gui/iconloader.h>
 #include <utils/actions/actioncontainer.h>
 #include <utils/actions/actionmanager.h>
 #include <utils/actions/command.h>
@@ -204,7 +205,7 @@ void EditablePlaylistSession::ensureActions(QWidget* parent)
     }
     if(!m_stopAfterAction) {
         m_stopAfterAction
-            = new QAction(Utils::iconFromTheme(Constants::Icons::Stop), PlaylistWidget::tr("&Stop after this"), parent);
+            = new QAction(Gui::iconFromTheme(Constants::Icons::Stop), PlaylistWidget::tr("&Stop after this"), parent);
     }
     if(!m_cutAction) {
         m_cutAction = new QAction(PlaylistWidget::tr("Cu&t"), parent);
@@ -220,7 +221,7 @@ void EditablePlaylistSession::ensureActions(QWidget* parent)
     }
     if(!m_removeTrackAction) {
         m_removeTrackAction
-            = new QAction(Utils::iconFromTheme(Constants::Icons::Remove), PlaylistWidget::tr("&Remove"), parent);
+            = new QAction(Gui::iconFromTheme(Constants::Icons::Remove), PlaylistWidget::tr("&Remove"), parent);
     }
     if(!m_removeDuplicatesAction) {
         m_removeDuplicatesAction = new QAction(PlaylistWidget::tr("Remove duplicates"), parent);
@@ -229,14 +230,14 @@ void EditablePlaylistSession::ensureActions(QWidget* parent)
         m_removeDeadTracksAction = new QAction(PlaylistWidget::tr("Remove dead tracks"), parent);
     }
     if(!m_addToQueueAction) {
-        m_addToQueueAction = new QAction(Utils::iconFromTheme(Constants::Icons::Add),
+        m_addToQueueAction = new QAction(Gui::iconFromTheme(Constants::Icons::Add),
                                          PlaylistWidget::tr("Add to playback &queue"), parent);
     }
     if(!m_queueNextAction) {
         m_queueNextAction = new QAction(PlaylistWidget::tr("&Queue to play next"), parent);
     }
     if(!m_removeFromQueueAction) {
-        m_removeFromQueueAction = new QAction(Utils::iconFromTheme(Constants::Icons::Remove),
+        m_removeFromQueueAction = new QAction(Gui::iconFromTheme(Constants::Icons::Remove),
                                               PlaylistWidget::tr("Remove from playback q&ueue"), parent);
     }
 }

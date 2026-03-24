@@ -20,6 +20,7 @@
 #include "systemtrayicon.h"
 
 #include <gui/guiconstants.h>
+#include <gui/iconloader.h>
 #include <utils/actions/actionmanager.h>
 #include <utils/actions/command.h>
 #include <utils/utils.h>
@@ -34,7 +35,7 @@ SystemTrayIcon::SystemTrayIcon(ActionManager* actionManager, QObject* parent)
     , m_actionManager{actionManager}
     , m_menu{std::make_unique<QMenu>()}
 {
-    setIcon(Utils::iconFromTheme(Constants::Icons::Fooyin).pixmap(IconSize));
+    setIcon(Gui::iconFromTheme(Constants::Icons::Fooyin).pixmap(IconSize));
 
     auto* stop      = actionManager->command(Constants::Actions::Stop)->action();
     auto* prev      = actionManager->command(Constants::Actions::Previous)->action();

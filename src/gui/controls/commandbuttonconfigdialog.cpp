@@ -22,6 +22,7 @@
 #include "scripting/scriptcommandhandler.h"
 
 #include <gui/guiconstants.h>
+#include <gui/iconloader.h>
 #include <gui/widgets/expandingcombobox.h>
 #include <utils/actions/actionmanager.h>
 #include <utils/actions/command.h>
@@ -78,8 +79,8 @@ CommandButtonConfigDialog::CommandButtonConfigDialog(CommandButton* button, Acti
     , m_buttonStyle{new QComboBox(this)}
     , m_iconPreview{new QPushButton(this)}
     , m_iconPath{new QLineEdit(this)}
-    , m_browseIconAction{new QAction(Utils::iconFromTheme(Constants::Icons::Options), {}, this)}
-    , m_clearIconAction{new QAction(Utils::iconFromTheme(Constants::Icons::Clear), {}, this)}
+    , m_browseIconAction{new QAction(Gui::iconFromTheme(Constants::Icons::Options), {}, this)}
+    , m_clearIconAction{new QAction(Gui::iconFromTheme(Constants::Icons::Clear), {}, this)}
 {
     m_command->setEditable(true);
     m_command->setInsertPolicy(QComboBox::NoInsert);
@@ -215,7 +216,7 @@ std::vector<CommandButtonConfigDialog::CommandOption> CommandButtonConfigDialog:
         const QString category = command->categories().join(u" / "_s);
 
         choices.emplace_back(CommandOption{
-            .icon        = action->icon().isNull() ? Utils::iconFromTheme(Constants::Icons::Command) : action->icon(),
+            .icon        = action->icon().isNull() ? Gui::iconFromTheme(Constants::Icons::Command) : action->icon(),
             .label       = commandLabel(category, description),
             .id          = command->id().name(),
             .category    = category,
@@ -235,7 +236,7 @@ std::vector<CommandButtonConfigDialog::CommandOption> CommandButtonConfigDialog:
         const QString description = tr(alias.description);
 
         choices.emplace_back(CommandOption{
-            .icon        = Utils::iconFromTheme(Constants::Icons::Command),
+            .icon        = Gui::iconFromTheme(Constants::Icons::Command),
             .label       = commandLabel(category, description),
             .id          = alias.alias.toString(),
             .category    = category,

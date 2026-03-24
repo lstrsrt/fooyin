@@ -26,6 +26,7 @@
 #include <core/internalcoresettings.h>
 #include <core/playlist/playlistloader.h>
 #include <gui/guiconstants.h>
+#include <gui/iconloader.h>
 #include <gui/trackselectioncontroller.h>
 #include <utils/settings/settingsmanager.h>
 #include <utils/utils.h>
@@ -168,7 +169,7 @@ PlaylistGeneralPageWidget::PlaylistGeneralPageWidget(const QStringList& playlist
 
     m_autoExporting->setToolTip(tr("Export and synchronise playlists in the specified format and location"));
 
-    auto* browseAction = new QAction(Utils::iconFromTheme(Constants::Icons::Options), {}, this);
+    auto* browseAction = new QAction(Gui::iconFromTheme(Constants::Icons::Options), {}, this);
     QObject::connect(browseAction, &QAction::triggered, this, &PlaylistGeneralPageWidget::browseExportPath);
     m_autoExportPath->addAction(browseAction, QLineEdit::TrailingPosition);
 

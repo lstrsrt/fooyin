@@ -20,6 +20,7 @@
 #include <gui/widgets/extendabletableview.h>
 
 #include <gui/guiconstants.h>
+#include <gui/iconloader.h>
 #include <utils/actions/actionmanager.h>
 #include <utils/actions/command.h>
 #include <utils/crypto.h>
@@ -142,8 +143,8 @@ ExtendableTableViewPrivate::ExtendableTableViewPrivate(ExtendableTableView* self
     , m_context{new WidgetContext(
           m_self, Context{Id{"Context.ExtendableTableView."}.append(Utils::generateUniqueHash())}, m_self)}
     , m_toolArea{new ExtendableToolArea(m_self)}
-    , m_add{new QAction(Utils::iconFromTheme(Constants::Icons::Add), ExtendableTableView::tr("Add"), m_self)}
-    , m_remove{new QAction(Utils::iconFromTheme(Constants::Icons::Remove), ExtendableTableView::tr("Remove"), m_self)}
+    , m_add{new QAction(Gui::iconFromTheme(Constants::Icons::Add), ExtendableTableView::tr("Add"), m_self)}
+    , m_remove{new QAction(Gui::iconFromTheme(Constants::Icons::Remove), ExtendableTableView::tr("Remove"), m_self)}
     , m_addCommand{m_actionManager->registerAction(m_add, Constants::Actions::New, m_context->context())}
     , m_removeCommand{m_actionManager->registerAction(m_remove, Constants::Actions::Remove, m_context->context())}
     , m_addButton{new QToolButton(m_self)}
@@ -183,7 +184,7 @@ void ExtendableTableViewPrivate::updateTools()
     if(m_tools & ExtendableTableView::Move) {
         if(!m_moveUp) {
             m_moveUp
-                = new QAction(Utils::iconFromTheme(Constants::Icons::Up), ExtendableTableView::tr("Move Up"), m_self);
+                = new QAction(Gui::iconFromTheme(Constants::Icons::Up), ExtendableTableView::tr("Move Up"), m_self);
             QObject::connect(m_moveUp, &QAction::triggered, m_self, [this]() { handleMoveUp(); });
 
             m_moveUpButton = new QToolButton(m_self);
@@ -191,8 +192,8 @@ void ExtendableTableViewPrivate::updateTools()
             m_toolArea->addTool(m_moveUpButton);
         }
         if(!m_moveDown) {
-            m_moveDown = new QAction(Utils::iconFromTheme(Constants::Icons::Down), ExtendableTableView::tr("Move Down"),
-                                     m_self);
+            m_moveDown
+                = new QAction(Gui::iconFromTheme(Constants::Icons::Down), ExtendableTableView::tr("Move Down"), m_self);
             QObject::connect(m_moveDown, &QAction::triggered, m_self, [this]() { handleMoveDown(); });
 
             m_moveDownButton = new QToolButton(m_self);

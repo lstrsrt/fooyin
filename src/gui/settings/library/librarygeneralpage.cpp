@@ -22,8 +22,9 @@
 #include "librarymodel.h"
 
 #include "core/internalcoresettings.h"
-#include "core/library/libraryinfo.h"
+#include <gui/iconloader.h>
 
+#include "core/library/libraryinfo.h"
 #include <core/coresettings.h>
 #include <core/library/musiclibrary.h>
 #include <gui/guiconstants.h>
@@ -85,7 +86,7 @@ void LibraryTableView::setupContextActions(QMenu* menu, const QPoint& pos)
     menu->addAction(rescan);
 
     if(isScanning) {
-        auto* cancel = new QAction(Utils::iconFromTheme(Constants::Icons::Close), tr("&Cancel scan"), menu);
+        auto* cancel = new QAction(Gui::iconFromTheme(Constants::Icons::Close), tr("&Cancel scan"), menu);
         QObject::connect(cancel, &QAction::triggered, this, [this, scanId]() { emit cancelLibraryScan(scanId); });
         menu->addSeparator();
         menu->addAction(cancel);

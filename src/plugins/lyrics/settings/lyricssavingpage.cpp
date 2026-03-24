@@ -24,6 +24,7 @@
 #include "lyricssettings.h"
 
 #include <gui/guiconstants.h>
+#include <gui/iconloader.h>
 #include <gui/widgets/scriptlineedit.h>
 #include <utils/settings/settingsmanager.h>
 #include <utils/utils.h>
@@ -151,7 +152,7 @@ LyricsSavingPageWidget::LyricsSavingPageWidget(SettingsManager* settings)
     layout->addWidget(formatGroup, row++, 0, 1, 2);
     layout->setRowStretch(layout->rowCount(), 1);
 
-    auto* browseAction = new QAction(Utils::iconFromTheme(::Fooyin::Constants::Icons::Options), {}, this);
+    auto* browseAction = new QAction(Gui::iconFromTheme(::Fooyin::Constants::Icons::Options), {}, this);
     QObject::connect(browseAction, &QAction::triggered, this, &LyricsSavingPageWidget::browseDestination);
     m_path->addAction(browseAction, QLineEdit::TrailingPosition);
 

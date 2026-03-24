@@ -23,6 +23,7 @@
 #include <core/player/playercontroller.h>
 #include <gui/guiconstants.h>
 #include <gui/guisettings.h>
+#include <gui/iconloader.h>
 #include <utils/actions/actioncontainer.h>
 #include <utils/actions/actionmanager.h>
 #include <utils/actions/command.h>
@@ -40,12 +41,12 @@ PlaybackMenu::PlaybackMenu(ActionManager* actionManager, PlayerController* playe
     , m_actionManager{actionManager}
     , m_playerController{playerController}
     , m_settings{settings}
-    , m_playIcon{Utils::iconFromTheme(Constants::Icons::Play)}
-    , m_pauseIcon{Utils::iconFromTheme(Constants::Icons::Pause)}
-    , m_stop{new QAction(Utils::iconFromTheme(Constants::Icons::Stop), tr("&Stop"), this)}
+    , m_playIcon{Gui::iconFromTheme(Constants::Icons::Play)}
+    , m_pauseIcon{Gui::iconFromTheme(Constants::Icons::Pause)}
+    , m_stop{new QAction(Gui::iconFromTheme(Constants::Icons::Stop), tr("&Stop"), this)}
     , m_playPause{new QAction(m_playIcon, tr("&Play"), this)}
-    , m_previous{new QAction(Utils::iconFromTheme(Constants::Icons::Prev), tr("P&revious"), this)}
-    , m_next{new QAction(Utils::iconFromTheme(Constants::Icons::Next), tr("&Next"), this)}
+    , m_previous{new QAction(Gui::iconFromTheme(Constants::Icons::Prev), tr("P&revious"), this)}
+    , m_next{new QAction(Gui::iconFromTheme(Constants::Icons::Next), tr("&Next"), this)}
     , m_defaultPlayback{new QAction(tr("&Default"), this)}
     , m_repeatTrack{new QAction(tr("Repeat &track"), this)}
     , m_repeatAlbum{new QAction(tr("Repeat &album"), this)}

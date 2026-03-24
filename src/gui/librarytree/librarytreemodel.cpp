@@ -27,6 +27,7 @@
 #include <gui/coverprovider.h>
 #include <gui/guiconstants.h>
 #include <gui/guiutils.h>
+#include <gui/iconloader.h>
 #include <gui/scripting/richtextutils.h>
 #include <gui/scripting/scriptformatter.h>
 #include <utils/datastream.h>
@@ -582,9 +583,9 @@ QVariant LibraryTreeModel::data(const QModelIndex& index, int role) const
             if(role == Qt::DecorationRole) {
                 switch(p->m_playingState) {
                     case(Player::PlayState::Playing):
-                        return Utils::pixmapFromTheme(Constants::Icons::Play);
+                        return Gui::pixmapFromTheme(Constants::Icons::Play);
                     case(Player::PlayState::Paused):
-                        return Utils::pixmapFromTheme(Constants::Icons::Pause);
+                        return Gui::pixmapFromTheme(Constants::Icons::Pause);
                     case(Player::PlayState::Stopped):
                         break;
                 }

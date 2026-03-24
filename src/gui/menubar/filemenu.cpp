@@ -20,8 +20,9 @@
 #include "filemenu.h"
 
 #include "core/application.h"
-#include "gui/guiconstants.h"
 
+#include <gui/guiconstants.h>
+#include <gui/iconloader.h>
 #include <utils/actions/actioncontainer.h>
 #include <utils/actions/actionmanager.h>
 #include <utils/actions/command.h>
@@ -99,7 +100,7 @@ FileMenu::FileMenu(ActionManager* actionManager, SettingsManager* settings, QObj
 
     fileMenu->addSeparator();
 
-    auto* quit = new QAction(Utils::iconFromTheme(Constants::Icons::Quit), tr("&Quit"), this);
+    auto* quit = new QAction(Gui::iconFromTheme(Constants::Icons::Quit), tr("&Quit"), this);
     quit->setStatusTip(tr("Quit fooyin"));
     auto* quitCommand = m_actionManager->registerAction(quit, Constants::Actions::Exit);
     quitCommand->setCategories(fileCategory);

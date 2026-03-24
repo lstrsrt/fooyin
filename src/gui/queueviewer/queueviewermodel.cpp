@@ -24,6 +24,7 @@
 #include <core/player/playbackqueue.h>
 #include <core/player/playercontroller.h>
 #include <gui/guiconstants.h>
+#include <gui/iconloader.h>
 #include <utils/modelutils.h>
 #include <utils/settings/settingsmanager.h>
 #include <utils/utils.h>
@@ -205,9 +206,9 @@ QVariant QueueViewerModel::data(const QModelIndex& index, int role) const
             if(isPlaying) {
                 switch(m_playerController->playState()) {
                     case(Player::PlayState::Playing):
-                        return Utils::pixmapFromTheme(Constants::Icons::Play);
+                        return Gui::pixmapFromTheme(Constants::Icons::Play);
                     case(Player::PlayState::Paused):
-                        return Utils::pixmapFromTheme(Constants::Icons::Pause);
+                        return Gui::pixmapFromTheme(Constants::Icons::Pause);
                     case(Player::PlayState::Stopped):
                         break;
                 }

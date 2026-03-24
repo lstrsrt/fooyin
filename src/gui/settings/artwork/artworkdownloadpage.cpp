@@ -24,6 +24,7 @@
 #include "internalguisettings.h"
 
 #include <gui/guiconstants.h>
+#include <gui/iconloader.h>
 #include <gui/widgets/scriptlineedit.h>
 #include <utils/settings/settingsmanager.h>
 #include <utils/utils.h>
@@ -147,7 +148,7 @@ ArtworkDownloadPageWidget::ArtworkDownloadPageWidget(SettingsManager* settings)
         typeLayout->addWidget(formatGroup, row++, 0);
         typeLayout->addWidget(locationGroup, row++, 0);
 
-        auto* browseAction = new QAction(Utils::iconFromTheme(::Fooyin::Constants::Icons::Options), {}, widget);
+        auto* browseAction = new QAction(Gui::iconFromTheme(::Fooyin::Constants::Icons::Options), {}, widget);
         QObject::connect(browseAction, &QAction::triggered, widget, [this, type]() { browseDestination(type); });
         controls.path->addAction(browseAction, QLineEdit::TrailingPosition);
 

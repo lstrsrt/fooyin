@@ -29,6 +29,7 @@
 #include <core/track.h>
 #include <gui/guiconstants.h>
 #include <gui/guisettings.h>
+#include <gui/iconloader.h>
 #include <gui/playlist/playlistcontroller.h>
 #include <gui/playlist/playlistuicontroller.h>
 #include <gui/scripting/scriptformatter.h>
@@ -133,11 +134,11 @@ StatusWidgetPrivate::StatusWidgetPrivate(StatusWidget* self, PlayerController* p
     auto* layout = new QHBoxLayout(m_self);
     layout->setContentsMargins(5, 0, 5, 0);
 
-    m_iconLabel->setPixmap(Utils::iconFromTheme(Constants::Icons::Fooyin).pixmap(IconSize));
+    m_iconLabel->setPixmap(Gui::iconFromTheme(Constants::Icons::Fooyin).pixmap(IconSize));
     m_iconLabel->setScaledContents(true);
     m_iconLabel->setMaximumSize(22, 22);
     m_scanCancelButton->setAutoRaise(true);
-    m_scanCancelButton->setIcon(Utils::iconFromTheme(Constants::Icons::Close));
+    m_scanCancelButton->setIcon(Gui::iconFromTheme(Constants::Icons::Close));
     m_scanCancelButton->setToolTip(tr("Cancel scan"));
     layout->addWidget(m_iconLabel, 0, Qt::AlignLeft);
     layout->addWidget(m_scanCancelButton, 0, Qt::AlignLeft);
@@ -176,8 +177,8 @@ void StatusWidgetPrivate::setupConnections()
     });
 
     m_settings->subscribe<Settings::Gui::IconTheme>(this, [this]() {
-        m_iconLabel->setPixmap(Utils::iconFromTheme(Constants::Icons::Fooyin).pixmap(IconSize));
-        m_scanCancelButton->setIcon(Utils::iconFromTheme(Constants::Icons::Close));
+        m_iconLabel->setPixmap(Gui::iconFromTheme(Constants::Icons::Fooyin).pixmap(IconSize));
+        m_scanCancelButton->setIcon(Gui::iconFromTheme(Constants::Icons::Close));
     });
     m_settings->subscribe<Settings::Gui::Internal::StatusShowIcon>(this, [this](bool) { updateActionVisibility(); });
     m_settings->subscribe<Settings::Gui::Internal::StatusShowSelection>(
