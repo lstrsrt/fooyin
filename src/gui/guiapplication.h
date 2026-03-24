@@ -71,6 +71,8 @@ public:
     [[nodiscard]] WidgetProvider* widgetProvider() const;
     [[nodiscard]] ThemeRegistry* themeRegistry() const;
 
+    bool eventFilter(QObject* watched, QEvent* event) override;
+
 private:
     std::unique_ptr<GuiApplicationPrivate> p;
 };

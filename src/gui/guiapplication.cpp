@@ -153,6 +153,7 @@ public:
     void setStyle() const;
     void setTheme() const;
     void setIconTheme() const;
+    void refreshAutoDetectedIconTheme() const;
     void registerLayouts();
 
     void checkTracksNeedUpdate() const;
@@ -267,6 +268,8 @@ GuiApplicationPrivate::GuiApplicationPrivate(GuiApplication* self_, Application*
 
 void GuiApplicationPrivate::initialise()
 {
+    qApp->installEventFilter(m_self);
+
     setupConnections();
     registerActions();
     setupScanMenu();
@@ -850,23 +853,38 @@ void GuiApplicationPrivate::setIconTheme() const
 {
     const auto iconTheme = static_cast<IconThemeOption>(m_settings->value<Settings::Gui::IconTheme>());
     switch(iconTheme) {
-        case(IconThemeOption::AutoDetect):
+        case IconThemeOption::AutoDetect:
             QIcon::setThemeName(Utils::isDarkMode() ? QString::fromLatin1(Constants::DarkIconTheme)
                                                     : QString::fromLatin1(Constants::LightIconTheme));
             break;
-        case(IconThemeOption::Light):
+        case IconThemeOption::Light:
             QIcon::setThemeName(QString::fromLatin1(Constants::LightIconTheme));
             break;
-        case(IconThemeOption::Dark):
+        case IconThemeOption::Dark:
             QIcon::setThemeName(QString::fromLatin1(Constants::DarkIconTheme));
             break;
-        case(IconThemeOption::System):
+        case IconThemeOption::System:
             QIcon::setThemeName(m_settings->value<Settings::Gui::Internal::SystemIconTheme>());
             QIcon::setFallbackThemeName(QString::fromLatin1(Constants::DarkIconTheme));
             return;
     }
 
     QIcon::setFallbackThemeName(m_settings->value<Settings::Gui::Internal::SystemIconTheme>());
+}
+
+void GuiApplicationPrivate::refreshAutoDetectedIconTheme() const
+{
+    if(static_cast<IconThemeOption>(m_settings->value<Settings::Gui::IconTheme>()) != IconThemeOption::AutoDetect) {
+        return;
+    }
+
+    const QString detectedTheme = Utils::isDarkMode() ? QString::fromLatin1(Constants::DarkIconTheme)
+                                                      : QString::fromLatin1(Constants::LightIconTheme);
+    if(detectedTheme == QIcon::themeName()) {
+        return;
+    }
+
+    m_settings->refresh<Settings::Gui::IconTheme>();
 }
 
 void GuiApplicationPrivate::registerLayouts()
@@ -1247,6 +1265,22 @@ GuiApplication::GuiApplication(Application* core)
             [this, isLayoutEditing]() { p->m_settings->set<Settings::Gui::LayoutEditing>(isLayoutEditing); },
             Qt::SingleShotConnection);
     });
+}
+
+bool GuiApplication::eventFilter(QObject* watched, QEvent* event)
+{
+    if(watched == qApp) {
+        switch(event->type()) {
+            case QEvent::ApplicationPaletteChange:
+            case QEvent::ThemeChange:
+                p->refreshAutoDetectedIconTheme();
+                break;
+            default:
+                break;
+        }
+    }
+
+    return QObject::eventFilter(watched, event);
 }
 
 void GuiApplication::startup()
