@@ -17,6 +17,7 @@
  *
  */
 
+#include <QAction>
 #include <QFile>
 #include <QIcon>
 #include <QPixmap>
@@ -25,7 +26,8 @@
 
 using namespace Qt::StringLiterals;
 
-constexpr auto DefaultIconSize = 20;
+constexpr auto DefaultIconSize       = 20;
+constexpr auto ThemeIconNameProperty = "_fy_themeIconName";
 
 namespace {
 struct IconThemeState
@@ -122,6 +124,26 @@ QIcon iconFromTheme(const QString& icon)
 QIcon iconFromTheme(const char* icon)
 {
     return iconFromTheme(QString::fromLatin1(icon));
+}
+
+void setThemeIcon(QAction* action, const QString& icon)
+{
+    if(!action) {
+        return;
+    }
+
+    action->setProperty(ThemeIconNameProperty, icon);
+    action->setIcon(iconFromTheme(icon));
+}
+
+void setThemeIcon(QAction* action, const char* icon)
+{
+    setThemeIcon(action, QString::fromLatin1(icon));
+}
+
+QString themeIconName(const QAction* action)
+{
+    return action ? action->property(ThemeIconNameProperty).toString() : QString{};
 }
 
 QPixmap pixmapFromTheme(const char* icon)

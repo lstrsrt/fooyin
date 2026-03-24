@@ -23,6 +23,7 @@
 
 class QIcon;
 class QPixmap;
+class QAction;
 class QSize;
 class QString;
 
@@ -40,6 +41,13 @@ FYGUI_EXPORT bool setThemeIconOverrides(const QString& primaryTheme, const QStri
 FYGUI_EXPORT QIcon iconFromTheme(const QString& icon);
 /*! Convenience overload for Latin-1 icon names. */
 FYGUI_EXPORT QIcon iconFromTheme(const char* icon);
+
+/*! Sets an action icon from the current theme and stores the icon name for future refreshes. */
+FYGUI_EXPORT void setThemeIcon(QAction* action, const QString& icon);
+/*! Convenience overload for Latin-1 icon names. */
+FYGUI_EXPORT void setThemeIcon(QAction* action, const char* icon);
+/*! Returns the stored theme icon name for an action, if any. */
+FYGUI_EXPORT QString themeIconName(const QAction* action);
 
 /*! Returns a cached pixmap using the default icon size. */
 FYGUI_EXPORT QPixmap pixmapFromTheme(const char* icon);
