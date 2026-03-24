@@ -51,11 +51,14 @@ QCoreApplication* ensureCoreApplication()
     }
 
     static int argc{1};
-    static char appName[] = "fooyin-playercontroller-test";
-    static char* argv[]   = {appName, nullptr};
-    static QCoreApplication app{argc, argv};
-    QCoreApplication::setApplicationName(QString::fromLatin1(appName));
-    return &app;
+    static char appName[]        = "fooyin-playercontroller-test";
+    static char* argv[]          = {appName, nullptr};
+    static QCoreApplication* app = []() {
+        auto* instance = new QCoreApplication(argc, argv);
+        QCoreApplication::setApplicationName(QString::fromLatin1(appName));
+        return instance;
+    }();
+    return app;
 }
 
 void registerControllerSettings(SettingsManager& settings)
