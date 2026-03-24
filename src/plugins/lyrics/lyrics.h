@@ -141,7 +141,6 @@ struct Lyrics
     static QFont defaultLineFont()
     {
         QFont font{defaultFont()};
-        font.setBold(true);
         font.setPointSize(font.pointSize() + 1);
         return font;
     }

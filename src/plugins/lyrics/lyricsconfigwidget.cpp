@@ -274,7 +274,7 @@ LyricsWidget::ConfigData LyricsConfigDialog::config() const
     applyColour(m_wordLineColour, m_wordLineColourBtn, Colours::Type::WordLineSynced);
     applyColour(m_wordColour, m_wordColourBtn, Colours::Type::WordSynced);
 
-    if(colours != Colours{}) {
+    if(!colours.isEmpty()) {
         config.colours = QVariant::fromValue(colours);
     }
 
@@ -303,17 +303,15 @@ void LyricsConfigDialog::setConfig(const LyricsWidget::ConfigData& config)
     m_rightMargin->setValue(config.margins.right());
     m_bottomMargin->setValue(config.margins.bottom());
 
-    const Colours defaultColours;
     const Colours currentColours = config.colours.isValid() && config.colours.canConvert<Colours>()
                                      ? config.colours.value<Colours>()
                                      : Colours{};
 
-    const auto loadColour
-        = [&defaultColours, &currentColours](QCheckBox* check, ColourButton* button, Colours::Type type) {
-              check->setChecked(currentColours.colour(type) != defaultColours.colour(type));
-              button->setColour(currentColours.colour(type));
-              button->setEnabled(check->isChecked());
-          };
+    const auto loadColour = [this, &currentColours](QCheckBox* check, ColourButton* button, Colours::Type type) {
+        check->setChecked(currentColours.hasOverride(type));
+        button->setColour(currentColours.colour(type, palette()));
+        button->setEnabled(check->isChecked());
+    };
 
     loadColour(m_bgColour, m_bgColourBtn, Colours::Type::Background);
     loadColour(m_lineColour, m_lineColourBtn, Colours::Type::LineUnsynced);

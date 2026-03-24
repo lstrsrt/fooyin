@@ -68,9 +68,24 @@ struct Colours
         return lyricsColours.value(type, defaultColour(type, palette));
     }
 
+    [[nodiscard]] bool hasOverride(Type type) const
+    {
+        return lyricsColours.contains(type);
+    }
+
+    [[nodiscard]] bool isEmpty() const
+    {
+        return lyricsColours.isEmpty();
+    }
+
     void setColour(Type type, const QColor& colour)
     {
-        lyricsColours[type] = colour;
+        if(colour.isValid()) {
+            lyricsColours[type] = colour;
+        }
+        else {
+            lyricsColours.remove(type);
+        }
     }
 
     bool operator==(const Colours& other) const

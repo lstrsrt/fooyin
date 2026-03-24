@@ -88,6 +88,7 @@ public:
     void applyConfig(const ConfigData& config);
 
 protected:
+    void changeEvent(QEvent* event) override;
     void timerEvent(QTimerEvent* event) override;
     void contextMenuEvent(QContextMenuEvent* event) override;
 

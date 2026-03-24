@@ -43,6 +43,7 @@
 #include <QComboBox>
 #include <QContextMenuEvent>
 #include <QDialog>
+#include <QEvent>
 #include <QFont>
 #include <QGridLayout>
 #include <QHBoxLayout>
@@ -186,12 +187,7 @@ LyricsWidget::LyricsWidget(PlayerController* playerController, EngineController*
         m_scrollTimer.start(ScrollTimeout, this);
     });
 
-    auto updateThemeDefaults = [this]() {
-        if(m_config.colours.isValid() && !m_config.lineFont.isEmpty() && !m_config.wordLineFont.isEmpty()
-           && !m_config.wordFont.isEmpty()) {
-            return;
-        }
-
+    const auto updateThemeDefaults = [this]() {
         applyConfig(m_config);
     };
     m_settings->subscribe<::Fooyin::Settings::Gui::Theme>(this, updateThemeDefaults);
@@ -498,17 +494,37 @@ void LyricsWidget::saveConfigToLayout(const ConfigData& config, QJsonObject& lay
     layout["RightMargin"_L1]    = config.margins.right();
     layout["BottomMargin"_L1]   = config.margins.bottom();
 
-    const bool customColours      = config.colours.isValid() && config.colours.canConvert<Colours>();
+    const bool customColours      = config.colours.isValid() && config.colours.canConvert<Colours>()
+                                 && !config.colours.value<Colours>().isEmpty();
     layout["UseCustomColours"_L1] = customColours;
+
+    const auto saveColour = [&layout](const Colours& colours, const QString& key, Colours::Type type) {
+        if(colours.hasOverride(type)) {
+            layout[key] = colours.lyricsColours.value(type).name(QColor::HexArgb);
+        }
+        else {
+            layout.remove(key);
+        }
+    };
+
     if(customColours) {
-        const Colours colours              = config.colours.value<Colours>();
-        layout["BackgroundColour"_L1]      = colours.colour(Colours::Type::Background).name(QColor::HexArgb);
-        layout["UnsyncedLineColour"_L1]    = colours.colour(Colours::Type::LineUnsynced).name(QColor::HexArgb);
-        layout["UnplayedLineColour"_L1]    = colours.colour(Colours::Type::LineUnplayed).name(QColor::HexArgb);
-        layout["PlayedLineColour"_L1]      = colours.colour(Colours::Type::LinePlayed).name(QColor::HexArgb);
-        layout["CurrentLineColour"_L1]     = colours.colour(Colours::Type::LineSynced).name(QColor::HexArgb);
-        layout["CurrentWordLineColour"_L1] = colours.colour(Colours::Type::WordLineSynced).name(QColor::HexArgb);
-        layout["CurrentWordColour"_L1]     = colours.colour(Colours::Type::WordSynced).name(QColor::HexArgb);
+        const Colours colours = config.colours.value<Colours>();
+        saveColour(colours, u"BackgroundColour"_s, Colours::Type::Background);
+        saveColour(colours, u"UnsyncedLineColour"_s, Colours::Type::LineUnsynced);
+        saveColour(colours, u"UnplayedLineColour"_s, Colours::Type::LineUnplayed);
+        saveColour(colours, u"PlayedLineColour"_s, Colours::Type::LinePlayed);
+        saveColour(colours, u"CurrentLineColour"_s, Colours::Type::LineSynced);
+        saveColour(colours, u"CurrentWordLineColour"_s, Colours::Type::WordLineSynced);
+        saveColour(colours, u"CurrentWordColour"_s, Colours::Type::WordSynced);
+    }
+    else {
+        layout.remove("BackgroundColour"_L1);
+        layout.remove("UnsyncedLineColour"_L1);
+        layout.remove("UnplayedLineColour"_L1);
+        layout.remove("PlayedLineColour"_L1);
+        layout.remove("CurrentLineColour"_L1);
+        layout.remove("CurrentWordLineColour"_L1);
+        layout.remove("CurrentWordColour"_L1);
     }
 
     layout["LineFont"_L1]     = config.lineFont;
@@ -524,6 +540,21 @@ void LyricsWidget::timerEvent(QTimerEvent* event)
         checkStartAutoScroll(m_lyricsView->verticalScrollBar()->value());
     }
     FyWidget::timerEvent(event);
+}
+
+void LyricsWidget::changeEvent(QEvent* event)
+{
+    FyWidget::changeEvent(event);
+
+    switch(event->type()) {
+        case QEvent::FontChange:
+        case QEvent::PaletteChange:
+        case QEvent::StyleChange:
+            applyConfig(m_config);
+            break;
+        default:
+            break;
+    }
 }
 
 void LyricsWidget::contextMenuEvent(QContextMenuEvent* event)
