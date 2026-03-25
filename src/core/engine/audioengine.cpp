@@ -1730,9 +1730,11 @@ void AudioEngine::tryAutoAdvanceCommit()
                     m_autoAdvanceState.drainPrepareRequested = false;
                 }
 
-                if(prepareNextTrackImmediate(target, aggressivePreparedPrefillMs())
-                   && armPreparedCrossfadeTransition(target, m_trackGeneration)
-                   && commitPreparedCrossfadeTransition(target)) {
+                const bool preparedImmediately = prepareNextTrackImmediate(target, aggressivePreparedPrefillMs());
+                const bool armedImmediately
+                    = preparedImmediately && armPreparedCrossfadeTransition(target, m_trackGeneration);
+
+                if(armedImmediately && commitPreparedCrossfadeTransition(target)) {
                     return;
                 }
 
@@ -3550,7 +3552,10 @@ bool AudioEngine::armPreparedCrossfadeTransition(const Engine::PlaybackItem& ite
         = relativeTrackPositionMs(currentStream->positionMs(), m_streamToTrackOriginMs, m_currentTrack.offset());
     const uint64_t remainingToBoundaryMs
         = (m_currentTrack.duration() > currentRelativePosMs) ? (m_currentTrack.duration() - currentRelativePosMs) : 0;
-    if(m_crossfadeSwitchPolicy == Engine::CrossfadeSwitchPolicy::Boundary && remainingToBoundaryMs > overlapWindowMs) {
+    const uint64_t boundarySwitchWindowMs = saturatingAdd(overlapWindowMs, transitionDelayMs);
+
+    if(m_crossfadeSwitchPolicy == Engine::CrossfadeSwitchPolicy::Boundary
+       && remainingToBoundaryMs > boundarySwitchWindowMs) {
         return false;
     }
 
