@@ -43,6 +43,9 @@ public:
     void setLabelsEnabled(bool enabled);
     void setElapsedTotal(bool enabled);
 
+protected:
+    void changeEvent(QEvent* event) override;
+
 signals:
     void elapsedClicked();
     void totalClicked();

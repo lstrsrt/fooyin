@@ -23,6 +23,7 @@
 #include <gui/widgets/clickablelabel.h>
 #include <utils/stringutils.h>
 
+#include <QEvent>
 #include <QFontMetrics>
 #include <QHBoxLayout>
 
@@ -35,6 +36,8 @@ public:
     SeekContainerPrivate(SeekContainer* self, PlayerController* playerController);
 
     void reset();
+    void updateLabelWidth(ClickableLabel* label) const;
+    void updateLabelWidths() const;
 
     void trackChanged(const Track& track);
     void stateChanged(Player::PlayState state);
@@ -70,6 +73,25 @@ void SeekContainerPrivate::reset()
 {
     m_max = 0;
     updateLabels(m_max);
+}
+
+void SeekContainerPrivate::updateLabelWidth(ClickableLabel* label) const
+{
+    if(!label) {
+        return;
+    }
+
+    const QFontMetrics fm{label->fontMetrics()};
+    const auto margins = label->contentsMargins();
+    const int width
+        = fm.horizontalAdvance(label->text()) + margins.left() + margins.right() + (2 * label->margin()) + 2;
+    label->setFixedWidth(width);
+}
+
+void SeekContainerPrivate::updateLabelWidths() const
+{
+    updateLabelWidth(m_elapsed);
+    updateLabelWidth(m_total);
 }
 
 void SeekContainerPrivate::trackChanged(const Track& track)
@@ -116,9 +138,7 @@ void SeekContainerPrivate::updateLabels(uint64_t time) const
     m_total->setText(total);
 
     if(elapsed.size() != prevElapsedSize || total.size() != prevTotalSize) {
-        const QFontMetrics fm{m_self->fontMetrics()};
-        m_total->setFixedWidth(fm.horizontalAdvance(total));
-        m_elapsed->setFixedWidth(fm.horizontalAdvance(elapsed));
+        updateLabelWidths();
     }
 }
 
@@ -166,5 +186,20 @@ void SeekContainer::setElapsedTotal(bool enabled)
 {
     p->m_elapsedTotal = enabled;
     p->updateLabels(p->m_playerController->currentPosition());
+}
+
+void SeekContainer::changeEvent(QEvent* event)
+{
+    QWidget::changeEvent(event);
+
+    switch(event->type()) {
+        case QEvent::FontChange:
+        case QEvent::StyleChange:
+        case QEvent::PaletteChange:
+            p->updateLabelWidths();
+            break;
+        default:
+            break;
+    }
 }
 } // namespace Fooyin
