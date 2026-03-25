@@ -226,7 +226,7 @@ FadingPageWidget::FadingPageWidget(SettingsManager* settings)
                                          static_cast<int>(Engine::CrossfadeSwitchPolicy::OverlapStart));
     m_crossfadeAutoSwitchPolicy->addItem(tr("Overlap midpoint"),
                                          static_cast<int>(Engine::CrossfadeSwitchPolicy::OverlapMidpoint));
-    m_crossfadeAutoSwitchPolicy->addItem(tr("Boundary"), static_cast<int>(Engine::CrossfadeSwitchPolicy::Boundary));
+    m_crossfadeAutoSwitchPolicy->addItem(tr("End of track"), static_cast<int>(Engine::CrossfadeSwitchPolicy::Boundary));
     m_crossfadeAutoSwitchPolicy->setToolTip(
         tr("Controls when the UI switches tracks during automatic crossfade transitions"));
 
