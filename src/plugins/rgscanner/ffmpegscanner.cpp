@@ -166,7 +166,7 @@ ReplayGainFilter initialiseRGFilter(const Fooyin::AudioFormat& format, bool isPl
 
     AVFilterInOut* inputs   = nullptr;
     const auto filterParams = QString{u"ebur128=peak=%1,anullsink"_s}.arg(truePeak ? "true"_L1 : "sample"_L1);
-    rc = avfilter_graph_parse_ptr(filterGraph, filterParams.toUtf8().constData(), &inputs, &outputs, nullptr);
+    rc = avfilter_graph_parse(filterGraph, filterParams.toUtf8().constData(), inputs, outputs, nullptr);
     if(rc < 0) {
         Fooyin::Utils::printError(rc);
         return {};
