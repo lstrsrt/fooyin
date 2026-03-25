@@ -208,7 +208,7 @@ void LyricsView::updateScrollSingleStep()
 {
     int singleStep = std::max(1, fontMetrics().height());
 
-    if(!model()) {
+    if(model()) {
         if(model()->rowCount({}) > 2) {
             const int firstRowHeight = sizeHintForIndex(model()->index(1, 0)).height();
             if(firstRowHeight > 0) {
