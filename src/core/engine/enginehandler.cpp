@@ -829,9 +829,9 @@ void EngineHandler::updateLiveDspSettings(const Engine::LiveDspSettingsUpdate& u
     dispatchCommand(&AudioEngine::updateLiveDspSettings, update);
 }
 
-void EngineHandler::restorePausedPosition(uint64_t positionMs) const
+void EngineHandler::restorePosition(uint64_t positionMs, bool pause) const
 {
-    dispatchCommand(&AudioEngine::restorePausedPosition, positionMs);
+    dispatchCommand(&AudioEngine::restorePosition, positionMs, pause);
 }
 
 Engine::NextTrackPrepareRequest EngineHandler::prepareNextTrackForPlayback(const Track& track)

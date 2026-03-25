@@ -430,7 +430,7 @@ void ApplicationPrivate::loadPlaybackState(uint64_t restoredPosition) const
     switch(state.value()) {
         case Player::PlayState::Paused:
             qCDebug(APP) << "Restoring paused state…";
-            m_engine.restorePausedPosition(restoredPosition);
+            m_engine.restorePosition(restoredPosition, true);
             break;
         case Player::PlayState::Playing:
             qCDebug(APP) << "Restoring playing state…";
@@ -438,7 +438,7 @@ void ApplicationPrivate::loadPlaybackState(uint64_t restoredPosition) const
                 m_playerController,
                 [this, restoredPosition]() {
                     if(restoredPosition > 0) {
-                        m_engine.restorePausedPosition(restoredPosition);
+                        m_engine.restorePosition(restoredPosition, false);
                     }
                     m_playerController->play();
                 },

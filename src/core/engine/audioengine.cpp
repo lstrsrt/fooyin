@@ -4109,7 +4109,7 @@ void AudioEngine::stopImmediate()
     emit finished();
 }
 
-void AudioEngine::restorePausedPosition(uint64_t positionMs)
+void AudioEngine::restorePosition(uint64_t positionMs, bool pause)
 {
     clearPendingAudiblePause();
 
@@ -4134,7 +4134,10 @@ void AudioEngine::restorePausedPosition(uint64_t positionMs)
     m_pipeline.pause();
     clearPendingAnalysisData();
     m_audioClock.stop();
-    updatePlaybackState(Engine::PlaybackState::Paused);
+
+    if(pause) {
+        updatePlaybackState(Engine::PlaybackState::Paused);
+    }
 }
 
 void AudioEngine::seek(uint64_t positionMs)
