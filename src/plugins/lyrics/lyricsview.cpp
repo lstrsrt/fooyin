@@ -34,6 +34,7 @@ using namespace Qt::StringLiterals;
 namespace Fooyin::Lyrics {
 LyricsView::LyricsView(QWidget* parent)
     : QListView{parent}
+    , m_displayAlignment{Qt::AlignCenter}
     , m_leftButtonDown{false}
     , m_dragSeeking{false}
     , m_suppressContextMenu{false}
@@ -52,6 +53,24 @@ LyricsView::LyricsView(QWidget* parent)
     viewport()->setAutoFillBackground(true);
 
     updateScrollSingleStep();
+}
+
+void LyricsView::setDisplayAlignment(Qt::Alignment alignment)
+{
+    if(std::exchange(m_displayAlignment, alignment) == alignment) {
+        return;
+    }
+
+    viewport()->update();
+}
+
+void LyricsView::setDisplayMargins(const QMargins& margins)
+{
+    if(std::exchange(m_displayMargins, margins) == margins) {
+        return;
+    }
+
+    viewport()->update();
 }
 
 void LyricsView::setDisplayString(const QString& string)
@@ -80,9 +99,10 @@ void LyricsView::paintEvent(QPaintEvent* event)
 {
     if(!m_displayString.isEmpty()) {
         QPainter painter{viewport()};
-        QRect textRect = painter.fontMetrics().boundingRect(viewport()->rect(), Qt::AlignCenter, m_displayString);
-        textRect.moveCenter(viewport()->rect().center());
-        painter.drawText(textRect, Qt::AlignCenter, m_displayString);
+        const QRect textRect = viewport()->rect().adjusted(m_displayMargins.left(), m_displayMargins.top(),
+                                                           -m_displayMargins.right(), -m_displayMargins.bottom());
+        const auto alignment = (m_displayAlignment & Qt::AlignHorizontal_Mask) | Qt::AlignVCenter | Qt::TextWordWrap;
+        painter.drawText(textRect, alignment, m_displayString);
     }
     else {
         QListView::paintEvent(event);

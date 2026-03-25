@@ -20,6 +20,7 @@
 #pragma once
 
 #include <QListView>
+#include <QMargins>
 #include <QPersistentModelIndex>
 
 namespace Fooyin {
@@ -36,6 +37,8 @@ class LyricsView : public QListView
 public:
     explicit LyricsView(QWidget* parent = nullptr);
 
+    void setDisplayAlignment(Qt::Alignment alignment);
+    void setDisplayMargins(const QMargins& margins);
     void setDisplayString(const QString& string);
 
     [[nodiscard]] bool isDragSeeking() const;
@@ -66,6 +69,9 @@ private:
     void clearDragPreview();
 
     QString m_displayString;
+    Qt::Alignment m_displayAlignment;
+    QMargins m_displayMargins;
+
     QPoint m_pressPos;
     QPoint m_dragPos;
     QPersistentModelIndex m_dragIndex;
