@@ -1038,7 +1038,7 @@ void PlaylistModel::stopAfterTrack(const QModelIndex& index)
         m_stopAtTrack.indexInPlaylist = m_stopAtIndex.data(PlaylistItem::Index).toInt();
         if(m_currentPlaylist) {
             m_stopAtTrack.playlistId = m_currentPlaylist->id();
-            m_stopAtTrack.track      = m_currentPlaylist->track(m_stopAtTrack.indexInPlaylist).value_or({});
+            m_stopAtTrack.track      = m_currentPlaylist->track(m_stopAtTrack.indexInPlaylist).value_or(Track{});
         }
     }
 
@@ -2647,7 +2647,7 @@ void PlaylistModel::syncStopAtTrackIndex()
     }
 
     auto prevTrack = m_stopAtTrack.track;
-    auto newTrack  = m_currentPlaylist->track(m_stopAtTrack.indexInPlaylist).value_or({});
+    auto newTrack  = m_currentPlaylist->track(m_stopAtTrack.indexInPlaylist).value_or(Track{});
     if(prevTrack.sameIdentityAs(newTrack)) {
         m_stopAtIndex = indexAtPlaylistIndex(m_stopAtTrack.indexInPlaylist, true);
     }
