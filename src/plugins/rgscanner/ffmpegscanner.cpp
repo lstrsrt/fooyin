@@ -220,16 +220,15 @@ ReplayGainResult handleTrack(FFmpegContext& context, bool inAlbum)
 {
     int rc{0};
     Fooyin::Frame frame;
-    auto* const filterCtx = context.trackFilter.filterContext;
 
     while((frame = context.decoder.readFrame()).isValid()) {
-        rc = av_buffersrc_add_frame_flags(filterCtx, frame.avFrame(), FrameFlags);
+        rc = av_buffersrc_add_frame_flags(context.trackFilter.filterContext, frame.avFrame(), FrameFlags);
         if(rc < 0) {
             Fooyin::Utils::printError(rc);
             break;
         }
         if(inAlbum) {
-            rc = av_buffersrc_add_frame_flags(filterCtx, frame.avFrame(), FrameFlags);
+            rc = av_buffersrc_add_frame_flags(context.albumFilter.filterContext, frame.avFrame(), FrameFlags);
             if(rc < 0) {
                 Fooyin::Utils::printError(rc);
                 break;
@@ -237,7 +236,7 @@ ReplayGainResult handleTrack(FFmpegContext& context, bool inAlbum)
         }
     }
 
-    if(!finishFilter(filterCtx)) {
+    if(!finishFilter(context.trackFilter.filterContext)) {
         return {};
     }
 
