@@ -75,6 +75,7 @@ enum ScriptReferenceRole : int
 {
     InsertTextRole = Qt::UserRole + 1,
     CursorOffsetRole,
+    KindRole,
 };
 
 class ScriptReferenceFilterModel : public QSortFilterProxyModel
@@ -139,9 +140,22 @@ public:
                          &ScriptEditorTextEdit::insertCompletion);
     }
 
-    void insertSnippet(const QString& insertText, int cursorOffset = 0)
+    void insertSnippet(const QString& insertText, int cursorOffset = 0,
+                       ScriptReferenceKind kind = ScriptReferenceKind::Variable)
     {
         QTextCursor cursor{textCursor()};
+
+        if(kind == ScriptReferenceKind::Formatting && cursor.hasSelection() && cursorOffset > 0) {
+            const int splitPosition = insertText.size() - cursorOffset;
+            const QString prefix    = insertText.left(splitPosition);
+            const QString suffix    = insertText.mid(splitPosition);
+            const QString selected  = cursor.selectedText();
+
+            cursor.insertText(prefix + selected + suffix);
+            setTextCursor(cursor);
+            return;
+        }
+
         cursor.insertText(insertText);
         setTextCursor(cursor);
 
@@ -245,6 +259,7 @@ private:
             auto* item = new QStandardItem(entry.label);
             item->setData(entry.insertText, InsertTextRole);
             item->setData(entry.cursorOffset, CursorOffsetRole);
+            item->setData(static_cast<int>(entry.kind), KindRole);
             item->setToolTip(entry.description);
 
             switch(entry.kind) {
@@ -616,6 +631,7 @@ void ScriptEditorPrivate::setupReference()
             column->setEditable(false);
             column->setData(entry.insertText, InsertTextRole);
             column->setData(entry.cursorOffset, CursorOffsetRole);
+            column->setData(static_cast<int>(entry.kind), KindRole);
             column->setToolTip(entry.description);
         }
 
@@ -733,7 +749,8 @@ void ScriptEditorPrivate::referenceItemActivated(const QModelIndex& index)
         return;
     }
 
-    m_editor->insertSnippet(itemIndex.data(InsertTextRole).toString(), itemIndex.data(CursorOffsetRole).toInt());
+    m_editor->insertSnippet(itemIndex.data(InsertTextRole).toString(), itemIndex.data(CursorOffsetRole).toInt(),
+                            static_cast<ScriptReferenceKind>(itemIndex.data(KindRole).toInt()));
     m_editor->setFocus();
 }
 
