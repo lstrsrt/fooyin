@@ -54,12 +54,14 @@ protected:
     void mouseMoveEvent(QMouseEvent* event) override;
     void mouseReleaseEvent(QMouseEvent* event) override;
     void resizeEvent(QResizeEvent* event) override;
+    void updateGeometries() override;
     void wheelEvent(QWheelEvent* event) override;
 
 private:
     [[nodiscard]] QModelIndex seekableIndexAt(const QPoint& pos) const;
     [[nodiscard]] bool isSeekableIndex(const QModelIndex& index) const;
 
+    void updateScrollSingleStep();
     void updateDragPreview(const QPoint& pos);
     void clearDragPreview();
 

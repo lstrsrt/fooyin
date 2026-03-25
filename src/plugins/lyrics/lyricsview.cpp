@@ -26,6 +26,7 @@
 #include <QMouseEvent>
 #include <QPainter>
 #include <QPen>
+#include <QScrollBar>
 #include <QWheelEvent>
 
 using namespace Qt::StringLiterals;
@@ -49,6 +50,8 @@ LyricsView::LyricsView(QWidget* parent)
     setFlow(QListView::TopToBottom);
     setFrameShape(QFrame::NoFrame);
     viewport()->setAutoFillBackground(true);
+
+    updateScrollSingleStep();
 }
 
 void LyricsView::setDisplayString(const QString& string)
@@ -189,10 +192,35 @@ void LyricsView::resizeEvent(QResizeEvent* event)
     emit viewportResized();
 }
 
+void LyricsView::updateGeometries()
+{
+    QListView::updateGeometries();
+    updateScrollSingleStep();
+}
+
 void LyricsView::wheelEvent(QWheelEvent* event)
 {
     emit userScrolling();
     QListView::wheelEvent(event);
+}
+
+void LyricsView::updateScrollSingleStep()
+{
+    int singleStep = std::max(1, fontMetrics().height());
+
+    if(!model()) {
+        if(model()->rowCount({}) > 2) {
+            const int firstRowHeight = sizeHintForIndex(model()->index(1, 0)).height();
+            if(firstRowHeight > 0) {
+                singleStep = firstRowHeight;
+            }
+        }
+    }
+
+    // QAbstractItemView derives the scrollbar step from item sizes in ScrollPerPixel mode.
+    // The lyrics model's row 0 is synthetic padding for centering, so anchor manual scrolling
+    // to the first real lyrics row instead of the padding height
+    verticalScrollBar()->setSingleStep(singleStep);
 }
 
 QModelIndex LyricsView::seekableIndexAt(const QPoint& pos) const
