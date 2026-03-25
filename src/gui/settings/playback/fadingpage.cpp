@@ -90,7 +90,7 @@ FadingPageWidget::FadingPageWidget(SettingsManager* settings)
     , m_fadingPauseOut{new QSpinBox(this)}
     , m_fadingStopIn{new QSpinBox(this)}
     , m_fadingStopOut{new QSpinBox(this)}
-    , m_fadingBoundaryEnabled{new QCheckBox(tr("Boundary"), this)}
+    , m_fadingBoundaryEnabled{new QCheckBox(tr("Between tracks"), this)}
     , m_fadingBoundaryIn{new QSpinBox(this)}
     , m_fadingBoundaryOut{new QSpinBox(this)}
     , m_pauseFadeCurve{new QComboBox(this)}
@@ -174,8 +174,8 @@ FadingPageWidget::FadingPageWidget(SettingsManager* settings)
     }
 
     auto* fadingHelp = new QLabel(
-        tr("Pause, stop, and boundary fades without overlap. Boundary fades are used instead of auto track-change "
-           "crossfades."),
+        tr("Pause, stop, and between-tracks fades without overlap. Between-tracks fades are used instead of auto "
+           "track-change crossfades."),
         this);
     fadingHelp->setWordWrap(true);
 
@@ -231,8 +231,8 @@ FadingPageWidget::FadingPageWidget(SettingsManager* settings)
         tr("Controls when the UI switches tracks during automatic crossfade transitions"));
 
     auto* crossfadeHelp = new QLabel(
-        tr("Overlapping fades for seek and track changes. Auto track change uses overlap; use Boundary above for "
-           "non-overlapping fades."),
+        tr("Overlapping fades for seek and track changes. Auto track change uses overlap; use Between tracks above "
+           "for non-overlapping fades."),
         this);
     crossfadeHelp->setWordWrap(true);
 
