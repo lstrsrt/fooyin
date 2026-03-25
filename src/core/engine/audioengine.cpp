@@ -1609,10 +1609,16 @@ void AudioEngine::maybePrepareUpcomingTrackForDrainFill(const AudioStreamPtr& st
     logDrainFillPrepareDiagnostic(DrainFillPrepareDiagnosticReason::Enqueued, stream, aggressivePrefillMs);
 }
 
-void AudioEngine::noteReadyToSwitchAnchor()
+void AudioEngine::noteOverlapStartAnchor()
 {
-    m_autoAdvanceState.generation      = m_trackGeneration;
-    m_autoAdvanceState.readyAnchorSeen = true;
+    m_autoAdvanceState.generation             = m_trackGeneration;
+    m_autoAdvanceState.overlapStartAnchorSeen = true;
+}
+
+void AudioEngine::noteOverlapMidpointAnchor()
+{
+    m_autoAdvanceState.generation                = m_trackGeneration;
+    m_autoAdvanceState.overlapMidpointAnchorSeen = true;
 }
 
 void AudioEngine::noteBoundaryAnchor()
@@ -1701,45 +1707,46 @@ void AudioEngine::tryAutoAdvanceCommit()
 
     switch(effectiveAutoTransitionMode()) {
         case AutoTransitionMode::Crossfade: {
-            const bool shouldCommitAtReady = m_crossfadeSwitchPolicy != Engine::CrossfadeSwitchPolicy::Boundary;
-            const bool readyAnchorSeen     = m_autoAdvanceState.readyAnchorSeen;
-            const bool boundarySeen        = m_autoAdvanceState.boundaryAnchorSeen;
+            const bool overlapStartAnchorSeen    = m_autoAdvanceState.overlapStartAnchorSeen;
+            const bool overlapMidpointAnchorSeen = m_autoAdvanceState.overlapMidpointAnchorSeen;
+            const bool boundarySeen              = m_autoAdvanceState.boundaryAnchorSeen;
 
-            if(!boundarySeen && !readyAnchorSeen) {
+            if(!boundarySeen && !overlapStartAnchorSeen && !overlapMidpointAnchorSeen) {
                 return;
             }
 
             const bool armedPreparedCrossfade = armPreparedCrossfadeTransition(target, m_trackGeneration);
+            const bool commitAnchorSeen
+                = (m_crossfadeSwitchPolicy == Engine::CrossfadeSwitchPolicy::OverlapStart && overlapStartAnchorSeen)
+               || (m_crossfadeSwitchPolicy == Engine::CrossfadeSwitchPolicy::OverlapMidpoint
+                   && overlapMidpointAnchorSeen);
 
-            if(shouldCommitAtReady && readyAnchorSeen) {
-                if(armedPreparedCrossfade && commitPreparedCrossfadeTransition(target)) {
-                    return;
-                }
-            }
-            else if(armedPreparedCrossfade && !boundarySeen) {
+            if(commitAnchorSeen && armedPreparedCrossfade && commitPreparedCrossfadeTransition(target)) {
                 return;
             }
 
-            if(boundarySeen) {
-                if(armedPreparedCrossfade && commitPreparedCrossfadeTransition(target)) {
-                    return;
-                }
-
-                if(waitingForDrainPrepare) {
-                    cancelPendingPrepareJobs();
-                    m_autoAdvanceState.drainPrepareRequested = false;
-                }
-
-                const bool preparedImmediately = prepareNextTrackImmediate(target, aggressivePreparedPrefillMs());
-                const bool armedImmediately
-                    = preparedImmediately && armPreparedCrossfadeTransition(target, m_trackGeneration);
-
-                if(armedImmediately && commitPreparedCrossfadeTransition(target)) {
-                    return;
-                }
-
-                loadTrack(target, false);
+            if(!boundarySeen) {
+                return;
             }
+
+            if(armedPreparedCrossfade && commitPreparedCrossfadeTransition(target)) {
+                return;
+            }
+
+            if(waitingForDrainPrepare) {
+                cancelPendingPrepareJobs();
+                m_autoAdvanceState.drainPrepareRequested = false;
+            }
+
+            const bool preparedImmediately = prepareNextTrackImmediate(target, aggressivePreparedPrefillMs());
+            const bool armedImmediately
+                = preparedImmediately && armPreparedCrossfadeTransition(target, m_trackGeneration);
+
+            if(armedImmediately && commitPreparedCrossfadeTransition(target)) {
+                return;
+            }
+
+            loadTrack(target, false);
             return;
         }
         case AutoTransitionMode::Gapless:
@@ -1787,12 +1794,11 @@ void AudioEngine::handleTrackEndingSignals(const AudioStreamPtr& stream, uint64_
     maybeLogDrainFillPrepareGate(stream, result);
     maybePrepareUpcomingTrackForDrainFill(stream);
 
+    const bool crossfadeUsesAudibleTimeline = transitionMode == AutoTransitionMode::Crossfade
+                                           && m_crossfadeSwitchPolicy != Engine::CrossfadeSwitchPolicy::Boundary;
+
     if(result.aboutToFinish) {
-        const uint64_t crossfadeAnchorPosMs
-            = (transitionMode == AutoTransitionMode::Crossfade
-               && m_crossfadeSwitchPolicy == Engine::CrossfadeSwitchPolicy::OverlapStart)
-                ? publishedAudiblePosMs
-                : trackEndingPosMs;
+        const uint64_t crossfadeAnchorPosMs = crossfadeUsesAudibleTimeline ? publishedAudiblePosMs : trackEndingPosMs;
         maybeBeginAutoCrossfadeTailFadeOut(stream, crossfadeAnchorPosMs);
         maybeBeginAutoBoundaryFadeOut(trackEndingPosMs);
         emit trackAboutToFinish(m_currentTrack, m_trackGeneration);
@@ -1803,12 +1809,28 @@ void AudioEngine::handleTrackEndingSignals(const AudioStreamPtr& stream, uint64_
     }
 
     if(result.readyToSwitch && transitionMode == AutoTransitionMode::Crossfade) {
-        noteReadyToSwitchAnchor();
+        noteOverlapStartAnchor();
         tryAutoAdvanceCommit();
         emit trackReadyToSwitch(m_currentTrack, m_trackGeneration);
     }
 
-    if(effectiveAutoTransitionMode() == AutoTransitionMode::Crossfade && m_autoAdvanceState.readyAnchorSeen
+    const bool preparedCrossfadeMatchesCurrentTrack
+        = m_preparedCrossfadeTransition.active && m_preparedCrossfadeTransition.sourceGeneration == m_trackGeneration;
+
+    if(crossfadeUsesAudibleTimeline && m_crossfadeSwitchPolicy == Engine::CrossfadeSwitchPolicy::OverlapMidpoint
+       && m_autoAdvanceState.overlapStartAnchorSeen && !m_autoAdvanceState.overlapMidpointAnchorSeen
+       && preparedCrossfadeMatchesCurrentTrack) {
+        const uint64_t currentCrossfadePosMs{publishedAudiblePosMs};
+        const uint64_t remainingToBoundaryMs = (m_currentTrack.duration() > currentCrossfadePosMs)
+                                                 ? (m_currentTrack.duration() - currentCrossfadePosMs)
+                                                 : 0;
+        if(remainingToBoundaryMs <= m_preparedCrossfadeTransition.overlapMidpointLeadMs) {
+            noteOverlapMidpointAnchor();
+            tryAutoAdvanceCommit();
+        }
+    }
+
+    if(effectiveAutoTransitionMode() == AutoTransitionMode::Crossfade && m_autoAdvanceState.overlapStartAnchorSeen
        && !m_autoAdvanceState.boundaryAnchorSeen && !m_preparedCrossfadeTransition.active) {
         tryAutoAdvanceCommit();
     }
@@ -1926,7 +1948,7 @@ void AudioEngine::handleTrackEndingSignals(const AudioStreamPtr& stream, uint64_
         }
 
         tryAutoAdvanceCommit();
-        return !(m_trackGeneration != boundaryGeneration || !sameTrackIdentity(m_currentTrack, boundaryTrack));
+        return m_trackGeneration == boundaryGeneration && sameTrackIdentity(m_currentTrack, boundaryTrack);
     };
 
     if(boundaryReachedNow || (preparedCrossfadeArmed && boundaryFallbackReached)) {
@@ -2481,7 +2503,7 @@ AudioEngine::TrackEndingResult AudioEngine::checkTrackEnding(const AudioStreamPt
     PlaybackTransitionCoordinator::TrackEndingInput input;
     const auto configuredMode               = configuredTrackEndAutoTransitionMode();
     const bool crossfadeUsesAudibleBoundary = configuredMode == AutoTransitionMode::Crossfade
-                                           && m_crossfadeSwitchPolicy == Engine::CrossfadeSwitchPolicy::OverlapStart;
+                                           && m_crossfadeSwitchPolicy != Engine::CrossfadeSwitchPolicy::Boundary;
 
     input.positionMs                     = crossfadeUsesAudibleBoundary ? audiblePosMs : relativePosMs;
     input.durationMs                     = m_currentTrack.duration();
@@ -2843,14 +2865,15 @@ void AudioEngine::clearPreparedNextTrack()
 
 void AudioEngine::clearPreparedCrossfadeTransition()
 {
-    m_preparedCrossfadeTransition.active            = false;
-    m_preparedCrossfadeTransition.targetTrack       = {};
-    m_preparedCrossfadeTransition.targetItemId      = 0;
-    m_preparedCrossfadeTransition.sourceGeneration  = 0;
-    m_preparedCrossfadeTransition.streamId          = InvalidStreamId;
-    m_preparedCrossfadeTransition.boundaryLeadMs    = 0;
-    m_preparedCrossfadeTransition.bufferedAtArmMs   = 0;
-    m_preparedCrossfadeTransition.boundarySignalled = false;
+    m_preparedCrossfadeTransition.active                = false;
+    m_preparedCrossfadeTransition.targetTrack           = {};
+    m_preparedCrossfadeTransition.targetItemId          = 0;
+    m_preparedCrossfadeTransition.sourceGeneration      = 0;
+    m_preparedCrossfadeTransition.streamId              = InvalidStreamId;
+    m_preparedCrossfadeTransition.boundaryLeadMs        = 0;
+    m_preparedCrossfadeTransition.overlapMidpointLeadMs = 0;
+    m_preparedCrossfadeTransition.bufferedAtArmMs       = 0;
+    m_preparedCrossfadeTransition.boundarySignalled     = false;
 }
 
 void AudioEngine::clearPreparedGaplessTransition()
@@ -3588,14 +3611,15 @@ bool AudioEngine::armPreparedCrossfadeTransition(const Engine::PlaybackItem& ite
         m_decoder.ensureDecodeTimerRunning();
     }
 
-    m_preparedCrossfadeTransition.active            = true;
-    m_preparedCrossfadeTransition.targetTrack       = track;
-    m_preparedCrossfadeTransition.targetItemId      = item.itemId;
-    m_preparedCrossfadeTransition.sourceGeneration  = generation;
-    m_preparedCrossfadeTransition.streamId          = transitionResult.streamId;
-    m_preparedCrossfadeTransition.boundaryLeadMs    = remainingToBoundaryMs;
-    m_preparedCrossfadeTransition.bufferedAtArmMs   = preparedBufferedMs;
-    m_preparedCrossfadeTransition.boundarySignalled = false;
+    m_preparedCrossfadeTransition.active                = true;
+    m_preparedCrossfadeTransition.targetTrack           = track;
+    m_preparedCrossfadeTransition.targetItemId          = item.itemId;
+    m_preparedCrossfadeTransition.sourceGeneration      = generation;
+    m_preparedCrossfadeTransition.streamId              = transitionResult.streamId;
+    m_preparedCrossfadeTransition.boundaryLeadMs        = remainingToBoundaryMs;
+    m_preparedCrossfadeTransition.overlapMidpointLeadMs = overlapWindowMs / 2;
+    m_preparedCrossfadeTransition.bufferedAtArmMs       = preparedBufferedMs;
+    m_preparedCrossfadeTransition.boundarySignalled     = false;
     discardPreparedGaplessTransition(false);
 
     // If the current stream has already ended by the time we arm the prepared

@@ -473,6 +473,85 @@ struct EngineHarness
 class AudioEngineTestAccessor
 {
 public:
+    static bool prepareNextTrackImmediate(AudioEngine& engine, const Engine::PlaybackItem& item,
+                                          uint64_t prefillTargetMs)
+    {
+        return engine.prepareNextTrackImmediate(item, prefillTargetMs);
+    }
+
+    static void activatePreparedCrossfade(AudioEngine& engine, const Engine::PlaybackItem& item, uint64_t generation,
+                                          uint64_t boundaryLeadMs, uint64_t overlapMidpointLeadMs)
+    {
+        EXPECT_TRUE(engine.m_preparedNext.has_value());
+        ASSERT_TRUE(engine.m_preparedNext.has_value());
+        ASSERT_EQ(engine.m_preparedNext->item.itemId, item.itemId);
+        ASSERT_EQ(engine.m_preparedNext->item.track.filepath(), item.track.filepath());
+        ASSERT_TRUE(engine.m_preparedNext->preparedStream);
+
+        engine.m_preparedCrossfadeTransition.active                = true;
+        engine.m_preparedCrossfadeTransition.targetTrack           = item.track;
+        engine.m_preparedCrossfadeTransition.targetItemId          = item.itemId;
+        engine.m_preparedCrossfadeTransition.sourceGeneration      = generation;
+        engine.m_preparedCrossfadeTransition.streamId              = engine.m_preparedNext->preparedStream->id();
+        engine.m_preparedCrossfadeTransition.boundaryLeadMs        = boundaryLeadMs;
+        engine.m_preparedCrossfadeTransition.overlapMidpointLeadMs = overlapMidpointLeadMs;
+        engine.m_preparedCrossfadeTransition.bufferedAtArmMs
+            = engine.m_preparedNext->preparedStream->bufferedDurationMs();
+        engine.m_preparedCrossfadeTransition.boundarySignalled = false;
+    }
+
+    static void setUpcomingTrackCandidate(AudioEngine& engine, const Engine::PlaybackItem& item)
+    {
+        engine.m_upcomingTrackCandidate       = item.track;
+        engine.m_upcomingTrackCandidateItemId = item.itemId;
+    }
+
+    static void setCrossfadeConfig(AudioEngine& engine, bool enabled, const Engine::CrossfadingValues& values,
+                                   Engine::CrossfadeSwitchPolicy switchPolicy)
+    {
+        engine.m_crossfadeEnabled      = enabled;
+        engine.m_crossfadingValues     = values;
+        engine.m_crossfadeSwitchPolicy = switchPolicy;
+    }
+
+    static void setAutoAdvanceState(AudioEngine& engine, uint64_t generation, AutoTransitionMode mode,
+                                    bool overlapStartAnchorSeen, bool overlapMidpointAnchorSeen,
+                                    bool boundaryAnchorSeen)
+    {
+        engine.m_autoAdvanceState.generation                  = generation;
+        engine.m_autoAdvanceState.mode                        = mode;
+        engine.m_autoAdvanceState.overlapStartAnchorSeen      = overlapStartAnchorSeen;
+        engine.m_autoAdvanceState.overlapMidpointAnchorSeen   = overlapMidpointAnchorSeen;
+        engine.m_autoAdvanceState.boundaryAnchorSeen          = boundaryAnchorSeen;
+        engine.m_autoAdvanceState.boundaryPendingUntilAudible = false;
+        engine.m_autoAdvanceState.drainPrepareRequested       = false;
+    }
+
+    static void tryAutoAdvanceCommit(AudioEngine& engine)
+    {
+        engine.tryAutoAdvanceCommit();
+    }
+
+    static int currentTrackId(const AudioEngine& engine)
+    {
+        return engine.m_currentTrack.id();
+    }
+
+    static uint64_t currentTrackItemId(const AudioEngine& engine)
+    {
+        return engine.m_currentTrackItemId;
+    }
+
+    static uint64_t trackGeneration(const AudioEngine& engine)
+    {
+        return engine.m_trackGeneration;
+    }
+
+    static uint64_t overlapMidpointLeadMs(const AudioEngine& engine)
+    {
+        return engine.m_preparedCrossfadeTransition.overlapMidpointLeadMs;
+    }
+
     static void installPreparedCrossfade(AudioEngine& engine, const Engine::PlaybackItem& item, uint64_t generation,
                                          const AudioStreamPtr& preparedStream, const AudioFormat& format)
     {
@@ -488,8 +567,9 @@ public:
         engine.m_preparedCrossfadeTransition.sourceGeneration = generation;
         engine.m_preparedCrossfadeTransition.streamId         = preparedStream ? preparedStream->id() : InvalidStreamId;
         engine.m_preparedCrossfadeTransition.boundaryLeadMs   = 250;
-        engine.m_preparedCrossfadeTransition.bufferedAtArmMs  = 250;
-        engine.m_preparedCrossfadeTransition.boundarySignalled = false;
+        engine.m_preparedCrossfadeTransition.overlapMidpointLeadMs = 125;
+        engine.m_preparedCrossfadeTransition.bufferedAtArmMs       = 250;
+        engine.m_preparedCrossfadeTransition.boundarySignalled     = false;
     }
 
     static bool hasPreparedNext(const AudioEngine& engine)
@@ -862,6 +942,69 @@ TEST(AudioEngineTest, SeekInvalidatesArmedPreparedCrossfadeTransition)
     EXPECT_FALSE(AudioEngineTestAccessor::preparedCrossfadeActive(engine));
     EXPECT_FALSE(AudioEngineTestAccessor::hasPreparedNext(engine));
     EXPECT_FALSE(engine.commitPreparedCrossfadeTransition(nextItem));
+}
+
+TEST(AudioEngineTest, OverlapMidpointSwitchPolicyCommitsAfterIncomingAnchor)
+{
+    ensureCoreApplication();
+    EngineHarness harness{false};
+
+    Engine::CrossfadingValues crossfadingValues;
+    crossfadingValues.autoChange.in  = 400;
+    crossfadingValues.autoChange.out = 400;
+    harness.settings.set<Settings::Core::Internal::EngineCrossfading>(true);
+    harness.settings.set<Settings::Core::Internal::CrossfadingValues>(QVariant::fromValue(crossfadingValues));
+    harness.settings.set<Settings::Core::Internal::CrossfadeSwitchPolicy>(
+        static_cast<int>(Engine::CrossfadeSwitchPolicy::OverlapMidpoint));
+    AudioEngineTestAccessor::setCrossfadeConfig(harness.engine, true, crossfadingValues,
+                                                Engine::CrossfadeSwitchPolicy::OverlapMidpoint);
+
+    const Track currentTrack = harness.createTrack(u"overlap-midpoint-current.fyt"_s, 0, 120000);
+    const Track nextTrack    = harness.createTrack(u"overlap-midpoint-next.fyt"_s, 0, 120000);
+    const auto currentItem   = makePlaybackItem(currentTrack, 1);
+    const auto nextItem      = makePlaybackItem(nextTrack, 2);
+
+    harness.engine.loadTrack(currentItem, false);
+    ASSERT_TRUE(pumpUntil([&harness]() { return harness.engine.trackStatus() == Engine::TrackStatus::Loaded; }));
+
+    harness.engine.play();
+    ASSERT_TRUE(pumpUntil([&harness]() { return harness.engine.playbackState() == Engine::PlaybackState::Playing; }));
+    ASSERT_TRUE(pumpUntil([&harness]() { return harness.engine.position() > 0; }, 3000ms));
+
+    ASSERT_TRUE(AudioEngineTestAccessor::prepareNextTrackImmediate(harness.engine, nextItem, 0));
+    AudioEngineTestAccessor::setUpcomingTrackCandidate(harness.engine, nextItem);
+
+    const uint64_t initialGeneration = AudioEngineTestAccessor::trackGeneration(harness.engine);
+    std::vector<Engine::TrackCommitContext> commits;
+    const auto commitConn
+        = QObject::connect(&harness.engine, &AudioEngine::trackCommitted, &harness.engine,
+                           [&commits](const Engine::TrackCommitContext& context) { commits.push_back(context); });
+
+    AudioEngineTestAccessor::activatePreparedCrossfade(harness.engine, nextItem, initialGeneration, 250, 125);
+    ASSERT_TRUE(AudioEngineTestAccessor::preparedCrossfadeActive(harness.engine));
+    EXPECT_GT(AudioEngineTestAccessor::overlapMidpointLeadMs(harness.engine), 0);
+
+    AudioEngineTestAccessor::setAutoAdvanceState(harness.engine, initialGeneration, AutoTransitionMode::Crossfade, true,
+                                                 false, false);
+    AudioEngineTestAccessor::tryAutoAdvanceCommit(harness.engine);
+
+    EXPECT_TRUE(commits.empty());
+    EXPECT_EQ(AudioEngineTestAccessor::currentTrackId(harness.engine), currentTrack.id());
+    EXPECT_EQ(AudioEngineTestAccessor::currentTrackItemId(harness.engine), currentItem.itemId);
+
+    AudioEngineTestAccessor::setAutoAdvanceState(harness.engine, initialGeneration, AutoTransitionMode::Crossfade, true,
+                                                 true, false);
+    AudioEngineTestAccessor::tryAutoAdvanceCommit(harness.engine);
+
+    ASSERT_EQ(commits.size(), 1U);
+    EXPECT_EQ(commits.back().mode, Engine::TransitionMode::Crossfade);
+    EXPECT_EQ(commits.back().track.id(), nextTrack.id());
+    EXPECT_EQ(commits.back().itemId, nextItem.itemId);
+    EXPECT_EQ(AudioEngineTestAccessor::currentTrackId(harness.engine), nextTrack.id());
+    EXPECT_EQ(AudioEngineTestAccessor::currentTrackItemId(harness.engine), nextItem.itemId);
+    EXPECT_FALSE(AudioEngineTestAccessor::preparedCrossfadeActive(harness.engine));
+
+    QObject::disconnect(commitConn);
 }
 
 TEST(AudioEngineTest, SeekWithRequestFromStoppedLoadsTrackAndStartsPlayback)

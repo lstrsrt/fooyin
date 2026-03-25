@@ -253,7 +253,8 @@ private:
     void logDrainFillPrepareDiagnostic(DrainFillPrepareDiagnosticReason reason, const AudioStreamPtr& stream,
                                        uint64_t prefillTargetMs = 0);
     void maybePrepareUpcomingTrackForDrainFill(const AudioStreamPtr& stream);
-    void noteReadyToSwitchAnchor();
+    void noteOverlapStartAnchor();
+    void noteOverlapMidpointAnchor();
     void noteBoundaryAnchor();
     [[nodiscard]] Engine::TrackCommitContext makeTrackCommitContext(Engine::TransitionMode mode,
                                                                     uint64_t audibleDelayMs = 0) const;
@@ -364,6 +365,7 @@ private:
         uint64_t sourceGeneration{0};
         StreamId streamId{InvalidStreamId};
         uint64_t boundaryLeadMs{0};
+        uint64_t overlapMidpointLeadMs{0};
         uint64_t bufferedAtArmMs{0};
         bool boundarySignalled{false};
     };
@@ -431,7 +433,8 @@ private:
     {
         uint64_t generation{0};
         AutoTransitionMode mode{AutoTransitionMode::None};
-        bool readyAnchorSeen{false};
+        bool overlapStartAnchorSeen{false};
+        bool overlapMidpointAnchorSeen{false};
         bool boundaryAnchorSeen{false};
         bool boundaryPendingUntilAudible{false};
         bool drainPrepareRequested{false};

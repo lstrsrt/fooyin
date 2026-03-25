@@ -218,8 +218,9 @@ enum class DspChainScope : uint8_t
 //! UI track-switch anchor policy during crossfade overlap.
 enum class CrossfadeSwitchPolicy : uint8_t
 {
-    OverlapStart = 0,
-    Boundary,
+    OverlapStart = 0, //! Switch when the overlap begins
+    Boundary,         //! Switch after the outgoing track reaches its boundary
+    OverlapMidpoint,  //! Switch halfway through the overlap
 };
 
 //! Patch payload for live settings updates to a DSP instance.
