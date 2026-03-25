@@ -1,6 +1,7 @@
 /*
  * Fooyin
  * Copyright © 2024, Luke Taylor <LukeT1@proton.me>
+ * Copyright © 2024, Gustav Oechler <gustavoechler@gmail.com>
  *
  * Fooyin is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -59,17 +60,6 @@ constexpr auto FrameFlags   = AV_BUFFERSRC_FLAG_KEEP_REF | AV_BUFFERSRC_FLAG_NO_
 constexpr auto DecoderFlags = Fooyin::AudioDecoder::NoSeeking | Fooyin::AudioDecoder::NoLooping;
 
 namespace {
-struct FilterContextDeleter
-{
-    void operator()(AVFilterContext* filter) const
-    {
-        if(filter) {
-            avfilter_free(filter);
-        }
-    }
-};
-using FilterContextPtr = std::unique_ptr<AVFilterContext, FilterContextDeleter>;
-
 struct FilterGraphDeleter
 {
     void operator()(AVFilterGraph* graph) const
@@ -81,17 +71,6 @@ struct FilterGraphDeleter
 };
 using FilterGraphPtr = std::unique_ptr<AVFilterGraph, FilterGraphDeleter>;
 
-struct FilterInOutDeleter
-{
-    void operator()(AVFilterInOut* inout) const
-    {
-        if(inout) {
-            avfilter_inout_free(&inout);
-        }
-    }
-};
-using FilterInOutPtr = std::unique_ptr<AVFilterInOut, FilterInOutDeleter>;
-
 struct ReplayGainResult
 {
     double gain{Fooyin::Constants::InvalidGain};
@@ -101,7 +80,6 @@ struct ReplayGainResult
 struct ReplayGainFilter
 {
     AVFilterContext* filterContext{nullptr};
-    AVFilterInOut* filterOutput{nullptr};
     FilterGraphPtr filterGraph;
 };
 
@@ -114,12 +92,8 @@ struct FFmpegContext
     ~FFmpegContext()
     {
         decoder.stop();
-        if(trackFilter.filterContext) {
-            trackFilter.filterContext = nullptr;
-        }
-        if(albumFilter.filterContext) {
-            albumFilter.filterContext = nullptr;
-        }
+        trackFilter.filterContext = nullptr;
+        albumFilter.filterContext = nullptr;
     }
 
     Fooyin::AudioFormat format;
@@ -189,7 +163,6 @@ ReplayGainFilter initialiseRGFilter(const Fooyin::AudioFormat& format, bool isPl
     outputs->filter_ctx = filterCtx;
     outputs->pad_idx    = 0;
     outputs->next       = nullptr;
-    filter.filterOutput = outputs;
 
     AVFilterInOut* inputs   = nullptr;
     const auto filterParams = QString{u"ebur128=peak=%1,anullsink"_s}.arg(truePeak ? "true"_L1 : "sample"_L1);
@@ -247,14 +220,16 @@ ReplayGainResult handleTrack(FFmpegContext& context, bool inAlbum)
 {
     int rc{0};
     Fooyin::Frame frame;
+    auto* const filterCtx = context.trackFilter.filterContext;
+
     while((frame = context.decoder.readFrame()).isValid()) {
-        rc = av_buffersrc_add_frame_flags(context.trackFilter.filterContext, frame.avFrame(), FrameFlags);
+        rc = av_buffersrc_add_frame_flags(filterCtx, frame.avFrame(), FrameFlags);
         if(rc < 0) {
             Fooyin::Utils::printError(rc);
             break;
         }
         if(inAlbum) {
-            rc = av_buffersrc_add_frame_flags(context.albumFilter.filterContext, frame.avFrame(), FrameFlags);
+            rc = av_buffersrc_add_frame_flags(filterCtx, frame.avFrame(), FrameFlags);
             if(rc < 0) {
                 Fooyin::Utils::printError(rc);
                 break;
@@ -262,7 +237,7 @@ ReplayGainResult handleTrack(FFmpegContext& context, bool inAlbum)
         }
     }
 
-    if(!finishFilter(context.trackFilter.filterContext)) {
+    if(!finishFilter(filterCtx)) {
         return {};
     }
 
