@@ -139,6 +139,7 @@ void LyricsView::mousePressEvent(QMouseEvent* event)
     QListView::mousePressEvent(event);
 
     if(event->button() != Qt::LeftButton || !m_displayString.isEmpty()) {
+        event->ignore();
         return;
     }
 
