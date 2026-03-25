@@ -41,23 +41,30 @@ struct Colours
 
     QMap<Type, QColor> lyricsColours;
 
+    [[nodiscard]] static QColor dimmedTextColour(const QPalette& palette = QApplication::palette())
+    {
+        QColor colour = palette.color(QPalette::Active, QPalette::Text);
+        colour.setAlpha(std::max(1, colour.alpha() / 2));
+        return colour;
+    }
+
     [[nodiscard]] static QColor defaultColour(Type type, const QPalette& palette = QApplication::palette())
     {
         switch(type) {
             case Type::Background:
-                return palette.base().color();
+                return palette.color(QPalette::Active, QPalette::Base);
             case Type::LineUnplayed:
-                return palette.placeholderText().color();
+                return dimmedTextColour(palette);
             case Type::LinePlayed:
-                return palette.placeholderText().color();
+                return dimmedTextColour(palette);
             case Type::LineSynced:
-                return palette.text().color();
+                return palette.color(QPalette::Active, QPalette::Text);
             case Type::WordLineSynced:
-                return palette.text().color();
+                return palette.color(QPalette::Active, QPalette::Text);
             case Type::WordSynced:
-                return palette.highlight().color();
+                return palette.color(QPalette::Active, QPalette::Highlight);
             case Type::LineUnsynced:
-                return palette.text().color();
+                return palette.color(QPalette::Active, QPalette::Text);
             default:
                 return {};
         }
@@ -65,7 +72,8 @@ struct Colours
 
     [[nodiscard]] QColor colour(Type type, const QPalette& palette = QApplication::palette()) const
     {
-        return lyricsColours.value(type, defaultColour(type, palette));
+        const QColor override = lyricsColours.value(type);
+        return override.isValid() ? override : defaultColour(type, palette);
     }
 
     [[nodiscard]] bool hasOverride(Type type) const
