@@ -371,6 +371,35 @@ TEST(PlayerControllerTest, PreviousClearsStopAfterCurrentWhenResetEnabled)
     EXPECT_TRUE(controller.trackEndAutoTransitionsEnabled());
 }
 
+TEST(PlayerControllerTest, CommittingQueueTrackOnlyRemovesFirstDuplicateQueueEntry)
+{
+    SettingsManager settings{QDir::tempPath() + u"/fooyin_playercontroller_queue_duplicate_commit_test.ini"_s};
+    registerControllerSettings(settings);
+    PlayerController controller{&settings, nullptr};
+
+    const Track track = makeTrack(u"/tmp/queue-duplicate.flac"_s, 16, 1000);
+    const PlaylistTrack queuedTrack{.track = track, .playlistId = {}};
+
+    QueueTracks dequeuedTracks;
+    QObject::connect(&controller, &PlayerController::tracksDequeued, &controller,
+                     [&dequeuedTracks](const QueueTracks& tracks) {
+                         dequeuedTracks.insert(dequeuedTracks.end(), tracks.cbegin(), tracks.cend());
+                     });
+
+    controller.queueTracks({queuedTrack, queuedTrack});
+    controller.commitCurrentTrack(Player::TrackChangeRequest{
+        .track        = queuedTrack,
+        .context      = {.reason = Player::AdvanceReason::NaturalEnd, .userInitiated = false},
+        .isQueueTrack = true,
+        .itemId       = 102,
+    });
+
+    ASSERT_EQ(dequeuedTracks.size(), 1);
+    EXPECT_EQ(dequeuedTracks.front(), queuedTrack);
+    EXPECT_EQ(controller.queuedTracksCount(), 1);
+    EXPECT_EQ(controller.playbackQueue().track(0), queuedTrack);
+}
+
 TEST(PlayerControllerTest, StopAfterCurrentResetWaitsForEngineStoppedState)
 {
     SettingsManager settings{QDir::tempPath() + u"/fooyin_playercontroller_deferred_stop_current_reset_test.ini"_s};

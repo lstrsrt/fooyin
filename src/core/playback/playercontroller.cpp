@@ -817,9 +817,9 @@ void PlayerController::commitCurrentTrack(const Player::TrackChangeRequest& requ
     p->updateBitrate(0);
 
     if(result.isQueueTrack) {
-        const auto removedTracks = p->m_queue.removeTracks({requestWithId.track});
-        if(!removedTracks.empty()) {
-            emit tracksDequeued(removedTracks);
+        if(const auto removedTrack = p->m_queue.removeFirstMatchingTrack(requestWithId.track);
+           removedTrack.has_value()) {
+            emit tracksDequeued({*removedTrack});
         }
     }
 

@@ -24,6 +24,7 @@
 #include <core/playlist/playlist.h>
 
 #include <map>
+#include <optional>
 
 namespace Fooyin {
 // Queue positions for each playlist
@@ -51,6 +52,7 @@ public:
 
     void addTracks(const QueueTracks& tracks, int index = -1);
     void replaceTracks(const QueueTracks& tracks);
+    std::optional<PlaylistTrack> removeFirstMatchingTrack(const PlaylistTrack& track);
     QueueTracks removeTracks(const QueueTracks& tracks);
     QueueTracks removePlaylistTracks(const UId& playlistId);
 
