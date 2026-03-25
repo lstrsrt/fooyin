@@ -105,6 +105,7 @@ TrackList LibraryTrackResolver::readTracks(const QString& filepath)
         }
 
         if(loadedReader.reader->readTrack(source, subTrack)) {
+            subTrack.setMetadataWasRead(true);
             subTrack.generateHash();
             tracks.push_back(subTrack);
         }
@@ -489,6 +490,7 @@ TrackList LibraryTrackResolver::readArchiveTracks(const QString& filepath)
                 source.filepath = subTrack.filepath();
 
                 if(fileReader->readTrack(source, subTrack)) {
+                    subTrack.setMetadataWasRead(true);
                     subTrack.generateHash();
                     tracks.push_back(subTrack);
                     m_state->fileScanned(subTrack.prettyFilepath());
