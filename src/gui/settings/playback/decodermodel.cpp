@@ -29,6 +29,34 @@ using namespace Qt::StringLiterals;
 constexpr auto LoaderItems = "application/x-fooyin-loaderitems";
 
 namespace Fooyin {
+namespace {
+QString supportedExtensionsTooltip(const QStringList& extensions, const QString& title)
+{
+    static constexpr auto MaxLineLength = 120;
+
+    QStringList lines;
+    QString currentLine;
+
+    for(const QString& extension : extensions) {
+        const QString segment = currentLine.isEmpty() ? extension : u", %1"_s.arg(extension);
+
+        if(!currentLine.isEmpty() && currentLine.size() + segment.size() > MaxLineLength) {
+            lines.emplace_back(currentLine);
+            currentLine = extension;
+            continue;
+        }
+
+        currentLine += segment;
+    }
+
+    if(!currentLine.isEmpty()) {
+        lines.emplace_back(std::move(currentLine));
+    }
+
+    return lines.isEmpty() ? title : u"%1:\n%2"_s.arg(title, lines.join(u"\n"_s));
+}
+} // namespace
+
 DecoderModel::DecoderModel(QObject* parent)
     : QAbstractListModel{parent}
 { }
@@ -104,7 +132,7 @@ QVariant DecoderModel::data(const QModelIndex& index, int role) const
             case Qt::DisplayRole:
                 return loader.name;
             case Qt::ToolTipRole:
-                return u"%1: %2"_s.arg(tr("Supported extensions")).arg(loader.extensions.join(", "_L1));
+                return supportedExtensionsTooltip(loader.extensions, tr("Supported extensions"));
             case Qt::CheckStateRole:
                 return loader.enabled ? Qt::Checked : Qt::Unchecked;
             case HasSettings:
