@@ -383,10 +383,14 @@ void LyricsWidget::applyConfig(const ConfigData& config)
     m_config = validated;
 
     m_lyricsView->setVerticalScrollBarPolicy(m_config.showScrollbar ? Qt::ScrollBarAsNeeded : Qt::ScrollBarAlwaysOff);
+    m_lyricsView->setDisplayAlignment(static_cast<Qt::Alignment>(m_config.alignment));
+    m_lyricsView->setDisplayMargins(m_config.margins);
+
     m_model->setLineSpacing(m_config.lineSpacing);
     m_model->setAlignment(static_cast<Qt::Alignment>(m_config.alignment));
     m_model->setColours(m_config.colours.isValid() ? m_config.colours.value<Colours>() : Colours{});
     m_model->setFonts(m_config.lineFont, m_config.wordLineFont, m_config.wordFont);
+
     updateViewportPadding();
 
     updateScrollMode(static_cast<ScrollMode>(m_config.scrollMode));
