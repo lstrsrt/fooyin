@@ -83,9 +83,9 @@ QMargins clampedMargins(const QMargins& margins)
 int validatedAlignment(int alignment)
 {
     switch(alignment) {
-        case(Qt::AlignLeft):
-        case(Qt::AlignRight):
-        case(Qt::AlignCenter):
+        case Qt::AlignLeft:
+        case Qt::AlignRight:
+        case Qt::AlignCenter:
             return alignment;
         default:
             return static_cast<int>(Qt::AlignCenter);
@@ -104,11 +104,10 @@ QString validatedFontString(const QString& fontString)
 } // namespace
 
 namespace Fooyin::Lyrics {
-LyricsWidget::LyricsWidget(PlayerController* playerController, EngineController* engine, LyricsFinder* lyricsFinder,
-                           LyricsSaver* lyricsSaver, SettingsManager* settings, QWidget* parent)
+LyricsWidget::LyricsWidget(PlayerController* playerController, LyricsFinder* lyricsFinder, LyricsSaver* lyricsSaver,
+                           SettingsManager* settings, QWidget* parent)
     : FyWidget{parent}
     , m_playerController{playerController}
-    , m_engine{engine}
     , m_settings{settings}
     , m_lyricsView{new LyricsView(this)}
     , m_model{new LyricsModel(this)}
@@ -135,7 +134,7 @@ LyricsWidget::LyricsWidget(PlayerController* playerController, EngineController*
     m_config = defaultConfig();
     applyConfig(m_config);
 
-    QObject::connect(m_engine, &EngineController::engineStateChanged, this, &LyricsWidget::playStateChanged);
+    QObject::connect(m_playerController, &PlayerController::playStateChanged, this, &LyricsWidget::playStateChanged);
     QObject::connect(m_playerController, &PlayerController::currentTrackChanged, this,
                      [this](const Track& track) { updateLyrics(track, false); });
     QObject::connect(m_playerController, &PlayerController::currentTrackUpdated, this,
@@ -647,6 +646,11 @@ void LyricsWidget::contextMenuEvent(QContextMenuEvent* event)
     menu->popup(event->globalPos());
 }
 
+void LyricsWidget::openConfigDialog()
+{
+    showConfigDialog(new LyricsConfigDialog(this, this));
+}
+
 void LyricsWidget::loadLyrics(const Lyrics& lyrics)
 {
     const bool first = m_lyrics.empty();
@@ -711,12 +715,7 @@ void LyricsWidget::openEditor(const Lyrics& lyrics)
     dlg->restoreState();
 }
 
-void LyricsWidget::openConfigDialog()
-{
-    showConfigDialog(new LyricsConfigDialog(this, this));
-}
-
-void LyricsWidget::playStateChanged(Engine::PlaybackState state)
+void LyricsWidget::playStateChanged(Player::PlayState state)
 {
     const auto stopScrolling = [this]() {
         if(m_scrollMode == ScrollMode::Automatic && m_scrollAnim) {
@@ -725,15 +724,14 @@ void LyricsWidget::playStateChanged(Engine::PlaybackState state)
     };
 
     switch(state) {
-        case(Engine::PlaybackState::Paused):
+        case Player::PlayState::Paused:
             stopScrolling();
             break;
-        case(Engine::PlaybackState::Error):
-        case(Engine::PlaybackState::Stopped):
+        case Player::PlayState::Stopped:
             stopScrolling();
             scrollToCurrentLine(0);
             break;
-        case(Engine::PlaybackState::Playing):
+        case Player::PlayState::Playing:
             updateScrollMode(m_scrollMode);
             break;
     }

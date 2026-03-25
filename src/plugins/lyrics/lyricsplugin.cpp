@@ -41,7 +41,6 @@ namespace Fooyin::Lyrics {
 void LyricsPlugin::initialise(const CorePluginContext& context)
 {
     m_playerController = context.playerController;
-    m_engine           = context.engine;
     m_audioLoader      = context.audioLoader;
     m_networkAccess    = context.networkAccess;
     m_settings         = context.settingsManager;
@@ -67,7 +66,7 @@ void LyricsPlugin::initialise(const GuiPluginContext& context)
 
     m_widgetProvider->registerWidget(
         u"Lyrics"_s,
-        [this]() { return new LyricsWidget(m_playerController, m_engine, m_lyricsFinder, m_lyricsSaver, m_settings); },
+        [this]() { return new LyricsWidget(m_playerController, m_lyricsFinder, m_lyricsSaver, m_settings); },
         tr("Lyrics"));
     context.themeRegistry->registerFontEntry(tr("Lyrics"), u"Fooyin::Lyrics::LyricsArea"_s);
 

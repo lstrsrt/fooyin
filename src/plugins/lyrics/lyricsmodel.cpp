@@ -192,7 +192,7 @@ QVariant LyricsModel::data(const QModelIndex& index, int role) const
     if(role == IsPaddingRole) {
         return isPadding;
     }
-    else if(role == Qt::BackgroundRole) {
+    if(role == Qt::BackgroundRole) {
         return m_colours.colour(Colours::Type::Background);
     }
 
@@ -321,14 +321,14 @@ RichText LyricsModel::textForLine(const ParsedLine& line) const
         format.colour = m_colours.colour(linePlayed ? Colours::Type::LinePlayed : Colours::Type::LineUnplayed);
 
         switch(m_lyrics.type) {
-            case(Lyrics::Type::Synced): {
+            case Lyrics::Type::Synced: {
                 if(highlightLine) {
                     format.font   = m_lineFont;
                     format.colour = m_colours.colour(Colours::Type::LineSynced);
                 }
                 break;
             }
-            case(Lyrics::Type::SyncedWords): {
+            case Lyrics::Type::SyncedWords: {
                 if(highlightWord) {
                     format.font   = m_wordFont;
                     format.colour = m_colours.colour(Colours::Type::WordSynced);
@@ -339,10 +339,10 @@ RichText LyricsModel::textForLine(const ParsedLine& line) const
                 }
                 break;
             }
-            case(Lyrics::Type::Unsynced):
+            case Lyrics::Type::Unsynced:
                 format.colour = m_colours.colour(Colours::Type::LineUnsynced);
                 break;
-            case(Lyrics::Type::Unknown):
+            case Lyrics::Type::Unknown:
                 break;
         }
 

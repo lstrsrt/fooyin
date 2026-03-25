@@ -52,8 +52,8 @@ class LyricsWidget : public FyWidget
     Q_OBJECT
 
 public:
-    explicit LyricsWidget(PlayerController* playerController, EngineController* engine, LyricsFinder* lyricsFinder,
-                          LyricsSaver* lyricsSaver, SettingsManager* settings, QWidget* parent = nullptr);
+    explicit LyricsWidget(PlayerController* playerController, LyricsFinder* lyricsFinder, LyricsSaver* lyricsSaver,
+                          SettingsManager* settings, QWidget* parent = nullptr);
 
     static QString defaultNoLyricsScript();
 
@@ -92,17 +92,18 @@ protected:
     void timerEvent(QTimerEvent* event) override;
     void contextMenuEvent(QContextMenuEvent* event) override;
 
+    void openConfigDialog() override;
+
 private:
     void loadLyrics(const Lyrics& lyrics);
     void handleLyricsSearchFinished(const Track& track, bool foundAny);
     void changeLyrics(const Lyrics& lyrics);
     void openEditor(const Lyrics& lyrics);
 
-    void openConfigDialog() override;
     [[nodiscard]] ConfigData configFromLayout(const QJsonObject& layout) const;
     void saveConfigToLayout(const ConfigData& config, QJsonObject& layout) const;
 
-    void playStateChanged(Engine::PlaybackState state);
+    void playStateChanged(Player::PlayState state);
 
     void setCurrentTime(uint64_t time);
     void seekTo(const QModelIndex& index, const QPoint& pos);
@@ -117,7 +118,6 @@ private:
     void updateAutoScroll(int startValue);
 
     PlayerController* m_playerController;
-    EngineController* m_engine;
     SettingsManager* m_settings;
 
     LyricsView* m_lyricsView;
