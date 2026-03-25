@@ -347,13 +347,8 @@ void QueueViewerModel::reset(const QueueTracks& tracks)
         m_trackParents[track.track.albumHash()].emplace_back(item);
     }
 
-    if(m_showCurrent && m_playerController->currentIsQueueTrack()) {
-        const auto currentTrack = m_playerController->currentPlaylistTrack();
-        const auto contextData  = makeQueueScriptContext(m_playerController, currentTrack,
-                                                         queueIndexesFor(queueIndexes, currentTrack), queueTotal);
-        m_currentTrackItem      = std::make_unique<QueueViewerItem>(currentTrack);
-        m_currentTrackItem->generateTitle(&m_scriptParser, &m_scriptFormatter, m_titleScript, m_subtitleScript,
-                                          contextData.context);
+    if(shouldShowCurrentRow()) {
+        m_currentTrackItem = makeCurrentTrackItem(tracks);
         rootItem()->insertChild(0, m_currentTrackItem.get());
         rootItem()->resetChildren();
     }
@@ -363,7 +358,9 @@ void QueueViewerModel::reset(const QueueTracks& tracks)
 
 void QueueViewerModel::playbackStateChanged()
 {
-    if(rowCount({}) > 0) {
+    updateShowCurrent();
+
+    if(m_currentTrackItem) {
         const auto idx = index(0, 0, {});
         emit dataChanged(idx, idx, {Qt::DecorationRole});
     }
@@ -450,25 +447,42 @@ void QueueViewerModel::setIconSize(const QSize& iconSize)
     invalidateData();
 }
 
+std::unique_ptr<QueueViewerItem> QueueViewerModel::makeCurrentTrackItem(const QueueTracks& tracks)
+{
+    const auto queueIndexes = buildQueueIndexLookup(tracks);
+    const int queueTotal    = static_cast<int>(tracks.size());
+    const auto currentTrack = m_playerController->currentPlaylistTrack();
+    const auto contextData  = makeQueueScriptContext(m_playerController, currentTrack,
+                                                     queueIndexesFor(queueIndexes, currentTrack), queueTotal);
+
+    auto currentTrackItem = std::make_unique<QueueViewerItem>(currentTrack);
+    currentTrackItem->generateTitle(&m_scriptParser, &m_scriptFormatter, m_titleScript, m_subtitleScript,
+                                    contextData.context);
+    return currentTrackItem;
+}
+
+bool QueueViewerModel::shouldShowCurrentRow() const
+{
+    return m_showCurrent && m_playerController->playState() != Player::PlayState::Stopped
+        && m_playerController->currentIsQueueTrack();
+}
+
 void QueueViewerModel::updateShowCurrent()
 {
-    if(m_showCurrent && !m_currentTrackItem && m_playerController->currentIsQueueTrack()) {
+    const bool canInsertCurrentRow = shouldShowCurrentRow();
+    const bool mustRemoveCurrentRow
+        = m_currentTrackItem && (!m_showCurrent || m_playerController->playState() == Player::PlayState::Stopped);
+
+    if(canInsertCurrentRow && !m_currentTrackItem) {
         const QueueTracks tracks = m_playerController->playbackQueue().tracks();
-        const auto queueIndexes  = buildQueueIndexLookup(tracks);
-        const int queueTotal     = static_cast<int>(tracks.size());
-        const auto currentTrack  = m_playerController->currentPlaylistTrack();
-        const auto contextData   = makeQueueScriptContext(m_playerController, currentTrack,
-                                                          queueIndexesFor(queueIndexes, currentTrack), queueTotal);
-        m_currentTrackItem       = std::make_unique<QueueViewerItem>(currentTrack);
-        m_currentTrackItem->generateTitle(&m_scriptParser, &m_scriptFormatter, m_titleScript, m_subtitleScript,
-                                          contextData.context);
+        m_currentTrackItem       = makeCurrentTrackItem(tracks);
 
         beginInsertRows({}, 0, 0);
         rootItem()->insertChild(0, m_currentTrackItem.get());
         rootItem()->resetChildren();
         endInsertRows();
     }
-    else if(m_currentTrackItem) {
+    else if(mustRemoveCurrentRow && m_currentTrackItem) {
         beginRemoveRows({}, 0, 0);
         rootItem()->removeChild(0);
         m_currentTrackItem.reset();

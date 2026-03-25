@@ -71,7 +71,9 @@ signals:
     void playlistTracksDropped(int row, const QByteArray& data);
 
 private:
+    std::unique_ptr<QueueViewerItem> makeCurrentTrackItem(const QueueTracks& tracks);
     void regenerateTitles();
+    [[nodiscard]] bool shouldShowCurrentRow() const;
     void updateShowCurrent();
 
     PlayerController* m_playerController;
