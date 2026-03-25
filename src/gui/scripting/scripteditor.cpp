@@ -39,6 +39,7 @@
 #include <QFocusEvent>
 #include <QGridLayout>
 #include <QHeaderView>
+#include <QItemSelection>
 #include <QLineEdit>
 #include <QPalette>
 #include <QRegularExpression>
@@ -399,10 +400,13 @@ private:
     int m_completionEnd{-1};
 };
 
-class ScriptEditorPrivate
+class ScriptEditorPrivate : public QObject
 {
+    Q_OBJECT
+
 public:
     ScriptEditorPrivate(ScriptEditor* self, LibraryManager* libraryManager, const Track& track);
+    ~ScriptEditorPrivate() override;
 
     void setupConnections();
     void setupPlaceholder();
@@ -413,6 +417,9 @@ public:
 
     void selectionChanged();
     void textChanged();
+    void referenceSearchChanged(const QString& text);
+    void referenceItemActivated(const QModelIndex& index);
+    void referenceTabChanged(int index);
 
     void showErrors() const;
 
@@ -537,46 +544,28 @@ ScriptEditorPrivate::ScriptEditorPrivate(ScriptEditor* self, LibraryManager* lib
     restoreState();
 }
 
+ScriptEditorPrivate::~ScriptEditorPrivate()
+{
+    m_textChangeTimer.stop();
+    m_editor->disconnect();
+}
+
 void ScriptEditorPrivate::setupConnections()
 {
-    QObject::connect(m_editor, &QTextEdit::textChanged, m_self, [this]() { textChanged(); });
+    QObject::connect(m_editor, &QTextEdit::textChanged, this, &ScriptEditorPrivate::textChanged);
     QObject::connect(m_model, &QAbstractItemModel::modelReset, m_expressionTree, &QTreeView::expandAll);
-    QObject::connect(m_expressionTree->selectionModel(), &QItemSelectionModel::selectionChanged, m_self,
-                     [this]() { selectionChanged(); });
+    QObject::connect(m_expressionTree->selectionModel(), &QItemSelectionModel::selectionChanged, this,
+                     &ScriptEditorPrivate::selectionChanged);
 
-    QObject::connect(m_referenceSearch, &QLineEdit::textChanged, m_self, [this](const QString& text) {
-        const QRegularExpression expression{QRegularExpression::escape(text),
-                                            QRegularExpression::CaseInsensitiveOption};
-        m_variableReferenceFilter->setFilterRegularExpression(expression);
-        m_functionReferenceFilter->setFilterRegularExpression(expression);
-        m_formattingReferenceFilter->setFilterRegularExpression(expression);
-        m_commandReferenceFilter->setFilterRegularExpression(expression);
-    });
+    QObject::connect(m_referenceSearch, &QLineEdit::textChanged, this, &ScriptEditorPrivate::referenceSearchChanged);
     const auto connectReferenceTree = [this](QTreeView* tree) {
-        QObject::connect(tree, &QTreeView::doubleClicked, m_self, [this](const QModelIndex& index) {
-            const QModelIndex itemIndex = index.siblingAtColumn(0);
-            if(!itemIndex.isValid()) {
-                return;
-            }
-
-            m_editor->insertSnippet(itemIndex.data(InsertTextRole).toString(),
-                                    itemIndex.data(CursorOffsetRole).toInt());
-            m_editor->setFocus();
-        });
+        QObject::connect(tree, &QTreeView::doubleClicked, this, &ScriptEditorPrivate::referenceItemActivated);
     };
     for(auto* tree :
         {m_variableReferenceTree, m_functionReferenceTree, m_formattingReferenceTree, m_commandReferenceTree}) {
         connectReferenceTree(tree);
     }
-    QObject::connect(m_referenceTabs, &QTabWidget::currentChanged, m_self, [this](int index) {
-        if(index < 0) {
-            return;
-        }
-
-        if(auto* tree = qobject_cast<QTreeView*>(m_referenceTabs->widget(index))) {
-            tree->setFocus();
-        }
-    });
+    QObject::connect(m_referenceTabs, &QTabWidget::currentChanged, this, &ScriptEditorPrivate::referenceTabChanged);
     QObject::connect(m_results, &QTextBrowser::anchorClicked, m_self, [](const QUrl& url) {
         const QUrl resolvedUrl = QUrl::fromUserInput(url.toString());
         if(resolvedUrl.isValid()) {
@@ -728,6 +717,37 @@ void ScriptEditorPrivate::textChanged()
     updateResults();
 }
 
+void ScriptEditorPrivate::referenceSearchChanged(const QString& text)
+{
+    const QRegularExpression expression{QRegularExpression::escape(text), QRegularExpression::CaseInsensitiveOption};
+    m_variableReferenceFilter->setFilterRegularExpression(expression);
+    m_functionReferenceFilter->setFilterRegularExpression(expression);
+    m_formattingReferenceFilter->setFilterRegularExpression(expression);
+    m_commandReferenceFilter->setFilterRegularExpression(expression);
+}
+
+void ScriptEditorPrivate::referenceItemActivated(const QModelIndex& index)
+{
+    const QModelIndex itemIndex = index.siblingAtColumn(0);
+    if(!itemIndex.isValid()) {
+        return;
+    }
+
+    m_editor->insertSnippet(itemIndex.data(InsertTextRole).toString(), itemIndex.data(CursorOffsetRole).toInt());
+    m_editor->setFocus();
+}
+
+void ScriptEditorPrivate::referenceTabChanged(int index)
+{
+    if(index < 0) {
+        return;
+    }
+
+    if(auto* tree = qobject_cast<QTreeView*>(m_referenceTabs->widget(index))) {
+        tree->setFocus();
+    }
+}
+
 void ScriptEditorPrivate::showErrors() const
 {
     const auto errors = m_currentScript.errors;
@@ -815,7 +835,6 @@ ScriptEditor::ScriptEditor(QWidget* parent)
 
 ScriptEditor::~ScriptEditor()
 {
-    p->m_editor->disconnect();
     p->saveState();
 }
 
