@@ -115,11 +115,9 @@ struct FFmpegContext
     {
         decoder.stop();
         if(trackFilter.filterContext) {
-            avfilter_free(trackFilter.filterContext);
             trackFilter.filterContext = nullptr;
         }
         if(albumFilter.filterContext) {
-            avfilter_free(albumFilter.filterContext);
             albumFilter.filterContext = nullptr;
         }
     }
