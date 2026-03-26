@@ -125,7 +125,7 @@ QString SearchWidget::layoutName() const
 
 void SearchWidget::layoutEditingMenu(QMenu* menu)
 {
-    auto* manageConnections = new QAction(tr("Manage connections"), this);
+    auto* manageConnections = new QAction(tr("Manage connected widgets"), this);
     QObject::connect(manageConnections, &QAction::triggered, this,
                      [this]() { m_searchController->setupWidgetConnections(id()); });
     menu->addAction(manageConnections);
@@ -533,7 +533,7 @@ void SearchWidget::showOptionsMenu()
         QObject::connect(changePlaceholder, &QAction::triggered, this, &SearchWidget::changePlaceholderText);
         menu->addAction(changePlaceholder);
 
-        auto* manageConnections = new QAction(tr("Manage connections"), menu);
+        auto* manageConnections = new QAction(tr("Manage connected widgets"), menu);
         QObject::connect(manageConnections, &QAction::triggered, this,
                          [this]() { m_searchController->setupWidgetConnections(id()); });
         menu->addAction(manageConnections);
