@@ -44,10 +44,11 @@ class LyricsConfigDialog : public WidgetConfigDialog<LyricsWidget, LyricsWidget:
 public:
     explicit LyricsConfigDialog(LyricsWidget* lyricsWidget, QWidget* parent = nullptr);
 
-private:
+protected:
     [[nodiscard]] LyricsWidget::ConfigData config() const override;
     void setConfig(const LyricsWidget::ConfigData& config) override;
 
+private:
     [[nodiscard]] ScrollMode scrollMode() const;
     void setScrollMode(ScrollMode mode);
 

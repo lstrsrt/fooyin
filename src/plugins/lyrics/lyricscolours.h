@@ -41,6 +41,45 @@ struct Colours
 
     QMap<Type, QColor> lyricsColours;
 
+    [[nodiscard]] static QColor blendColours(const QColor& base, const QColor& accent, qreal accentRatio)
+    {
+        const auto blend = [accentRatio](int baseChannel, int accentChannel) {
+            return static_cast<int>((baseChannel * (1.0 - accentRatio)) + (accentChannel * accentRatio));
+        };
+
+        return QColor{blend(base.red(), accent.red()), blend(base.green(), accent.green()),
+                      blend(base.blue(), accent.blue()), blend(base.alpha(), accent.alpha())};
+    }
+
+    [[nodiscard]] static QColor emphasisedWordColour(const QColor& lineColour,
+                                                     const QPalette& palette = QApplication::palette())
+    {
+        const QColor highlight = palette.color(QPalette::Active, QPalette::Highlight);
+
+        float hue{0.0};
+        float saturation{0.0};
+        float lightness{0.0};
+        float alpha{0.0};
+
+        const QColor currentLine{lineColour};
+        currentLine.getHslF(&hue, &saturation, &lightness, &alpha);
+
+        if(saturation > 0.08) {
+            saturation = std::min(1.0F, saturation + 0.25F);
+
+            if(lightness >= 0.5) {
+                lightness = std::max(0.0F, lightness - 0.18F);
+            }
+            else {
+                lightness = std::min(1.0F, lightness + 0.18F);
+            }
+
+            return QColor::fromHslF(hue, saturation, lightness, alpha);
+        }
+
+        return blendColours(currentLine, highlight, 0.45);
+    }
+
     [[nodiscard]] static QColor dimmedTextColour(const QPalette& palette = QApplication::palette())
     {
         QColor colour = palette.color(QPalette::Active, QPalette::Text);
@@ -62,7 +101,7 @@ struct Colours
             case Type::WordLineSynced:
                 return palette.color(QPalette::Active, QPalette::Text);
             case Type::WordSynced:
-                return palette.color(QPalette::Active, QPalette::Highlight);
+                return emphasisedWordColour(defaultColour(Type::WordLineSynced, palette), palette);
             case Type::LineUnsynced:
                 return palette.color(QPalette::Active, QPalette::Text);
             default:
@@ -73,7 +112,15 @@ struct Colours
     [[nodiscard]] QColor colour(Type type, const QPalette& palette = QApplication::palette()) const
     {
         const QColor override = lyricsColours.value(type);
-        return override.isValid() ? override : defaultColour(type, palette);
+        if(override.isValid()) {
+            return override;
+        }
+
+        if(type == Type::WordSynced) {
+            return emphasisedWordColour(colour(Type::WordLineSynced, palette), palette);
+        }
+
+        return defaultColour(type, palette);
     }
 
     [[nodiscard]] bool hasOverride(Type type) const
