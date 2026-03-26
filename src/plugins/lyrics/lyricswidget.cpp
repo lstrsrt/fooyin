@@ -101,6 +101,17 @@ QString validatedFontString(const QString& fontString)
     QFont font;
     return font.fromString(fontString) ? fontString : QString{};
 }
+
+int validatedEdgeFadeSize(int edgeFadeSize)
+{
+    return std::clamp(edgeFadeSize, 1, 50);
+}
+
+int validatedEdgeFadeMode(int edgeFadeMode)
+{
+    return std::clamp(edgeFadeMode, static_cast<int>(Fooyin::Lyrics::EdgeFadeMode::Off),
+                      static_cast<int>(Fooyin::Lyrics::EdgeFadeMode::AllLyrics));
+}
 } // namespace
 
 namespace Fooyin::Lyrics {
@@ -222,6 +233,7 @@ void LyricsWidget::updateLyrics(const Track& track, bool force)
             m_scrollAnim->stop();
         }
         m_lyricsView->verticalScrollBar()->setValue(0);
+        m_lyricsView->setEdgeFadeEnabled(false);
 
         m_currentLyrics    = {};
         m_currentLineStart = -1;
@@ -275,9 +287,13 @@ LyricsWidget::ConfigData LyricsWidget::defaultConfig() const
     config.noLyricsScript = m_settings->fileValue(Settings::NoLyricsScript, config.noLyricsScript).toString();
     config.scrollDuration = m_settings->fileValue(Settings::ScrollDuration, config.scrollDuration).toInt();
     config.scrollMode     = m_settings->fileValue(Settings::ScrollMode, config.scrollMode).toInt();
-    config.showScrollbar  = m_settings->fileValue(Settings::ShowScrollbar, config.showScrollbar).toBool();
-    config.alignment      = m_settings->fileValue(Settings::Alignment, config.alignment).toInt();
-    config.lineSpacing    = m_settings->fileValue(Settings::LineSpacing, config.lineSpacing).toInt();
+
+    config.edgeFadeMode = m_settings->fileValue(Settings::EdgeFadeMode, config.edgeFadeMode).toInt();
+    config.edgeFadeSize = m_settings->fileValue(Settings::EdgeFadeSize, config.edgeFadeSize).toInt();
+
+    config.showScrollbar = m_settings->fileValue(Settings::ShowScrollbar, config.showScrollbar).toBool();
+    config.alignment     = m_settings->fileValue(Settings::Alignment, config.alignment).toInt();
+    config.lineSpacing   = m_settings->fileValue(Settings::LineSpacing, config.lineSpacing).toInt();
 
     const QVariant margins = m_settings->fileValue(Settings::Margins);
     if(margins.isValid() && margins.canConvert<QMargins>()) {
@@ -285,6 +301,7 @@ LyricsWidget::ConfigData LyricsWidget::defaultConfig() const
     }
 
     config.colours      = m_settings->fileValue(Settings::Colours, config.colours);
+    config.baseFont     = m_settings->fileValue(Settings::BaseFont, config.baseFont).toString();
     config.lineFont     = m_settings->fileValue(Settings::LineFont, config.lineFont).toString();
     config.wordLineFont = m_settings->fileValue(Settings::WordLineFont, config.wordLineFont).toString();
     config.wordFont     = m_settings->fileValue(Settings::WordFont, config.wordFont).toString();
@@ -299,11 +316,14 @@ LyricsWidget::ConfigData LyricsWidget::factoryConfig() const
         .noLyricsScript = defaultNoLyricsScript(),
         .scrollDuration = 500,
         .scrollMode     = static_cast<int>(ScrollMode::Synced),
+        .edgeFadeMode   = static_cast<int>(EdgeFadeMode::SyncedOnly),
+        .edgeFadeSize   = 10,
         .showScrollbar  = true,
         .alignment      = static_cast<int>(Qt::AlignCenter),
         .lineSpacing    = 5,
         .margins        = Defaults::margins(),
         .colours        = QVariant{},
+        .baseFont       = {},
         .lineFont       = {},
         .wordLineFont   = {},
         .wordFont       = {},
@@ -322,6 +342,8 @@ void LyricsWidget::saveDefaults(const ConfigData& config) const
     validated.scrollDuration = std::clamp(validated.scrollDuration, 0, 2000);
     validated.scrollMode     = std::clamp(validated.scrollMode, static_cast<int>(ScrollMode::Manual),
                                           static_cast<int>(ScrollMode::Automatic));
+    validated.edgeFadeMode   = validatedEdgeFadeMode(validated.edgeFadeMode);
+    validated.edgeFadeSize   = validatedEdgeFadeSize(validated.edgeFadeSize);
     validated.alignment      = validatedAlignment(validated.alignment);
     validated.lineSpacing    = std::clamp(validated.lineSpacing, 0, 100);
     validated.margins        = clampedMargins(validated.margins);
@@ -330,6 +352,7 @@ void LyricsWidget::saveDefaults(const ConfigData& config) const
         validated.colours = QVariant{};
     }
 
+    validated.baseFont     = validatedFontString(validated.baseFont);
     validated.lineFont     = validatedFontString(validated.lineFont);
     validated.wordLineFont = validatedFontString(validated.wordLineFont);
     validated.wordFont     = validatedFontString(validated.wordFont);
@@ -338,11 +361,14 @@ void LyricsWidget::saveDefaults(const ConfigData& config) const
     m_settings->fileSet(Settings::NoLyricsScript, validated.noLyricsScript);
     m_settings->fileSet(Settings::ScrollDuration, validated.scrollDuration);
     m_settings->fileSet(Settings::ScrollMode, validated.scrollMode);
+    m_settings->fileSet(Settings::EdgeFadeMode, validated.edgeFadeMode);
+    m_settings->fileSet(Settings::EdgeFadeSize, validated.edgeFadeSize);
     m_settings->fileSet(Settings::ShowScrollbar, validated.showScrollbar);
     m_settings->fileSet(Settings::Alignment, validated.alignment);
     m_settings->fileSet(Settings::LineSpacing, validated.lineSpacing);
     m_settings->fileSet(Settings::Margins, QVariant::fromValue(validated.margins));
     m_settings->fileSet(Settings::Colours, validated.colours);
+    m_settings->fileSet(Settings::BaseFont, validated.baseFont);
     m_settings->fileSet(Settings::LineFont, validated.lineFont);
     m_settings->fileSet(Settings::WordLineFont, validated.wordLineFont);
     m_settings->fileSet(Settings::WordFont, validated.wordFont);
@@ -354,11 +380,14 @@ void LyricsWidget::clearSavedDefaults() const
     m_settings->fileRemove(Settings::NoLyricsScript);
     m_settings->fileRemove(Settings::ScrollDuration);
     m_settings->fileRemove(Settings::ScrollMode);
+    m_settings->fileRemove(Settings::EdgeFadeMode);
+    m_settings->fileRemove(Settings::EdgeFadeSize);
     m_settings->fileRemove(Settings::ShowScrollbar);
     m_settings->fileRemove(Settings::Alignment);
     m_settings->fileRemove(Settings::LineSpacing);
     m_settings->fileRemove(Settings::Margins);
     m_settings->fileRemove(Settings::Colours);
+    m_settings->fileRemove(Settings::BaseFont);
     m_settings->fileRemove(Settings::LineFont);
     m_settings->fileRemove(Settings::WordLineFont);
     m_settings->fileRemove(Settings::WordFont);
@@ -370,12 +399,15 @@ void LyricsWidget::applyConfig(const ConfigData& config)
     validated.scrollDuration = std::clamp(validated.scrollDuration, 0, 2000);
     validated.scrollMode     = std::clamp(validated.scrollMode, static_cast<int>(ScrollMode::Manual),
                                           static_cast<int>(ScrollMode::Automatic));
+    validated.edgeFadeMode   = validatedEdgeFadeMode(validated.edgeFadeMode);
+    validated.edgeFadeSize   = validatedEdgeFadeSize(validated.edgeFadeSize);
     validated.alignment      = validatedAlignment(validated.alignment);
     validated.lineSpacing    = std::clamp(validated.lineSpacing, 0, 100);
     validated.margins        = clampedMargins(validated.margins);
     if(!validated.colours.canConvert<Colours>()) {
         validated.colours = QVariant{};
     }
+    validated.baseFont     = validatedFontString(validated.baseFont);
     validated.lineFont     = validatedFontString(validated.lineFont);
     validated.wordLineFont = validatedFontString(validated.wordLineFont);
     validated.wordFont     = validatedFontString(validated.wordFont);
@@ -384,12 +416,14 @@ void LyricsWidget::applyConfig(const ConfigData& config)
 
     m_lyricsView->setVerticalScrollBarPolicy(m_config.showScrollbar ? Qt::ScrollBarAsNeeded : Qt::ScrollBarAlwaysOff);
     m_lyricsView->setDisplayAlignment(static_cast<Qt::Alignment>(m_config.alignment));
+    m_lyricsView->setEdgeFadeSizePercent(m_config.edgeFadeSize);
+    updateEdgeFadeState();
     m_lyricsView->setDisplayMargins(m_config.margins);
 
     m_model->setLineSpacing(m_config.lineSpacing);
     m_model->setAlignment(static_cast<Qt::Alignment>(m_config.alignment));
     m_model->setColours(m_config.colours.isValid() ? m_config.colours.value<Colours>() : Colours{});
-    m_model->setFonts(m_config.lineFont, m_config.wordLineFont, m_config.wordFont);
+    m_model->setFonts(m_config.baseFont, m_config.lineFont, m_config.wordLineFont, m_config.wordFont);
 
     updateViewportPadding();
 
@@ -415,6 +449,12 @@ LyricsWidget::ConfigData LyricsWidget::configFromLayout(const QJsonObject& layou
     }
     if(layout.contains("ScrollMode"_L1)) {
         config.scrollMode = layout.value("ScrollMode"_L1).toInt();
+    }
+    if(layout.contains("EdgeFadeMode"_L1)) {
+        config.edgeFadeMode = layout.value("EdgeFadeMode"_L1).toInt();
+    }
+    if(layout.contains("EdgeFadeSize"_L1)) {
+        config.edgeFadeSize = layout.value("EdgeFadeSize"_L1).toInt();
     }
     if(layout.contains("ShowScrollbar"_L1)) {
         config.showScrollbar = layout.value("ShowScrollbar"_L1).toBool();
@@ -473,6 +513,9 @@ LyricsWidget::ConfigData LyricsWidget::configFromLayout(const QJsonObject& layou
     if(layout.contains("LineFont"_L1)) {
         config.lineFont = layout.value("LineFont"_L1).toString();
     }
+    if(layout.contains("BaseFont"_L1)) {
+        config.baseFont = layout.value("BaseFont"_L1).toString();
+    }
     if(layout.contains("WordLineFont"_L1)) {
         config.wordLineFont = layout.value("WordLineFont"_L1).toString();
     }
@@ -489,6 +532,8 @@ void LyricsWidget::saveConfigToLayout(const ConfigData& config, QJsonObject& lay
     layout["NoLyricsScript"_L1] = config.noLyricsScript;
     layout["ScrollDuration"_L1] = config.scrollDuration;
     layout["ScrollMode"_L1]     = config.scrollMode;
+    layout["EdgeFadeMode"_L1]   = config.edgeFadeMode;
+    layout["EdgeFadeSize"_L1]   = config.edgeFadeSize;
     layout["ShowScrollbar"_L1]  = config.showScrollbar;
     layout["Alignment"_L1]      = config.alignment;
     layout["LineSpacing"_L1]    = config.lineSpacing;
@@ -530,6 +575,7 @@ void LyricsWidget::saveConfigToLayout(const ConfigData& config, QJsonObject& lay
         layout.remove("CurrentWordColour"_L1);
     }
 
+    layout["BaseFont"_L1]     = config.baseFont;
     layout["LineFont"_L1]     = config.lineFont;
     layout["WordLineFont"_L1] = config.wordLineFont;
     layout["WordFont"_L1]     = config.wordFont;
@@ -676,6 +722,7 @@ void LyricsWidget::handleLyricsSearchFinished(const Track& track, bool foundAny)
     m_currentLineEnd   = -1;
     m_lyrics.clear();
     m_model->setLyrics({});
+    m_lyricsView->setEdgeFadeEnabled(false);
 
     if(track.isValid()) {
         m_lyricsView->setDisplayString(m_parser.evaluate(m_config.noLyricsScript, track));
@@ -698,10 +745,12 @@ void LyricsWidget::changeLyrics(const Lyrics& lyrics)
     if(lyrics.isValid()) {
         m_model->setLyrics(m_currentLyrics);
         m_lyricsView->setDisplayString({});
+        updateEdgeFadeState();
     }
     else {
         m_lyricsView->setDisplayString(m_parser.evaluate(m_config.noLyricsScript, m_currentTrack));
         m_model->setLyrics({});
+        m_lyricsView->setEdgeFadeEnabled(false);
     }
 
     updateViewportPadding();
@@ -890,6 +939,8 @@ void LyricsWidget::updateScrollMode(ScrollMode mode)
     else if(m_scrollMode == ScrollMode::Automatic) {
         checkStartAutoScroll(m_lyricsView->verticalScrollBar()->value());
     }
+
+    updateEdgeFadeState();
 }
 
 void LyricsWidget::checkStartAutoScrollPos(uint64_t pos)
@@ -944,6 +995,35 @@ void LyricsWidget::updateAutoScroll(int startValue)
     m_scrollAnim->setEndValue(maxScroll);
 
     m_scrollAnim->start(QAbstractAnimation::DeleteWhenStopped);
+}
+
+void LyricsWidget::updateEdgeFadeState()
+{
+    m_lyricsView->setEdgeFadeEnabled(shouldEnableEdgeFade());
+}
+
+bool LyricsWidget::shouldEnableEdgeFade() const
+{
+    if(!m_currentLyrics.isValid()) {
+        return false;
+    }
+
+    const auto fadeMode = static_cast<EdgeFadeMode>(validatedEdgeFadeMode(m_config.edgeFadeMode));
+    switch(fadeMode) {
+        case EdgeFadeMode::Off:
+            return false;
+        case EdgeFadeMode::SyncedOnly:
+            return m_currentLyrics.isSynced();
+        case EdgeFadeMode::ScrollingLyrics:
+            if(m_currentLyrics.isSynced()) {
+                return m_scrollMode != ScrollMode::Manual;
+            }
+            return m_scrollMode == ScrollMode::Automatic;
+        case EdgeFadeMode::AllLyrics:
+            return true;
+    }
+
+    return false;
 }
 } // namespace Fooyin::Lyrics
 

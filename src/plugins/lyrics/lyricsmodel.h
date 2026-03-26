@@ -53,7 +53,8 @@ public:
     void setAlignment(Qt::Alignment alignment);
     void setLineSpacing(int spacing);
     void setColours(const Colours& colours);
-    void setFonts(const QString& lineFont, const QString& wordLineFont, const QString& wordFont);
+    void setFonts(const QString& baseFont, const QString& lineFont, const QString& wordLineFont,
+                  const QString& wordFont);
 
     void setCurrentTime(uint64_t time);
     [[nodiscard]] uint64_t currentTime() const;
@@ -86,6 +87,7 @@ private:
     std::vector<RichText> m_text;
 
     Colours m_colours;
+    QFont m_baseFont;
     QFont m_lineFont;
     QFont m_wordLineFont;
     QFont m_wordFont;

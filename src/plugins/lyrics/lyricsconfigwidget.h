@@ -58,6 +58,8 @@ private:
     ScriptLineEdit* m_noLyricsScript;
 
     SliderEditor* m_scrollDuration;
+    QComboBox* m_edgeFadeMode;
+    SliderEditor* m_edgeFadeSize;
     QRadioButton* m_scrollManual;
     QRadioButton* m_scrollSynced;
     QRadioButton* m_scrollAutomatic;
@@ -86,6 +88,8 @@ private:
     QCheckBox* m_wordColour;
     ColourButton* m_wordColourBtn;
 
+    QCheckBox* m_baseFont;
+    FontButton* m_baseFontBtn;
     QCheckBox* m_lineFont;
     FontButton* m_lineFontBtn;
     QCheckBox* m_wordLineFont;

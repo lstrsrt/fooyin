@@ -45,6 +45,8 @@ LyricsConfigDialog::LyricsConfigDialog(LyricsWidget* lyricsWidget, QWidget* pare
     , m_seekOnClick{new QCheckBox(tr("Seek on click"), this)}
     , m_noLyricsScript{new ScriptLineEdit(this)}
     , m_scrollDuration{new SliderEditor(tr("Synced scroll duration"), this)}
+    , m_edgeFadeMode{new QComboBox(this)}
+    , m_edgeFadeSize{new SliderEditor(tr("Edge fade size"), this)}
     , m_scrollManual{new QRadioButton(tr("Manual"), this)}
     , m_scrollSynced{new QRadioButton(tr("Synced"), this)}
     , m_scrollAutomatic{new QRadioButton(tr("Automatic"), this)}
@@ -70,6 +72,8 @@ LyricsConfigDialog::LyricsConfigDialog(LyricsWidget* lyricsWidget, QWidget* pare
     , m_wordLineColourBtn{new ColourButton(this)}
     , m_wordColour{new QCheckBox(tr("Current word colour") + ":"_L1, this)}
     , m_wordColourBtn{new ColourButton(this)}
+    , m_baseFont{new QCheckBox(tr("Line font") + u":"_s, this)}
+    , m_baseFontBtn{new FontButton(this)}
     , m_lineFont{new QCheckBox(tr("Current line font") + u":"_s, this)}
     , m_lineFontBtn{new FontButton(this)}
     , m_wordLineFont{new QCheckBox(tr("Current line font") + u":"_s, this)}
@@ -111,16 +115,16 @@ LyricsConfigDialog::LyricsConfigDialog(LyricsWidget* lyricsWidget, QWidget* pare
     row = 0;
     scrollingLayout->addWidget(m_scrollDuration, row++, 0);
     scrollingLayout->addWidget(scrollModeGroup, row++, 0, 1, 2);
-    scrollingLayout->setColumnStretch(2, 1);
+    scrollingLayout->setColumnStretch(1, 1);
 
     auto* generalPageLayout = new QVBoxLayout(generalPage);
     generalPageLayout->addWidget(generalGroup);
     generalPageLayout->addWidget(scrollingGroup);
     generalPageLayout->addStretch();
 
-    auto* appearancePage          = new QWidget(this);
-    auto* appearanceGeneralGroup  = new QGroupBox(tr("General"), appearancePage);
-    auto* appearanceGeneralLayout = new QGridLayout(appearanceGeneralGroup);
+    auto* layoutPage          = new QWidget(this);
+    auto* layoutGeneralGroup  = new QGroupBox(tr("General"), layoutPage);
+    auto* layoutGeneralLayout = new QGridLayout(layoutGeneralGroup);
 
     m_alignment->addItem(tr("Align to centre"), Qt::AlignCenter);
     m_alignment->addItem(tr("Align to left"), Qt::AlignLeft);
@@ -130,14 +134,31 @@ LyricsConfigDialog::LyricsConfigDialog(LyricsWidget* lyricsWidget, QWidget* pare
     m_lineSpacing->setSuffix(u" px"_s);
 
     row = 0;
-    appearanceGeneralLayout->addWidget(m_showScrollbar, row++, 0, 1, 2);
-    appearanceGeneralLayout->addWidget(new QLabel(tr("Line spacing") + u":"_s, appearancePage), row, 0);
-    appearanceGeneralLayout->addWidget(m_lineSpacing, row++, 1);
-    appearanceGeneralLayout->addWidget(new QLabel(tr("Alignment") + u":"_s, appearancePage), row, 0);
-    appearanceGeneralLayout->addWidget(m_alignment, row++, 1);
-    appearanceGeneralLayout->setColumnStretch(2, 1);
+    layoutGeneralLayout->addWidget(m_showScrollbar, row++, 0, 1, 2);
+    layoutGeneralLayout->addWidget(new QLabel(tr("Line spacing") + u":"_s, layoutPage), row, 0);
+    layoutGeneralLayout->addWidget(m_lineSpacing, row++, 1);
+    layoutGeneralLayout->addWidget(new QLabel(tr("Alignment") + u":"_s, layoutPage), row, 0);
+    layoutGeneralLayout->addWidget(m_alignment, row++, 1);
+    layoutGeneralLayout->setColumnStretch(2, 1);
 
-    auto* marginsGroup  = new QGroupBox(tr("Margins"), appearancePage);
+    auto* fadeGroup  = new QGroupBox(tr("Fade"), layoutPage);
+    auto* fadeLayout = new QGridLayout(fadeGroup);
+
+    m_edgeFadeMode->addItem(tr("Off"), static_cast<int>(EdgeFadeMode::Off));
+    m_edgeFadeMode->addItem(tr("Synced only"), static_cast<int>(EdgeFadeMode::SyncedOnly));
+    m_edgeFadeMode->addItem(tr("Scrolling lyrics"), static_cast<int>(EdgeFadeMode::ScrollingLyrics));
+    m_edgeFadeMode->addItem(tr("All lyrics"), static_cast<int>(EdgeFadeMode::AllLyrics));
+
+    m_edgeFadeSize->setRange(1, 50);
+    m_edgeFadeSize->setSuffix(u" %"_s);
+
+    row = 0;
+    fadeLayout->addWidget(new QLabel(tr("Apply to") + u":"_s, layoutPage), row, 0);
+    fadeLayout->addWidget(m_edgeFadeMode, row++, 1);
+    fadeLayout->addWidget(m_edgeFadeSize, row++, 0, 1, 4);
+    fadeLayout->setColumnStretch(4, 1);
+
+    auto* marginsGroup  = new QGroupBox(tr("Margins"), layoutPage);
     auto* marginsLayout = new QGridLayout(marginsGroup);
 
     for(auto* spin : {m_leftMargin, m_topMargin, m_rightMargin, m_bottomMargin}) {
@@ -146,25 +167,38 @@ LyricsConfigDialog::LyricsConfigDialog(LyricsWidget* lyricsWidget, QWidget* pare
     }
 
     row = 0;
-    marginsLayout->addWidget(new QLabel(tr("Left") + u":"_s, appearancePage), row, 0);
+    marginsLayout->addWidget(new QLabel(tr("Left") + u":"_s, layoutPage), row, 0);
     marginsLayout->addWidget(m_leftMargin, row, 1);
-    marginsLayout->addWidget(new QLabel(tr("Right") + u":"_s, appearancePage), row, 2);
+    marginsLayout->addWidget(new QLabel(tr("Right") + u":"_s, layoutPage), row, 2);
     marginsLayout->addWidget(m_rightMargin, row++, 3);
-    marginsLayout->addWidget(new QLabel(tr("Top") + u":"_s, appearancePage), row, 0);
+    marginsLayout->addWidget(new QLabel(tr("Top") + u":"_s, layoutPage), row, 0);
     marginsLayout->addWidget(m_topMargin, row, 1);
-    marginsLayout->addWidget(new QLabel(tr("Bottom") + u":"_s, appearancePage), row, 2);
+    marginsLayout->addWidget(new QLabel(tr("Bottom") + u":"_s, layoutPage), row, 2);
     marginsLayout->addWidget(m_bottomMargin, row++, 3);
     marginsLayout->addWidget(
-        new QLabel(u"🛈 "_s + tr("Top and bottom margins only apply to unsynced lyrics."), appearancePage), row++, 0, 1,
-        5);
+        new QLabel(u"🛈 "_s + tr("Top and bottom margins only apply to unsynced lyrics."), layoutPage), row++, 0, 1, 5);
     marginsLayout->setColumnStretch(4, 1);
 
-    auto* fontsGroup             = new QGroupBox(tr("Fonts"), appearancePage);
+    auto* layoutPageLayout = new QVBoxLayout(layoutPage);
+    layoutPageLayout->addWidget(layoutGeneralGroup);
+    layoutPageLayout->addWidget(fadeGroup);
+    layoutPageLayout->addWidget(marginsGroup);
+    layoutPageLayout->addStretch();
+
+    auto* stylePage              = new QWidget(this);
+    auto* fontsGroup             = new QGroupBox(tr("Fonts"), stylePage);
     auto* fontsGroupLayout       = new QGridLayout(fontsGroup);
-    auto* syncedFontsGroup       = new QGroupBox(tr("Synced"), appearancePage);
+    auto* syncedFontsGroup       = new QGroupBox(tr("Synced"), stylePage);
     auto* syncedFontsLayout      = new QGridLayout(syncedFontsGroup);
-    auto* syncedWordsFontsGroup  = new QGroupBox(tr("Synced Words"), appearancePage);
+    auto* syncedWordsFontsGroup  = new QGroupBox(tr("Synced Words"), stylePage);
     auto* syncedWordsFontsLayout = new QGridLayout(syncedWordsFontsGroup);
+
+    row = 0;
+    fontsGroupLayout->addWidget(m_baseFont, row, 0);
+    fontsGroupLayout->addWidget(m_baseFontBtn, row++, 1);
+    fontsGroupLayout->addWidget(syncedFontsGroup, row++, 0, 1, 2);
+    fontsGroupLayout->addWidget(syncedWordsFontsGroup, row++, 0, 1, 2);
+    fontsGroupLayout->setColumnStretch(1, 1);
 
     row = 0;
     syncedFontsLayout->addWidget(m_lineFont, row, 0);
@@ -178,14 +212,10 @@ LyricsConfigDialog::LyricsConfigDialog(LyricsWidget* lyricsWidget, QWidget* pare
     syncedWordsFontsLayout->addWidget(m_wordFontBtn, row++, 1);
     syncedWordsFontsLayout->setColumnStretch(1, 1);
 
-    row = 0;
-    fontsGroupLayout->addWidget(syncedFontsGroup, row++, 0);
-    fontsGroupLayout->addWidget(syncedWordsFontsGroup, row++, 0);
-
     auto* coloursLayout    = new QGridLayout(m_coloursGroup);
-    auto* syncedLineGroup  = new QGroupBox(tr("Synced"), appearancePage);
+    auto* syncedLineGroup  = new QGroupBox(tr("Synced"), stylePage);
     auto* syncedLineLayout = new QGridLayout(syncedLineGroup);
-    auto* syncedWordGroup  = new QGroupBox(tr("Synced Words"), appearancePage);
+    auto* syncedWordGroup  = new QGroupBox(tr("Synced Words"), stylePage);
     auto* syncedWordLayout = new QGridLayout(syncedWordGroup);
 
     row = 0;
@@ -213,22 +243,26 @@ LyricsConfigDialog::LyricsConfigDialog(LyricsWidget* lyricsWidget, QWidget* pare
     coloursLayout->addWidget(syncedWordGroup, row++, 0, 1, 2);
     coloursLayout->setColumnStretch(1, 1);
 
-    auto* appearancePageLayout = new QVBoxLayout(appearancePage);
-    appearancePageLayout->addWidget(appearanceGeneralGroup);
-    appearancePageLayout->addWidget(marginsGroup);
-    appearancePageLayout->addWidget(fontsGroup);
-    appearancePageLayout->addWidget(m_coloursGroup);
-    appearancePageLayout->addStretch();
+    auto* stylePageLayout = new QVBoxLayout(stylePage);
+    stylePageLayout->addWidget(fontsGroup);
+    stylePageLayout->addWidget(m_coloursGroup);
+    stylePageLayout->addStretch();
 
-    m_tabs->addTab(appearancePage, tr("Appearance"));
+    m_tabs->addTab(layoutPage, tr("Layout"));
+    m_tabs->addTab(stylePage, tr("Style"));
     m_tabs->addTab(generalPage, tr("General"));
 
     auto* layout = contentLayout();
     layout->addWidget(m_tabs);
 
+    QObject::connect(m_baseFont, &QCheckBox::clicked, m_baseFontBtn, &QWidget::setEnabled);
     QObject::connect(m_lineFont, &QCheckBox::clicked, m_lineFontBtn, &QWidget::setEnabled);
     QObject::connect(m_wordLineFont, &QCheckBox::clicked, m_wordLineFontBtn, &QWidget::setEnabled);
     QObject::connect(m_wordFont, &QCheckBox::clicked, m_wordFontBtn, &QWidget::setEnabled);
+    QObject::connect(m_edgeFadeMode, &QComboBox::currentIndexChanged, this, [this]() {
+        const bool enabled = m_edgeFadeMode->currentData().toInt() != static_cast<int>(EdgeFadeMode::Off);
+        m_edgeFadeSize->setEnabled(enabled);
+    });
 
     QObject::connect(m_bgColour, &QCheckBox::clicked, m_bgColourBtn, &QWidget::setEnabled);
     QObject::connect(m_lineColour, &QCheckBox::clicked, m_lineColourBtn, &QWidget::setEnabled);
@@ -248,11 +282,14 @@ LyricsWidget::ConfigData LyricsConfigDialog::config() const
         .noLyricsScript = m_noLyricsScript->text(),
         .scrollDuration = m_scrollDuration->value(),
         .scrollMode     = static_cast<int>(scrollMode()),
+        .edgeFadeMode   = m_edgeFadeMode->currentData().toInt(),
+        .edgeFadeSize   = m_edgeFadeSize->value(),
         .showScrollbar  = m_showScrollbar->isChecked(),
         .alignment      = m_alignment->currentData().toInt(),
         .lineSpacing    = m_lineSpacing->value(),
         .margins      = {m_leftMargin->value(), m_topMargin->value(), m_rightMargin->value(), m_bottomMargin->value()},
         .colours      = QVariant{},
+        .baseFont     = m_baseFont->isChecked() ? m_baseFontBtn->buttonFont().toString() : QString{},
         .lineFont     = m_lineFont->isChecked() ? m_lineFontBtn->buttonFont().toString() : QString{},
         .wordLineFont = m_wordLineFont->isChecked() ? m_wordLineFontBtn->buttonFont().toString() : QString{},
         .wordFont     = m_wordFont->isChecked() ? m_wordFontBtn->buttonFont().toString() : QString{},
@@ -286,6 +323,13 @@ void LyricsConfigDialog::setConfig(const LyricsWidget::ConfigData& config)
     m_seekOnClick->setChecked(config.seekOnClick);
     m_noLyricsScript->setText(config.noLyricsScript);
     m_scrollDuration->setValue(config.scrollDuration);
+    int fadeModeIdx = m_edgeFadeMode->findData(config.edgeFadeMode);
+    if(fadeModeIdx < 0) {
+        fadeModeIdx = m_edgeFadeMode->findData(static_cast<int>(EdgeFadeMode::SyncedOnly));
+    }
+    m_edgeFadeMode->setCurrentIndex(fadeModeIdx);
+    m_edgeFadeSize->setValue(config.edgeFadeSize);
+    m_edgeFadeSize->setEnabled(m_edgeFadeMode->currentData().toInt() != static_cast<int>(EdgeFadeMode::Off));
 
     setScrollMode(static_cast<ScrollMode>(config.scrollMode));
 
@@ -332,6 +376,7 @@ void LyricsConfigDialog::setConfig(const LyricsWidget::ConfigData& config)
         button->setEnabled(custom);
     };
 
+    loadFont(m_baseFont, m_baseFontBtn, config.baseFont, Lyrics::defaultFont());
     loadFont(m_lineFont, m_lineFontBtn, config.lineFont, Lyrics::defaultLineFont());
     loadFont(m_wordLineFont, m_wordLineFontBtn, config.wordLineFont, Lyrics::defaultWordLineFont());
     loadFont(m_wordFont, m_wordFontBtn, config.wordFont, Lyrics::defaultWordFont());

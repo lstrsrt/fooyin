@@ -70,11 +70,14 @@ public:
         QString noLyricsScript;
         int scrollDuration{500};
         int scrollMode{static_cast<int>(ScrollMode::Synced)};
+        int edgeFadeMode{static_cast<int>(EdgeFadeMode::SyncedOnly)};
+        int edgeFadeSize{10};
         bool showScrollbar{true};
         int alignment{static_cast<int>(Qt::AlignCenter)};
         int lineSpacing{5};
         QMargins margins{20, 20, 20, 20};
         QVariant colours;
+        QString baseFont;
         QString lineFont;
         QString wordLineFont;
         QString wordFont;
@@ -108,6 +111,7 @@ private:
     void setCurrentTime(uint64_t time);
     void seekTo(const QModelIndex& index, const QPoint& pos);
     void updateViewportPadding();
+    void updateEdgeFadeState();
 
     void highlightCurrentLine();
     void scrollToCurrentLine(int scrollValue);
@@ -116,6 +120,7 @@ private:
     void checkStartAutoScrollPos(uint64_t pos);
     void checkStartAutoScroll(int startValue = -1);
     void updateAutoScroll(int startValue);
+    [[nodiscard]] bool shouldEnableEdgeFade() const;
 
     PlayerController* m_playerController;
     SettingsManager* m_settings;

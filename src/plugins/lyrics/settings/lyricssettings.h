@@ -30,6 +30,7 @@ namespace Lyrics {
 namespace Settings {
 constexpr auto Paths           = u"Lyrics/Paths";
 constexpr auto Colours         = u"Lyrics/Colours";
+constexpr auto BaseFont        = u"Lyrics/BaseFont";
 constexpr auto LineFont        = u"Lyrics/CurrentLineFont";
 constexpr auto WordLineFont    = u"Lyrics/CurrentWordLineFont";
 constexpr auto WordFont        = u"Lyrics/CurrentWordFont";
@@ -42,6 +43,8 @@ constexpr auto NoLyricsScript  = u"Lyrics/NoLyricsScript";
 constexpr auto SeekOnClick     = u"Lyrics/SeekOnClick";
 constexpr auto ShowScrollbar   = u"Lyrics/ShowScrollbar";
 constexpr auto ScrollMode      = u"Lyrics/ScrollMode";
+constexpr auto EdgeFadeMode    = u"Lyrics/EdgeFadeMode";
+constexpr auto EdgeFadeSize    = u"Lyrics/EdgeFadeSize";
 constexpr auto TitleField      = u"Lyrics/TitleField";
 constexpr auto AlbumField      = u"Lyrics/AlbumField";
 constexpr auto ArtistField     = u"Lyrics/ArtistField";
@@ -64,6 +67,14 @@ enum class ScrollMode : uint8_t
     Manual = 0,
     Synced,
     Automatic
+};
+
+enum class EdgeFadeMode : uint8_t
+{
+    Off = 0,
+    SyncedOnly,
+    ScrollingLyrics,
+    AllLyrics
 };
 
 enum class SaveScheme : uint8_t

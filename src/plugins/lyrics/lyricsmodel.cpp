@@ -34,12 +34,13 @@ LyricsModel::LyricsModel(QObject* parent)
     , m_currentLine{-1}
     , m_currentLineEnd{-1}
     , m_currentWord{-1}
-    , m_lineFont{Lyrics::defaultFont()}
-    , m_wordLineFont{Lyrics::defaultFont()}
-    , m_wordFont{Lyrics::defaultFont()}
+    , m_baseFont{Lyrics::defaultFont()}
+    , m_lineFont{Lyrics::defaultLineFont()}
+    , m_wordLineFont{Lyrics::defaultWordLineFont()}
+    , m_wordFont{Lyrics::defaultWordFont()}
 {
     setColours(Colours{});
-    setFonts({}, {}, {});
+    setFonts({}, {}, {}, {});
 }
 
 void LyricsModel::setLyrics(const Lyrics& lyrics)
@@ -118,8 +119,13 @@ void LyricsModel::setColours(const Colours& colours)
     endResetModel();
 }
 
-void LyricsModel::setFonts(const QString& lineFont, const QString& wordLineFont, const QString& wordFont)
+void LyricsModel::setFonts(const QString& baseFont, const QString& lineFont, const QString& wordLineFont,
+                           const QString& wordFont)
 {
+    if(baseFont.isEmpty() || !m_baseFont.fromString(baseFont)) {
+        m_baseFont = Lyrics::defaultFont();
+    }
+
     if(lineFont.isEmpty() || !m_lineFont.fromString(lineFont)) {
         m_lineFont = Lyrics::defaultLineFont();
     }
@@ -132,7 +138,14 @@ void LyricsModel::setFonts(const QString& lineFont, const QString& wordLineFont,
         m_wordFont = Lyrics::defaultWordFont();
     }
 
-    updateCurrentLine();
+    beginResetModel();
+
+    m_text.clear();
+    for(const auto& line : m_lyrics.lines) {
+        m_text.push_back(textForLine(line));
+    }
+
+    endResetModel();
 }
 
 void LyricsModel::setCurrentTime(uint64_t time)
@@ -317,7 +330,7 @@ RichText LyricsModel::textForLine(const ParsedLine& line) const
 
         RichFormatting format;
 
-        format.font   = Lyrics::defaultFont();
+        format.font   = m_baseFont;
         format.colour = m_colours.colour(linePlayed ? Colours::Type::LinePlayed : Colours::Type::LineUnplayed);
 
         switch(m_lyrics.type) {

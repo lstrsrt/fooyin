@@ -22,7 +22,9 @@
 #include "lyricsmodel.h"
 
 #include <QApplication>
+#include <QBrush>
 #include <QContextMenuEvent>
+#include <QLinearGradient>
 #include <QMouseEvent>
 #include <QPainter>
 #include <QPen>
@@ -35,6 +37,8 @@ namespace Fooyin::Lyrics {
 LyricsView::LyricsView(QWidget* parent)
     : QListView{parent}
     , m_displayAlignment{Qt::AlignCenter}
+    , m_edgeFadeEnabled{false}
+    , m_edgeFadeSizePercent{10}
     , m_leftButtonDown{false}
     , m_dragSeeking{false}
     , m_suppressContextMenu{false}
@@ -62,6 +66,27 @@ void LyricsView::setDisplayAlignment(Qt::Alignment alignment)
     }
 
     viewport()->update();
+}
+
+void LyricsView::setEdgeFadeEnabled(bool enabled)
+{
+    if(std::exchange(m_edgeFadeEnabled, enabled) == enabled) {
+        return;
+    }
+
+    viewport()->update();
+}
+
+void LyricsView::setEdgeFadeSizePercent(int percent)
+{
+    percent = std::clamp(percent, 1, 50);
+    if(std::exchange(m_edgeFadeSizePercent, percent) == percent) {
+        return;
+    }
+
+    if(m_edgeFadeEnabled) {
+        viewport()->update();
+    }
 }
 
 void LyricsView::setDisplayMargins(const QMargins& margins)
@@ -103,25 +128,34 @@ void LyricsView::paintEvent(QPaintEvent* event)
                                                            -m_displayMargins.right(), -m_displayMargins.bottom());
         const auto alignment = (m_displayAlignment & Qt::AlignHorizontal_Mask) | Qt::AlignVCenter | Qt::TextWordWrap;
         painter.drawText(textRect, alignment, m_displayString);
+        return;
     }
-    else {
-        QListView::paintEvent(event);
 
-        if(m_dragSeeking && isSeekableIndex(m_dragIndex)) {
-            // TODO: Make configurable
-            QPen pen{palette().color(QPalette::Text)};
-            pen.setStyle(Qt::DotLine);
-            pen.setDashPattern({2.0, 4.0});
-            pen.setCosmetic(true);
-            pen.setWidth(1);
+    QListView::paintEvent(event);
 
-            QPainter painter{viewport()};
-            painter.setOpacity(0.6);
-            painter.setPen(pen);
+    QPainter painter{viewport()};
 
-            const int guideY = std::clamp(m_dragPos.y(), 0, viewport()->height() - 1);
-            painter.drawLine(0, guideY, viewport()->width(), guideY);
-        }
+    const auto paintSeekLine = [this, &painter]() {
+        // TODO: Make configurable
+        QPen pen{palette().color(QPalette::Text)};
+        pen.setStyle(Qt::DotLine);
+        pen.setDashPattern({2.0, 4.0});
+        pen.setCosmetic(true);
+        pen.setWidth(1);
+
+        painter.setOpacity(0.6);
+        painter.setPen(pen);
+
+        const int guideY = std::clamp(m_dragPos.y(), 0, viewport()->height() - 1);
+        painter.drawLine(0, guideY, viewport()->width(), guideY);
+    };
+
+    if(m_edgeFadeEnabled) {
+        paintEdgeFade(painter);
+    }
+
+    if(m_dragSeeking && isSeekableIndex(m_dragIndex)) {
+        paintSeekLine();
     }
 }
 
@@ -213,6 +247,15 @@ void LyricsView::resizeEvent(QResizeEvent* event)
     emit viewportResized();
 }
 
+void LyricsView::scrollContentsBy(const int dx, const int dy)
+{
+    QListView::scrollContentsBy(dx, dy);
+
+    if(m_edgeFadeEnabled && dy != 0) {
+        viewport()->update();
+    }
+}
+
 void LyricsView::updateGeometries()
 {
     QListView::updateGeometries();
@@ -242,6 +285,69 @@ void LyricsView::updateScrollSingleStep()
     // The lyrics model's row 0 is synthetic padding for centering, so anchor manual scrolling
     // to the first real lyrics row instead of the padding height
     verticalScrollBar()->setSingleStep(singleStep);
+}
+
+QColor LyricsView::backgroundColour() const
+{
+    if(const auto* model = this->model(); model && model->rowCount({}) > 0) {
+        const auto background = model->index(0, 0).data(Qt::BackgroundRole).value<QBrush>();
+        if(background.style() != Qt::NoBrush) {
+            const QColor colour = background.color();
+            if(colour.isValid()) {
+                return colour;
+            }
+        }
+    }
+
+    return palette().color(QPalette::Base);
+}
+
+int LyricsView::edgeFadeHeight() const
+{
+    const int viewportHeight = viewport()->height();
+    if(viewportHeight <= 1) {
+        return 0;
+    }
+
+    return std::clamp((viewportHeight * m_edgeFadeSizePercent) / 100, 1, viewportHeight / 2);
+}
+
+void LyricsView::paintEdgeFade(QPainter& painter) const
+{
+    if(!model() || model()->rowCount({}) <= 0) {
+        return;
+    }
+
+    const int fadeHeight = edgeFadeHeight();
+    if(fadeHeight <= 0) {
+        return;
+    }
+
+    const QRect viewportRect = viewport()->rect();
+    if(viewportRect.height() <= fadeHeight) {
+        return;
+    }
+
+    QColor edgeColour = backgroundColour();
+    if(!edgeColour.isValid()) {
+        return;
+    }
+
+    QColor centreColour{edgeColour};
+    centreColour.setAlpha(0);
+
+    const QRect topRect{viewportRect.left(), viewportRect.top(), viewportRect.width(), fadeHeight};
+    QLinearGradient topGradient{topRect.topLeft(), topRect.bottomLeft()};
+    topGradient.setColorAt(0.0, edgeColour);
+    topGradient.setColorAt(1.0, centreColour);
+    painter.fillRect(topRect, topGradient);
+
+    const QRect bottomRect{viewportRect.left(), viewportRect.bottom() - fadeHeight + 1, viewportRect.width(),
+                           fadeHeight};
+    QLinearGradient bottomGradient{bottomRect.topLeft(), bottomRect.bottomLeft()};
+    bottomGradient.setColorAt(0.0, centreColour);
+    bottomGradient.setColorAt(1.0, edgeColour);
+    painter.fillRect(bottomRect, bottomGradient);
 }
 
 QModelIndex LyricsView::seekableIndexAt(const QPoint& pos) const
