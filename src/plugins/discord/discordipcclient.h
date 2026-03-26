@@ -51,9 +51,10 @@ public:
 private:
     void setError(const QString& error);
 
+    [[nodiscard]] bool hasCompleteMessage();
     std::optional<DiscordMessage> readMessage();
     void sendMessage(const QJsonObject& packet, int opCode);
-    bool processMessage(const DiscordMessage message);
+    bool processMessage(const DiscordMessage& message);
 
     QCoro::Task<bool> waitForReadyRead();
     QCoro::Task<bool> startHandshake();
@@ -63,6 +64,8 @@ private:
 
     QString m_clientId;
 
+    quint64 m_connectGeneration;
+    bool m_connectInProgress;
     bool m_handshakeCompleted;
     QString m_error;
 };

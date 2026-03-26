@@ -51,6 +51,7 @@ public:
 private:
     void toggleEnabled(bool enable);
     void updateActivity();
+    void positionChanged(uint64_t ms);
 
     PlayerController* m_player;
     SettingsManager* m_settings;
@@ -61,6 +62,7 @@ private:
     DiscordIPCClient* m_discordClient;
     SignalThrottler* m_throttler;
     ScriptParser m_scriptParser;
+    int m_positionSyncedTrackId;
 };
 } // namespace Discord
 } // namespace Fooyin

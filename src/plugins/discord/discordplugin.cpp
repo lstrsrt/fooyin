@@ -48,6 +48,7 @@ namespace Fooyin::Discord {
 DiscordPlugin::DiscordPlugin()
     : m_discordClient{new DiscordIPCClient(this)}
     , m_throttler{new SignalThrottler(this)}
+    , m_positionSyncedTrackId{-1}
 { }
 
 void DiscordPlugin::initialise(const CorePluginContext& context)
@@ -57,9 +58,18 @@ void DiscordPlugin::initialise(const CorePluginContext& context)
 
     m_discordSettings = std::make_unique<DiscordSettings>(m_settings);
 
-    QObject::connect(m_player, &PlayerController::currentTrackChanged, m_throttler, &SignalThrottler::throttle);
+    QObject::connect(m_player, &PlayerController::currentTrackChanged, this, [this] {
+        m_positionSyncedTrackId = -1;
+        m_throttler->throttle();
+    });
+    QObject::connect(m_player, &PlayerController::positionChanged, this, &DiscordPlugin::positionChanged);
     QObject::connect(m_player, &PlayerController::positionMoved, m_throttler, &SignalThrottler::throttle);
-    QObject::connect(m_player, &PlayerController::playStateChanged, m_throttler, &SignalThrottler::throttle);
+    QObject::connect(m_player, &PlayerController::playStateChanged, this, [this](Player::PlayState state) {
+        if(state == Player::PlayState::Stopped) {
+            m_positionSyncedTrackId = -1;
+        }
+        m_throttler->throttle();
+    });
 
     QObject::connect(m_throttler, &SignalThrottler::triggered, this, &DiscordPlugin::updateActivity);
 
@@ -71,7 +81,13 @@ void DiscordPlugin::initialise(const CorePluginContext& context)
 
     m_settings->subscribe<Settings::Discord::DiscordEnabled>(this, &DiscordPlugin::toggleEnabled);
     m_settings->subscribe<Settings::Discord::ShowStateIcon>(m_throttler, &SignalThrottler::throttle);
-    m_settings->subscribe<Settings::Discord::ClientId>(m_discordClient, &DiscordIPCClient::changeClientId);
+    m_settings->subscribe<Settings::Discord::ClientId>(this, [this](const QString& clientId) {
+        QCoro::connect(m_discordClient->changeClientId(clientId), this, [this] {
+            if(m_settings->value<Settings::Discord::DiscordEnabled>() && m_discordClient->isConnected()) {
+                updateActivity();
+            }
+        });
+    });
     m_settings->subscribe<Settings::Discord::TitleField>(m_throttler, &SignalThrottler::throttle);
     m_settings->subscribe<Settings::Discord::ArtistField>(m_throttler, &SignalThrottler::throttle);
     m_settings->subscribe<Settings::Discord::AlbumField>(m_throttler, &SignalThrottler::throttle);
@@ -90,7 +106,11 @@ void DiscordPlugin::shutdown()
 void DiscordPlugin::toggleEnabled(bool enable)
 {
     if(enable && !m_discordClient->isConnected()) {
-        m_discordClient->connectToDiscord();
+        QCoro::connect(m_discordClient->connectToDiscord(), this, [this](bool connected) {
+            if(connected) {
+                updateActivity();
+            }
+        });
     }
     else {
         m_discordClient->disconnectFromDiscord();
@@ -130,7 +150,7 @@ void DiscordPlugin::updateActivity()
     }
 
     switch(m_player->playState()) {
-        case(Player::PlayState::Playing): {
+        case Player::PlayState::Playing: {
             if(showPlayState) {
                 data.smallImage = QString::fromLatin1(LogoPlay);
             }
@@ -143,7 +163,7 @@ void DiscordPlugin::updateActivity()
             data.end   = (currentTimeMs + (endMs - startMs)) / 1000;
             break;
         }
-        case(Player::PlayState::Paused): {
+        case Player::PlayState::Paused: {
             if(showPlayState) {
                 data.smallImage = QString::fromLatin1(LogoPause);
             }
@@ -151,10 +171,30 @@ void DiscordPlugin::updateActivity()
             data.end   = 0;
             break;
         }
-        case(Player::PlayState::Stopped):
+        case Player::PlayState::Stopped:
             break;
     }
 
     m_discordClient->updateActivity(data);
+}
+
+void DiscordPlugin::positionChanged(uint64_t ms)
+{
+    if(ms == 0) {
+        return;
+    }
+
+    const auto track = m_player->currentTrack();
+    if(!track.isValid()) {
+        return;
+    }
+
+    const int trackId = track.id();
+    if(trackId < 0 || m_positionSyncedTrackId == trackId) {
+        return;
+    }
+
+    m_positionSyncedTrackId = trackId;
+    m_throttler->throttle();
 }
 } // namespace Fooyin::Discord
