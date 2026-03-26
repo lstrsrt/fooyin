@@ -26,6 +26,26 @@
 using namespace Qt::StringLiterals;
 
 namespace {
+struct StarBrushes
+{
+    QBrush filled;
+    QBrush faded;
+};
+
+[[nodiscard]] StarBrushes getStarBrushes(const QPalette& palette, Fooyin::StarRating::EditMode mode, bool selected)
+{
+    const QBrush filled = mode == Fooyin::StarRating::EditMode::Editable
+                            ? palette.highlight()
+                            : (selected ? palette.highlightedText() : palette.text());
+
+    QBrush faded{filled};
+    QColor fadedColour{filled.color()};
+    fadedColour.setAlphaF(fadedColour.alphaF() * 0.2);
+    faded.setColor(fadedColour);
+
+    return {.filled = filled, .faded = faded};
+}
+
 void drawHalfPolygon(QPainter* painter, const QPolygonF& polygon, bool drawLeftHalf)
 {
     QRectF clipRect;
@@ -97,14 +117,18 @@ void StarRating::setStarScale(int scale)
 }
 
 void StarRating::paint(QPainter* painter, const QRect& rect, const QPalette& palette, EditMode mode,
-                       Qt::Alignment alignment) const
+                       Qt::Alignment alignment, bool selected) const
 {
+    const auto brushes     = getStarBrushes(palette, mode, selected);
     const QString cacheKey = u"StarRating:%1|%2|%3|%4|%5|%6"_s.arg(m_rating)
                                  .arg(m_scale)
                                  .arg(m_maxCount)
                                  .arg(mode == EditMode::Editable ? 1 : 0)
                                  .arg(rect.width())
-                                 .arg(alignment.toInt());
+                                 .arg(rect.height())
+                           + u"|%1|%2|%3"_s.arg(alignment.toInt())
+                                 .arg(brushes.filled.color().name(QColor::HexArgb))
+                                 .arg(brushes.faded.color().name(QColor::HexArgb));
 
     QPixmap pixmap;
     if(!QPixmapCache::find(cacheKey, &pixmap)) {
@@ -113,13 +137,6 @@ void StarRating::paint(QPainter* painter, const QRect& rect, const QPalette& pal
 
         QPainter pixmapPainter(&pixmap);
         pixmapPainter.setRenderHint(QPainter::Antialiasing, true);
-
-        const QBrush brush{mode == EditMode::Editable ? palette.highlight() : palette.windowText()};
-
-        QBrush fadedBrush{brush};
-        QColor fadedColour{brush.color()};
-        fadedColour.setAlphaF(0.2F);
-        fadedBrush.setColor(fadedColour);
 
         const int yOffset = (rect.height() - m_scale) / 2;
 
@@ -142,18 +159,18 @@ void StarRating::paint(QPainter* painter, const QRect& rect, const QPalette& pal
             if(i < fullStars) {
                 // Draw full star
                 pixmapPainter.setPen(Qt::NoPen);
-                pixmapPainter.setBrush(brush);
+                pixmapPainter.setBrush(brushes.filled);
                 pixmapPainter.drawPolygon(m_starPolygon, Qt::WindingFill);
             }
             else {
                 pixmapPainter.setPen(Qt::NoPen);
-                pixmapPainter.setBrush(fadedBrush);
+                pixmapPainter.setBrush(brushes.faded);
                 pixmapPainter.drawPolygon(m_starPolygon, Qt::WindingFill);
             }
 
             if(i == fullStars && partialStar >= 0.5) {
                 // Draw half star
-                pixmapPainter.setBrush(brush);
+                pixmapPainter.setBrush(brushes.filled);
                 drawHalfPolygon(&pixmapPainter, m_starPolygon, true);
             }
 

@@ -54,7 +54,7 @@ public:
     void setStarScale(int scale);
 
     void paint(QPainter* painter, const QRect& rect, const QPalette& palette, EditMode mode,
-               Qt::Alignment alignment = Qt::AlignLeft) const;
+               Qt::Alignment alignment = Qt::AlignLeft, bool selected = false) const;
     [[nodiscard]] QSize sizeHint() const;
 
     operator QVariant() const

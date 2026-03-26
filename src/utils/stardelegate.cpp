@@ -48,14 +48,16 @@ void StarDelegate::paint(QPainter* painter, const QStyleOptionViewItem& option, 
     QStyleOptionViewItem opt{option};
     initStyleOption(&opt, index);
 
+    const QStyle* style = opt.widget ? opt.widget->style() : QApplication::style();
+
     if(!index.data().canConvert<StarRating>()) {
-        const QStyle* style = opt.widget ? opt.widget->style() : QApplication::style();
         style->drawControl(QStyle::CE_ItemViewItem, &opt, painter, opt.widget);
         return;
     }
 
     auto starRating        = index.data().value<StarRating>();
     const bool mixedValues = index.data(MixedValues).toBool();
+    const bool selected    = opt.state.testFlag(QStyle::State_Selected);
 
     const bool hover = m_hoverIndex.isValid()
                     && (m_hoverIndex == index || (m_selected.contains(m_hoverIndex) && m_selected.contains(index)));
@@ -64,7 +66,7 @@ void StarDelegate::paint(QPainter* painter, const QStyleOptionViewItem& option, 
         starRating.setRating(StarEditor::ratingAtPosition(m_hoverPos, option.rect, starRating, opt.displayAlignment));
     }
 
-    starRating.paint(painter, opt.rect, opt.palette, StarRating::EditMode::ReadOnly, opt.displayAlignment);
+    starRating.paint(painter, opt.rect, opt.palette, StarRating::EditMode::ReadOnly, opt.displayAlignment, selected);
 
     if(mixedValues && !hover) {
         painter->save();
@@ -73,7 +75,7 @@ void StarDelegate::paint(QPainter* painter, const QStyleOptionViewItem& option, 
         font.setPointSizeF(std::max(7.0, font.pointSizeF() - 1.0));
         painter->setFont(font);
 
-        QColor textColour = opt.palette.text().color();
+        QColor textColour = selected ? opt.palette.highlightedText().color() : opt.palette.text().color();
         textColour.setAlpha(170);
         painter->setPen(textColour);
 
