@@ -17,18 +17,13 @@
  *
  */
 
-#include "core/library/libraryscanner.h"
-#include "core/database/dbschema.h"
+#include "core/library/libraryscansession.h"
 #include "core/library/libraryscanstate.h"
 #include "core/library/libraryscanutils.h"
 #include "core/library/libraryscanwriter.h"
 #include "core/library/librarytrackresolver.h"
 #include "core/playlist/parsers/cueparser.h"
 #include "core/playlist/playlistloader.h"
-
-#include <utils/database/dbconnectionhandler.h>
-#include <utils/database/dbconnectionpool.h>
-#include <utils/database/dbconnectionprovider.h>
 
 #include <core/engine/audioloader.h>
 
@@ -38,15 +33,12 @@
 #include <QStandardPaths>
 #include <QTemporaryDir>
 #include <QUrl>
-#include <QUuid>
 
 #include <gtest/gtest.h>
 
 using namespace Qt::StringLiterals;
 
 namespace {
-constexpr int CurrentSchemaVersion = 16;
-
 QCoreApplication* ensureCoreApplication()
 {
     QStandardPaths::setTestModeEnabled(true);
@@ -130,45 +122,8 @@ void writeFile(const QString& path, const QByteArray& data)
     ASSERT_EQ(data.size(), file.write(data));
 }
 
-void initialiseTestSchema(const Fooyin::DbConnectionPoolPtr& dbPool)
+void sortTracks(Fooyin::TrackList& tracks)
 {
-    Fooyin::DbSchema schema{Fooyin::DbConnectionProvider{dbPool}};
-    const auto result = schema.upgradeDatabase(CurrentSchemaVersion, u"://dbschema.xml"_s);
-    ASSERT_TRUE(result == Fooyin::DbSchema::UpgradeResult::Success
-                || result == Fooyin::DbSchema::UpgradeResult::IsCurrent)
-        << "Unexpected schema init result: " << static_cast<int>(result);
-}
-
-Fooyin::DbConnectionPoolPtr createTestDbPool(const QTemporaryDir& dir)
-{
-    Fooyin::DbConnection::DbParams params;
-    params.type     = u"QSQLITE"_s;
-    params.filePath = dir.filePath(u"libraryscanner.sqlite"_s);
-
-    const QString connectionName = u"libraryscanner_test_%1"_s.arg(QUuid::createUuid().toString(QUuid::WithoutBraces));
-    const auto dbPool            = Fooyin::DbConnectionPool::create(params, connectionName);
-
-    EXPECT_TRUE(dbPool);
-    if(!dbPool) {
-        return {};
-    }
-
-    const Fooyin::DbConnectionHandler dbHandler{dbPool};
-    EXPECT_TRUE(dbHandler.hasConnection());
-    if(!dbHandler.hasConnection()) {
-        return {};
-    }
-
-    initialiseTestSchema(dbPool);
-    return dbPool;
-}
-
-Fooyin::TrackList readStoredTracks(const Fooyin::DbConnectionPoolPtr& dbPool)
-{
-    Fooyin::TrackDatabase trackDatabase;
-    trackDatabase.initialise(Fooyin::DbConnectionProvider{dbPool});
-
-    auto tracks = trackDatabase.getAllTracks();
     std::ranges::sort(tracks, [](const Fooyin::Track& lhs, const Fooyin::Track& rhs) {
         if(lhs.filepath() != rhs.filepath()) {
             return lhs.filepath() < rhs.filepath();
@@ -178,8 +133,6 @@ Fooyin::TrackList readStoredTracks(const Fooyin::DbConnectionPoolPtr& dbPool)
         }
         return lhs.title() < rhs.title();
     });
-
-    return tracks;
 }
 } // namespace
 
@@ -285,25 +238,21 @@ FILE "album.flac" FLAC
     audioLoader->addReader(
         u"fake-embedded"_s, [readerState]() { return std::make_unique<FakeEmbeddedCueReader>(readerState); }, 0);
 
-    const auto dbPool = createTestDbPool(dir);
-    ASSERT_TRUE(dbPool);
-
-    LibraryScanner scanner{dbPool, playlistLoader, audioLoader};
-    scanner.initialiseThread();
-
     LibraryScanConfig config;
     config.externalRestrictExt = {u"cue"_s, u"flac"_s};
-    scanner.scanFiles({}, {QUrl::fromLocalFile(cuePath), QUrl::fromLocalFile(flacPath)}, config);
+    DummyScanHost host;
+    LibraryScanSession session{nullptr, playlistLoader.get(), audioLoader.get(), config, &host};
+    LibraryScanFilesResult result;
 
-    const TrackList scannedTracks = readStoredTracks(dbPool);
+    ASSERT_TRUE(session.scanFiles({}, {QUrl::fromLocalFile(cuePath), QUrl::fromLocalFile(flacPath)}, result));
+    sortTracks(result.tracksScanned);
+    const TrackList& scannedTracks = result.tracksScanned;
 
     ASSERT_EQ(2, scannedTracks.size());
     EXPECT_EQ(u"Embedded Artist"_s, scannedTracks.at(0).albumArtist());
     EXPECT_EQ(u"Embedded Artist"_s, scannedTracks.at(1).albumArtist());
     EXPECT_EQ(u"Embedded One"_s, scannedTracks.at(0).title());
     EXPECT_EQ(u"Embedded Two"_s, scannedTracks.at(1).title());
-
-    scanner.stopThread();
 }
 
 TEST(LibraryScannerTest, DroppingLocalCueAndBackingFileAddsOnlyCueTracks)
@@ -335,25 +284,21 @@ TEST(LibraryScannerTest, DroppingLocalCueAndBackingFileAddsOnlyCueTracks)
     audioLoader->addReader(
         u"fake-embedded"_s, [readerState]() { return std::make_unique<FakeEmbeddedCueReader>(readerState); }, 0);
 
-    const auto dbPool = createTestDbPool(dir);
-    ASSERT_TRUE(dbPool);
-
-    LibraryScanner scanner{dbPool, playlistLoader, audioLoader};
-    scanner.initialiseThread();
-
     LibraryScanConfig config;
     config.externalRestrictExt = {u"cue"_s, u"bin"_s};
-    scanner.scanFiles({}, {QUrl::fromLocalFile(cuePath), QUrl::fromLocalFile(binPath)}, config);
+    DummyScanHost host;
+    LibraryScanSession session{nullptr, playlistLoader.get(), audioLoader.get(), config, &host};
+    LibraryScanFilesResult result;
 
-    const TrackList scannedTracks = readStoredTracks(dbPool);
+    ASSERT_TRUE(session.scanFiles({}, {QUrl::fromLocalFile(cuePath), QUrl::fromLocalFile(binPath)}, result));
+    sortTracks(result.tracksScanned);
+    const TrackList& scannedTracks = result.tracksScanned;
 
     ASSERT_EQ(2, scannedTracks.size());
     EXPECT_EQ(u"Local One"_s, scannedTracks.at(0).title());
     EXPECT_EQ(u"Local Two"_s, scannedTracks.at(1).title());
     EXPECT_EQ(u"Local Artist"_s, scannedTracks.at(0).albumArtist());
     EXPECT_EQ(u"Local Artist"_s, scannedTracks.at(1).albumArtist());
-
-    scanner.stopThread();
 }
 
 TEST(LibraryScannerTest, DroppingBackingFileBeforeLocalCueAddsOnlyCueTracks)
@@ -385,25 +330,21 @@ TEST(LibraryScannerTest, DroppingBackingFileBeforeLocalCueAddsOnlyCueTracks)
     audioLoader->addReader(
         u"fake-embedded"_s, [readerState]() { return std::make_unique<FakeEmbeddedCueReader>(readerState); }, 0);
 
-    const auto dbPool = createTestDbPool(dir);
-    ASSERT_TRUE(dbPool);
-
-    LibraryScanner scanner{dbPool, playlistLoader, audioLoader};
-    scanner.initialiseThread();
-
     LibraryScanConfig config;
     config.externalRestrictExt = {u"cue"_s, u"bin"_s};
-    scanner.scanFiles({}, {QUrl::fromLocalFile(binPath), QUrl::fromLocalFile(cuePath)}, config);
+    DummyScanHost host;
+    LibraryScanSession session{nullptr, playlistLoader.get(), audioLoader.get(), config, &host};
+    LibraryScanFilesResult result;
 
-    const TrackList scannedTracks = readStoredTracks(dbPool);
+    ASSERT_TRUE(session.scanFiles({}, {QUrl::fromLocalFile(binPath), QUrl::fromLocalFile(cuePath)}, result));
+    sortTracks(result.tracksScanned);
+    const TrackList& scannedTracks = result.tracksScanned;
 
     ASSERT_EQ(2, scannedTracks.size());
     EXPECT_EQ(u"Local One"_s, scannedTracks.at(0).title());
     EXPECT_EQ(u"Local Two"_s, scannedTracks.at(1).title());
     EXPECT_EQ(u"Local Artist"_s, scannedTracks.at(0).albumArtist());
     EXPECT_EQ(u"Local Artist"_s, scannedTracks.at(1).albumArtist());
-
-    scanner.stopThread();
 }
 
 TEST(LibraryScannerTest, DroppingDirectoryWithLocalCueAndEmbeddedFileAddsOnlyEmbeddedCueTracks)
@@ -440,24 +381,20 @@ FILE "album.flac" FLAC
     audioLoader->addReader(
         u"fake-embedded"_s, [readerState]() { return std::make_unique<FakeEmbeddedCueReader>(readerState); }, 0);
 
-    const auto dbPool = createTestDbPool(dir);
-    ASSERT_TRUE(dbPool);
-
-    LibraryScanner scanner{dbPool, playlistLoader, audioLoader};
-    scanner.initialiseThread();
-
     LibraryScanConfig config;
     config.externalRestrictExt = {u"cue"_s, u"flac"_s};
-    scanner.scanFiles({}, {QUrl::fromLocalFile(dir.path())}, config);
+    DummyScanHost host;
+    LibraryScanSession session{nullptr, playlistLoader.get(), audioLoader.get(), config, &host};
+    LibraryScanFilesResult result;
 
-    const TrackList scannedTracks = readStoredTracks(dbPool);
+    ASSERT_TRUE(session.scanFiles({}, {QUrl::fromLocalFile(dir.path())}, result));
+    sortTracks(result.tracksScanned);
+    const TrackList& scannedTracks = result.tracksScanned;
 
     ASSERT_EQ(2, scannedTracks.size());
     EXPECT_EQ(u"Embedded Artist"_s, scannedTracks.at(0).albumArtist());
     EXPECT_EQ(u"Embedded Artist"_s, scannedTracks.at(1).albumArtist());
     EXPECT_EQ(u"Embedded One"_s, scannedTracks.at(0).title());
     EXPECT_EQ(u"Embedded Two"_s, scannedTracks.at(1).title());
-
-    scanner.stopThread();
 }
 } // namespace Fooyin::Testing

@@ -19,6 +19,8 @@
 
 #pragma once
 
+#include "fycore_export.h"
+
 #include "libraryscantypes.h"
 
 #include "libraryfileenumerator.h"
@@ -31,7 +33,7 @@ class AudioLoader;
 class PlaylistLoader;
 class TrackDatabase;
 
-class LibraryScanSession
+class FYCORE_EXPORT LibraryScanSession
 {
 public:
     enum class EnumerationMode : uint8_t
