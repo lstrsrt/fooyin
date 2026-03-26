@@ -172,6 +172,22 @@ bool shouldKeepUnreadableTrack(const CueSheet& sheet, const QString& trackPath)
     return QFile::exists(trackPath) || !sheet.skipNotFound;
 }
 
+template <typename Setter>
+void applyIfNotEmpty(const QString& value, Setter&& setter)
+{
+    if(!value.isEmpty()) {
+        setter(value);
+    }
+}
+
+template <typename Setter>
+void applyIfValid(float value, float invalidValue, Setter&& setter)
+{
+    if(value != invalidValue) {
+        setter(value);
+    }
+}
+
 void readRemLine(CueSheet& sheet, Fooyin::Track& track, const QStringList& lineParts)
 {
     if(lineParts.size() < 2) {
@@ -212,15 +228,17 @@ void finaliseTrack(const CueSheet& sheet, Fooyin::Track& track)
     track.setCuePath(sheet.cuePath);
     track.setModifiedTime(std::max(track.modifiedTime(), sheet.lastModified));
 
-    track.setAlbumArtists({sheet.albumArtist});
-    track.setAlbum(sheet.album);
-    track.setGenres({sheet.genre});
-    track.setDate(sheet.date);
-    track.setDiscNumber(sheet.disc);
-    track.setComment(sheet.comment);
-    track.setComposers({sheet.composer});
-    track.setRGAlbumGain(sheet.rgAlbumGain);
-    track.setRGAlbumPeak(sheet.rgAlbumPeak);
+    applyIfNotEmpty(sheet.albumArtist, [&track](const QString& value) { track.setAlbumArtists({value}); });
+    applyIfNotEmpty(sheet.album, [&track](const QString& value) { track.setAlbum(value); });
+    applyIfNotEmpty(sheet.genre, [&track](const QString& value) { track.setGenres({value}); });
+    applyIfNotEmpty(sheet.date, [&track](const QString& value) { track.setDate(value); });
+    applyIfNotEmpty(sheet.disc, [&track](const QString& value) { track.setDiscNumber(value); });
+    applyIfNotEmpty(sheet.comment, [&track](const QString& value) { track.setComment(value); });
+    applyIfNotEmpty(sheet.composer, [&track](const QString& value) { track.setComposers({value}); });
+    applyIfValid(sheet.rgAlbumGain, Fooyin::Constants::InvalidGain,
+                 [&track](float value) { track.setRGAlbumGain(value); });
+    applyIfValid(sheet.rgAlbumPeak, Fooyin::Constants::InvalidPeak,
+                 [&track](float value) { track.setRGAlbumPeak(value); });
 }
 
 void finaliseLastTrack(const CueSheet& sheet, Fooyin::Track& track, const QString& trackPath, Fooyin::TrackList& tracks)

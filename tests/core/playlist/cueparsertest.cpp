@@ -24,6 +24,7 @@
 
 #include <gtest/gtest.h>
 
+#include <QBuffer>
 #include <QDir>
 #include <QFile>
 
@@ -112,5 +113,85 @@ TEST_F(CueParserTest, MissingCueImageIsSkippedWhenConfigured)
 
     const auto tracks = m_parser->readPlaylist(&cueFile, cuePath, dir, readEntry, true);
     EXPECT_TRUE(tracks.empty());
+}
+
+TEST_F(CueParserTest, EmbeddedCuePreservesDiscNumberFromSourceTrackWhenCueOmitsIt)
+{
+    QFile cueFile{testFilePath(u"data/playlists/singlefiletest.cue"_s)};
+    ASSERT_TRUE(cueFile.open(QIODevice::ReadOnly | QIODevice::Text));
+
+    QString cueSheet = QString::fromUtf8(cueFile.readAll());
+    cueSheet.remove(u"REM COMMENT \"ExactAudioCopy v0.95b4\"\n"_s);
+    cueSheet.remove(u"REM DATE 1991\n"_s);
+    cueSheet.remove(u"REM DISCNUMBER 1\n"_s);
+    cueSheet.remove(u"REM GENRE Alternative\n"_s);
+
+    QByteArray cueData = cueSheet.toUtf8();
+    QBuffer buffer{&cueData};
+    ASSERT_TRUE(buffer.open(QIODevice::ReadOnly | QIODevice::Text));
+
+    PlaylistParser::ReadPlaylistEntry readEntry;
+    readEntry.readTrack = [](const Track& track) {
+        Track loaded{track};
+        loaded.setDuration(600000);
+        loaded.setComment(u"Source Comment"_s);
+        loaded.setComposers({u"Source Composer"_s});
+        loaded.setDate(u"2001"_s);
+        loaded.setDiscNumber(u"1"_s);
+        loaded.setDiscTotal(u"2"_s);
+        loaded.setGenres({u"Source Genre"_s});
+        loaded.setRGAlbumGain(-7.25F);
+        loaded.setRGAlbumPeak(0.91F);
+        return loaded;
+    };
+
+    const auto tracks = m_parser->readPlaylist(&buffer, u"/music/album.flac"_s, {}, readEntry, false);
+    ASSERT_EQ(2, tracks.size());
+
+    EXPECT_EQ(u"Source Comment"_s, tracks.at(0).comment());
+    EXPECT_EQ(u"Source Composer"_s, tracks.at(0).composer());
+    EXPECT_EQ(u"2001"_s, tracks.at(0).date());
+    EXPECT_EQ(u"1"_s, tracks.at(0).discNumber());
+    EXPECT_EQ(u"2"_s, tracks.at(0).discTotal());
+    EXPECT_EQ(u"Source Genre"_s, tracks.at(0).genre());
+    EXPECT_FLOAT_EQ(-7.25F, tracks.at(0).rgAlbumGain());
+    EXPECT_FLOAT_EQ(0.91F, tracks.at(0).rgAlbumPeak());
+
+    EXPECT_EQ(u"Source Comment"_s, tracks.at(1).comment());
+    EXPECT_EQ(u"Source Composer"_s, tracks.at(1).composer());
+    EXPECT_EQ(u"2001"_s, tracks.at(1).date());
+    EXPECT_EQ(u"1"_s, tracks.at(1).discNumber());
+    EXPECT_EQ(u"2"_s, tracks.at(1).discTotal());
+    EXPECT_EQ(u"Source Genre"_s, tracks.at(1).genre());
+    EXPECT_FLOAT_EQ(-7.25F, tracks.at(1).rgAlbumGain());
+    EXPECT_FLOAT_EQ(0.91F, tracks.at(1).rgAlbumPeak());
+}
+
+TEST_F(CueParserTest, EmbeddedCuePreservesTrackLevelComposerWhenAlbumComposerIsMissing)
+{
+    QFile cueFile{testFilePath(u"data/playlists/singlefiletest.cue"_s)};
+    ASSERT_TRUE(cueFile.open(QIODevice::ReadOnly | QIODevice::Text));
+
+    QString cueSheet = QString::fromUtf8(cueFile.readAll());
+    cueSheet.replace(u"    TITLE \"Only Shallow\"\n"_s,
+                     u"    TITLE \"Only Shallow\"\n    COMPOSER \"Track Writer\"\n"_s);
+
+    QByteArray cueData = cueSheet.toUtf8();
+    QBuffer buffer{&cueData};
+    ASSERT_TRUE(buffer.open(QIODevice::ReadOnly | QIODevice::Text));
+
+    PlaylistParser::ReadPlaylistEntry readEntry;
+    readEntry.readTrack = [](const Track& track) {
+        Track loaded{track};
+        loaded.setDuration(600000);
+        loaded.setComposers({u"Source Composer"_s});
+        return loaded;
+    };
+
+    const auto tracks = m_parser->readPlaylist(&buffer, u"/music/album.flac"_s, {}, readEntry, false);
+    ASSERT_EQ(2, tracks.size());
+
+    EXPECT_EQ(u"Track Writer"_s, tracks.at(0).composer());
+    EXPECT_EQ(u"Source Composer"_s, tracks.at(1).composer());
 }
 } // namespace Fooyin::Testing
