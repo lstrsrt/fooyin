@@ -445,7 +445,11 @@ void FilterModel::setIconSize(const QSize& size)
         return;
     }
 
-    p->m_decorationSize = CoverProvider::findThumbnailSize(size);
+    const auto thumbnailSize = CoverProvider::findThumbnailSize(size);
+    if(std::exchange(p->m_decorationSize, thumbnailSize) == thumbnailSize) {
+        return;
+    }
+
     p->dataUpdated({Qt::DecorationRole});
 }
 

@@ -2507,10 +2507,8 @@ void ExpandedTreeViewPrivate::columnResized(int logical, int oldSize, int newSiz
 
 void ExpandedTreeViewPrivate::doDelayedItemsLayout(int delay) const
 {
-    if(!m_delayedPendingLayout) {
-        m_delayedPendingLayout = true;
-        m_delayedLayout.start(delay, m_self);
-    }
+    m_delayedPendingLayout = true;
+    m_delayedLayout.start(delay, m_self);
 }
 
 void ExpandedTreeViewPrivate::interruptDelayedItemsLayout() const
