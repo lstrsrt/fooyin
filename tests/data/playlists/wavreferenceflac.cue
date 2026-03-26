@@ -1,0 +1,9 @@
+PERFORMER "Signal Array"
+TITLE "Retarget"
+FILE "wavreferenceflac.wav" WAVE
+  TRACK 01 AUDIO
+    TITLE "One"
+    INDEX 01 00:00:00
+  TRACK 02 AUDIO
+    TITLE "Two"
+    INDEX 01 03:00:00

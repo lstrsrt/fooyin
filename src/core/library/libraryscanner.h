@@ -19,7 +19,9 @@
 
 #pragma once
 
-#include "database/trackdatabase.h"
+#include "fycore_export.h"
+
+#include "core/database/trackdatabase.h"
 #include "libraryscantypes.h"
 
 #include <core/library/musiclibrary.h>
@@ -36,14 +38,14 @@ class DbConnectionHandler;
 class LibraryScanSession;
 class PlaylistLoader;
 
-struct ScanResult
+struct FYCORE_EXPORT ScanResult
 {
     TrackList addedTracks;
     TrackList updatedTracks;
 };
 
-class LibraryScanner : public Worker,
-                       public LibraryScanHost
+class FYCORE_EXPORT LibraryScanner : public Worker,
+                                     public LibraryScanHost
 {
     Q_OBJECT
 

@@ -19,6 +19,8 @@
 
 #pragma once
 
+#include "fycore_export.h"
+
 #include <core/track.h>
 
 #include <QFileInfo>
@@ -26,19 +28,20 @@
 #include <optional>
 
 namespace Fooyin {
-struct TrackReloadOptions
+struct FYCORE_EXPORT TrackReloadOptions
 {
     bool overwriteRatingOnReload{false};
     bool overwritePlaycountOnReload{false};
 };
 
-QString normalisePath(const QString& path);
-QStringList normalisePaths(const QStringList& paths);
-QStringList normaliseExtensions(const QStringList& extensions);
-QString trackIdentity(const Track& track);
-QString physicalTrackPath(const Track& track);
-bool trackIsInRoots(const Track& track, const QStringList& roots);
-std::optional<QFileInfo> findMatchingCue(const QFileInfo& file);
-void readFileProperties(Track& track);
-void mergeReloadedTrackStats(Track& track, const Track& existingTrack, const TrackReloadOptions& options);
+FYCORE_EXPORT QString normalisePath(const QString& path);
+FYCORE_EXPORT QStringList normalisePaths(const QStringList& paths);
+FYCORE_EXPORT QStringList normaliseExtensions(const QStringList& extensions);
+FYCORE_EXPORT QString trackIdentity(const Track& track);
+FYCORE_EXPORT QString physicalTrackPath(const Track& track);
+FYCORE_EXPORT bool trackIsInRoots(const Track& track, const QStringList& roots);
+FYCORE_EXPORT std::optional<QFileInfo> findMatchingCue(const QFileInfo& file, const QFileInfoList& cueFiles);
+FYCORE_EXPORT std::optional<QFileInfo> findMatchingCue(const QFileInfo& file);
+FYCORE_EXPORT void readFileProperties(Track& track);
+FYCORE_EXPORT void mergeReloadedTrackStats(Track& track, const Track& existingTrack, const TrackReloadOptions& options);
 } // namespace Fooyin

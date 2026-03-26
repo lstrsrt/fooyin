@@ -19,6 +19,8 @@
 
 #pragma once
 
+#include "fycore_export.h"
+
 #include "libraryscantypes.h"
 
 #include <functional>
@@ -26,7 +28,7 @@
 namespace Fooyin {
 class TrackDatabase;
 
-class LibraryScanWriter
+class FYCORE_EXPORT LibraryScanWriter
 {
 public:
     using FlushHandler = std::function<void(const ScanResult&)>;

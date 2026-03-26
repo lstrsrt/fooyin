@@ -77,6 +77,10 @@ private:
     LibraryTrackResolver* m_resolver;
     LibraryScanFilesResult* m_fileScanResult;
 
+    std::set<QString> m_externalExplicitPaths;
+    std::set<QString> m_externalExplicitDirs;
+    std::set<QString> m_externalCueCoveredPaths;
+
     bool m_onlyModified;
     EnumerationMode m_enumerationMode;
     ScanProgress::Phase m_phase;

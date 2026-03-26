@@ -31,6 +31,30 @@ bool pathIsWithinRoot(const QString& path, const QString& root)
     return path == root || path.startsWith(root + u"/"_s);
 }
 
+int cueMatchRank(const QFileInfo& file, const QFileInfo& cue)
+{
+    const QString fileName = file.fileName();
+    const QString fileBase = file.completeBaseName();
+    const QString cueName  = cue.fileName();
+    const QString cueBase  = cue.completeBaseName();
+
+    if(cueName.compare(fileName + u".cue"_s, Qt::CaseInsensitive) == 0
+       || cueBase.compare(fileName, Qt::CaseInsensitive) == 0) {
+        return 0;
+    }
+    if(cueBase.compare(fileBase, Qt::CaseInsensitive) == 0) {
+        return 1;
+    }
+    if(cueName.contains(fileName, Qt::CaseInsensitive)) {
+        return 2;
+    }
+    if(cueBase.contains(fileBase, Qt::CaseInsensitive)) {
+        return 3;
+    }
+
+    return -1;
+}
+
 bool pathIsWithinRoots(const QString& path, const QStringList& roots)
 {
     if(roots.empty()) {
@@ -135,13 +159,25 @@ std::optional<QFileInfo> findMatchingCue(const QFileInfo& file)
     const QDir dir           = file.absoluteDir();
     const QFileInfoList cues = dir.entryInfoList(cueExtensions, QDir::Files, QDir::Name | QDir::IgnoreCase);
 
-    for(const auto& cue : cues) {
-        if(cue.completeBaseName() == file.completeBaseName() || cue.fileName().contains(file.fileName())) {
-            return cue;
+    return findMatchingCue(file, cues);
+}
+
+std::optional<QFileInfo> findMatchingCue(const QFileInfo& file, const QFileInfoList& cueFiles)
+{
+    std::optional<QFileInfo> bestCue;
+    int bestRank{std::numeric_limits<int>::max()};
+
+    for(const auto& cue : cueFiles) {
+        const int rank = cueMatchRank(file, cue);
+        if(rank < 0 || rank >= bestRank) {
+            continue;
         }
+
+        bestCue  = cue;
+        bestRank = rank;
     }
 
-    return {};
+    return bestCue;
 }
 
 void readFileProperties(Track& track)

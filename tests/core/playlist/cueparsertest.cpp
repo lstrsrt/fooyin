@@ -397,4 +397,30 @@ TEST_F(CueParserTest, CueParsesLastLineWithoutTrailingNewline)
     EXPECT_EQ(150000U, tracks.at(0).duration());
     EXPECT_EQ(150000U, tracks.at(1).duration());
 }
+
+TEST_F(CueParserTest, CueRetargetsReferencedWavToMatchingFlacImage)
+{
+    const QString cuePath  = testFilePath(u"data/playlists/wavreferenceflac.cue"_s);
+    const QString flacPath = testFilePath(u"data/playlists/wavreferenceflac.flac"_s);
+    QFile cueFile{cuePath};
+    ASSERT_TRUE(cueFile.open(QIODevice::ReadOnly | QIODevice::Text));
+    QDir dir{cuePath};
+    dir.cdUp();
+
+    PlaylistParser::ReadPlaylistEntry readEntry;
+    readEntry.readTrack = [&flacPath](const Track& track) {
+        Track loaded{track};
+        EXPECT_EQ(flacPath, track.filepath());
+        loaded.setDuration(360000);
+        return loaded;
+    };
+
+    const auto tracks = m_parser->readPlaylist(&cueFile, cuePath, dir, readEntry, false);
+    ASSERT_EQ(2, tracks.size());
+
+    EXPECT_EQ(flacPath, tracks.at(0).filepath());
+    EXPECT_EQ(flacPath, tracks.at(1).filepath());
+    EXPECT_EQ(180000U, tracks.at(0).duration());
+    EXPECT_EQ(180000U, tracks.at(1).duration());
+}
 } // namespace Fooyin::Testing

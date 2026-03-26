@@ -19,6 +19,8 @@
 
 #pragma once
 
+#include "fycore_export.h"
+
 #include "libraryscantypes.h"
 
 #include <core/library/musiclibrary.h>
@@ -28,7 +30,7 @@
 namespace Fooyin {
 class LibraryScanHost;
 
-class LibraryScanState
+class FYCORE_EXPORT LibraryScanState
 {
 public:
     explicit LibraryScanState(LibraryScanHost* host);

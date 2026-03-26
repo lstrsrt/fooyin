@@ -19,6 +19,8 @@
 
 #pragma once
 
+#include "fycore_export.h"
+
 #include "libraryscanutils.h"
 
 #include <core/library/libraryinfo.h>
@@ -35,7 +37,7 @@ class LibraryScanWriter;
 class PlaylistLoader;
 class TrackDatabase;
 
-class LibraryTrackResolver
+class FYCORE_EXPORT LibraryTrackResolver
 {
 public:
     using FlushWritesHandler = std::function<void()>;

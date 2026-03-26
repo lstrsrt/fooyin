@@ -19,6 +19,8 @@
 
 #pragma once
 
+#include "fycore_export.h"
+
 #include "settingsdatabase.h"
 
 #include <QXmlStreamReader>
@@ -26,7 +28,7 @@
 namespace Fooyin {
 class SettingsManager;
 
-class DbSchema : public DbModule
+class FYCORE_EXPORT DbSchema : public DbModule
 {
 public:
     enum class UpgradeResult

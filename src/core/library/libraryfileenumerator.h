@@ -19,6 +19,8 @@
 
 #pragma once
 
+#include "fycore_export.h"
+
 #include "libraryscantypes.h"
 
 #include <functional>
@@ -28,7 +30,7 @@ class QFileInfo;
 namespace Fooyin {
 class LibraryScanState;
 
-class LibraryFileEnumerator
+class FYCORE_EXPORT LibraryFileEnumerator
 {
 public:
     using EnumeratedFileHandler = std::function<bool(const QFileInfo&, EnumeratedFileType)>;

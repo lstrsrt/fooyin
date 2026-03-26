@@ -50,6 +50,11 @@ void applyExistingTrackIdentity(Fooyin::Track& track, const Fooyin::Track& exist
     track.setAddedTime(existingTrack.addedTime());
     track.setIsEnabled(existingTrack.isEnabled());
 }
+
+bool cueTracksUseEmbeddedCue(const Fooyin::TrackList& tracks)
+{
+    return std::ranges::any_of(tracks, [](const Fooyin::Track& track) { return track.hasExtraTag(u"CUESHEET"_s); });
+}
 } // namespace
 
 namespace Fooyin {
@@ -257,19 +262,24 @@ void LibraryTrackResolver::readCue(const QFileInfo& info, const bool onlyModifie
     const uint64_t lastModified
         = lastModifiedTime.isValid() ? static_cast<uint64_t>(lastModifiedTime.toMSecsSinceEpoch()) : 0;
 
+    const TrackList cueTracks = readPlaylistTracks(cuePath);
+    if(cueTracks.empty()) {
+        if(m_state->existingCueTracks().contains(cuePath)) {
+            m_state->markTracksSeen(m_state->existingCueTracks().at(cuePath));
+        }
+        return;
+    }
+
+    if(cueTracksUseEmbeddedCue(cueTracks)) {
+        qCInfo(LIB_SCANNER) << "Skipping local cue in favour of embedded cue:" << cuePath;
+        return;
+    }
+
     if(m_state->existingCueTracks().contains(cuePath) && onlyModified
        && m_state->existingCueTracks().at(cuePath).front().modifiedTime() >= lastModified) {
         m_state->markTracksSeen(m_state->existingCueTracks().at(cuePath));
         for(const auto& track : m_state->existingCueTracks().at(cuePath)) {
             m_state->cueFilesScanned().emplace(normalisePath(track.filepath()));
-        }
-        return;
-    }
-
-    const TrackList cueTracks = readPlaylistTracks(cuePath);
-    if(cueTracks.empty()) {
-        if(m_state->existingCueTracks().contains(cuePath)) {
-            m_state->markTracksSeen(m_state->existingCueTracks().at(cuePath));
         }
         return;
     }

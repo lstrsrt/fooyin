@@ -19,13 +19,15 @@
 
 #pragma once
 
+#include "fycore_export.h"
+
 #include <core/library/libraryinfo.h>
 #include <core/track.h>
 
 namespace Fooyin {
 struct ScanResult;
 
-class LibraryScanHost
+class FYCORE_EXPORT LibraryScanHost
 {
 public:
     virtual ~LibraryScanHost() = default;
@@ -35,7 +37,7 @@ public:
     virtual void reportScanUpdate(const ScanResult& result)                                             = 0;
 };
 
-struct LibraryScanConfig
+struct FYCORE_EXPORT LibraryScanConfig
 {
     QStringList libraryRestrictExt;
     QStringList libraryExcludeExt;
@@ -46,7 +48,7 @@ struct LibraryScanConfig
     bool overwritePlaycountOnReload{false};
 };
 
-struct LibraryScanFilesResult
+struct FYCORE_EXPORT LibraryScanFilesResult
 {
     TrackList tracksScanned;
     TrackList playlistTracksScanned;

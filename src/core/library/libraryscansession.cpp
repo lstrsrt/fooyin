@@ -41,6 +41,46 @@ Q_DECLARE_LOGGING_CATEGORY(LIB_SCANNER)
 
 using namespace Qt::StringLiterals;
 
+namespace {
+bool trackListUsesEmbeddedCue(const Fooyin::TrackList& tracks)
+{
+    return std::ranges::any_of(tracks, [](const Fooyin::Track& track) { return track.hasExtraTag(u"CUESHEET"_s); });
+}
+
+bool anyTrackWasExplicitlyDropped(const Fooyin::TrackList& tracks, const std::set<QString>& explicitPaths)
+{
+    return std::ranges::any_of(tracks, [&explicitPaths](const Fooyin::Track& track) {
+        return explicitPaths.contains(Fooyin::normalisePath(track.filepath()));
+    });
+}
+
+bool pathIsInDroppedDirectory(const QString& path, const std::set<QString>& explicitDirs)
+{
+    for(const auto& dir : explicitDirs) {
+        if(path == dir || path.startsWith(dir + u"/"_s)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool anyTrackWasCoveredByDroppedDirectory(const Fooyin::TrackList& tracks, const std::set<QString>& explicitDirs)
+{
+    return std::ranges::any_of(tracks, [&explicitDirs](const Fooyin::Track& track) {
+        return pathIsInDroppedDirectory(Fooyin::normalisePath(track.filepath()), explicitDirs);
+    });
+}
+
+std::set<QString> physicalPathsForTracks(const Fooyin::TrackList& tracks)
+{
+    std::set<QString> paths;
+    for(const auto& track : tracks) {
+        paths.emplace(Fooyin::normalisePath(track.filepath()));
+    }
+    return paths;
+}
+} // namespace
+
 namespace Fooyin {
 LibraryScanSession::LibraryScanSession(TrackDatabase* trackDatabase, PlaylistLoader* playlistLoader,
                                        AudioLoader* audioLoader, LibraryScanConfig config, LibraryScanHost* host)
@@ -65,8 +105,11 @@ void LibraryScanSession::reset(const LibraryInfo& library)
     m_currentLibrary = library;
     m_state.reset();
     m_writer.reset();
-    m_resolver        = nullptr;
-    m_fileScanResult  = nullptr;
+    m_resolver       = nullptr;
+    m_fileScanResult = nullptr;
+    m_externalExplicitPaths.clear();
+    m_externalExplicitDirs.clear();
+    m_externalCueCoveredPaths.clear();
     m_onlyModified    = true;
     m_enumerationMode = EnumerationMode::Library;
 }
@@ -154,6 +197,15 @@ bool LibraryScanSession::handleEnumeratedFile(const QFileInfo& info, const Enume
             }
             else if(type == EnumeratedFileType::Cue) {
                 const TrackList cueTracks = m_resolver->readPlaylistTracks(filepath);
+                if(trackListUsesEmbeddedCue(cueTracks)
+                   && (anyTrackWasExplicitlyDropped(cueTracks, m_externalExplicitPaths)
+                       || anyTrackWasCoveredByDroppedDirectory(cueTracks, m_externalExplicitDirs))) {
+                    return true;
+                }
+
+                const auto coveredPaths = physicalPathsForTracks(cueTracks);
+                m_externalCueCoveredPaths.insert(coveredPaths.cbegin(), coveredPaths.cend());
+
                 for(auto track : cueTracks) {
                     readFileProperties(track);
                     track.setAddedTime(QDateTime::currentMSecsSinceEpoch());
@@ -161,6 +213,11 @@ bool LibraryScanSession::handleEnumeratedFile(const QFileInfo& info, const Enume
                 }
             }
             else {
+                if(m_externalCueCoveredPaths.contains(filepath)) {
+                    m_state.fileScanned(filepath);
+                    return true;
+                }
+
                 const TrackList tracks = m_resolver->readTracks(filepath);
                 for(Track track : tracks) {
                     readFileProperties(track);
@@ -346,6 +403,18 @@ bool LibraryScanSession::scanFiles(const TrackList& libraryTracks, const QList<Q
     QStringList paths;
     std::ranges::transform(urls, std::back_inserter(paths), [](const QUrl& url) { return url.toLocalFile(); });
 
+    m_externalExplicitPaths.clear();
+    m_externalExplicitDirs.clear();
+    m_externalCueCoveredPaths.clear();
+
+    for(const auto& path : paths) {
+        const QString normalisedPath = normalisePath(path);
+        m_externalExplicitPaths.emplace(normalisedPath);
+        if(QFileInfo{path}.isDir()) {
+            m_externalExplicitDirs.emplace(normalisedPath);
+        }
+    }
+
     m_phase = ScanProgress::Phase::Enumerating;
     m_state.setReportEnumeratingProgress(true);
     m_state.setProgressPhase(m_phase, 0);
@@ -369,6 +438,11 @@ bool LibraryScanSession::scanFiles(const TrackList& libraryTracks, const QList<Q
     m_fileScanResult  = nullptr;
     m_resolver        = nullptr;
     m_enumerationMode = EnumerationMode::Library;
+
+    m_externalExplicitPaths.clear();
+    m_externalExplicitDirs.clear();
+    m_externalCueCoveredPaths.clear();
+
     return completed;
 }
 

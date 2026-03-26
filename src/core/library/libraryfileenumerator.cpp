@@ -90,7 +90,7 @@ bool LibraryFileEnumerator::enumerateFiles(const QStringList& paths, const QStri
             continue;
         }
 
-        if(const auto type = fileType(info); type && type == EnumeratedFileType::Cue) {
+        if(const auto type = fileType(info); type && type == EnumeratedFileType::Track) {
             if(const auto cue = findMatchingCue(info)) {
                 if(!emitFile(cue.value())) {
                     return false;
@@ -140,16 +140,6 @@ bool LibraryFileEnumerator::processDirectory(const QString& path, const QStringL
         return m_handler(info, type);
     };
 
-    auto findMatchingCueInDir = [&cueFiles](const QFileInfo& file) -> std::optional<QFileInfo> {
-        for(const auto& cue : cueFiles) {
-            if(cue.completeBaseName() == file.completeBaseName() || cue.fileName().contains(file.fileName())) {
-                return cue;
-            }
-        }
-
-        return {};
-    };
-
     for(const auto& entry : entries) {
         if(entry.isDir()) {
             if(!processDirectory(normalisePath(entry.absoluteFilePath()), trackExtensions, playlistExtensions,
@@ -168,7 +158,7 @@ bool LibraryFileEnumerator::processDirectory(const QString& path, const QStringL
         }
 
         if(trackExtensions.contains(suffix)) {
-            if(const auto cue = findMatchingCueInDir(entry)) {
+            if(const auto cue = findMatchingCue(entry, cueFiles)) {
                 if(!emitTypedFile(cue.value(), EnumeratedFileType::Cue)) {
                     return false;
                 }
