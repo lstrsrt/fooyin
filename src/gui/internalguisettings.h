@@ -40,6 +40,12 @@ enum class SelectionDisplay : uint8_t
     PreferSelection
 };
 
+enum class ArtworkSourcePreference : uint8_t
+{
+    PreferDirectory = 0,
+    PreferEmbedded
+};
+
 struct CoverPaths
 {
     QStringList frontCoverPaths;
@@ -120,44 +126,45 @@ constexpr auto LastFilePath          = "Interface/LastFilePath";
 
 enum GuiInternalSettings : uint32_t
 {
-    EditingMenuLevels         = 1 | Type::Int,
-    PlaylistAltColours        = 2 | Type::Bool,
-    PlaylistHeader            = 3 | Type::Bool,
-    PlaylistScrollBar         = 4 | Type::Bool,
-    StatusPlayingScript       = 5 | Type::String,
-    StatusSelectionScript     = 6 | Type::String,
-    StatusShowIcon            = 7 | Type::Bool,
-    StatusShowSelection       = 8 | Type::Bool,
-    SystemIconTheme           = 9 | Type::String,
-    WindowTitleTrackScript    = 10 | Type::String,
-    TrackCoverPaths           = 11 | Type::Variant,
-    TrackCoverDisplayOption   = 12 | Type::Int,
-    PlaylistImagePadding      = 13 | Type::Int,
-    PlaylistImagePaddingTop   = 14 | Type::Int,
-    PixmapCacheSize           = 15 | Type::Int,
-    EditableLayoutMargin      = 16 | Type::Int,
-    PlaylistTabsAddButton     = 17 | Type::Bool,
-    ShowTrayIcon              = 18 | Type::Bool,
-    TrayOnClose               = 19 | Type::Bool,
-    PlaylistTabsCloseButton   = 20 | Type::Bool,
-    PlaylistTabsMiddleClose   = 21 | Type::Bool,
-    PlaylistTabsExpand        = 22 | Type::Bool,
-    PlaylistTabsClearButton   = 23 | Type::Bool,
-    PlaylistMiddleClick       = 24 | Type::Int,
-    InfoDisplayPrefer         = 25 | Type::Int,
-    SystemStyle               = 26 | Type::String,
-    SystemFont                = 27 | Type::Variant,
-    SystemPalette             = 28 | Type::Variant,
-    LibTreeIconSize           = 29 | Type::Variant,
-    ArtworkSaveMethods        = 30 | Type::Variant,
-    ArtworkAutoSearch         = 31 | Type::Bool,
-    ArtworkTitleField         = 32 | Type::String,
-    ArtworkAlbumField         = 33 | Type::String,
-    ArtworkArtistField        = 34 | Type::String,
-    ArtworkMatchThreshold     = 35 | Type::Int,
-    ArtworkDownloadThumbSize  = 36 | Type::Int,
-    ImageAllocationLimit      = 37 | Type::Int,
-    PlaylistTrackPreloadCount = 38 | Type::Int,
+    EditingMenuLevels          = 1 | Type::Int,
+    PlaylistAltColours         = 2 | Type::Bool,
+    PlaylistHeader             = 3 | Type::Bool,
+    PlaylistScrollBar          = 4 | Type::Bool,
+    StatusPlayingScript        = 5 | Type::String,
+    StatusSelectionScript      = 6 | Type::String,
+    StatusShowIcon             = 7 | Type::Bool,
+    StatusShowSelection        = 8 | Type::Bool,
+    SystemIconTheme            = 9 | Type::String,
+    WindowTitleTrackScript     = 10 | Type::String,
+    TrackCoverPaths            = 11 | Type::Variant,
+    TrackCoverDisplayOption    = 12 | Type::Int,
+    PlaylistImagePadding       = 13 | Type::Int,
+    PlaylistImagePaddingTop    = 14 | Type::Int,
+    PixmapCacheSize            = 15 | Type::Int,
+    EditableLayoutMargin       = 16 | Type::Int,
+    PlaylistTabsAddButton      = 17 | Type::Bool,
+    ShowTrayIcon               = 18 | Type::Bool,
+    TrayOnClose                = 19 | Type::Bool,
+    PlaylistTabsCloseButton    = 20 | Type::Bool,
+    PlaylistTabsMiddleClose    = 21 | Type::Bool,
+    PlaylistTabsExpand         = 22 | Type::Bool,
+    PlaylistTabsClearButton    = 23 | Type::Bool,
+    PlaylistMiddleClick        = 24 | Type::Int,
+    InfoDisplayPrefer          = 25 | Type::Int,
+    SystemStyle                = 26 | Type::String,
+    SystemFont                 = 27 | Type::Variant,
+    SystemPalette              = 28 | Type::Variant,
+    LibTreeIconSize            = 29 | Type::Variant,
+    ArtworkSaveMethods         = 30 | Type::Variant,
+    ArtworkAutoSearch          = 31 | Type::Bool,
+    ArtworkTitleField          = 32 | Type::String,
+    ArtworkAlbumField          = 33 | Type::String,
+    ArtworkArtistField         = 34 | Type::String,
+    ArtworkMatchThreshold      = 35 | Type::Int,
+    ArtworkDownloadThumbSize   = 36 | Type::Int,
+    ImageAllocationLimit       = 37 | Type::Int,
+    PlaylistTrackPreloadCount  = 38 | Type::Int,
+    TrackCoverSourcePreference = 39 | Type::Int,
 };
 Q_ENUM_NS(GuiInternalSettings)
 } // namespace Settings::Gui::Internal

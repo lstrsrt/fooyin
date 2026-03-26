@@ -58,14 +58,18 @@ std::set<QString> Fooyin::CoverProvider::m_noCoverKeys;
 namespace {
 using Fooyin::CoverProvider;
 
-QString generateAlbumCoverKey(const Fooyin::Track& track, Fooyin::Track::Cover type)
+QString generateAlbumCoverKey(const Fooyin::Track& track, Fooyin::Track::Cover type,
+                              Fooyin::ArtworkSourcePreference sourcePreference)
 {
-    return Fooyin::Utils::generateHash(u"FyCover"_s + QString::number(static_cast<int>(type)), track.albumHash());
+    return Fooyin::Utils::generateHash(
+        u"FyCover|%1|%2"_s.arg(static_cast<int>(type)).arg(static_cast<int>(sourcePreference)), track.albumHash());
 }
 
-QString generateTrackCoverKey(const Fooyin::Track& track, Fooyin::Track::Cover type)
+QString generateTrackCoverKey(const Fooyin::Track& track, Fooyin::Track::Cover type,
+                              Fooyin::ArtworkSourcePreference sourcePreference)
 {
-    return Fooyin::Utils::generateHash(u"FyCover"_s + QString::number(static_cast<int>(type)), track.hash());
+    return Fooyin::Utils::generateHash(
+        u"FyCover|%1|%2"_s.arg(static_cast<int>(type)).arg(static_cast<int>(sourcePreference)), track.hash());
 }
 
 QString generateThumbCoverKey(const QString& key, int size)
@@ -259,6 +263,7 @@ struct CoverLoader
     QString key;
     Fooyin::Track track;
     Fooyin::Track::Cover type;
+    Fooyin::ArtworkSourcePreference sourcePreference{Fooyin::ArtworkSourcePreference::PreferDirectory};
     std::shared_ptr<Fooyin::AudioLoader> audioLoader;
     Fooyin::CoverPaths paths;
     bool isThumb{false};
@@ -266,6 +271,11 @@ struct CoverLoader
     bool originalSize{false};
     QImage cover;
 };
+
+bool prefersEmbedded(const CoverLoader& loader)
+{
+    return loader.sourcePreference == Fooyin::ArtworkSourcePreference::PreferEmbedded;
+}
 
 bool hasImageInDirectory(CoverLoader& loader)
 {
@@ -321,8 +331,11 @@ QImage loadImageFromEmbedded(const CoverLoader& loader, const QString& cachePath
 
 bool hasCoverImage(CoverLoader loader)
 {
-    const CoverLoader result{loader};
-    return (hasImageInDirectory(loader) || hasEmbeddedCover(loader));
+    if(prefersEmbedded(loader)) {
+        return hasEmbeddedCover(loader) || hasImageInDirectory(loader);
+    }
+
+    return hasImageInDirectory(loader) || hasEmbeddedCover(loader);
 }
 
 CoverLoader loadCoverImage(CoverLoader loader)
@@ -336,14 +349,21 @@ CoverLoader loadCoverImage(CoverLoader loader)
         result.cover = readImage(cachePath, loader.size, u"cached"_s);
     }
 
-    // Then check directory paths
-    if(result.cover.isNull()) {
-        result.cover = loadImageFromDirectory(loader);
+    if(prefersEmbedded(loader)) {
+        if(result.cover.isNull()) {
+            result.cover = loadImageFromEmbedded(loader, cachePath);
+        }
+        if(result.cover.isNull()) {
+            result.cover = loadImageFromDirectory(loader);
+        }
     }
-
-    // Finally check metadata
-    if(result.cover.isNull()) {
-        result.cover = loadImageFromEmbedded(loader, cachePath);
+    else {
+        if(result.cover.isNull()) {
+            result.cover = loadImageFromDirectory(loader);
+        }
+        if(result.cover.isNull()) {
+            result.cover = loadImageFromEmbedded(loader, cachePath);
+        }
     }
 
     return result;
@@ -377,6 +397,7 @@ public:
     std::set<QString> m_pendingCovers;
 
     CoverPaths m_paths;
+    ArtworkSourcePreference m_sourcePreference;
 };
 
 CoverProvider::CoverProviderPrivate::CoverProviderPrivate(CoverProvider* self, std::shared_ptr<AudioLoader> audioLoader,
@@ -385,6 +406,8 @@ CoverProvider::CoverProviderPrivate::CoverProviderPrivate(CoverProvider* self, s
     , m_audioLoader{std::move(audioLoader)}
     , m_settings{settings}
     , m_paths{m_settings->value<Settings::Gui::Internal::TrackCoverPaths>().value<CoverPaths>()}
+    , m_sourcePreference{static_cast<ArtworkSourcePreference>(
+          m_settings->value<Settings::Gui::Internal::TrackCoverSourcePreference>())}
 {
     auto updateCache = [](const int sizeMb) {
         m_coverCache.setMaxCost(sizeMb * 1024LL * 1024LL);
@@ -395,6 +418,8 @@ CoverProvider::CoverProviderPrivate::CoverProviderPrivate(CoverProvider* self, s
 
     m_settings->subscribe<Settings::Gui::Internal::TrackCoverPaths>(
         m_self, [this](const QVariant& var) { m_paths = var.value<CoverPaths>(); });
+    m_settings->subscribe<Settings::Gui::Internal::TrackCoverSourcePreference>(
+        m_self, [this](int preference) { m_sourcePreference = static_cast<ArtworkSourcePreference>(preference); });
     m_settings->subscribe<Settings::Gui::IconTheme>(m_self, [this]() { m_coverCache.remove(m_noCoverKey); });
 }
 
@@ -464,13 +489,14 @@ void CoverProvider::CoverProviderPrivate::fetchCover(const QString& key, const T
                                                      bool thumbnail, ThumbnailSize size)
 {
     CoverLoader loader;
-    loader.key         = key;
-    loader.track       = track;
-    loader.type        = type;
-    loader.audioLoader = m_audioLoader;
-    loader.paths       = m_paths;
-    loader.isThumb     = thumbnail;
-    loader.size        = size;
+    loader.key              = key;
+    loader.track            = track;
+    loader.type             = type;
+    loader.sourcePreference = m_sourcePreference;
+    loader.audioLoader      = m_audioLoader;
+    loader.paths            = m_paths;
+    loader.isThumb          = thumbnail;
+    loader.size             = size;
 
     auto loaderResult = Utils::asyncExec([loader]() -> CoverLoader {
         auto result = loadCoverImage(loader);
@@ -482,10 +508,11 @@ void CoverProvider::CoverProviderPrivate::fetchCover(const QString& key, const T
 QFuture<QPixmap> CoverProvider::CoverProviderPrivate::loadCover(const Track& track, Track::Cover type) const
 {
     CoverLoader loader;
-    loader.track       = track;
-    loader.type        = type;
-    loader.audioLoader = m_audioLoader;
-    loader.paths       = m_paths;
+    loader.track            = track;
+    loader.type             = type;
+    loader.sourcePreference = m_sourcePreference;
+    loader.audioLoader      = m_audioLoader;
+    loader.paths            = m_paths;
 
     auto loaderResult = Utils::asyncExec([loader]() -> CoverLoader {
         auto result = loadCoverImage(loader);
@@ -497,11 +524,12 @@ QFuture<QPixmap> CoverProvider::CoverProviderPrivate::loadCover(const Track& tra
 QFuture<QPixmap> CoverProvider::CoverProviderPrivate::loadOriginalCover(const Track& track, Track::Cover type) const
 {
     CoverLoader loader;
-    loader.track        = track;
-    loader.type         = type;
-    loader.audioLoader  = m_audioLoader;
-    loader.paths        = m_paths;
-    loader.originalSize = true;
+    loader.track            = track;
+    loader.type             = type;
+    loader.sourcePreference = m_sourcePreference;
+    loader.audioLoader      = m_audioLoader;
+    loader.paths            = m_paths;
+    loader.originalSize     = true;
 
     auto loaderResult = Utils::asyncExec([loader]() -> CoverLoader {
         auto result = loadCoverImage(loader);
@@ -524,11 +552,12 @@ QFuture<bool> CoverProvider::CoverProviderPrivate::hasCover(const QString& key, 
                                                             Track::Cover type) const
 {
     CoverLoader loader;
-    loader.key         = key;
-    loader.track       = track;
-    loader.type        = type;
-    loader.audioLoader = m_audioLoader;
-    loader.paths       = m_paths;
+    loader.key              = key;
+    loader.track            = track;
+    loader.type             = type;
+    loader.sourcePreference = m_sourcePreference;
+    loader.audioLoader      = m_audioLoader;
+    loader.paths            = m_paths;
 
     auto loaderResult = Utils::asyncExec([loader]() -> bool {
         const bool result = hasCoverImage(loader);
@@ -556,7 +585,7 @@ QFuture<bool> CoverProvider::trackHasCover(const Track& track, Track::Cover type
         return Utils::asyncExec([] { return false; });
     }
 
-    const QString coverKey = generateTrackCoverKey(track, type);
+    const QString coverKey = generateTrackCoverKey(track, type, p->m_sourcePreference);
 
     if(m_noCoverKeys.contains(coverKey)) {
         return Utils::asyncExec([] { return false; });
@@ -571,7 +600,7 @@ QPixmap CoverProvider::trackCover(const Track& track, Track::Cover type) const
         return p->m_usePlacerholder ? p->loadNoCover() : QPixmap{};
     }
 
-    const QString coverKey = generateTrackCoverKey(track, type);
+    const QString coverKey = generateTrackCoverKey(track, type, p->m_sourcePreference);
     if(!p->m_pendingCovers.contains(coverKey)) {
         QPixmap cover = p->loadCachedCover(coverKey);
         if(!cover.isNull()) {
@@ -609,7 +638,7 @@ QPixmap CoverProvider::trackCoverThumbnail(const Track& track, ThumbnailSize siz
         return p->m_usePlacerholder ? p->loadNoCover() : QPixmap{};
     }
 
-    const QString coverKey = generateAlbumCoverKey(track, type);
+    const QString coverKey = generateAlbumCoverKey(track, type, p->m_sourcePreference);
     if(!p->m_pendingCovers.contains(coverKey) && !m_noCoverKeys.contains(coverKey)) {
         QPixmap cover = p->loadCachedCover(coverKey, size);
         if(!cover.isNull()) {
@@ -680,12 +709,18 @@ void CoverProvider::removeFromCache(const Track& track)
     };
 
     for(const auto type : {Track::Cover::Front, Track::Cover::Back, Track::Cover::Artist}) {
-        removeKey(generateAlbumCoverKey(track, type));
-        removeKey(generateTrackCoverKey(track, type));
+        for(const auto sourcePreference :
+            {ArtworkSourcePreference::PreferDirectory, ArtworkSourcePreference::PreferEmbedded}) {
+            const QString albumKey = generateAlbumCoverKey(track, type, sourcePreference);
+            const QString trackKey = generateTrackCoverKey(track, type, sourcePreference);
 
-        for(const auto size : {Tiny, Small, MediumSmall, Medium, Large, VeryLarge, ExtraLarge, Huge}) {
-            m_coverCache.remove(generateThumbCoverKey(generateAlbumCoverKey(track, type), size));
-            m_coverCache.remove(generateThumbCoverKey(generateTrackCoverKey(track, type), size));
+            removeKey(albumKey);
+            removeKey(trackKey);
+
+            for(const auto size : {Tiny, Small, MediumSmall, Medium, Large, VeryLarge, ExtraLarge, Huge}) {
+                m_coverCache.remove(generateThumbCoverKey(albumKey, size));
+                m_coverCache.remove(generateThumbCoverKey(trackKey, size));
+            }
         }
     }
 }

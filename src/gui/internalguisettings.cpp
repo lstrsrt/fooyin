@@ -115,6 +115,8 @@ GuiSettings::GuiSettings(SettingsManager* settingsManager)
                                                                 u"Interface/WindowTitleTrackScript"_s);
     m_settings->createSetting<Internal::TrackCoverPaths>(QVariant::fromValue(defaultCoverPaths()), u"Artwork/Paths"_s);
     m_settings->createSetting<Internal::TrackCoverDisplayOption>(0, u"Artwork/DisplayOption"_s);
+    m_settings->createSetting<Internal::TrackCoverSourcePreference>(
+        static_cast<int>(ArtworkSourcePreference::PreferDirectory), u"Artwork/LocalSourcePreference"_s);
     m_settings->createSetting<Internal::PlaylistImagePadding>(5, u"PlaylistWidget/ImagePadding"_s);
     m_settings->createSetting<Internal::PlaylistImagePaddingTop>(0, u"PlaylistWidget/ImagePaddingTop"_s);
     m_settings->createSetting<Internal::PixmapCacheSize>(
