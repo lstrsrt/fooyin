@@ -35,6 +35,13 @@ struct ColumnData
     std::vector<RichText> richColumns;
 };
 
+RichText placeholderRichText()
+{
+    RichText richText;
+    richText.blocks.push_back({.text = u"?"_s, .format = {}});
+    return richText;
+}
+
 ColumnData buildColumnData(const QStringList& columns, ScriptFormatter& formatter)
 {
     ColumnData data;
@@ -45,12 +52,15 @@ ColumnData buildColumnData(const QStringList& columns, ScriptFormatter& formatte
         RichText richColumn = trimRichText(formatter.evaluate(column));
         QString plainColumn = richColumn.joinedText();
 
-        if(plainColumn.isEmpty() && !column.isEmpty()) {
+        if(plainColumn.isEmpty()) {
             RichText placeholder = trimRichText(formatter.evaluate(column + u"?"_s));
             if(!placeholder.empty()) {
-                richColumn  = std::move(placeholder);
-                plainColumn = richColumn.joinedText();
+                richColumn = std::move(placeholder);
             }
+            else {
+                richColumn = placeholderRichText();
+            }
+            plainColumn = richColumn.joinedText();
         }
 
         data.richColumns.push_back(richColumn);
