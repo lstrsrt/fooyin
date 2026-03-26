@@ -88,7 +88,7 @@ QString editorLabel(const Fooyin::SoundTouchDsp::Parameter parameter)
             return QObject::tr("Rate multiplier");
     }
 
-    return QObject::tr("SoundTouch");
+    return QStringLiteral("SoundTouch");
 }
 } // namespace
 
