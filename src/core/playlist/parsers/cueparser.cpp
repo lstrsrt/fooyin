@@ -119,6 +119,11 @@ QStringList splitCueLine(const QString& line)
     return result;
 };
 
+bool isTopLevelCueLine(const QString& line)
+{
+    return !line.isEmpty() && !line.front().isSpace();
+}
+
 std::optional<uint64_t> msfToMs(const QString& index)
 {
     static const QRegularExpression indexRegex{QLatin1String{TrackIndexRegex}};
@@ -188,7 +193,7 @@ void applyIfValid(float value, float invalidValue, Setter&& setter)
     }
 }
 
-void readRemLine(CueSheet& sheet, Fooyin::Track& track, const QStringList& lineParts)
+void readAlbumRemLine(CueSheet& sheet, const QStringList& lineParts)
 {
     if(lineParts.size() < 2) {
         return;
@@ -215,7 +220,18 @@ void readRemLine(CueSheet& sheet, Fooyin::Track& track, const QStringList& lineP
     else if(field.compare("REPLAYGAIN_ALBUM_PEAK"_L1, Qt::CaseInsensitive) == 0) {
         sheet.rgAlbumPeak = parsePeak(value);
     }
-    else if(field.compare("REPLAYGAIN_TRACK_GAIN"_L1, Qt::CaseInsensitive) == 0) {
+}
+
+void readTrackRemLine(Fooyin::Track& track, const QStringList& lineParts)
+{
+    if(lineParts.size() < 2) {
+        return;
+    }
+
+    const QString& field = lineParts.at(0);
+    const QString& value = lineParts.at(1);
+
+    if(field.compare("REPLAYGAIN_TRACK_GAIN"_L1, Qt::CaseInsensitive) == 0) {
         track.setRGTrackGain(parseGain(value));
     }
     else if(field.compare("REPLAYGAIN_TRACK_PEAK"_L1, Qt::CaseInsensitive) == 0) {
@@ -343,7 +359,7 @@ TrackList CueParser::readCueTracks(QIODevice* device, const QString& filepath, c
     }
 
     while(!buffer.atEnd() && !readEntry.cancel) {
-        const QString line = QString::fromUtf8(buffer.readLine()).trimmed();
+        const QString line = QString::fromUtf8(buffer.readLine());
         processCueLine(sheet, line, track, trackPath, dir, readEntry, tracks);
     }
 
@@ -352,6 +368,11 @@ TrackList CueParser::readCueTracks(QIODevice* device, const QString& filepath, c
     }
 
     finaliseLastTrack(sheet, track, trackPath, tracks);
+
+    for(auto& parsedTrack : tracks) {
+        finaliseTrack(sheet, parsedTrack);
+    }
+
     finaliseDurations(tracks);
 
     return tracks;
@@ -377,7 +398,7 @@ TrackList CueParser::readEmbeddedCueTracks(QIODevice* device, const QString& fil
     }
 
     while(!buffer.atEnd() && !readEntry.cancel) {
-        const QString line = QString::fromUtf8(buffer.readLine()).trimmed();
+        const QString line = QString::fromUtf8(buffer.readLine());
         processCueLine(sheet, line, track, trackPath, {}, readEntry, tracks);
     }
 
@@ -386,6 +407,11 @@ TrackList CueParser::readEmbeddedCueTracks(QIODevice* device, const QString& fil
     }
 
     finaliseLastTrack(sheet, track, filepath, tracks);
+
+    for(auto& parsedTrack : tracks) {
+        finaliseTrack(sheet, parsedTrack);
+    }
+
     finaliseDurations(tracks);
 
     return tracks;
@@ -394,7 +420,10 @@ TrackList CueParser::readEmbeddedCueTracks(QIODevice* device, const QString& fil
 void CueParser::processCueLine(CueSheet& sheet, const QString& line, Track& track, QString& trackPath, const QDir& dir,
                                const ReadPlaylistEntry& readEntry, TrackList& tracks)
 {
-    const QStringList parts = splitCueLine(line);
+    const QString trimmedLine = line.trimmed();
+    const bool topLevelLine   = isTopLevelCueLine(line);
+
+    const QStringList parts = splitCueLine(trimmedLine);
     if(parts.size() < 2) {
         return;
     }
@@ -403,7 +432,7 @@ void CueParser::processCueLine(CueSheet& sheet, const QString& line, Track& trac
     const QString& value = parts.at(1);
 
     if(field.compare("PERFORMER"_L1, Qt::CaseInsensitive) == 0) {
-        if(track.isValid()) {
+        if(!topLevelLine && track.isValid()) {
             track.setArtists({value});
         }
         else {
@@ -411,7 +440,7 @@ void CueParser::processCueLine(CueSheet& sheet, const QString& line, Track& trac
         }
     }
     else if(field.compare("TITLE"_L1, Qt::CaseInsensitive) == 0) {
-        if(track.isValid()) {
+        if(!topLevelLine && track.isValid()) {
             track.setTitle(value);
         }
         else {
@@ -420,7 +449,7 @@ void CueParser::processCueLine(CueSheet& sheet, const QString& line, Track& trac
     }
     else if(field.compare("COMPOSER"_L1, Qt::CaseInsensitive) == 0
             || field.compare("SONGWRITER"_L1, Qt::CaseInsensitive) == 0) {
-        if(track.isValid()) {
+        if(!topLevelLine && track.isValid()) {
             track.setComposers({value});
         }
         else {
@@ -499,7 +528,13 @@ void CueParser::processCueLine(CueSheet& sheet, const QString& line, Track& trac
         }
     }
     else if(field.compare("REM"_L1, Qt::CaseInsensitive) == 0) {
-        readRemLine(sheet, track, parts.sliced(1));
+        if(topLevelLine) {
+            readAlbumRemLine(sheet, parts.sliced(1));
+        }
+        else {
+            readTrackRemLine(track, parts.sliced(1));
+            readAlbumRemLine(sheet, parts.sliced(1));
+        }
     }
     else if(field.compare("TRACK"_L1, Qt::CaseInsensitive) == 0) {
         if(QFile::exists(trackPath) || !sheet.skipNotFound) {

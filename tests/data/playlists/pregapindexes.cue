@@ -1,0 +1,13 @@
+FILE "album.flac" FLAC
+  TRACK 01 AUDIO
+    TITLE "First Light"
+    INDEX 00 00:00:00
+    INDEX 01 00:01:00
+  TRACK 02 AUDIO
+    TITLE "Second Mark"
+    INDEX 00 03:00:00
+    INDEX 01 03:02:00
+  TRACK 03 AUDIO
+    TITLE "Third Wave"
+    INDEX 00 06:00:00
+    INDEX 01 06:05:00

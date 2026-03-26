@@ -1,0 +1,13 @@
+FILE "album.flac" FLAC
+  TRACK 01 AUDIO
+    INDEX 01 00:00:00
+    PERFORMER "Fear Factory"
+    TITLE "Track One"
+  TRACK 02 AUDIO
+    INDEX 01 04:13:25
+    PERFORMER "Fear Factory"
+    TITLE "Track Two"
+PERFORMER "Fear Factory"
+REM DATE "1995"
+REM GENRE "Rock"
+TITLE "Album Name"

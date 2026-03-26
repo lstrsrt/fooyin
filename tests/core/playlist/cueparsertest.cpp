@@ -194,4 +194,207 @@ TEST_F(CueParserTest, EmbeddedCuePreservesTrackLevelComposerWhenAlbumComposerIsM
     EXPECT_EQ(u"Track Writer"_s, tracks.at(0).composer());
     EXPECT_EQ(u"Source Composer"_s, tracks.at(1).composer());
 }
+
+TEST_F(CueParserTest, CueAppliesTrailingAlbumMetadataToAllTracks)
+{
+    const QString cuePath = testFilePath(u"data/playlists/trailingalbummetadata.cue"_s);
+    QFile cueFile{cuePath};
+    ASSERT_TRUE(cueFile.open(QIODevice::ReadOnly | QIODevice::Text));
+    QDir dir{cuePath};
+    dir.cdUp();
+
+    PlaylistParser::ReadPlaylistEntry readEntry;
+    readEntry.readTrack = [](const Track& track) {
+        Track loaded{track};
+        loaded.setDuration(600000);
+        return loaded;
+    };
+
+    const auto tracks = m_parser->readPlaylist(&cueFile, cuePath, dir, readEntry, false);
+    ASSERT_EQ(2, tracks.size());
+
+    EXPECT_EQ(u"Album Name"_s, tracks.at(0).album());
+    EXPECT_EQ(u"Album Name"_s, tracks.at(1).album());
+    EXPECT_EQ(u"Fear Factory"_s, tracks.at(0).albumArtist());
+    EXPECT_EQ(u"Fear Factory"_s, tracks.at(1).albumArtist());
+    EXPECT_EQ(u"Rock"_s, tracks.at(0).genre());
+    EXPECT_EQ(u"Rock"_s, tracks.at(1).genre());
+    EXPECT_EQ(u"1995"_s, tracks.at(0).date());
+    EXPECT_EQ(u"1995"_s, tracks.at(1).date());
+    EXPECT_EQ(u"Track One"_s, tracks.at(0).title());
+    EXPECT_EQ(u"Track Two"_s, tracks.at(1).title());
+}
+
+TEST_F(CueParserTest, CueParsesMultipleFileSections)
+{
+    const QString cuePath = testFilePath(u"data/playlists/multifilealbum.cue"_s);
+    const QString sideA   = testFilePath(u"data/playlists/multifile-side-a.bin"_s);
+    const QString sideB   = testFilePath(u"data/playlists/multifile-side-b.flac"_s);
+    QFile cueFile{cuePath};
+    ASSERT_TRUE(cueFile.open(QIODevice::ReadOnly | QIODevice::Text));
+    QDir dir{cuePath};
+    dir.cdUp();
+
+    PlaylistParser::ReadPlaylistEntry readEntry;
+    readEntry.readTrack = [&sideA, &sideB](const Track& track) {
+        Track loaded{track};
+        if(track.filepath() == sideA) {
+            loaded.setDuration(420000);
+        }
+        else if(track.filepath() == sideB) {
+            loaded.setDuration(540000);
+        }
+        return loaded;
+    };
+
+    const auto tracks = m_parser->readPlaylist(&cueFile, cuePath, dir, readEntry, false);
+    ASSERT_EQ(4, tracks.size());
+
+    EXPECT_EQ(sideA, tracks.at(0).filepath());
+    EXPECT_EQ(sideA, tracks.at(1).filepath());
+    EXPECT_EQ(sideB, tracks.at(2).filepath());
+    EXPECT_EQ(sideB, tracks.at(3).filepath());
+
+    EXPECT_EQ(u"01"_s, tracks.at(0).trackNumber());
+    EXPECT_EQ(u"02"_s, tracks.at(1).trackNumber());
+    EXPECT_EQ(u"03"_s, tracks.at(2).trackNumber());
+    EXPECT_EQ(u"04"_s, tracks.at(3).trackNumber());
+
+    EXPECT_EQ(u"Split Horizon"_s, tracks.at(0).album());
+    EXPECT_EQ(u"Split Horizon"_s, tracks.at(3).album());
+    EXPECT_EQ(u"Northbound"_s, tracks.at(0).albumArtist());
+    EXPECT_EQ(u"Ambient"_s, tracks.at(2).genre());
+    EXPECT_EQ(u"2007"_s, tracks.at(3).date());
+
+    EXPECT_EQ(0U, tracks.at(0).offset());
+    EXPECT_EQ(195000U, tracks.at(1).offset());
+    EXPECT_EQ(0U, tracks.at(2).offset());
+    EXPECT_EQ(240000U, tracks.at(3).offset());
+
+    EXPECT_EQ(195000U, tracks.at(0).duration());
+    EXPECT_EQ(225000U, tracks.at(1).duration());
+    EXPECT_EQ(240000U, tracks.at(2).duration());
+    EXPECT_EQ(300000U, tracks.at(3).duration());
+}
+
+TEST_F(CueParserTest, CueIgnoresPregapIndexesWhenIndex01IsPresent)
+{
+    const QString cuePath = testFilePath(u"data/playlists/pregapindexes.cue"_s);
+    QFile cueFile{cuePath};
+    ASSERT_TRUE(cueFile.open(QIODevice::ReadOnly | QIODevice::Text));
+    QDir dir{cuePath};
+    dir.cdUp();
+
+    PlaylistParser::ReadPlaylistEntry readEntry;
+    readEntry.readTrack = [](const Track& track) {
+        Track loaded{track};
+        loaded.setDuration(600000);
+        return loaded;
+    };
+
+    const auto tracks = m_parser->readPlaylist(&cueFile, cuePath, dir, readEntry, false);
+    ASSERT_EQ(3, tracks.size());
+
+    EXPECT_EQ(1000U, tracks.at(0).offset());
+    EXPECT_EQ(182000U, tracks.at(1).offset());
+    EXPECT_EQ(365000U, tracks.at(2).offset());
+
+    EXPECT_EQ(181000U, tracks.at(0).duration());
+    EXPECT_EQ(183000U, tracks.at(1).duration());
+    EXPECT_EQ(235000U, tracks.at(2).duration());
+}
+
+TEST_F(CueParserTest, CueParsesTrackReplayGainWithoutLeakingAcrossTracks)
+{
+    const QString cuePath = testFilePath(u"data/playlists/trackreplaygain.cue"_s);
+    QFile cueFile{cuePath};
+    ASSERT_TRUE(cueFile.open(QIODevice::ReadOnly | QIODevice::Text));
+    QDir dir{cuePath};
+    dir.cdUp();
+
+    PlaylistParser::ReadPlaylistEntry readEntry;
+    readEntry.readTrack = [](const Track& track) {
+        Track loaded{track};
+        loaded.setDuration(360000);
+        return loaded;
+    };
+
+    const auto tracks = m_parser->readPlaylist(&cueFile, cuePath, dir, readEntry, false);
+    ASSERT_EQ(3, tracks.size());
+
+    EXPECT_FLOAT_EQ(-8.5F, tracks.at(0).rgAlbumGain());
+    EXPECT_FLOAT_EQ(0.987F, tracks.at(1).rgAlbumPeak());
+
+    EXPECT_TRUE(tracks.at(0).hasTrackGain());
+    EXPECT_TRUE(tracks.at(0).hasTrackPeak());
+    EXPECT_FLOAT_EQ(-7.0F, tracks.at(0).rgTrackGain());
+    EXPECT_FLOAT_EQ(0.91F, tracks.at(0).rgTrackPeak());
+
+    EXPECT_TRUE(tracks.at(1).hasTrackGain());
+    EXPECT_TRUE(tracks.at(1).hasTrackPeak());
+    EXPECT_FLOAT_EQ(-6.0F, tracks.at(1).rgTrackGain());
+    EXPECT_FLOAT_EQ(0.92F, tracks.at(1).rgTrackPeak());
+
+    EXPECT_FALSE(tracks.at(2).hasTrackGain());
+    EXPECT_FALSE(tracks.at(2).hasTrackPeak());
+}
+
+TEST_F(CueParserTest, CueAppliesTrailingAlbumMetadataAcrossMultipleFileSections)
+{
+    const QString cuePath = testFilePath(u"data/playlists/multifiletrailingmetadata.cue"_s);
+    const QString sideA   = testFilePath(u"data/playlists/multifile-side-a.bin"_s);
+    const QString sideB   = testFilePath(u"data/playlists/multifile-side-b.flac"_s);
+    QFile cueFile{cuePath};
+    ASSERT_TRUE(cueFile.open(QIODevice::ReadOnly | QIODevice::Text));
+    QDir dir{cuePath};
+    dir.cdUp();
+
+    PlaylistParser::ReadPlaylistEntry readEntry;
+    readEntry.readTrack = [&sideA, &sideB](const Track& track) {
+        Track loaded{track};
+        if(track.filepath() == sideA) {
+            loaded.setDuration(300000);
+        }
+        else if(track.filepath() == sideB) {
+            loaded.setDuration(480000);
+        }
+        return loaded;
+    };
+
+    const auto tracks = m_parser->readPlaylist(&cueFile, cuePath, dir, readEntry, false);
+    ASSERT_EQ(4, tracks.size());
+
+    EXPECT_EQ(u"Late Signals"_s, tracks.at(0).album());
+    EXPECT_EQ(u"Late Signals"_s, tracks.at(3).album());
+    EXPECT_EQ(u"Northbound"_s, tracks.at(0).albumArtist());
+    EXPECT_EQ(u"Northbound"_s, tracks.at(3).albumArtist());
+    EXPECT_EQ(u"Ambient"_s, tracks.at(1).genre());
+    EXPECT_EQ(u"Ambient"_s, tracks.at(2).genre());
+    EXPECT_EQ(u"2008"_s, tracks.at(0).date());
+    EXPECT_EQ(u"2008"_s, tracks.at(3).date());
+}
+
+TEST_F(CueParserTest, CueParsesLastLineWithoutTrailingNewline)
+{
+    const QString cuePath = testFilePath(u"data/playlists/notrailingnewline.cue"_s);
+    QFile cueFile{cuePath};
+    ASSERT_TRUE(cueFile.open(QIODevice::ReadOnly | QIODevice::Text));
+    QDir dir{cuePath};
+    dir.cdUp();
+
+    PlaylistParser::ReadPlaylistEntry readEntry;
+    readEntry.readTrack = [](const Track& track) {
+        Track loaded{track};
+        loaded.setDuration(300000);
+        return loaded;
+    };
+
+    const auto tracks = m_parser->readPlaylist(&cueFile, cuePath, dir, readEntry, false);
+    ASSERT_EQ(2, tracks.size());
+
+    EXPECT_EQ(u"First"_s, tracks.at(0).title());
+    EXPECT_EQ(u"Second"_s, tracks.at(1).title());
+    EXPECT_EQ(150000U, tracks.at(0).duration());
+    EXPECT_EQ(150000U, tracks.at(1).duration());
+}
 } // namespace Fooyin::Testing

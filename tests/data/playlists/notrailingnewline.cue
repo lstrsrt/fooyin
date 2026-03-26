@@ -1,0 +1,7 @@
+FILE "album.flac" FLAC
+  TRACK 01 AUDIO
+    TITLE "First"
+    INDEX 01 00:00:00
+  TRACK 02 AUDIO
+    TITLE "Second"
+    INDEX 01 02:30:00
