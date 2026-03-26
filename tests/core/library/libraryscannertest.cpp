@@ -34,9 +34,11 @@
 
 #include <QCoreApplication>
 #include <QFile>
+#include <QLoggingCategory>
 #include <QStandardPaths>
 #include <QTemporaryDir>
 #include <QUrl>
+#include <QUuid>
 
 #include <gtest/gtest.h>
 
@@ -48,6 +50,7 @@ constexpr int CurrentSchemaVersion = 16;
 QCoreApplication* ensureCoreApplication()
 {
     QStandardPaths::setTestModeEnabled(true);
+    QLoggingCategory::setFilterRules(u"fy.db.info=false"_s);
 
     if(auto* app = QCoreApplication::instance()) {
         return app;
@@ -134,6 +137,49 @@ void initialiseTestSchema(const Fooyin::DbConnectionPoolPtr& dbPool)
     ASSERT_TRUE(result == Fooyin::DbSchema::UpgradeResult::Success
                 || result == Fooyin::DbSchema::UpgradeResult::IsCurrent)
         << "Unexpected schema init result: " << static_cast<int>(result);
+}
+
+Fooyin::DbConnectionPoolPtr createTestDbPool(const QTemporaryDir& dir)
+{
+    Fooyin::DbConnection::DbParams params;
+    params.type     = u"QSQLITE"_s;
+    params.filePath = dir.filePath(u"libraryscanner.sqlite"_s);
+
+    const QString connectionName = u"libraryscanner_test_%1"_s.arg(QUuid::createUuid().toString(QUuid::WithoutBraces));
+    const auto dbPool            = Fooyin::DbConnectionPool::create(params, connectionName);
+
+    EXPECT_TRUE(dbPool);
+    if(!dbPool) {
+        return {};
+    }
+
+    const Fooyin::DbConnectionHandler dbHandler{dbPool};
+    EXPECT_TRUE(dbHandler.hasConnection());
+    if(!dbHandler.hasConnection()) {
+        return {};
+    }
+
+    initialiseTestSchema(dbPool);
+    return dbPool;
+}
+
+Fooyin::TrackList readStoredTracks(const Fooyin::DbConnectionPoolPtr& dbPool)
+{
+    Fooyin::TrackDatabase trackDatabase;
+    trackDatabase.initialise(Fooyin::DbConnectionProvider{dbPool});
+
+    auto tracks = trackDatabase.getAllTracks();
+    std::ranges::sort(tracks, [](const Fooyin::Track& lhs, const Fooyin::Track& rhs) {
+        if(lhs.filepath() != rhs.filepath()) {
+            return lhs.filepath() < rhs.filepath();
+        }
+        if(lhs.offset() != rhs.offset()) {
+            return lhs.offset() < rhs.offset();
+        }
+        return lhs.title() < rhs.title();
+    });
+
+    return tracks;
 }
 } // namespace
 
@@ -239,25 +285,17 @@ FILE "album.flac" FLAC
     audioLoader->addReader(
         u"fake-embedded"_s, [readerState]() { return std::make_unique<FakeEmbeddedCueReader>(readerState); }, 0);
 
-    DbConnection::DbParams params;
-    params.type       = u"QSQLITE"_s;
-    params.filePath   = dir.filePath(u"librarycue.sqlite"_s);
-    const auto dbPool = DbConnectionPool::create(params, u"librarycue_test"_s);
+    const auto dbPool = createTestDbPool(dir);
     ASSERT_TRUE(dbPool);
-    const DbConnectionHandler dbHandler{dbPool};
-    ASSERT_TRUE(dbHandler.hasConnection());
-    initialiseTestSchema(dbPool);
 
     LibraryScanner scanner{dbPool, playlistLoader, audioLoader};
     scanner.initialiseThread();
 
-    TrackList scannedTracks;
-    QObject::connect(&scanner, &LibraryScanner::scannedTracks, &scanner,
-                     [&scannedTracks](const TrackList& tracks) { scannedTracks = tracks; });
-
     LibraryScanConfig config;
     config.externalRestrictExt = {u"cue"_s, u"flac"_s};
     scanner.scanFiles({}, {QUrl::fromLocalFile(cuePath), QUrl::fromLocalFile(flacPath)}, config);
+
+    const TrackList scannedTracks = readStoredTracks(dbPool);
 
     ASSERT_EQ(2, scannedTracks.size());
     EXPECT_EQ(u"Embedded Artist"_s, scannedTracks.at(0).albumArtist());
@@ -297,25 +335,17 @@ TEST(LibraryScannerTest, DroppingLocalCueAndBackingFileAddsOnlyCueTracks)
     audioLoader->addReader(
         u"fake-embedded"_s, [readerState]() { return std::make_unique<FakeEmbeddedCueReader>(readerState); }, 0);
 
-    DbConnection::DbParams params;
-    params.type       = u"QSQLITE"_s;
-    params.filePath   = dir.filePath(u"librarycue.sqlite"_s);
-    const auto dbPool = DbConnectionPool::create(params, u"librarycue_test"_s);
+    const auto dbPool = createTestDbPool(dir);
     ASSERT_TRUE(dbPool);
-    const DbConnectionHandler dbHandler{dbPool};
-    ASSERT_TRUE(dbHandler.hasConnection());
-    initialiseTestSchema(dbPool);
 
     LibraryScanner scanner{dbPool, playlistLoader, audioLoader};
     scanner.initialiseThread();
 
-    TrackList scannedTracks;
-    QObject::connect(&scanner, &LibraryScanner::scannedTracks, &scanner,
-                     [&scannedTracks](const TrackList& tracks) { scannedTracks = tracks; });
-
     LibraryScanConfig config;
     config.externalRestrictExt = {u"cue"_s, u"bin"_s};
     scanner.scanFiles({}, {QUrl::fromLocalFile(cuePath), QUrl::fromLocalFile(binPath)}, config);
+
+    const TrackList scannedTracks = readStoredTracks(dbPool);
 
     ASSERT_EQ(2, scannedTracks.size());
     EXPECT_EQ(u"Local One"_s, scannedTracks.at(0).title());
@@ -355,25 +385,17 @@ TEST(LibraryScannerTest, DroppingBackingFileBeforeLocalCueAddsOnlyCueTracks)
     audioLoader->addReader(
         u"fake-embedded"_s, [readerState]() { return std::make_unique<FakeEmbeddedCueReader>(readerState); }, 0);
 
-    DbConnection::DbParams params;
-    params.type       = u"QSQLITE"_s;
-    params.filePath   = dir.filePath(u"librarycue.sqlite"_s);
-    const auto dbPool = DbConnectionPool::create(params, u"librarycue_test"_s);
+    const auto dbPool = createTestDbPool(dir);
     ASSERT_TRUE(dbPool);
-    const DbConnectionHandler dbHandler{dbPool};
-    ASSERT_TRUE(dbHandler.hasConnection());
-    initialiseTestSchema(dbPool);
 
     LibraryScanner scanner{dbPool, playlistLoader, audioLoader};
     scanner.initialiseThread();
 
-    TrackList scannedTracks;
-    QObject::connect(&scanner, &LibraryScanner::scannedTracks, &scanner,
-                     [&scannedTracks](const TrackList& tracks) { scannedTracks = tracks; });
-
     LibraryScanConfig config;
     config.externalRestrictExt = {u"cue"_s, u"bin"_s};
     scanner.scanFiles({}, {QUrl::fromLocalFile(binPath), QUrl::fromLocalFile(cuePath)}, config);
+
+    const TrackList scannedTracks = readStoredTracks(dbPool);
 
     ASSERT_EQ(2, scannedTracks.size());
     EXPECT_EQ(u"Local One"_s, scannedTracks.at(0).title());
@@ -418,25 +440,17 @@ FILE "album.flac" FLAC
     audioLoader->addReader(
         u"fake-embedded"_s, [readerState]() { return std::make_unique<FakeEmbeddedCueReader>(readerState); }, 0);
 
-    DbConnection::DbParams params;
-    params.type       = u"QSQLITE"_s;
-    params.filePath   = dir.filePath(u"librarycue.sqlite"_s);
-    const auto dbPool = DbConnectionPool::create(params, u"librarycue_test"_s);
+    const auto dbPool = createTestDbPool(dir);
     ASSERT_TRUE(dbPool);
-    const DbConnectionHandler dbHandler{dbPool};
-    ASSERT_TRUE(dbHandler.hasConnection());
-    initialiseTestSchema(dbPool);
 
     LibraryScanner scanner{dbPool, playlistLoader, audioLoader};
     scanner.initialiseThread();
 
-    TrackList scannedTracks;
-    QObject::connect(&scanner, &LibraryScanner::scannedTracks, &scanner,
-                     [&scannedTracks](const TrackList& tracks) { scannedTracks = tracks; });
-
     LibraryScanConfig config;
     config.externalRestrictExt = {u"cue"_s, u"flac"_s};
     scanner.scanFiles({}, {QUrl::fromLocalFile(dir.path())}, config);
+
+    const TrackList scannedTracks = readStoredTracks(dbPool);
 
     ASSERT_EQ(2, scannedTracks.size());
     EXPECT_EQ(u"Embedded Artist"_s, scannedTracks.at(0).albumArtist());
