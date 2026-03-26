@@ -75,9 +75,11 @@ LibraryScanConfig currentScanConfig(SettingsManager* settings)
         .libraryRestrictExt = normaliseExtensions(settings->fileValue(LibraryRestrictTypes).toStringList()),
         .libraryExcludeExt
         = normaliseExtensions(settings->fileValue(LibraryExcludeTypes, QStringList{u"cue"_s}).toStringList()),
-        .externalRestrictExt = normaliseExtensions(settings->fileValue(ExternalRestrictTypes).toStringList()),
-        .externalExcludeExt  = normaliseExtensions(settings->fileValue(ExternalExcludeTypes).toStringList()),
-        .playlistSkipMissing = settings->value<Settings::Core::PlaylistSkipMissing>(),
+        .externalRestrictExt        = normaliseExtensions(settings->fileValue(ExternalRestrictTypes).toStringList()),
+        .externalExcludeExt         = normaliseExtensions(settings->fileValue(ExternalExcludeTypes).toStringList()),
+        .playlistSkipMissing        = settings->value<Settings::Core::PlaylistSkipMissing>(),
+        .overwriteRatingOnReload    = settings->value<Settings::Core::OverwriteRatingOnReload>(),
+        .overwritePlaycountOnReload = settings->value<Settings::Core::OverwritePlaycountOnReload>(),
     };
 }
 
@@ -220,8 +222,9 @@ void LibraryThreadHandlerPrivate::scanLibrary(const LibraryScanRequest& request)
 
 void LibraryThreadHandlerPrivate::scanTracks(const LibraryScanRequest& request)
 {
-    QMetaObject::invokeMethod(&m_scanner,
-                              [this, request]() { m_scanner.scanTracks(request.tracks, request.onlyModified); });
+    const LibraryScanConfig config = currentScanConfig(m_settings);
+    QMetaObject::invokeMethod(
+        &m_scanner, [this, request, config]() { m_scanner.scanTracks(request.tracks, request.onlyModified, config); });
 }
 
 void LibraryThreadHandlerPrivate::scanFiles(const LibraryScanRequest& request)

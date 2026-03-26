@@ -368,6 +368,8 @@ void GuiApplicationPrivate::setupConnections()
                      [](const TrackList& tracks) { removeExpiredCovers(tracks); });
     QObject::connect(m_library, &MusicLibrary::tracksMetadataChanged, &m_selectionController,
                      &TrackSelectionController::tracksUpdated);
+    QObject::connect(m_library, &MusicLibrary::tracksUpdated, &m_selectionController,
+                     &TrackSelectionController::tracksUpdated);
     QObject::connect(m_library, &MusicLibrary::tracksDeleted, &m_selectionController,
                      &TrackSelectionController::tracksRemoved);
 

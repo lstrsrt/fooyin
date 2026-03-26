@@ -1779,7 +1779,7 @@ void Track::setModifiedTime(uint64_t time)
 
 void Track::setFirstPlayed(uint64_t time)
 {
-    if(p->firstPlayed == 0) {
+    if(p->firstPlayed == 0 || (time > 0 && time < p->firstPlayed)) {
         p->firstPlayed = time;
     }
 }

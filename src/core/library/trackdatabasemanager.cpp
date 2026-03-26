@@ -193,12 +193,17 @@ void TrackDatabaseManager::updateTrackStats(const TrackList& tracks, AudioReader
 
         Track updatedTrack{track};
         bool success{true};
+        bool needsTrackUpdate{false};
+
         if(!track.isInArchive() && writeOptions != AudioReader::None) {
-            success = m_audioLoader->writeTrackMetadata(updatedTrack, writeOptions);
+            success                        = m_audioLoader->writeTrackMetadata(updatedTrack, writeOptions);
+            const QDateTime modifiedTime   = QFileInfo{updatedTrack.filepath()}.lastModified();
+            const uint64_t newModifiedTime = modifiedTime.isValid() ? modifiedTime.toMSecsSinceEpoch() : 0;
+            updatedTrack.setModifiedTime(newModifiedTime);
+            needsTrackUpdate = newModifiedTime != track.modifiedTime();
         }
-        if(success && m_trackDatabase.updateTrackStats(updatedTrack)) {
-            const QDateTime modifiedTime = QFileInfo{updatedTrack.filepath()}.lastModified();
-            updatedTrack.setModifiedTime(modifiedTime.isValid() ? modifiedTime.toMSecsSinceEpoch() : 0);
+        if(success && (!needsTrackUpdate || m_trackDatabase.updateTrack(updatedTrack))
+           && m_trackDatabase.updateTrackStats(updatedTrack)) {
             tracksUpdated.push_back(updatedTrack);
         }
         else {

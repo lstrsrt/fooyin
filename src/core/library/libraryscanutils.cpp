@@ -39,6 +39,17 @@ bool pathIsWithinRoots(const QString& path, const QStringList& roots)
 
     return std::ranges::any_of(roots, [&path](const QString& root) { return pathIsWithinRoot(path, root); });
 }
+
+uint64_t minNonZero(const uint64_t lhs, const uint64_t rhs)
+{
+    if(lhs == 0) {
+        return rhs;
+    }
+    if(rhs == 0) {
+        return lhs;
+    }
+    return std::min(lhs, rhs);
+}
 } // namespace
 
 namespace Fooyin {
@@ -147,5 +158,44 @@ void readFileProperties(Track& track)
     if(track.fileSize() == 0) {
         track.setFileSize(fileInfo.size());
     }
+}
+
+void mergeReloadedTrackStats(Track& track, const Track& existingTrack, const TrackReloadOptions& options)
+{
+    const bool fileHasRating    = track.rating() > 0;
+    const bool fileHasPlayStats = track.playCount() > 0 || track.firstPlayed() > 0 || track.lastPlayed() > 0;
+
+    if(options.overwriteRatingOnReload) {
+        if(!fileHasRating && existingTrack.rating() > 0) {
+            track.setRating(existingTrack.rating());
+        }
+    }
+    else if(existingTrack.rating() > 0 || !fileHasRating) {
+        track.setRating(existingTrack.rating());
+    }
+
+    if(options.overwritePlaycountOnReload) {
+        if(!fileHasPlayStats) {
+            track.setPlayCount(existingTrack.playCount());
+            track.setFirstPlayed(existingTrack.firstPlayed());
+            track.setLastPlayed(existingTrack.lastPlayed());
+            return;
+        }
+
+        if(track.playCount() <= 0) {
+            track.setPlayCount(existingTrack.playCount());
+        }
+        if(track.firstPlayed() == 0) {
+            track.setFirstPlayed(existingTrack.firstPlayed());
+        }
+        if(track.lastPlayed() == 0) {
+            track.setLastPlayed(existingTrack.lastPlayed());
+        }
+        return;
+    }
+
+    track.setPlayCount(std::max(existingTrack.playCount(), track.playCount()));
+    track.setFirstPlayed(minNonZero(existingTrack.firstPlayed(), track.firstPlayed()));
+    track.setLastPlayed(std::max(existingTrack.lastPlayed(), track.lastPlayed()));
 }
 } // namespace Fooyin

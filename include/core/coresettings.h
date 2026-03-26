@@ -85,6 +85,8 @@ enum CoreSettings : uint32_t
     OutputDither                  = 36 | Type::Bool,
     ClearPlaybackQueueOnExit      = 37 | Type::Bool,
     LibraryViewPlaylistSortScript = 38 | Type::String,
+    OverwriteRatingOnReload       = 39 | Type::Bool,
+    OverwritePlaycountOnReload    = 40 | Type::Bool,
 };
 Q_ENUM_NS(CoreSettings)
 } // namespace Settings::Core

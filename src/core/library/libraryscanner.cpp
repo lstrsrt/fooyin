@@ -21,6 +21,7 @@
 
 #include "database/trackdatabase.h"
 #include "libraryscansession.h"
+#include "libraryscanutils.h"
 #include "playlist/playlistloader.h"
 
 #include <utils/database/dbconnectionhandler.h>
@@ -186,7 +187,7 @@ void LibraryScanner::scanLibraryDirectoies(const LibraryInfo& library, const QSt
     clearSession();
 }
 
-void LibraryScanner::scanTracks(const TrackList& tracks, const bool onlyModified)
+void LibraryScanner::scanTracks(const TrackList& tracks, const bool onlyModified, const LibraryScanConfig& config)
 {
     setState(Running);
 
@@ -236,6 +237,10 @@ void LibraryScanner::scanTracks(const TrackList& tracks, const bool onlyModified
             updatedTrack.setId(track.id());
             updatedTrack.setLibraryId(track.libraryId());
             updatedTrack.setAddedTime(track.addedTime());
+            updatedTrack.setIsEnabled(track.isEnabled());
+            mergeReloadedTrackStats(updatedTrack, track,
+                                    {.overwriteRatingOnReload    = config.overwriteRatingOnReload,
+                                     .overwritePlaycountOnReload = config.overwritePlaycountOnReload});
 
             const QFileInfo fileInfo{updatedTrack.filepath()};
             if(updatedTrack.modifiedTime() == 0) {

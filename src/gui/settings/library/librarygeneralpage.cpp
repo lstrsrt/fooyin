@@ -41,7 +41,6 @@
 #include <QInputDialog>
 #include <QLabel>
 #include <QMenu>
-#include <QPushButton>
 
 using namespace Qt::StringLiterals;
 
@@ -126,6 +125,8 @@ private:
     QCheckBox* m_useVariousCompilations;
     QCheckBox* m_saveRatings;
     QCheckBox* m_savePlaycounts;
+    QCheckBox* m_overwriteRatingsOnReload;
+    QCheckBox* m_overwritePlaycountsOnReload;
 };
 
 LibraryGeneralPageWidget::LibraryGeneralPageWidget(ActionManager* actionManager, LibraryManager* libraryManager,
@@ -142,8 +143,10 @@ LibraryGeneralPageWidget::LibraryGeneralPageWidget(ActionManager* actionManager,
     , m_markUnavailable{new QCheckBox(tr("Mark unavailable tracks on playback"), this)}
     , m_markUnavailableStart{new QCheckBox(tr("Mark unavailable tracks on startup"), this)}
     , m_useVariousCompilations{new QCheckBox(tr("Use 'Various Artists' for compilations"), this)}
-    , m_saveRatings{new QCheckBox(tr("Save ratings to file metadata"), this)}
-    , m_savePlaycounts{new QCheckBox(tr("Save playcount to file metadata"), this)}
+    , m_saveRatings{new QCheckBox(tr("Save ratings to file tags when possible"), this)}
+    , m_savePlaycounts{new QCheckBox(tr("Save playcounts to file tags when possible"), this)}
+    , m_overwriteRatingsOnReload{new QCheckBox(tr("Overwrite rating in database when songs are re-read"), this)}
+    , m_overwritePlaycountsOnReload{new QCheckBox(tr("Overwrite playcount in database when files are re-read"), this)}
 {
     m_libraryView->setExtendableModel(m_model);
 
@@ -168,18 +171,54 @@ LibraryGeneralPageWidget::LibraryGeneralPageWidget(ActionManager* actionManager,
     fileTypesLayout->addWidget(new QLabel(u"🛈 e.g. \"mp3;m4a\""_s, this), row++, 1);
     fileTypesLayout->setColumnStretch(1, 1);
 
+    auto* scanningGroup  = new QGroupBox(tr("Scanning"), this);
+    auto* scanningLayout = new QGridLayout(scanningGroup);
+
+    row = 0;
+    scanningLayout->addWidget(m_autoRefresh, row++, 0);
+    scanningLayout->addWidget(m_monitorLibraries, row++, 0);
+
+    auto* availabilityGroup  = new QGroupBox(tr("Availability"), this);
+    auto* availabilityLayout = new QGridLayout(availabilityGroup);
+
+    row = 0;
+    availabilityLayout->addWidget(m_markUnavailable, row++, 0);
+    availabilityLayout->addWidget(m_markUnavailableStart, row++, 0);
+
+    auto* metadataGroup  = new QGroupBox(tr("Metadata"), this);
+    auto* metadataLayout = new QGridLayout(metadataGroup);
+
+    row = 0;
+    metadataLayout->addWidget(m_useVariousCompilations, row++, 0);
+
+    auto* playbackStatsGroup  = new QGroupBox(tr("Playback Statistics"), this);
+    auto* playbackStatsLayout = new QGridLayout(playbackStatsGroup);
+
+    m_overwriteRatingsOnReload->setToolTip(tr(
+        "When enabled, a rating found in file tags replaces the database rating.\n"
+        "When disabled, the database rating is kept and file tags are only used when the database rating is empty."));
+    m_overwritePlaycountsOnReload->setToolTip(
+        tr("When enabled, playcount and played timestamps found in file tags replace the database values.\n"
+           "Missing values still fall back to the database.\n"
+           "When disabled, playcount uses the higher value, first played uses the earlier non-empty value,\n"
+           "and last played uses the later value."));
+
+    row = 0;
+    playbackStatsLayout->addWidget(m_savePlaycounts, row++, 0);
+    playbackStatsLayout->addWidget(m_saveRatings, row++, 0);
+    playbackStatsLayout->addWidget(m_overwritePlaycountsOnReload, row++, 0);
+    playbackStatsLayout->addWidget(m_overwriteRatingsOnReload, row++, 0);
+
     auto* mainLayout = new QGridLayout(this);
 
     row = 0;
     mainLayout->addWidget(m_libraryView, row++, 0, 1, 2);
     mainLayout->addWidget(fileTypesGroup, row++, 0, 1, 2);
-    mainLayout->addWidget(m_autoRefresh, row++, 0, 1, 2);
-    mainLayout->addWidget(m_monitorLibraries, row++, 0, 1, 2);
-    mainLayout->addWidget(m_markUnavailable, row++, 0, 1, 2);
-    mainLayout->addWidget(m_markUnavailableStart, row++, 0, 1, 2);
-    mainLayout->addWidget(m_useVariousCompilations, row++, 0, 1, 2);
-    mainLayout->addWidget(m_saveRatings, row++, 0, 1, 2);
-    mainLayout->addWidget(m_savePlaycounts, row++, 0, 1, 2);
+    mainLayout->addWidget(scanningGroup, row, 0);
+    mainLayout->addWidget(availabilityGroup, row++, 1);
+    mainLayout->addWidget(metadataGroup, row++, 0, 1, 2);
+    mainLayout->addWidget(playbackStatsGroup, row++, 0, 1, 2);
+    mainLayout->setColumnStretch(0, 1);
     mainLayout->setColumnStretch(1, 1);
 
     QObject::connect(m_model, &LibraryModel::requestAddLibrary, this, &LibraryGeneralPageWidget::addLibrary);
@@ -209,6 +248,8 @@ void LibraryGeneralPageWidget::load()
     m_useVariousCompilations->setChecked(m_settings->value<Settings::Core::UseVariousForCompilations>());
     m_saveRatings->setChecked(m_settings->value<Settings::Core::SaveRatingToMetadata>());
     m_savePlaycounts->setChecked(m_settings->value<Settings::Core::SavePlaycountToMetadata>());
+    m_overwriteRatingsOnReload->setChecked(m_settings->value<Settings::Core::OverwriteRatingOnReload>());
+    m_overwritePlaycountsOnReload->setChecked(m_settings->value<Settings::Core::OverwritePlaycountOnReload>());
 }
 
 void LibraryGeneralPageWidget::apply()
@@ -227,6 +268,8 @@ void LibraryGeneralPageWidget::apply()
     m_settings->set<Settings::Core::UseVariousForCompilations>(m_useVariousCompilations->isChecked());
     m_settings->set<Settings::Core::SaveRatingToMetadata>(m_saveRatings->isChecked());
     m_settings->set<Settings::Core::SavePlaycountToMetadata>(m_savePlaycounts->isChecked());
+    m_settings->set<Settings::Core::OverwriteRatingOnReload>(m_overwriteRatingsOnReload->isChecked());
+    m_settings->set<Settings::Core::OverwritePlaycountOnReload>(m_overwritePlaycountsOnReload->isChecked());
 }
 
 void LibraryGeneralPageWidget::reset()
@@ -241,6 +284,8 @@ void LibraryGeneralPageWidget::reset()
     m_settings->reset<Settings::Core::UseVariousForCompilations>();
     m_settings->reset<Settings::Core::SaveRatingToMetadata>();
     m_settings->reset<Settings::Core::SavePlaycountToMetadata>();
+    m_settings->reset<Settings::Core::OverwriteRatingOnReload>();
+    m_settings->reset<Settings::Core::OverwritePlaycountOnReload>();
 }
 
 void LibraryGeneralPageWidget::addLibrary() const

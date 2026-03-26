@@ -43,15 +43,11 @@ using namespace Qt::StringLiterals;
 constexpr auto ArchivePath = R"(unpack://%1|%2|file://%3!)";
 
 namespace {
-void applyExistingTrackState(Fooyin::Track& track, const Fooyin::Track& existingTrack)
+void applyExistingTrackIdentity(Fooyin::Track& track, const Fooyin::Track& existingTrack)
 {
     track.setId(existingTrack.id());
     track.setLibraryId(existingTrack.libraryId());
     track.setAddedTime(existingTrack.addedTime());
-    track.setPlayCount(existingTrack.playCount());
-    track.setFirstPlayed(existingTrack.firstPlayed());
-    track.setLastPlayed(existingTrack.lastPlayed());
-    track.setRating(existingTrack.rating());
     track.setIsEnabled(existingTrack.isEnabled());
 }
 } // namespace
@@ -60,13 +56,15 @@ namespace Fooyin {
 LibraryTrackResolver::LibraryTrackResolver(LibraryInfo currentLibrary, PlaylistLoader* playlistLoader,
                                            AudioLoader* audioLoader, const bool playlistSkipMissing,
                                            TrackDatabase* trackDatabase, LibraryScanState* state,
-                                           LibraryScanWriter* writer, FlushWritesHandler flushWrites)
+                                           LibraryScanWriter* writer, const TrackReloadOptions reloadOptions,
+                                           FlushWritesHandler flushWrites)
     : m_currentLibrary{std::move(currentLibrary)}
     , m_playlistLoader{playlistLoader}
     , m_audioLoader{audioLoader}
     , m_trackDatabase{trackDatabase}
     , m_state{state}
     , m_writer{writer}
+    , m_reloadOptions{reloadOptions}
     , m_flushWrites{std::move(flushWrites)}
     , m_playlistSkipMissing{playlistSkipMissing}
 { }
@@ -121,7 +119,8 @@ TrackList LibraryTrackResolver::readPlaylist(const QString& filepath)
     const TrackList playlistTracks = readPlaylistTracks(filepath);
     for(Track playlistTrack : playlistTracks) {
         if(const auto existingTrack = m_state->findExistingTrackByUniqueFilepath(playlistTrack)) {
-            applyExistingTrackState(playlistTrack, existingTrack.value());
+            applyExistingTrackIdentity(playlistTrack, existingTrack.value());
+            mergeReloadedTrackStats(playlistTrack, existingTrack.value(), m_reloadOptions);
         }
 
         playlistTrack.generateHash();
@@ -287,15 +286,13 @@ void LibraryTrackResolver::readCue(const QFileInfo& info, const bool onlyModifie
 
         if(existingCueTracksByPath.contains(track.uniqueFilepath())) {
             const auto& existingTrack = existingCueTracksByPath.at(track.uniqueFilepath());
-            track.setId(existingTrack.id());
-            track.setLibraryId(existingTrack.libraryId());
-            track.setAddedTime(existingTrack.addedTime());
+            applyExistingTrackIdentity(track, existingTrack);
+            mergeReloadedTrackStats(track, existingTrack, m_reloadOptions);
             updateExistingTrack(track, filepath);
         }
         else if(const auto existingTrack = m_state->findExistingTrackByUniqueFilepath(track)) {
-            track.setId(existingTrack->id());
-            track.setLibraryId(existingTrack->libraryId());
-            track.setAddedTime(existingTrack->addedTime());
+            applyExistingTrackIdentity(track, *existingTrack);
+            mergeReloadedTrackStats(track, *existingTrack, m_reloadOptions);
             updateExistingTrack(track, filepath);
         }
         else if(const int existingTrackId = m_trackDatabase->idForTrack(track); existingTrackId >= 0) {
@@ -361,9 +358,8 @@ void LibraryTrackResolver::readFile(const QFileInfo& info, const bool onlyModifi
         for(Track track : tracks) {
             if(existingByPath.contains(track.uniqueFilepath())) {
                 const auto& existingTrack = existingByPath.at(track.uniqueFilepath());
-                track.setId(existingTrack.id());
-                track.setLibraryId(existingTrack.libraryId());
-                track.setAddedTime(existingTrack.addedTime());
+                applyExistingTrackIdentity(track, existingTrack);
+                mergeReloadedTrackStats(track, existingTrack, m_reloadOptions);
             }
 
             if(lastModifiedTime.isValid()) {
@@ -402,9 +398,8 @@ void LibraryTrackResolver::readFile(const QFileInfo& info, const bool onlyModifi
         for(Track track : tracks) {
             if(existingByPath.contains(track.uniqueFilepath())) {
                 const auto& existingTrack = existingByPath.at(track.uniqueFilepath());
-                track.setId(existingTrack.id());
-                track.setLibraryId(existingTrack.libraryId());
-                track.setAddedTime(existingTrack.addedTime());
+                applyExistingTrackIdentity(track, existingTrack);
+                mergeReloadedTrackStats(track, existingTrack, m_reloadOptions);
             }
 
             updateExistingTrack(track, track.filepath());
@@ -541,15 +536,13 @@ void LibraryTrackResolver::updateExistingTrack(Track& track, const QString& file
         const TrackList cueTracks = readEmbeddedPlaylistTracks(track);
         for(Track cueTrack : cueTracks) {
             if(const auto existingCueTrack = m_state->findExistingTrackByUniqueFilepath(cueTrack)) {
-                cueTrack.setId(existingCueTrack->id());
-                cueTrack.setLibraryId(existingCueTrack->libraryId());
-                cueTrack.setAddedTime(existingCueTrack->addedTime());
+                applyExistingTrackIdentity(cueTrack, *existingCueTrack);
+                mergeReloadedTrackStats(cueTrack, *existingCueTrack, m_reloadOptions);
             }
             else if(const Track movedCueTrack = m_state->matchRelocatedTrack(cueTrack);
                     movedCueTrack.isInLibrary() || movedCueTrack.isInDatabase()) {
-                cueTrack.setId(movedCueTrack.id());
-                cueTrack.setLibraryId(movedCueTrack.libraryId());
-                cueTrack.setAddedTime(movedCueTrack.addedTime());
+                applyExistingTrackIdentity(cueTrack, movedCueTrack);
+                mergeReloadedTrackStats(cueTrack, movedCueTrack, m_reloadOptions);
             }
 
             setTrackProps(cueTrack, file);
@@ -584,9 +577,8 @@ void LibraryTrackResolver::readNewTrack(const QString& file)
     for(Track track : tracks) {
         if(const Track refoundTrack = m_state->matchRelocatedTrack(track);
            refoundTrack.isInLibrary() || refoundTrack.isInDatabase()) {
-            track.setId(refoundTrack.id());
-            track.setLibraryId(refoundTrack.libraryId());
-            track.setAddedTime(refoundTrack.addedTime());
+            applyExistingTrackIdentity(track, refoundTrack);
+            mergeReloadedTrackStats(track, refoundTrack, m_reloadOptions);
             updateExistingTrack(track, file);
             continue;
         }
@@ -599,9 +591,8 @@ void LibraryTrackResolver::readNewTrack(const QString& file)
             for(Track cueTrack : cueTracks) {
                 if(const Track refoundCueTrack = m_state->matchRelocatedTrack(cueTrack);
                    refoundCueTrack.isInLibrary() || refoundCueTrack.isInDatabase()) {
-                    cueTrack.setId(refoundCueTrack.id());
-                    cueTrack.setLibraryId(refoundCueTrack.libraryId());
-                    cueTrack.setAddedTime(refoundCueTrack.addedTime());
+                    applyExistingTrackIdentity(cueTrack, refoundCueTrack);
+                    mergeReloadedTrackStats(cueTrack, refoundCueTrack, m_reloadOptions);
                     updateExistingTrack(cueTrack, file);
                 }
                 else {

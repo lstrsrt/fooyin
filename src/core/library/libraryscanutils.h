@@ -26,6 +26,12 @@
 #include <optional>
 
 namespace Fooyin {
+struct TrackReloadOptions
+{
+    bool overwriteRatingOnReload{false};
+    bool overwritePlaycountOnReload{false};
+};
+
 QString normalisePath(const QString& path);
 QStringList normalisePaths(const QStringList& paths);
 QStringList normaliseExtensions(const QStringList& extensions);
@@ -34,4 +40,5 @@ QString physicalTrackPath(const Track& track);
 bool trackIsInRoots(const Track& track, const QStringList& roots);
 std::optional<QFileInfo> findMatchingCue(const QFileInfo& file);
 void readFileProperties(Track& track);
+void mergeReloadedTrackStats(Track& track, const Track& existingTrack, const TrackReloadOptions& options);
 } // namespace Fooyin

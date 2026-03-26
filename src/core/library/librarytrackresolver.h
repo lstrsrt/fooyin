@@ -19,6 +19,8 @@
 
 #pragma once
 
+#include "libraryscanutils.h"
+
 #include <core/library/libraryinfo.h>
 #include <core/track.h>
 
@@ -40,7 +42,7 @@ public:
 
     LibraryTrackResolver(LibraryInfo currentLibrary, PlaylistLoader* playlistLoader, AudioLoader* audioLoader,
                          bool playlistSkipMissing, TrackDatabase* trackDatabase, LibraryScanState* state,
-                         LibraryScanWriter* writer, FlushWritesHandler flushWrites);
+                         LibraryScanWriter* writer, TrackReloadOptions reloadOptions, FlushWritesHandler flushWrites);
 
     [[nodiscard]] TrackList readTracks(const QString& filepath);
     [[nodiscard]] TrackList readPlaylist(const QString& filepath);
@@ -68,6 +70,7 @@ private:
     TrackDatabase* m_trackDatabase;
     LibraryScanState* m_state;
     LibraryScanWriter* m_writer;
+    TrackReloadOptions m_reloadOptions;
 
     FlushWritesHandler m_flushWrites;
 

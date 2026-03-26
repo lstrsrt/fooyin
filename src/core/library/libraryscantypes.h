@@ -42,6 +42,8 @@ struct LibraryScanConfig
     QStringList externalRestrictExt;
     QStringList externalExcludeExt;
     bool playlistSkipMissing{true};
+    bool overwriteRatingOnReload{false};
+    bool overwritePlaycountOnReload{false};
 };
 
 struct LibraryScanFilesResult

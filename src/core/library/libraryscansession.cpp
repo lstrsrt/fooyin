@@ -99,9 +99,21 @@ void LibraryScanSession::maybeFlushWriter()
 LibraryTrackResolver LibraryScanSession::makeResolver()
 {
     m_phase = ScanProgress::Phase::ReadingMetadata;
-    return LibraryTrackResolver{
-        m_currentLibrary, m_playlistLoader, m_audioLoader, m_config.playlistSkipMissing,
-        m_trackDatabase,  &m_state,         &m_writer,     [this]() { flushTrackResolverWrites(); }};
+
+    const auto flushWrites = [this]() {
+        flushTrackResolverWrites();
+    };
+
+    return LibraryTrackResolver{m_currentLibrary,
+                                m_playlistLoader,
+                                m_audioLoader,
+                                m_config.playlistSkipMissing,
+                                m_trackDatabase,
+                                &m_state,
+                                &m_writer,
+                                {.overwriteRatingOnReload    = m_config.overwriteRatingOnReload,
+                                 .overwritePlaycountOnReload = m_config.overwritePlaycountOnReload},
+                                flushWrites};
 }
 
 bool LibraryScanSession::handleEnumeratedFile(const QFileInfo& info, const EnumeratedFileType type)
