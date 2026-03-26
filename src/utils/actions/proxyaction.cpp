@@ -76,12 +76,14 @@ void ProxyActionPrivate::update(QAction* updateAction, bool initialise)
 
     QObject::disconnect(m_self, &ProxyAction::changed, nullptr, nullptr);
 
+    const bool proxyHasIcon = !m_self->icon().isNull();
+
     if(initialise) {
         m_self->setSeparator(updateAction->isSeparator());
         m_self->setMenuRole(updateAction->menuRole());
     }
     m_self->setProperty(ThemeIconNameProperty, updateAction->property(ThemeIconNameProperty));
-    if(initialise || m_self->hasAttribute(ProxyAction::UpdateIcon)) {
+    if(initialise || m_self->hasAttribute(ProxyAction::UpdateIcon) || !proxyHasIcon) {
         m_self->setIcon(updateAction->icon());
         m_self->setIconText(updateAction->iconText());
         m_self->setIconVisibleInMenu(updateAction->isIconVisibleInMenu());
