@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.10.1](https://github.com/fooyin/fooyin/releases/tag/v0.10.1) (2026-03-27)
+
+### Fixes
+
+* Equaliser: Fix build failure on Fedora
+
+
 ## [0.10.0](https://github.com/fooyin/fooyin/releases/tag/v0.10.0) (2026-03-27)
 
 ### New Features
