@@ -22,6 +22,8 @@
 #include <core/constants.h>
 #include <core/library/libraryutils.h>
 
+#include <ranges>
+
 using namespace Qt::StringLiterals;
 
 constexpr auto HeaderFontDelta = 2;
@@ -100,8 +102,9 @@ Qt::ItemFlags ReplayGainModel::flags(const QModelIndex& index) const
     if(index.data(ReplayGainItem::Type).toInt() != ReplayGainItem::Header) {
         flags |= Qt::ItemNeverHasChildren;
 
-        const auto* item = itemForIndex(index);
-        if(!m_readOnly && index.column() > 0 && item->isEditable()) {
+        const auto* item                 = itemForIndex(index);
+        const bool editableSummaryColumn = !item->isSummary() || index.column() == 1;
+        if(!m_readOnly && index.column() > 0 && item->isEditable() && editableSummaryColumn) {
             flags |= Qt::ItemIsEditable;
         }
     }
@@ -261,33 +264,38 @@ bool ReplayGainModel::setData(const QModelIndex& index, const QVariant& value, i
         return false;
     }
 
-    auto* item      = itemForIndex(index);
-    const auto type = item->type();
+    auto* item              = itemForIndex(index);
+    const auto type         = item->type();
+    const QString textValue = value.toString().trimmed();
+
+    if(item->isSummary() && item->multipleValues() && column == 1 && textValue == u"<<multiple>>"_s) {
+        return false;
+    }
 
     bool ok              = false;
     const float setValue = value.toFloat(&ok);
 
     const auto setGainOrPeak = [this, &index, item](auto setFunc, float validValue) {
-        auto applyFunc = [&](auto& node) {
-            if(!(node.*setFunc)(validValue)) {
-                return false;
-            }
-            emit dataChanged(index, index);
-            updateSummary();
-            return true;
-        };
+        bool changed{false};
 
         if(item->isSummary()) {
-            for(auto& [_, node] : m_nodes) {
-                if(!applyFunc(node)) {
-                    return false;
+            for(auto& node : m_nodes | std::views::values) {
+                if(node.type() == ReplayGainItem::Header || node.isSummary()) {
+                    continue;
                 }
+                changed |= (node.*setFunc)(validValue);
             }
         }
         else {
-            return applyFunc(*item);
+            changed = (item->*setFunc)(validValue);
         }
 
+        if(!changed) {
+            return false;
+        }
+
+        emit dataChanged(index, index);
+        updateSummary();
         return true;
     };
 

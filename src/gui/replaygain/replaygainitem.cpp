@@ -139,22 +139,22 @@ void ReplayGainItem::setTrack(const Track& track)
 
 bool ReplayGainItem::setTrackGain(float value)
 {
-    return setGainOrPeak(m_trackGain, value, m_track.rgTrackGain(), Constants::InvalidGain);
+    return setGainOrPeak(m_trackGain, value, m_track.rgTrackGain(), Constants::InvalidGain, 2);
 }
 
 bool ReplayGainItem::setTrackPeak(float value)
 {
-    return setGainOrPeak(m_trackPeak, value, m_track.rgTrackPeak(), Constants::InvalidPeak);
+    return setGainOrPeak(m_trackPeak, value, m_track.rgTrackPeak(), Constants::InvalidPeak, 6);
 }
 
 bool ReplayGainItem::setAlbumGain(float value)
 {
-    return setGainOrPeak(m_albumGain, value, m_track.rgAlbumGain(), Constants::InvalidGain);
+    return setGainOrPeak(m_albumGain, value, m_track.rgAlbumGain(), Constants::InvalidGain, 2);
 }
 
 bool ReplayGainItem::setAlbumPeak(float value)
 {
-    return setGainOrPeak(m_albumPeak, value, m_track.rgAlbumPeak(), Constants::InvalidPeak);
+    return setGainOrPeak(m_albumPeak, value, m_track.rgAlbumPeak(), Constants::InvalidPeak, 6);
 }
 
 void ReplayGainItem::setIsEditable(bool isEditable)
@@ -197,5 +197,14 @@ bool ReplayGainItem::applyChanges()
 
     setStatus(None);
     return true;
+}
+
+bool ReplayGainItem::sameEditableValue(float lhs, float rhs, float invalidValue, int precision)
+{
+    if(lhs == invalidValue || rhs == invalidValue) {
+        return lhs == rhs;
+    }
+
+    return QString::number(lhs, 'f', precision) == QString::number(rhs, 'f', precision);
 }
 } // namespace Fooyin

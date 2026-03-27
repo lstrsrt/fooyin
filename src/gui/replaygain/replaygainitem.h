@@ -82,14 +82,19 @@ public:
     bool applyChanges();
 
 private:
+    static bool sameEditableValue(float lhs, float rhs, float invalidValue, int precision);
+
     template <typename T>
-    bool setGainOrPeak(T& currentValue, float value, float trackValue, float invalidValue)
+    bool setGainOrPeak(T& currentValue, float value, float trackValue, float invalidValue, int precision)
     {
-        if(currentValue != invalidValue && currentValue == value) {
+        if(currentValue.has_value() && sameEditableValue(currentValue.value(), value, invalidValue, precision)) {
             return false;
         }
 
-        if(value == trackValue) {
+        if(sameEditableValue(value, trackValue, invalidValue, precision)) {
+            if(!currentValue.has_value() && status() == None) {
+                return false;
+            }
             setStatus(None);
             currentValue = {};
         }
