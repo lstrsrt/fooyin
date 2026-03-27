@@ -10,6 +10,7 @@
         <file>icons/dark/scalable/actions/command.svg</file>
         <file>icons/dark/scalable/actions/edit-clear.svg</file>
         <file>icons/dark/scalable/actions/fooyin.svg</file>
+        <file alias="icons/dark/scalable/actions/org.fooyin.fooyin.svg">icons/dark/scalable/actions/fooyin.svg</file>
         <file>icons/dark/scalable/actions/format-text-bold.svg</file>
         <file>icons/dark/scalable/actions/go-down.svg</file>
         <file>icons/dark/scalable/actions/go-next.svg</file>
@@ -49,6 +50,7 @@
         <file>icons/light/scalable/actions/command.svg</file>
         <file>icons/light/scalable/actions/edit-clear.svg</file>
         <file>icons/light/scalable/actions/fooyin.svg</file>
+        <file alias="icons/light/scalable/actions/org.fooyin.fooyin.svg">icons/light/scalable/actions/fooyin.svg</file>
         <file>icons/light/scalable/actions/format-text-bold.svg</file>
         <file>icons/light/scalable/actions/go-down.svg</file>
         <file>icons/light/scalable/actions/go-next.svg</file>
