@@ -29,16 +29,17 @@
 #include <QDoubleSpinBox>
 #include <QFileDialog>
 #include <QFileInfo>
-#include <QGridLayout>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QMessageBox>
+#include <QPainter>
 #include <QPushButton>
 #include <QSettings>
 #include <QSignalBlocker>
 #include <QSizePolicy>
 #include <QSlider>
 #include <QSpacerItem>
+#include <QStyle>
 #include <QTextStream>
 #include <QTimerEvent>
 
@@ -56,8 +57,8 @@ constexpr auto LastPresetPathKey  = "DSP/EqualiserLastPresetPath";
 
 namespace {
 constexpr std::array<const char*, 18> BandLabels = {
-    "55 Hz",   "77 Hz",   "110 Hz",  "156 Hz",  "220 Hz", "311 Hz", "440 Hz", "622 Hz", "880 Hz",
-    "1.2 kHz", "1.8 kHz", "2.5 kHz", "3.5 kHz", "5 kHz",  "7 kHz",  "10 kHz", "14 kHz", "20 kHz",
+    "55",   "77",   "110",  "156",  "220", "311", "440", "622", "880",
+    "1.2K", "1.8K", "2.5K", "3.5K", "5K",  "7K",  "10K", "14K", "20K",
 };
 
 QSlider* makeGainSlider(QWidget* parent)
@@ -85,18 +86,127 @@ QLabel* makeBandLabel(const QString& text, QWidget* parent)
     return label;
 }
 
-QLabel* makeScaleLabel(const QString& text, QWidget* parent)
+QLabel* makeValueLabel(QWidget* parent)
 {
-    auto* label = new QLabel(text, parent);
+    auto* label = new QLabel(parent);
 
-    label->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
-    label->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+    label->setText(QStringLiteral("-20.0"));
+    label->setAlignment(Qt::AlignHCenter | Qt::AlignTop);
+    label->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
 
     return label;
+}
+
+QStyleOptionSlider sliderStyleOption(QSlider* slider)
+{
+    QStyleOptionSlider sliderOpt;
+    sliderOpt.initFrom(slider);
+    sliderOpt.orientation    = Qt::Vertical;
+    sliderOpt.minimum        = slider->minimum();
+    sliderOpt.maximum        = slider->maximum();
+    sliderOpt.tickPosition   = slider->tickPosition();
+    sliderOpt.tickInterval   = slider->tickInterval();
+    sliderOpt.upsideDown     = !slider->invertedAppearance();
+    sliderOpt.direction      = slider->layoutDirection();
+    sliderOpt.pageStep       = slider->pageStep();
+    sliderOpt.singleStep     = slider->singleStep();
+    sliderOpt.sliderPosition = slider->value();
+    sliderOpt.sliderValue    = slider->value();
+
+    return sliderOpt;
+}
+
+int sliderHandleHeight(QSlider* slider)
+{
+    if(!slider) {
+        return 0;
+    }
+
+    const QStyleOptionSlider sliderOpt = sliderStyleOption(slider);
+    const QRect handleRect
+        = slider->style()->subControlRect(QStyle::CC_Slider, &sliderOpt, QStyle::SC_SliderHandle, slider);
+    return std::max(0, handleRect.height());
+}
+
+int scaleHandleHalfOffset(QSlider* slider)
+{
+    return static_cast<int>(std::lround(static_cast<double>(sliderHandleHeight(slider)) / 2.0));
+}
+
+int scaleHandleQuarterOffset(QSlider* slider)
+{
+    return static_cast<int>(std::lround(static_cast<double>(sliderHandleHeight(slider)) / 4.0));
 }
 } // namespace
 
 namespace Fooyin::Equaliser {
+class ScaleLabelsWidget : public QWidget
+{
+public:
+    explicit ScaleLabelsWidget(QSlider* slider, QWidget* parent = nullptr)
+        : QWidget{parent}
+        , m_slider{slider}
+    {
+        setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+    }
+
+    void syncToSlider()
+    {
+        setFixedHeight(m_slider->height() + scaleHandleHalfOffset(m_slider));
+
+        const QFontMetrics metrics{font()};
+        const int width = std::max({metrics.horizontalAdvance(tr("+20 dB")), metrics.horizontalAdvance(tr("+0 dB")),
+                                    metrics.horizontalAdvance(tr("-20 dB"))});
+        setFixedWidth(width);
+    }
+
+protected:
+    void paintEvent(QPaintEvent* event) override
+    {
+        QWidget::paintEvent(event);
+
+        if(!m_slider) {
+            return;
+        }
+
+        const QFontMetrics metrics{font()};
+
+        const QString topText    = u"+20 dB"_s;
+        const QString middleText = u"+0 dB"_s;
+        const QString bottomText = u"-20 dB"_s;
+
+        const QRect topRect    = metrics.tightBoundingRect(topText);
+        const QRect middleRect = metrics.tightBoundingRect(middleText);
+        const QRect bottomRect = metrics.tightBoundingRect(bottomText);
+
+        const auto baselineForCentre = [&middleRect](int centreY) {
+            return static_cast<int>(std::lround(
+                static_cast<double>(centreY)
+                - ((static_cast<double>(middleRect.top()) + static_cast<double>(middleRect.bottom())) / 2.0)));
+        };
+
+        const int trackOffset    = scaleHandleHalfOffset(m_slider);
+        const int topBaseline    = scaleHandleQuarterOffset(m_slider) - topRect.top();
+        const int middleBaseline = baselineForCentre(m_slider->rect().center().y() + trackOffset);
+        const int bottomBaseline = (m_slider->height() - 1 + trackOffset) - bottomRect.bottom();
+
+        QPainter painter{this};
+        painter.setPen(palette().color(QPalette::WindowText));
+
+        const auto drawRightAlignedText = [&painter, &metrics, this](const int baseline, const QString& text) {
+            const int x = width() - metrics.horizontalAdvance(text);
+            painter.drawText(x, baseline, text);
+        };
+
+        drawRightAlignedText(topBaseline, topText);
+        drawRightAlignedText(middleBaseline, middleText);
+        drawRightAlignedText(bottomBaseline, bottomText);
+    }
+
+private:
+    QSlider* m_slider;
+};
+
 EqualiserSettingsWidget::EqualiserSettingsWidget(QWidget* parent)
     : DspSettingsDialog{parent}
     , m_presetBox{new QComboBox(this)}
@@ -108,7 +218,10 @@ EqualiserSettingsWidget::EqualiserSettingsWidget(QWidget* parent)
     , m_selectedBandCombo{new QComboBox(this)}
     , m_selectedBandSpin{new QDoubleSpinBox(this)}
     , m_preampSlider{makeGainSlider(this)}
+    , m_preampValueLabel{makeValueLabel(this)}
     , m_bandSliders{}
+    , m_bandValueLabels{}
+    , m_scaleTrackWidget{new ScaleLabelsWidget(m_preampSlider, this)}
 {
     setWindowTitle(tr("Equaliser Settings"));
 
@@ -116,82 +229,91 @@ EqualiserSettingsWidget::EqualiserSettingsWidget(QWidget* parent)
 
     auto* root = contentLayout();
 
-    auto* row = new QHBoxLayout();
-    row->setContentsMargins(0, 0, 0, 0);
-    row->setSpacing(8);
+    auto* stripWidget = new QWidget(this);
+    stripWidget->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
 
-    const auto addSliderColumn = [this, row](QSlider* slider, const QString& labelText) {
+    auto* row = new QHBoxLayout(stripWidget);
+    row->setContentsMargins(0, 0, 0, 0);
+    row->setSpacing(7);
+
+    std::vector<QWidget*> sliderColumns;
+    std::vector<QLabel*> bandLabels;
+    std::vector<QLabel*> valueLabels;
+    int sliderColumnMinWidth{0};
+
+    const auto addSliderColumn = [this, row, &sliderColumns, &bandLabels, &valueLabels, &sliderColumnMinWidth](
+                                     QSlider* slider, QLabel* valueLabel, const QString& labelText) {
         auto* col = new QVBoxLayout();
         col->setContentsMargins(0, 0, 0, 0);
         col->setSpacing(6);
+        auto* label = makeBandLabel(labelText, this);
+        col->addWidget(label);
         col->addWidget(slider, 1, Qt::AlignHCenter);
-        col->addWidget(makeBandLabel(labelText, this));
+        col->addWidget(valueLabel);
 
         auto* colWidget = new QWidget(this);
         colWidget->setLayout(col);
-        colWidget->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
-        row->addWidget(colWidget, 1);
+        colWidget->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+        sliderColumnMinWidth = std::max({sliderColumnMinWidth, slider->sizeHint().width(), label->sizeHint().width(),
+                                         valueLabel->sizeHint().width()});
+        sliderColumns.push_back(colWidget);
+        bandLabels.push_back(label);
+        valueLabels.push_back(valueLabel);
+
+        row->addWidget(colWidget, 0, Qt::AlignTop);
     };
 
-    addSliderColumn(m_preampSlider, tr("Preamp"));
-    QObject::connect(m_preampSlider, &QSlider::valueChanged, this, [this](int) {
-        refreshTooltips();
-        m_previewTimer.start(PreviewDebounceMs, this);
-        if(m_preampSlider->isSliderDown()) {
-            updateSliderToolTip(m_preampSlider);
-        }
-    });
-    QObject::connect(m_preampSlider, &QSlider::sliderPressed, this, [this]() { updateSliderToolTip(m_preampSlider); });
-    QObject::connect(m_preampSlider, &QSlider::sliderMoved, this, [this](int) { updateSliderToolTip(m_preampSlider); });
-    QObject::connect(m_preampSlider, &QSlider::sliderReleased, this, [this]() { hideSliderToolTip(); });
+    addSliderColumn(m_preampSlider, m_preampValueLabel, tr("Preamp"));
+    connectSliderSignals(m_preampSlider, false);
 
     for(size_t i{0}; i < m_bandSliders.size(); ++i) {
-        m_bandSliders[i] = makeGainSlider(this);
-        addSliderColumn(m_bandSliders[i], tr(BandLabels[i]));
-        QObject::connect(m_bandSliders[i], &QSlider::valueChanged, this, [this, i](int) {
-            refreshTooltips();
-            refreshSelectedBandEditor();
-            m_previewTimer.start(PreviewDebounceMs, this);
-            if(m_bandSliders[i]->isSliderDown()) {
-                updateSliderToolTip(m_bandSliders[i]);
-            }
-        });
-        QObject::connect(m_bandSliders[i], &QSlider::sliderPressed, this,
-                         [this, i]() { updateSliderToolTip(m_bandSliders[i]); });
-        QObject::connect(m_bandSliders[i], &QSlider::sliderMoved, this,
-                         [this, i](int) { updateSliderToolTip(m_bandSliders[i]); });
-        QObject::connect(m_bandSliders[i], &QSlider::sliderReleased, this, [this]() { hideSliderToolTip(); });
+        m_bandSliders[i]     = makeGainSlider(this);
+        m_bandValueLabels[i] = makeValueLabel(this);
+        addSliderColumn(m_bandSliders[i], m_bandValueLabels[i], QString::fromLatin1(BandLabels[i]));
+        connectSliderSignals(m_bandSliders[i], true);
+    }
+
+    for(auto* colWidget : sliderColumns) {
+        colWidget->setFixedWidth(sliderColumnMinWidth);
+    }
+
+    int bandLabelHeight{0};
+    for(auto* label : bandLabels) {
+        bandLabelHeight = std::max(bandLabelHeight, label->sizeHint().height());
+    }
+    for(auto* label : bandLabels) {
+        label->setFixedHeight(bandLabelHeight);
+    }
+
+    int valueLabelHeight{0};
+    for(auto* label : valueLabels) {
+        valueLabelHeight = std::max(valueLabelHeight, label->sizeHint().height());
+    }
+    for(auto* label : valueLabels) {
+        label->setFixedHeight(valueLabelHeight);
     }
 
     auto* scaleCol = new QVBoxLayout();
     scaleCol->setContentsMargins(0, 0, 0, 0);
     scaleCol->setSpacing(6);
 
-    // Keep scale labels aligned to the slider travel only (220 px), so 0 dB
-    // sits exactly at the visual midpoint of the slider range.
-    auto* scaleTrackWidget = new QWidget(this);
-    scaleTrackWidget->setFixedHeight(220);
+    scaleCol->addSpacerItem(new QSpacerItem(0, bandLabelHeight, QSizePolicy::Minimum, QSizePolicy::Fixed));
 
-    auto* trackLayout = new QVBoxLayout(scaleTrackWidget);
-    trackLayout->setContentsMargins(0, 0, 0, 0);
-    trackLayout->setSpacing(0);
-    trackLayout->addWidget(makeScaleLabel(tr("+20 dB"), this), 0, Qt::AlignTop | Qt::AlignRight);
-    trackLayout->addStretch(1);
-    trackLayout->addWidget(makeScaleLabel(tr("+0 dB"), this), 0, Qt::AlignRight);
-    trackLayout->addStretch(1);
-    trackLayout->addWidget(makeScaleLabel(tr("-20 dB"), this), 0, Qt::AlignBottom | Qt::AlignRight);
+    m_scaleTrackWidget->syncToSlider();
 
-    scaleCol->addWidget(scaleTrackWidget, 0, Qt::AlignTop | Qt::AlignRight);
-    scaleCol->addSpacerItem(new QSpacerItem(0, 20, QSizePolicy::Minimum, QSizePolicy::Fixed));
+    scaleCol->addWidget(m_scaleTrackWidget, 0, Qt::AlignTop | Qt::AlignRight);
+    scaleCol->addSpacerItem(new QSpacerItem(0, valueLabelHeight, QSizePolicy::Minimum, QSizePolicy::Fixed));
 
     row->addSpacing(4);
     row->addLayout(scaleCol);
-    root->addLayout(row);
+    root->addWidget(stripWidget, 0, Qt::AlignHCenter | Qt::AlignTop);
 
-    auto* controlsLayout = new QGridLayout();
+    auto* controlsWidget = new QWidget(this);
+    controlsWidget->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+
+    auto* controlsLayout = new QHBoxLayout(controlsWidget);
     controlsLayout->setContentsMargins(0, 0, 0, 0);
-    controlsLayout->setHorizontalSpacing(6);
-    controlsLayout->setVerticalSpacing(6);
+    controlsLayout->setSpacing(6);
 
     auto* zeroButton      = new QPushButton(tr("Zero all"), this);
     auto* autoButton      = new QPushButton(tr("Auto level"), this);
@@ -202,7 +324,7 @@ EqualiserSettingsWidget::EqualiserSettingsWidget(QWidget* parent)
     QObject::connect(autoButton, &QPushButton::clicked, this, [this]() { autoLevel(); });
 
     for(const auto& bandName : BandLabels) {
-        m_selectedBandCombo->addItem(tr(bandName));
+        m_selectedBandCombo->addItem(QString::fromLatin1(bandName));
     }
 
     m_selectedBandSpin->setRange(-20.0, 20.0);
@@ -211,26 +333,28 @@ EqualiserSettingsWidget::EqualiserSettingsWidget(QWidget* parent)
     m_selectedBandSpin->setSuffix(tr(" dB"));
 
     m_presetBox->setEditable(true);
-    m_presetBox->setMinimumContentsLength(24);
+    m_presetBox->setMinimumContentsLength(18);
     m_presetBox->setSizeAdjustPolicy(QComboBox::AdjustToMinimumContentsLengthWithIcon);
-    m_presetBox->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    m_presetBox->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
 
-    controlsLayout->addWidget(zeroButton, 0, 0);
-    controlsLayout->addWidget(autoButton, 0, 1);
-    controlsLayout->addWidget(bandEditorLabel, 0, 2);
-    controlsLayout->addWidget(m_selectedBandCombo, 0, 3);
-    controlsLayout->addWidget(m_selectedBandSpin, 0, 4);
-    controlsLayout->addWidget(m_importPresetButton, 0, 6);
-    controlsLayout->addWidget(m_exportPresetButton, 0, 7);
+    controlsLayout->addWidget(zeroButton);
+    controlsLayout->addWidget(autoButton);
+    controlsLayout->addWidget(bandEditorLabel);
+    controlsLayout->addWidget(m_selectedBandCombo);
+    controlsLayout->addWidget(m_selectedBandSpin);
+    controlsLayout->addStretch(1);
+    controlsLayout->addWidget(presetsLabel);
+    controlsLayout->addWidget(m_presetBox);
+    controlsLayout->addWidget(m_loadPresetButton);
+    controlsLayout->addWidget(m_savePresetButton);
+    controlsLayout->addWidget(m_deletePresetButton);
+    controlsLayout->addWidget(m_importPresetButton);
+    controlsLayout->addWidget(m_exportPresetButton);
 
-    controlsLayout->addWidget(presetsLabel, 1, 0);
-    controlsLayout->addWidget(m_presetBox, 1, 1, 1, 5);
-    controlsLayout->addWidget(m_loadPresetButton, 1, 6);
-    controlsLayout->addWidget(m_savePresetButton, 1, 7);
-    controlsLayout->addWidget(m_deletePresetButton, 1, 8);
+    controlsWidget->setFixedWidth(stripWidget->sizeHint().width());
 
-    controlsLayout->setColumnStretch(5, 1);
-    root->addLayout(controlsLayout);
+    root->addWidget(controlsWidget, 0, Qt::AlignHCenter | Qt::AlignTop);
+    root->addStretch(1);
 
     QObject::connect(m_loadPresetButton, &QPushButton::clicked, this, [this]() { loadPreset(); });
     QObject::connect(m_savePresetButton, &QPushButton::clicked, this, [this]() { savePreset(); });
@@ -251,6 +375,11 @@ EqualiserSettingsWidget::EqualiserSettingsWidget(QWidget* parent)
     loadStoredPresets();
     refreshPresets();
     refreshSelectedBandEditor();
+    refreshValueLabels();
+
+    if(auto* dialogLayout = layout()) {
+        dialogLayout->setSizeConstraint(QLayout::SetFixedSize);
+    }
 }
 
 void EqualiserSettingsWidget::loadSettings(const QByteArray& settings)
@@ -258,12 +387,12 @@ void EqualiserSettingsWidget::loadSettings(const QByteArray& settings)
     EqualiserDsp dsp;
     dsp.loadSettings(settings);
 
-    m_preampSlider->setValue(gainDbToSliderValue(dsp.preampDb()));
+    std::array<int, EqualiserDsp::BandCount> bandSliderValues{};
     for(size_t i{0}; i < m_bandSliders.size(); ++i) {
-        m_bandSliders[i]->setValue(gainDbToSliderValue(dsp.bandDb(static_cast<int>(i))));
+        bandSliderValues[i] = gainDbToSliderValue(dsp.bandDb(static_cast<int>(i)));
     }
 
-    refreshTooltips();
+    applySliderValues(gainDbToSliderValue(dsp.preampDb()), bandSliderValues);
 }
 
 QByteArray EqualiserSettingsWidget::saveSettings() const
@@ -275,6 +404,49 @@ QByteArray EqualiserSettingsWidget::saveSettings() const
     }
 
     return dsp.saveSettings();
+}
+
+void EqualiserSettingsWidget::connectSliderSignals(QSlider* slider, const bool refreshBandEditor)
+{
+    if(!slider) {
+        return;
+    }
+
+    QObject::connect(slider, &QSlider::valueChanged, this, [this, slider, refreshBandEditor](int) {
+        refreshTooltips();
+        refreshValueLabels();
+        if(refreshBandEditor) {
+            refreshSelectedBandEditor();
+        }
+        m_previewTimer.start(PreviewDebounceMs, this);
+        if(slider->isSliderDown()) {
+            updateSliderToolTip(slider);
+        }
+    });
+
+    QObject::connect(slider, &QSlider::sliderPressed, this, [this, slider]() { updateSliderToolTip(slider); });
+    QObject::connect(slider, &QSlider::sliderMoved, this, [this, slider](int) { updateSliderToolTip(slider); });
+    QObject::connect(slider, &QSlider::sliderReleased, this, [this]() { hideSliderToolTip(); });
+}
+
+void EqualiserSettingsWidget::applySliderValues(const int preampSliderValue,
+                                                const std::array<int, 18>& bandSliderValues)
+{
+    std::vector<QSignalBlocker> signalBlockers;
+    signalBlockers.reserve(1 + m_bandSliders.size());
+    signalBlockers.emplace_back(m_preampSlider);
+    for(auto* slider : m_bandSliders) {
+        signalBlockers.emplace_back(slider);
+    }
+
+    m_preampSlider->setValue(preampSliderValue);
+    for(size_t i{0}; i < m_bandSliders.size(); ++i) {
+        m_bandSliders[i]->setValue(bandSliderValues[i]);
+    }
+
+    refreshTooltips();
+    refreshValueLabels();
+    refreshSelectedBandEditor();
 }
 
 void EqualiserSettingsWidget::restoreDefaults()
@@ -339,7 +511,7 @@ void EqualiserSettingsWidget::saveStoredPresets() const
     QDataStream stream{&serializedData, QIODevice::WriteOnly};
     stream.setVersion(QDataStream::Qt_6_0);
 
-    stream << quint32(PresetStoreVersion);
+    stream << static_cast<quint32>(PresetStoreVersion);
     stream << static_cast<qint32>(m_presets.size());
 
     for(const auto& preset : m_presets) {
@@ -410,12 +582,12 @@ void EqualiserSettingsWidget::loadPreset()
         return;
     }
 
-    m_preampSlider->setValue(gainDbToSliderValue(dsp.preampDb()));
+    std::array<int, EqualiserDsp::BandCount> bandSliderValues{};
     for(size_t i{0}; i < m_bandSliders.size(); ++i) {
-        m_bandSliders[i]->setValue(gainDbToSliderValue(dsp.bandDb(static_cast<int>(i))));
+        bandSliderValues[i] = gainDbToSliderValue(dsp.bandDb(static_cast<int>(i)));
     }
 
-    refreshTooltips();
+    applySliderValues(gainDbToSliderValue(dsp.preampDb()), bandSliderValues);
     m_previewTimer.start(PreviewDebounceMs, this);
 }
 
@@ -456,7 +628,16 @@ void EqualiserSettingsWidget::deletePreset()
     }
 
     m_presets.erase(m_presets.begin() + presetIndex);
+    QString nextPresetName;
+    if(std::cmp_less(presetIndex, m_presets.size())) {
+        nextPresetName = m_presets[static_cast<size_t>(presetIndex)].name;
+    }
+    else if(!m_presets.empty()) {
+        nextPresetName = m_presets.back().name;
+    }
+
     saveStoredPresets();
+    m_presetBox->setEditText(nextPresetName);
     refreshPresets();
 }
 
@@ -513,13 +694,13 @@ void EqualiserSettingsWidget::importPreset()
         return;
     }
 
-    for(size_t i{0}; i < m_bandSliders.size(); ++i) {
-        m_bandSliders[i]->setValue(gainDbToSliderValue(static_cast<double>(gains[i])));
+    std::array<int, EqualiserDsp::BandCount> bandSliderValues{};
+    for(size_t i{0}; i < bandSliderValues.size(); ++i) {
+        bandSliderValues[i] = gainDbToSliderValue(static_cast<double>(gains[i]));
     }
 
+    applySliderValues(m_preampSlider->value(), bandSliderValues);
     settings.setValue(QLatin1String(LastPresetPathKey), QFileInfo(filePath).absolutePath());
-
-    refreshTooltips();
     m_previewTimer.start(PreviewDebounceMs, this);
 }
 
@@ -609,12 +790,26 @@ QString EqualiserSettingsWidget::gainTooltip(const double gainDb)
     return prefix + QString::number(gainDb, 'f', 1) + tr(" dB");
 }
 
+QString EqualiserSettingsWidget::gainValueLabel(const int sliderValue)
+{
+    return QString::number(sliderValueToGainDb(sliderValue), 'f', 1);
+}
+
 void EqualiserSettingsWidget::refreshTooltips()
 {
     m_preampSlider->setToolTip(gainTooltip(sliderValueToGainDb(m_preampSlider->value())));
 
     for(auto* slider : m_bandSliders) {
         slider->setToolTip(gainTooltip(sliderValueToGainDb(slider->value())));
+    }
+}
+
+void EqualiserSettingsWidget::refreshValueLabels()
+{
+    m_preampValueLabel->setText(gainValueLabel(m_preampSlider->value()));
+
+    for(size_t i{0}; i < m_bandSliders.size(); ++i) {
+        m_bandValueLabels[i]->setText(gainValueLabel(m_bandSliders[i]->value()));
     }
 }
 
@@ -626,10 +821,12 @@ void EqualiserSettingsWidget::updateSliderToolTip(QSlider* slider)
 
     if(!m_sliderToolTip) {
         m_sliderToolTip = new ToolTip(this);
-        m_sliderToolTip->show();
     }
 
     m_sliderToolTip->setText(gainTooltip(sliderValueToGainDb(slider->value())));
+    m_sliderToolTip->show();
+    m_sliderToolTip->raise();
+
     const QPoint cursorPos = slider->mapFromGlobal(QCursor::pos());
     const int handleY      = std::clamp(cursorPos.y(), slider->rect().top(), slider->rect().bottom());
     const QPoint handlePos = slider->mapTo(this, QPoint(slider->rect().center().x(), handleY));

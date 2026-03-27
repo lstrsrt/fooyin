@@ -29,6 +29,7 @@
 
 class QComboBox;
 class QDoubleSpinBox;
+class QLabel;
 class QPushButton;
 class QSlider;
 class QTimerEvent;
@@ -37,6 +38,8 @@ namespace Fooyin {
 class ToolTip;
 
 namespace Equaliser {
+class ScaleLabelsWidget;
+
 class EqualiserSettingsWidget : public DspSettingsDialog
 {
 public:
@@ -61,7 +64,10 @@ private:
     static int gainDbToSliderValue(double gainDb);
     static double sliderValueToGainDb(int sliderValue);
     static QString gainTooltip(double gainDb);
+    static QString gainValueLabel(int sliderValue);
 
+    void connectSliderSignals(QSlider* slider, bool refreshBandEditor);
+    void applySliderValues(int preampSliderValue, const std::array<int, 18>& bandSliderValues);
     void loadStoredPresets();
     void saveStoredPresets() const;
     [[nodiscard]] int presetIndexByName(const QString& name) const;
@@ -76,6 +82,7 @@ private:
     void refreshTooltips();
     void zeroAll();
     void autoLevel();
+    void refreshValueLabels();
     void updateSliderToolTip(QSlider* slider);
     void hideSliderToolTip();
 
@@ -91,7 +98,10 @@ private:
     QDoubleSpinBox* m_selectedBandSpin;
 
     QSlider* m_preampSlider;
+    QLabel* m_preampValueLabel;
     std::array<QSlider*, 18> m_bandSliders;
+    std::array<QLabel*, 18> m_bandValueLabels;
+    ScaleLabelsWidget* m_scaleTrackWidget;
     QPointer<ToolTip> m_sliderToolTip;
 
     QBasicTimer m_previewTimer;
