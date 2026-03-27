@@ -43,8 +43,8 @@
 
 using namespace Qt::StringLiterals;
 
-constexpr auto DontAskAgain = "TagEditor/DontAskAgain";
-constexpr auto State        = "TagEditor/State";
+constexpr auto DontAskAgain    = "TagEditor/DontAskAgain";
+constexpr auto NameColumnWidth = "TagEditor/NameColumnWidth";
 
 namespace Fooyin::TagEditor {
 TagEditorWidget::TagEditorWidget(ActionManager* actionManager, TagEditorFieldRegistry* registry,
@@ -71,15 +71,20 @@ TagEditorWidget::TagEditorWidget(ActionManager* actionManager, TagEditorFieldReg
     layout->addWidget(m_view);
 
     m_view->setExtendableModel(m_model);
+    m_view->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Interactive);
+    m_view->horizontalHeader()->setSectionResizeMode(1, QHeaderView::Stretch);
     m_view->setItemDelegateForColumn(1, m_autocompleteDelegate);
     m_view->setupActions();
 
     QObject::connect(m_model, &QAbstractItemModel::rowsInserted, m_view, &QTableView::resizeRowsToContents);
-    QObject::connect(m_model, &QAbstractItemModel::modelReset, this, [this]() {
-        m_view->resizeColumnsToContents();
-        m_view->resizeRowsToContents();
-        restoreState();
-    });
+    QObject::connect(
+        m_model, &QAbstractItemModel::modelReset, this,
+        [this]() {
+            m_view->resizeColumnsForContents();
+            m_view->resizeRowsToContents();
+            restoreState();
+        },
+        Qt::QueuedConnection);
     QObject::connect(m_view->selectionModel(), &QItemSelectionModel::selectionChanged, this, [this]() {
         const QModelIndexList selected = m_view->selectionModel()->selectedIndexes();
         m_view->removeRowAction()->setEnabled(!m_readOnly && !selected.empty());
@@ -224,19 +229,21 @@ void TagEditorWidget::updateTracks(const TrackList& tracks)
 
 void TagEditorWidget::saveState() const
 {
-    const QByteArray state = m_view->horizontalHeader()->saveState();
-    m_settings->fileSet(State, state);
+    FyStateSettings stateSettings;
+    stateSettings.setValue(NameColumnWidth, m_view->horizontalHeader()->sectionSize(0));
 }
 
 void TagEditorWidget::restoreState() const
 {
-    const QByteArray state = m_settings->fileValue(State).toByteArray();
+    const FyStateSettings stateSettings;
+    const int nameColumnWidth        = stateSettings.value(NameColumnWidth).toInt();
+    const int minimumRestorableWidth = m_view->horizontalHeader()->sectionSizeHint(0);
 
-    if(state.isEmpty()) {
-        return;
+    if(nameColumnWidth > minimumRestorableWidth) {
+        m_view->horizontalHeader()->resizeSection(0, nameColumnWidth);
     }
 
-    m_view->horizontalHeader()->restoreState(state);
+    m_view->normaliseColumnWidths();
 }
 } // namespace Fooyin::TagEditor
 
