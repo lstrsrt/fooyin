@@ -151,6 +151,10 @@ void readFileProperties(Track& track)
     if(track.addedTime() == 0) {
         track.setAddedTime(QDateTime::currentMSecsSinceEpoch());
     }
+    if(track.createdTime() == 0) {
+        const QDateTime createdTime = fileInfo.birthTime();
+        track.setCreatedTime(createdTime.isValid() ? createdTime.toMSecsSinceEpoch() : 0);
+    }
     if(track.modifiedTime() == 0) {
         const QDateTime modifiedTime = fileInfo.lastModified();
         track.setModifiedTime(modifiedTime.isValid() ? modifiedTime.toMSecsSinceEpoch() : 0);
