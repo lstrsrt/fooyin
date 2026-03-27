@@ -23,7 +23,6 @@
 #include "lyricsfinder.h"
 #include "lyricssaver.h"
 #include "lyricswidget.h"
-#include "settings/lyricsgeneralpage.h"
 #include "settings/lyricssavingpage.h"
 #include "settings/lyricssearchingpage.h"
 #include "settings/lyricssettings.h"
@@ -70,7 +69,6 @@ void LyricsPlugin::initialise(const GuiPluginContext& context)
         tr("Lyrics"));
     context.themeRegistry->registerFontEntry(tr("Lyrics"), u"Fooyin::Lyrics::LyricsArea"_s);
 
-    new LyricsGeneralPage(m_settings, this);
     new LyricsSearchingPage(m_settings, this);
     new LyricsSourcesPage(m_lyricsFinder, m_settings, this);
     new LyricsSavingPage(m_settings, this);

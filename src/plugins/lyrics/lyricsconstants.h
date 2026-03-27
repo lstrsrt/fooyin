@@ -21,7 +21,6 @@
 
 namespace Fooyin::Lyrics::Constants {
 namespace Page {
-constexpr auto LyricsGeneral   = "Fooyin.Page.Lyrics.General";
 constexpr auto LyricsInterface = "Fooyin.Page.Lyrics.Interface";
 constexpr auto LyricsSources   = "Fooyin.Page.Lyrics.Sources";
 constexpr auto LyricsSearching = "Fooyin.Page.Lyrics.Searching";

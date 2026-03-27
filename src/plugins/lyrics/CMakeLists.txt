@@ -24,8 +24,6 @@ create_fooyin_plugin_internal(
             lyricswidget.h
             lyricsconfigwidget.cpp
             lyricsconfigwidget.h
-            settings/lyricsgeneralpage.cpp
-            settings/lyricsgeneralpage.h
             settings/lyricssavingpage.cpp
             settings/lyricssavingpage.h
             settings/lyricssearchingpage.cpp
