@@ -182,7 +182,7 @@ std::optional<QFileInfo> findMatchingCue(const QFileInfo& file, const QFileInfoL
 
 void readFileProperties(Track& track)
 {
-    const QFileInfo fileInfo{track.filepath()};
+    const QFileInfo fileInfo{physicalTrackPath(track)};
 
     if(track.addedTime() == 0) {
         track.setAddedTime(QDateTime::currentMSecsSinceEpoch());

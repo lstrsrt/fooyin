@@ -218,7 +218,7 @@ void LibraryScanner::scanTracks(const TrackList& tracks, const bool onlyModified
         }
 
         if(onlyModified) {
-            const QFileInfo info{track.filepath()};
+            const QFileInfo info{physicalTrackPath(track)};
             const QDateTime lastModifiedTime{info.lastModified()};
             const uint64_t lastModified
                 = lastModifiedTime.isValid() ? static_cast<uint64_t>(lastModifiedTime.toMSecsSinceEpoch()) : 0;
@@ -242,7 +242,7 @@ void LibraryScanner::scanTracks(const TrackList& tracks, const bool onlyModified
                                     {.overwriteRatingOnReload    = config.overwriteRatingOnReload,
                                      .overwritePlaycountOnReload = config.overwritePlaycountOnReload});
 
-            const QFileInfo fileInfo{updatedTrack.filepath()};
+            const QFileInfo fileInfo{physicalTrackPath(updatedTrack)};
             if(updatedTrack.createdTime() == 0) {
                 const QDateTime createdTime = fileInfo.birthTime();
                 updatedTrack.setCreatedTime(createdTime.isValid() ? createdTime.toMSecsSinceEpoch() : 0);
