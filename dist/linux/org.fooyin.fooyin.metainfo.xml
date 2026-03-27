@@ -12,29 +12,31 @@
     <description>
         <p>
             fooyin is a music player built around customisation.
-            It provides a variety of widgets to help you manage and play your local collection.
-            It's highly extensible with a plugin system and includes FooScript,
-            a scripting language for advanced configuration of widgets.
+            It combines flexible playback, library management, playlists, and scripting tools
+            in an interface that can be rearranged from a blank canvas or adapted from preset layouts.
         </p>
-        <p>Features:</p>
+        <p>
+            The player is highly extensible with a plugin system and includes FooScript
+            for advanced display formatting, autoplaylists, and widget behaviour.
+            The playback engine also supports DSP chains, fading and crossfading.
+        </p>
+        <p>Key features:</p>
         <ul>
-            <li>Fully customisable layout, starting from a blank window</li>
-            <li>Playback of most popular formats, including VGM</li>
-            <li>Gapless playback</li>
-            <li>Add and play files from within archives</li>
+            <li>Fully customisable layouts and widgets, with per-widget settings and configurable shortcuts</li>
+            <li>Support for major audio formats, including archives, CUE sheets, VGM, and tracker formats</li>
+            <li>Gapless playback, ReplayGain, and configurable fade and crossfade settings</li>
+            <li>DSP plugin support with built-in effects such as equaliser, resampling, tempo and pitch adjustment,
+                and silence skipping</li>
             <li>Audio output and device configuration</li>
-            <li>CUE sheet support (including embedded)</li>
-            <li>Customisable keyboard shortcuts</li>
-            <li>Filter library on any field(s)</li>
-            <li>Create and manage playlists</li>
-            <li>Import/export playlists (M3U/M3U8)</li>
-            <li>Extensible using a plugin system</li>
-            <li>Tag editing</li>
-            <li>Library tree, including directory structure view</li>
-            <li>Directory browser</li>
-            <li>Waveform seekbar</li>
-            <li>MPRIS support</li>
-            <li>Scrobbling</li>
+            <li>Advanced library browsing with filters, tree views, and an integrated directory browser</li>
+            <li>Playlist management with autoplaylists and M3U/M3U8 import and export</li>
+            <li>Built-in tag editing and metadata management, including artwork embedding</li>
+            <li>Artwork tools for finding, viewing, exporting, extracting, and downloading covers</li>
+            <li>Visualisations including a waveform seekbar and VU meter</li>
+            <li>Lyrics search, editing, syncing, and display, with configurable presentation for synced lyrics panels</li>
+            <li>FooScript-powered scripting and display tools for rich formatting throughout the interface</li>
+            <li>Plugin-based extensibility for widgets, decoders, tag readers, DSPs, and others</li>
+            <li>Desktop integration with MPRIS, scrobbling services, and Discord Rich Presence</li>
         </ul>
     </description>
     <launchable type="desktop-id">org.fooyin.fooyin.desktop</launchable>
@@ -63,6 +65,9 @@
         </screenshot>
     </screenshots>
     <releases>
+        <release version="0.10.0" date="2026-03-27">
+            <url>https://github.com/fooyin/fooyin/releases/tag/v0.10.0</url>
+        </release>
         <release version="0.9.2" date="2025-09-21">
             <url>https://github.com/fooyin/fooyin/releases/tag/v0.9.2</url>
         </release>

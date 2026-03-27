@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [0.10.0](https://github.com/fooyin/fooyin/releases/tag/v0.10.0) (2026-03-27)
 
 ### New Features
 * Discord
