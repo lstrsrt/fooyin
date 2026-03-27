@@ -1,0 +1,41 @@
+name: Build FreeBSD
+
+on:
+  workflow_call:
+
+env:
+  BUILD_TESTS: ON
+
+jobs:
+  freebsd:
+    name: FreeBSD
+    runs-on: ubuntu-latest
+    env:
+      FREEBSD_VERSION: '15.0'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          submodules: recursive
+
+      - name: run VM
+        uses: cross-platform-actions/action@v0.32.0
+        with:
+          operating_system: freebsd
+          architecture: x86-64
+          cpu_count: 4
+          shell: bash
+          version: ${{ env.FREEBSD_VERSION }}
+          run: |
+            ./ci/freebsd-depends.sh
+            ./ci/freebsd-build.sh
+            if [ "${{ env.BUILD_TESTS }}" = "ON" ]; then
+              ./ci/tests.sh
+            fi
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v6
+        with:
+          name: freebsd-${{ env.FREEBSD_VERSION }}
+          path: pkg

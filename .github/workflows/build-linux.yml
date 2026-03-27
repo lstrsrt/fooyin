@@ -1,0 +1,185 @@
+name: Build Linux
+
+on:
+  workflow_call:
+
+env:
+  BUILD_TESTS: ON
+
+jobs:
+  archlinux:
+    name: Arch Linux
+    runs-on: ubuntu-latest
+    container:
+      image: archlinux:latest
+
+    steps:
+      - name: Install git
+        run: |
+          pacman -Syy --noconfirm
+          pacman -S git --noconfirm
+
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          submodules: recursive
+
+      - name: Dependencies
+        run: |
+          ./ci/archlinux-depends.sh
+
+      - name: Build
+        run: |
+          ./ci/archlinux-build.sh
+
+      - name: Run tests
+        if: env.BUILD_TESTS == 'ON'
+        run: |
+          ./ci/tests.sh
+
+  fedora:
+    name: Fedora (${{matrix.fedora_version}}, ${{ matrix.runner.arch }})
+    runs-on: ${{ matrix.runner.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        runner:
+          - { os: ubuntu-latest, arch: amd64 }
+          - { os: ubuntu-24.04-arm, arch: arm64 }
+        fedora_version: ['41', '42', '43']
+    container:
+      image: fedora:${{matrix.fedora_version}}
+    steps:
+      - name: Install git
+        run: |
+          dnf -y install git
+
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          submodules: recursive
+
+      - name: Dependencies
+        run: |
+          ./ci/fedora-depends.sh
+
+      - name: Build
+        run: |
+          ./ci/fedora-build.sh
+
+      - name: Run tests
+        if: env.BUILD_TESTS == 'ON'
+        run: |
+          ./ci/tests.sh
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v6
+        with:
+          name: fedora-${{matrix.fedora_version}}-${{ matrix.runner.arch }}
+          path: rpm
+
+  debian:
+    name: Debian (${{matrix.debian_version}}, ${{ matrix.runner.arch }})
+    runs-on: ${{ matrix.runner.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        runner:
+          - { os: ubuntu-latest, arch: amd64 }
+          - { os: ubuntu-24.04-arm, arch: arm64 }
+        debian_version: ['bookworm', 'trixie', 'forky']
+    container:
+      image: debian:${{matrix.debian_version}}
+    steps:
+      - name: Install git
+        run: |
+          apt-get update -qq
+          apt-get install -qq --yes ca-certificates git
+
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          submodules: recursive
+
+      - name: Dependencies
+        run: |
+          ./ci/ubuntu-depends.sh
+
+      - name: Install GTest
+        run: |
+          cd /usr/src/gtest
+          cmake .
+          make
+          cp lib/*.a /usr/lib
+          ln -sf /usr/lib/libgtest.a /usr/local/lib/libgtest.a
+          ln -sf /usr/lib/libgtest_main.a /usr/local/lib/libgtest_main.a
+
+      - name: Build
+        run: |
+          ./ci/ubuntu-build.sh
+
+      - name: Run tests
+        if: env.BUILD_TESTS == 'ON'
+        run: |
+          ./ci/tests.sh
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v6
+        with:
+          name: debian-${{matrix.debian_version}}-${{ matrix.runner.arch }}
+          path: deb
+
+  ubuntu:
+    name: Ubuntu (${{matrix.ubuntu_version}}, ${{ matrix.runner.arch }})
+    runs-on: ${{ matrix.runner.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        runner:
+          - { os: ubuntu-latest, arch: amd64 }
+          - { os: ubuntu-24.04-arm, arch: arm64 }
+        ubuntu_version: ['noble', 'plucky', 'questing']
+    container:
+      image: ubuntu:${{matrix.ubuntu_version}}
+    steps:
+      - name: Install git
+        run: |
+          apt-get update -qq
+          apt-get install -qq --yes ca-certificates git
+
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          submodules: recursive
+
+      - name: Dependencies
+        run: |
+          ./ci/ubuntu-depends.sh
+
+      - name: Install GTest
+        run: |
+          cd /usr/src/gtest
+          cmake .
+          make
+          cp lib/*.a /usr/lib
+          ln -sf /usr/lib/libgtest.a /usr/local/lib/libgtest.a
+          ln -sf /usr/lib/libgtest_main.a /usr/local/lib/libgtest_main.a
+
+      - name: Build
+        run: |
+          ./ci/ubuntu-build.sh
+
+      - name: Run tests
+        if: env.BUILD_TESTS == 'ON'
+        run: |
+          ./ci/tests.sh
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v6
+        with:
+          name: ubuntu-${{matrix.ubuntu_version}}-${{ matrix.runner.arch }}
+          path: deb

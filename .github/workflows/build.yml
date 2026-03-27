@@ -7,320 +7,63 @@ on:
   release:
     types: [published]
 
-env:
-  BUILD_TESTS: ON
-  CMAKE_PRESET: release-vcpkg
-  VCPKG_DISABLE_METRICS: true
-  QT_VERSION: '6.8.3'
-
 permissions:
-  contents: write # needed for vcpkg cache
+  contents: write # needed for vcpkg cache and release upload
 
 jobs:
-  archlinux:
-    name: Arch Linux
-    runs-on: ubuntu-latest
-    container:
-      image: archlinux:latest
-
-    steps:
-      - name: Install git
-        run: |
-          pacman -Syy --noconfirm
-          pacman -S git --noconfirm
-
-      - name: Checkout
-        uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-          submodules: recursive
-
-      - name: Dependencies
-        run: |
-          ./ci/archlinux-depends.sh
-
-      - name: Build
-        run: |
-          ./ci/archlinux-build.sh
-
-      - name: Run tests
-        if: env.BUILD_TESTS == 'ON'
-        run: |
-          ./ci/tests.sh
-
-  fedora:
-    name: Fedora (${{matrix.fedora_version}}, ${{ matrix.runner.arch }})
-    runs-on: ${{ matrix.runner.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        runner:
-          - { os: ubuntu-latest, arch: amd64 }
-          - { os: ubuntu-24.04-arm, arch: arm64 }
-        fedora_version: [ '41', '42', '43' ]
-    container:
-      image: fedora:${{matrix.fedora_version}}
-    steps:
-      - name: Install git
-        run: |
-          dnf -y install git
-
-      - name: Checkout
-        uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-          submodules: recursive
-
-      - name: Dependencies
-        run: |
-          ./ci/fedora-depends.sh
-
-      - name: Build
-        run: |
-          ./ci/fedora-build.sh
-
-      - name: Run tests
-        if: env.BUILD_TESTS == 'ON'
-        run: |
-          ./ci/tests.sh
-
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v6
-        with:
-          name: fedora-${{matrix.fedora_version}}-${{ matrix.runner.arch }}
-          path: rpm
-
-  debian:
-    name: Debian (${{matrix.debian_version}}, ${{ matrix.runner.arch }})
-    runs-on: ${{ matrix.runner.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        runner:
-          - { os: ubuntu-latest, arch: amd64 }
-          - { os: ubuntu-24.04-arm, arch: arm64 }
-        debian_version: ['bookworm', 'trixie', 'forky']
-    container:
-      image: debian:${{matrix.debian_version}}
-    steps:
-      - name: Install git
-        run: |
-          apt-get update -qq
-          apt-get install -qq --yes ca-certificates git
-
-      - name: Checkout
-        uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-          submodules: recursive
-
-      - name: Dependencies
-        run: |
-          ./ci/ubuntu-depends.sh
-
-      - name: Install GTest
-        run: |
-          cd /usr/src/gtest
-          cmake .
-          make
-          cp lib/*.a /usr/lib
-          ln -sf /usr/lib/libgtest.a /usr/local/lib/libgtest.a
-          ln -sf /usr/lib/libgtest_main.a /usr/local/lib/libgtest_main.a
-
-      - name: Build
-        run: |
-          ./ci/ubuntu-build.sh
-
-      - name: Run tests
-        if: env.BUILD_TESTS == 'ON'
-        run: |
-          ./ci/tests.sh
-
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v6
-        with:
-          name: debian-${{matrix.debian_version}}-${{ matrix.runner.arch }}
-          path: deb
-
-  ubuntu:
-    name: Ubuntu (${{matrix.ubuntu_version}}, ${{ matrix.runner.arch }})
-    runs-on: ${{ matrix.runner.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        runner:
-          - { os: ubuntu-latest, arch: amd64 }
-          - { os: ubuntu-24.04-arm, arch: arm64 }
-        ubuntu_version: ['noble', 'plucky', 'questing']
-    container:
-      image: ubuntu:${{matrix.ubuntu_version}}
-    steps:
-      - name: Install git
-        run: |
-          apt-get update -qq
-          apt-get install -qq --yes ca-certificates git
-
-      - name: Checkout
-        uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-          submodules: recursive
-
-      - name: Dependencies
-        run: |
-          ./ci/ubuntu-depends.sh
-
-      - name: Install GTest
-        run: |
-          cd /usr/src/gtest
-          cmake .
-          make
-          cp lib/*.a /usr/lib
-          ln -sf /usr/lib/libgtest.a /usr/local/lib/libgtest.a
-          ln -sf /usr/lib/libgtest_main.a /usr/local/lib/libgtest_main.a
-
-      - name: Build
-        run: |
-          ./ci/ubuntu-build.sh
-
-      - name: Run tests
-        if: env.BUILD_TESTS == 'ON'
-        run: |
-          ./ci/tests.sh
-
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v6
-        with:
-          name: ubuntu-${{matrix.ubuntu_version}}-${{ matrix.runner.arch }}
-          path: deb
+  linux:
+    name: Build Linux
+    uses: ./.github/workflows/build-linux.yml
+    secrets: inherit
 
   freebsd:
-    name: FreeBSD
-    runs-on: ubuntu-latest
-    env:
-      FREEBSD_VERSION: '15.0'
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-          submodules: recursive
-
-      - name: run VM
-        uses: cross-platform-actions/action@v0.32.0
-        with:
-          operating_system: freebsd
-          architecture: x86-64
-          cpu_count: 4
-          shell: bash
-          version: ${{ env.FREEBSD_VERSION }}
-          run: |
-            ./ci/freebsd-depends.sh
-            ./ci/freebsd-build.sh
-            ./ci/tests.sh
-
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v6
-        with:
-          name: freebsd-${{ env.FREEBSD_VERSION }}
-          path: pkg
+    name: Build FreeBSD
+    uses: ./.github/workflows/build-freebsd.yml
+    secrets: inherit
 
   windows:
-    name: Windows
-    runs-on: windows-latest
-    strategy:
-      matrix:
-        include:
-          - arch: amd64
-            qt-arch: win64_msvc2022_64
-            msvc-arch: amd64
-            triplet: x64-windows
-            cmake-preset: release-vcpkg
-          # - arch: arm64
-          #   qt-arch: win64_msvc2022_arm64_cross_compiled
-          #   msvc-arch: amd64_arm64
-          #   triplet: arm64-windows
-          #   cmake-preset: release-vcpkg-arm64
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-          submodules: recursive
-
-      - name: Install CMake
-        uses: lukka/get-cmake@latest
-
-      - name: Install dependencies
-        run: choco install ninja nsis -y
-
-      - name: Install Qt
-        uses: jurplel/install-qt-action@v4
-        with:
-          version: ${{ env.QT_VERSION }}
-          archives: qtbase qtsvg qttools
-          cache: true
-          arch: ${{ matrix.qt-arch }}
-          install-deps: 'true'
-
-      - name: Setup MSVC Environment
-        uses: ilammy/msvc-dev-cmd@v1
-        with:
-          arch: ${{ matrix.msvc-arch }}
-
-      - name: Setup vcpkg cache
-        shell: pwsh
-        run: |
-          $cacheDir = "${{ github.workspace }}/vcpkg-binary-cache"
-          New-Item -ItemType Directory -Force -Path $cacheDir
-          echo "VCPKG_BINARY_SOURCES=clear;files,$cacheDir,readwrite" >> $env:GITHUB_ENV
-          echo "VCPKG_TARGET_TRIPLET=${{ matrix.triplet }}" >> $env:GITHUB_ENV
-
-      - name: Cache vcpkg
-        uses: actions/cache@v5
-        with:
-          path: |
-            ${{ github.workspace }}/vcpkg-binary-cache
-            build-${{ matrix.cmake-preset }}_installed
-          key: ${{ runner.os }}-vcpkg-${{ matrix.cmake-preset }}-${{ hashFiles('**/vcpkg.json', '**/vcpkg-configuration.json') }}
-          restore-keys: |
-            ${{ runner.os }}-vcpkg-${{ matrix.cmake-preset }}-
-            ${{ runner.os }}-vcpkg-
-
-      - name: Set CMAKE_PRESET
-        shell: pwsh
-        run: echo "CMAKE_PRESET=${{ matrix.cmake-preset }}" >> $env:GITHUB_ENV
-
-      - name: Build & Package
-        run: .\ci\windows-build.ps1
-        shell: pwsh
-
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v6
-        with:
-          name: "windows-${{ matrix.arch }}"
-          path: artifacts
+    name: Build Windows
+    uses: ./.github/workflows/build-windows.yml
+    secrets: inherit
 
   attach:
     name: Attach to release
     if: github.event_name == 'release' && github.event.action == 'published'
     runs-on: ubuntu-latest
     needs:
-      - fedora
-      - debian
-      - ubuntu
+      - linux
       - freebsd
-      - windows
     steps:
       - name: Checkout
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
-      - name: Download all artifacts
+      - name: Download Fedora artifacts
         uses: actions/download-artifact@v7
         with:
+          pattern: fedora-*
+          path: ./artifacts
+          merge-multiple: true
+
+      - name: Download Debian artifacts
+        uses: actions/download-artifact@v7
+        with:
+          pattern: debian-*
+          path: ./artifacts
+          merge-multiple: true
+
+      - name: Download Ubuntu artifacts
+        uses: actions/download-artifact@v7
+        with:
+          pattern: ubuntu-*
+          path: ./artifacts
+          merge-multiple: true
+
+      - name: Download FreeBSD artifacts
+        uses: actions/download-artifact@v7
+        with:
+          pattern: freebsd-*
           path: ./artifacts
           merge-multiple: true
 
