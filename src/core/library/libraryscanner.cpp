@@ -243,6 +243,10 @@ void LibraryScanner::scanTracks(const TrackList& tracks, const bool onlyModified
                                      .overwritePlaycountOnReload = config.overwritePlaycountOnReload});
 
             const QFileInfo fileInfo{updatedTrack.filepath()};
+            if(updatedTrack.createdTime() == 0) {
+                const QDateTime createdTime = fileInfo.birthTime();
+                updatedTrack.setCreatedTime(createdTime.isValid() ? createdTime.toMSecsSinceEpoch() : 0);
+            }
             if(updatedTrack.modifiedTime() == 0) {
                 const QDateTime modifiedTime = fileInfo.lastModified();
                 updatedTrack.setModifiedTime(modifiedTime.isValid() ? modifiedTime.toMSecsSinceEpoch() : 0);

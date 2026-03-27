@@ -134,6 +134,7 @@ const std::vector<ScriptReferenceEntry>& scriptReferenceEntries()
         variableEntry(MetaData::TagType, tr("Metadata"), tr("Tag type list")),
         variableEntry(MetaData::Encoding, tr("Metadata"), tr("Encoding description")),
         variableEntry(MetaData::Channels, tr("Metadata"), tr("Channel layout")),
+        variableEntry(MetaData::CreatedTime, tr("Metadata"), tr("File created timestamp")),
         variableEntry(MetaData::AddedTime, tr("Metadata"), tr("Library added timestamp")),
         variableEntry(MetaData::LastModified, tr("Metadata"), tr("Last modified timestamp")),
         variableEntry(MetaData::FilePath, tr("Metadata"), tr("Full file path")),

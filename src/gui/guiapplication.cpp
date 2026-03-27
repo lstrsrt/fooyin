@@ -976,7 +976,8 @@ void GuiApplicationPrivate::checkTracksNeedUpdate() const
     if(m_library->hasLibrary()) {
         if(libraryOutOfDate(7)     /* changed codec storage type */
            || libraryOutOfDate(11) /* removed ReplayGain data in extra tags */
-           || libraryOutOfDate(13) /* added more tech fields */) {
+           || libraryOutOfDate(13) /* added more tech fields */
+           || libraryOutOfDate(17) /* added file creation date */) {
             showNeedReloadMessage();
         }
     }

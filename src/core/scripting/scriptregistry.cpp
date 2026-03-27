@@ -277,6 +277,8 @@ std::optional<ScriptRegistry::FuncRet> trackMetadataValue(const VariableKind kin
             return track.encoding();
         case VariableKind::Channels:
             return trackChannels(track);
+        case VariableKind::CreatedTime:
+            return formatDateTime(track.createdTime());
         case VariableKind::AddedTime:
             return formatDateTime(track.addedTime());
         case VariableKind::LastModified:

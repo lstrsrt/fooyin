@@ -370,4 +370,12 @@
             CREATE INDEX IF NOT EXISTS PlaybackQueuePlaylistIndex ON PlaybackQueue(PlaylistID, PlaylistTrackIndex);
         </sql>
     </revision>
+    <revision version="17">
+        <description>
+            Add file creation date.
+        </description>
+        <sql>
+            ALTER TABLE Tracks ADD COLUMN CreatedDate INTEGER;
+        </sql>
+    </revision>
 </schema>

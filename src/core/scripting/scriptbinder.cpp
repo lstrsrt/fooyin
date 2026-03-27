@@ -185,6 +185,9 @@ VariableKind resolveBuiltInVariableKind(const QString& var)
     if(var == QLatin1String{MetaData::Channels}) {
         return VariableKind::Channels;
     }
+    if(var == QLatin1String{MetaData::CreatedTime}) {
+        return VariableKind::CreatedTime;
+    }
     if(var == QLatin1String{MetaData::AddedTime}) {
         return VariableKind::AddedTime;
     }

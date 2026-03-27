@@ -63,6 +63,7 @@ constexpr auto TagType         = "TAGTYPE";
 constexpr auto Encoding        = "ENCODING";
 constexpr auto Channels        = "CHANNELS";
 constexpr auto BitDepth        = "BITDEPTH";
+constexpr auto CreatedTime     = "CREATEDTIME";
 constexpr auto AddedTime       = "ADDEDTIME";
 constexpr auto LastModified    = "LASTMODIFIED";
 constexpr auto FilePath        = "FILEPATH";

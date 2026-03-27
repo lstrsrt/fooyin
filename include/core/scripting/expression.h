@@ -120,6 +120,7 @@ enum class VariableKind : uint8_t
     TagType,
     Encoding,
     Channels,
+    CreatedTime,
     AddedTime,
     LastModified,
     FilePath,
