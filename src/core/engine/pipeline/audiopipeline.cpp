@@ -2275,17 +2275,14 @@ void AudioPipeline::updatePlaybackState(const OutputState& state, int framesWrit
         if(!m_timelineUnit.timelineEpochOffsetResolved()) {
             int64_t computedOffsetMs{0};
 
+            // Only pull mapped segments forward to the epoch anchor. If the first
+            // rendered segment starts after the anchor, preserve that later source
+            // position, as it might be intentional e.g. Skip silence DSP
             if(m_timelineUnit.timelineEpochAnchorPosMs() >= cycleSegment.startMs) {
                 const uint64_t delta = m_timelineUnit.timelineEpochAnchorPosMs() - cycleSegment.startMs;
                 computedOffsetMs     = delta > static_cast<uint64_t>(std::numeric_limits<int64_t>::max())
                                          ? std::numeric_limits<int64_t>::max()
                                          : static_cast<int64_t>(delta);
-            }
-            else {
-                const uint64_t delta = cycleSegment.startMs - m_timelineUnit.timelineEpochAnchorPosMs();
-                computedOffsetMs     = delta > static_cast<uint64_t>(std::numeric_limits<int64_t>::max())
-                                         ? std::numeric_limits<int64_t>::min()
-                                         : -static_cast<int64_t>(delta);
             }
 
             m_timelineUnit.setTimelineEpochOffsetMs(computedOffsetMs, true);
