@@ -195,6 +195,7 @@ public:
 
     [[nodiscard]] int playCount() const;
 
+    [[nodiscard]] uint64_t createdTime() const;
     [[nodiscard]] uint64_t addedTime() const;
     [[nodiscard]] uint64_t modifiedTime() const;
     [[nodiscard]] uint64_t lastModified() const;
@@ -269,6 +270,7 @@ public:
 
     void setPlayCount(int count);
 
+    void setCreatedTime(uint64_t time);
     void setAddedTime(uint64_t time);
     void setModifiedTime(uint64_t time);
     void setFirstPlayed(uint64_t time);

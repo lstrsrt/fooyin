@@ -235,6 +235,7 @@ public:
 
     float rating{-1};
     int playcount{0};
+    uint64_t createdTime{0};
     uint64_t addedTime{0};
     uint64_t modifiedTime{0};
     uint64_t firstPlayed{0};
@@ -1117,6 +1118,11 @@ int Track::playCount() const
     return p->playcount;
 }
 
+uint64_t Track::createdTime() const
+{
+    return p->createdTime;
+}
+
 uint64_t Track::addedTime() const
 {
     return p->addedTime;
@@ -1566,6 +1572,7 @@ std::optional<int64_t> Track::dateValue(const QString& name) const
         {QString::fromLatin1(Year),         [](const Fooyin::Track& track) { return track.p->yearSinceEpoch; }},
         {QString::fromLatin1(FirstPlayed),  [](const Fooyin::Track& track) { return track.firstPlayed(); }},
         {QString::fromLatin1(LastPlayed),   [](const Fooyin::Track& track) { return track.lastPlayed(); }},
+        {QString::fromLatin1(CreatedTime),  [](const Fooyin::Track& track) { return track.createdTime(); }},
         {QString::fromLatin1(AddedTime),    [](const Fooyin::Track& track) { return track.addedTime(); }},
         {QString::fromLatin1(LastModified), [](const Fooyin::Track& track) { return track.lastModified(); }}
     };
@@ -1762,6 +1769,11 @@ void Track::setEncoding(const QString& encoding)
 void Track::setPlayCount(int count)
 {
     p->playcount = count;
+}
+
+void Track::setCreatedTime(uint64_t time)
+{
+    p->createdTime = time;
 }
 
 void Track::setAddedTime(uint64_t time)

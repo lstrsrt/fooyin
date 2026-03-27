@@ -362,6 +362,10 @@ void LibraryTrackResolver::readFile(const QFileInfo& info, const bool onlyModifi
                 mergeReloadedTrackStats(track, existingTrack, m_reloadOptions);
             }
 
+            const QDateTime createdTime{info.birthTime()};
+            if(createdTime.isValid()) {
+                track.setCreatedTime(static_cast<uint64_t>(createdTime.toMSecsSinceEpoch()));
+            }
             if(lastModifiedTime.isValid()) {
                 track.setModifiedTime(lastModified);
             }

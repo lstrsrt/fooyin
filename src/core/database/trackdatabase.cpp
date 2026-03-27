@@ -76,6 +76,7 @@ QString fetchTrackColumns()
                                    "RGAlbumGain,"
                                    "RGTrackPeak,"
                                    "RGAlbumPeak,"
+                                   "CreatedDate,"
                                    "AddedDate,"
                                    "FirstPlayed,"
                                    "LastPlayed,"
@@ -123,7 +124,8 @@ BindingsMap trackBindings(const Fooyin::Track& track)
             {u":rgTrackGain"_s, track.rgTrackGain()},
             {u":rgAlbumGain"_s, track.rgAlbumGain()},
             {u":rgTrackPeak"_s, track.rgTrackPeak()},
-            {u":rgAlbumPeak"_s, track.rgAlbumPeak()}};
+            {u":rgAlbumPeak"_s, track.rgAlbumPeak()},
+            {u":createdDate"_s, static_cast<quint64>(track.createdTime())}};
 }
 
 Fooyin::Track readToTrack(const Fooyin::DbQuery& q, const std::shared_ptr<Fooyin::TrackMetadataStore>& store)
@@ -178,12 +180,13 @@ Fooyin::Track readToTrack(const Fooyin::DbQuery& q, const std::shared_ptr<Fooyin
     if(const auto rgAlbumPeak = q.value(37).toFloat(&isValid); isValid) {
         track.setRGAlbumPeak(rgAlbumPeak);
     }
+    track.setCreatedTime(q.value(38).toULongLong());
 
-    track.setAddedTime(q.value(38).toULongLong());
-    track.setFirstPlayed(q.value(39).toULongLong());
-    track.setLastPlayed(q.value(40).toULongLong());
-    track.setPlayCount(q.value(41).toInt());
-    track.setRating(q.value(42).toFloat());
+    track.setAddedTime(q.value(39).toULongLong());
+    track.setFirstPlayed(q.value(40).toULongLong());
+    track.setLastPlayed(q.value(41).toULongLong());
+    track.setPlayCount(q.value(42).toInt());
+    track.setRating(q.value(43).toFloat());
 
     track.setMetadataWasRead(true);
     track.generateHash();
@@ -406,7 +409,8 @@ bool TrackDatabase::updateTrack(const Track& track)
                            "RGTrackGain = :rgTrackGain,"
                            "RGAlbumGain = :rgAlbumGain,"
                            "RGTrackPeak = :rgTrackPeak,"
-                           "RGAlbumPeak = :rgAlbumPeak"
+                           "RGAlbumPeak = :rgAlbumPeak,"
+                           "CreatedDate = :createdDate"
                            " WHERE TrackID = :trackId;"_s;
 
     DbQuery query{db(), statement};
@@ -578,6 +582,7 @@ void TrackDatabase::insertViews(const QSqlDatabase& db)
                            "Tracks.RGAlbumGain,"
                            "Tracks.RGTrackPeak,"
                            "Tracks.RGAlbumPeak,"
+                           "Tracks.CreatedDate,"
                            "TrackStats.AddedDate,"
                            "TrackStats.FirstPlayed,"
                            "TrackStats.LastPlayed,"
@@ -648,6 +653,7 @@ bool TrackDatabase::insertTrack(Track& track, bool ignoreDuplicates) const
                            "RGAlbumGain,"
                            "RGTrackPeak,"
                            "RGAlbumPeak"
+                           "CreatedDate,"
                            ") "
                            "VALUES ("
                            ":filePath,"
@@ -686,7 +692,8 @@ bool TrackDatabase::insertTrack(Track& track, bool ignoreDuplicates) const
                            ":rgTrackGain,"
                            ":rgAlbumGain,"
                            ":rgTrackPeak,"
-                           ":rgAlbumPeak"
+                           ":rgAlbumPeak,"
+                           ":createdDate"
                            ");"_s;
 
     DbQuery query{db(), statement};
