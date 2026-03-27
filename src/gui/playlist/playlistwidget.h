@@ -128,6 +128,7 @@ private:
     void showHeaderMenu(const QPoint& pos);
     void addSortMenu(QMenu* parent, bool disabled);
     void addClipboardMenu(QMenu* parent, bool hasSelection) const;
+    void addSingleModeAction(QMenu* parent);
     void addPresetMenu(QMenu* parent);
     void addColumnsMenu(QMenu* parent);
     void applyInitialViewSettings();

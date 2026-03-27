@@ -492,12 +492,15 @@ void PlaylistWidget::populateTrackContextMenu(QMenu* menu, const QModelIndexList
         menu->addSeparator();
     }
 
-    addPresetMenu(menu);
-    menu->addSeparator();
-
     if(!state.hasSelection) {
+        addSingleModeAction(menu);
+        menu->addSeparator();
+        addPresetMenu(menu);
         return;
     }
+
+    addPresetMenu(menu);
+    menu->addSeparator();
 
     if(state.usePlaylistQueueCommands) {
         if(auto* addQueueCmd = m_actionManager->command(Constants::Actions::AddToQueue)) {
@@ -831,12 +834,7 @@ void PlaylistWidget::showHeaderMenu(const QPoint& pos)
         menu->addAction(resetAction);
     }
 
-    auto* columnModeAction = new QAction(tr("Single-column mode"), menu);
-    columnModeAction->setCheckable(true);
-    columnModeAction->setChecked(layoutState().singleMode);
-    QObject::connect(columnModeAction, &QAction::triggered, this,
-                     [this]() { setSingleMode(!layoutState().singleMode); });
-    menu->addAction(columnModeAction);
+    addSingleModeAction(menu);
 
     menu->addSeparator();
     addPresetMenu(menu);
@@ -899,6 +897,16 @@ void PlaylistWidget::addClipboardMenu(QMenu* parent, bool hasSelection) const
     if(auto* pasteAction = m_session->pasteAction(); pasteAction && !m_playlistController->clipboardEmpty()) {
         parent->addAction(pasteAction);
     }
+}
+
+void PlaylistWidget::addSingleModeAction(QMenu* parent)
+{
+    auto* columnModeAction = new QAction(tr("Single-column mode"), parent);
+    columnModeAction->setCheckable(true);
+    columnModeAction->setChecked(layoutState().singleMode);
+    QObject::connect(columnModeAction, &QAction::triggered, this,
+                     [this]() { setSingleMode(!layoutState().singleMode); });
+    parent->addAction(columnModeAction);
 }
 
 void PlaylistWidget::addPresetMenu(QMenu* parent)
