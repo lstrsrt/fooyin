@@ -834,13 +834,15 @@ void LyricsWidget::seekTo(const QModelIndex& index, const QPoint& pos)
 
     // Seek to word
     const int wordIndex = m_delegate->wordIndexAt(index, pos, m_lyricsView->visualRect(index));
-    if(wordIndex > 0) {
+    if(wordIndex >= 0) {
         const auto words = index.data(LyricsModel::WordsRole).value<std::vector<ParsedWord>>();
         if(std::cmp_less(wordIndex, words.size())) {
             m_playerController->seek(words[wordIndex].timestamp);
             return;
         }
     }
+
+    m_playerController->seek(timestamp);
 }
 
 void LyricsWidget::highlightCurrentLine()

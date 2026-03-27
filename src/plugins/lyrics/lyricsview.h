@@ -67,6 +67,7 @@ protected:
     void wheelEvent(QWheelEvent* event) override;
 
 private:
+    [[nodiscard]] QPoint seekPosition(const QPoint& pos) const;
     [[nodiscard]] QModelIndex seekableIndexAt(const QPoint& pos) const;
     [[nodiscard]] bool isSeekableIndex(const QModelIndex& index) const;
     [[nodiscard]] QColor backgroundColour() const;

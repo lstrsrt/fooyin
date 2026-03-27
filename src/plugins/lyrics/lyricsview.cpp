@@ -146,7 +146,7 @@ void LyricsView::paintEvent(QPaintEvent* event)
         painter.setOpacity(0.6);
         painter.setPen(pen);
 
-        const int guideY = std::clamp(m_dragPos.y(), 0, viewport()->height() - 1);
+        const int guideY = seekPosition(m_dragPos).y();
         painter.drawLine(0, guideY, viewport()->width(), guideY);
     };
 
@@ -225,7 +225,7 @@ void LyricsView::mouseReleaseEvent(QMouseEvent* event)
         return;
     }
 
-    const QPoint pos = event->position().toPoint();
+    const QPoint pos = seekPosition(event->position().toPoint());
     if(m_dragSeeking) {
         updateDragPreview(pos);
         emit lineDragSeekRequested(m_dragIndex, pos);
@@ -234,7 +234,7 @@ void LyricsView::mouseReleaseEvent(QMouseEvent* event)
         return;
     }
 
-    const QModelIndex index = indexAt(pos);
+    const QModelIndex index = seekableIndexAt(pos);
     emit lineClicked(index, pos);
 
     m_leftButtonDown = false;
@@ -357,7 +357,8 @@ QModelIndex LyricsView::seekableIndexAt(const QPoint& pos) const
         return {};
     }
 
-    const QModelIndex index = indexAt(pos);
+    const QPoint seekPos    = seekPosition(pos);
+    const QModelIndex index = indexAt(seekPos);
     if(isSeekableIndex(index)) {
         return index;
     }
@@ -371,11 +372,35 @@ QModelIndex LyricsView::seekableIndexAt(const QPoint& pos) const
         }
     }
 
-    if(pos.y() < viewport()->rect().center().y()) {
+    if(seekPos.y() < viewport()->rect().center().y()) {
         return model->index(1, 0);
     }
 
     return model->index(model->rowCount() - 2, 0);
+}
+
+QPoint LyricsView::seekPosition(const QPoint& pos) const
+{
+    QPoint seekPos{pos};
+    const QRect viewportRect = viewport()->rect();
+    if(viewportRect.isEmpty()) {
+        return seekPos;
+    }
+
+    seekPos.setX(std::clamp(seekPos.x(), viewportRect.left(), viewportRect.right()));
+    seekPos.setY(std::clamp(seekPos.y(), viewportRect.top(), viewportRect.bottom()));
+
+    if(!m_edgeFadeEnabled) {
+        return seekPos;
+    }
+
+    const int fadeHeight = edgeFadeHeight();
+    if(fadeHeight <= 0 || viewportRect.height() <= (fadeHeight * 2)) {
+        return seekPos;
+    }
+
+    seekPos.setY(std::clamp(seekPos.y(), viewportRect.top() + fadeHeight, viewportRect.bottom() - fadeHeight));
+    return seekPos;
 }
 
 bool LyricsView::isSeekableIndex(const QModelIndex& index) const
@@ -385,12 +410,13 @@ bool LyricsView::isSeekableIndex(const QModelIndex& index) const
 
 void LyricsView::updateDragPreview(const QPoint& pos)
 {
-    const QModelIndex index = seekableIndexAt(pos);
+    const QPoint seekPos    = seekPosition(pos);
+    const QModelIndex index = seekableIndexAt(seekPos);
     if(!isSeekableIndex(index)) {
         return;
     }
 
-    m_dragPos   = pos;
+    m_dragPos   = seekPos;
     m_dragIndex = index;
 
     viewport()->update();
