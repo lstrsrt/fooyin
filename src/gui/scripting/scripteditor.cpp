@@ -111,7 +111,6 @@ class ScriptCompleter : public QCompleter
 public:
     using QCompleter::QCompleter;
 
-protected:
     [[nodiscard]] QString pathFromIndex(const QModelIndex& index) const override
     {
         return index.data(InsertTextRole).toString();
@@ -146,10 +145,10 @@ public:
         QTextCursor cursor{textCursor()};
 
         if(kind == ScriptReferenceKind::Formatting && cursor.hasSelection() && cursorOffset > 0) {
-            const int splitPosition = insertText.size() - cursorOffset;
-            const QString prefix    = insertText.left(splitPosition);
-            const QString suffix    = insertText.mid(splitPosition);
-            const QString selected  = cursor.selectedText();
+            const auto splitPosition = insertText.size() - cursorOffset;
+            const QString prefix     = insertText.left(splitPosition);
+            const QString suffix     = insertText.mid(splitPosition);
+            const QString selected   = cursor.selectedText();
 
             cursor.insertText(prefix + selected + suffix);
             setTextCursor(cursor);
@@ -668,9 +667,14 @@ void ScriptEditorPrivate::setupReference()
               tree->setEditTriggers(QAbstractItemView::NoEditTriggers);
               tree->setSortingEnabled(true);
               tree->sortByColumn(0, Qt::AscendingOrder);
-              tree->header()->setStretchLastSection(true);
-              tree->header()->setSectionResizeMode(0, QHeaderView::ResizeToContents);
-              tree->header()->setSectionResizeMode(1, QHeaderView::ResizeToContents);
+
+              auto* header = tree->header();
+              header->setSectionResizeMode(QHeaderView::Interactive);
+              header->setStretchLastSection(true);
+
+              for(int column{0}; column < model->columnCount() - 1; ++column) {
+                  tree->resizeColumnToContents(column);
+              }
           };
 
     configureReferenceTree(m_variableReferenceTree, m_variableReferenceFilter, m_variableReferenceModel);

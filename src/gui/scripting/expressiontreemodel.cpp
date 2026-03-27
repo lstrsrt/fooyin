@@ -217,15 +217,12 @@ bool ExpressionTreeModel::isKnownFormatTag(const ParsedFormatTag& tag)
         return false;
     }
 
-    RichFormatting formatting;
-    const ScriptFormatterRegistry registry;
-
     if(tag.closing) {
-        const QString option = tag.name == "a"_L1 ? u"https://example.com"_s : QString{};
-        return registry.format(formatting, tag.name, option);
+        return ScriptFormatterRegistry::isKnown(tag.name);
     }
 
-    return registry.format(formatting, tag.name, tag.option);
+    RichFormatting formatting;
+    return ScriptFormatterRegistry::format(formatting, tag.name, tag.option);
 }
 
 std::optional<QString> ExpressionTreeModel::literalExpressionText(const Expression& expression)

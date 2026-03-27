@@ -216,6 +216,11 @@ constexpr std::array FormatterHandlers{
 };
 } // namespace
 
+bool ScriptFormatterRegistry::isKnown(const QString& func)
+{
+    return std::ranges::any_of(FormatterHandlers, [&](const auto& entry) { return func == entry.name; });
+}
+
 bool ScriptFormatterRegistry::format(RichFormatting& formatting, const QString& func, const QString& option)
 {
     for(const auto& entry : FormatterHandlers) {

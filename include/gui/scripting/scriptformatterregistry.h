@@ -31,6 +31,11 @@ class FYGUI_EXPORT ScriptFormatterRegistry
 {
 public:
     /*!
+     * Returns `true` if the formatter command `func` is recognised.
+     */
+    [[nodiscard]] static bool isKnown(const QString& func);
+
+    /*!
      * Applies the formatter command `func` with optional `option` to `formatting`.
      *
      * Returns `true` if the formatter command was recognised.
