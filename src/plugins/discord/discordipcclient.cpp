@@ -151,13 +151,13 @@ DiscordIPCClient::DiscordIPCClient(QObject* parent)
     , m_connectGeneration{0}
     , m_connectInProgress{false}
     , m_handshakeCompleted{false}
+    , m_loggedServerNotFound{false}
 {
     m_stream.setByteOrder(QDataStream::LittleEndian);
     m_stream.setVersion(QDataStream::Qt_6_0);
 
-    QObject::connect(&m_socket, &QLocalSocket::errorOccurred, this, [](QLocalSocket::LocalSocketError error) {
-        qCWarning(DISCORD) << "Socket:" << socketErrorToString(error);
-    });
+    QObject::connect(&m_socket, &QLocalSocket::errorOccurred, this,
+                     [this](QLocalSocket::LocalSocketError error) { logSocketError(error); });
 
     QObject::connect(&m_socket, &QLocalSocket::disconnected, this, [this] {
         qCDebug(DISCORD) << "Disconnected from Discord IPC";
@@ -175,6 +175,20 @@ QString DiscordIPCClient::errorMessage() const
     return m_error;
 }
 
+void DiscordIPCClient::logSocketError(QLocalSocket::LocalSocketError error)
+{
+    if(error == QLocalSocket::ServerNotFoundError) {
+        if(m_connectInProgress && std::exchange(m_loggedServerNotFound, true)) {
+            return;
+        }
+
+        qCDebug(DISCORD) << "Socket:" << socketErrorToString(error);
+        return;
+    }
+
+    qCWarning(DISCORD) << "Socket:" << socketErrorToString(error);
+}
+
 QCoro::Task<bool> DiscordIPCClient::connectToDiscord()
 {
     if(isConnected()) {
@@ -190,7 +204,9 @@ QCoro::Task<bool> DiscordIPCClient::connectToDiscord()
         co_return false;
     }
 
-    m_connectInProgress = true;
+    m_connectInProgress    = true;
+    m_loggedServerNotFound = false;
+
     const quint64 connectGeneration{m_connectGeneration};
 
     for(int index{0}; index <= MaxPipeIndex; ++index) {

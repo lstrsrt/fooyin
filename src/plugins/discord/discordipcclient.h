@@ -49,6 +49,7 @@ public:
     QCoro::Task<> changeClientId(const QString clientId);
 
 private:
+    void logSocketError(QLocalSocket::LocalSocketError error);
     void setError(const QString& error);
 
     [[nodiscard]] bool hasCompleteMessage();
@@ -67,6 +68,7 @@ private:
     quint64 m_connectGeneration;
     bool m_connectInProgress;
     bool m_handshakeCompleted;
+    bool m_loggedServerNotFound;
     QString m_error;
 };
 } // namespace Fooyin::Discord
