@@ -996,7 +996,6 @@ void GuiApplicationPrivate::showNeedReloadMessage() const
         button->setText(GuiApplication::tr("Reload Now"));
     }
     QPushButton* okButton = message.addButton(GuiApplication::tr("OK"), QMessageBox::ActionRole);
-    okButton->setIcon(Gui::iconFromTheme(Constants::Icons::Stop));
     message.setDefaultButton(QMessageBox::Ok);
 
     message.exec();
