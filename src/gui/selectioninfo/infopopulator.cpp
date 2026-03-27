@@ -196,6 +196,8 @@ void InfoPopulatorPrivate::addTrackLocation(int total, const Track& track)
     }
 
     if(total == 1) {
+        checkAddEntryNode(u"Created"_s, InfoPopulator::tr("Created"), ItemParent::Location, track.createdTime(),
+                          InfoItem::Max, InfoItem::FormatUIntFunc{Utils::formatTimeMs});
         checkAddEntryNode(u"Added"_s, InfoPopulator::tr("Added"), ItemParent::Location, track.addedTime(),
                           InfoItem::Max, InfoItem::FormatUIntFunc{Utils::formatTimeMs});
     }
