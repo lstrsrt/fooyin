@@ -389,17 +389,6 @@ QPoint LyricsView::seekPosition(const QPoint& pos) const
 
     seekPos.setX(std::clamp(seekPos.x(), viewportRect.left(), viewportRect.right()));
     seekPos.setY(std::clamp(seekPos.y(), viewportRect.top(), viewportRect.bottom()));
-
-    if(!m_edgeFadeEnabled) {
-        return seekPos;
-    }
-
-    const int fadeHeight = edgeFadeHeight();
-    if(fadeHeight <= 0 || viewportRect.height() <= (fadeHeight * 2)) {
-        return seekPos;
-    }
-
-    seekPos.setY(std::clamp(seekPos.y(), viewportRect.top() + fadeHeight, viewportRect.bottom() - fadeHeight));
     return seekPos;
 }
 
