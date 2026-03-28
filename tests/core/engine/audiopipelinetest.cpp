@@ -867,6 +867,14 @@ TEST(AudioPipelineTest, CrossfadeTransitionWithoutTimelineReanchorPreservesCurre
     ASSERT_TRUE(result.success);
     ASSERT_NE(result.streamId, InvalidStreamId);
 
+    ASSERT_TRUE(waitUntil(
+        [&pipeline, previousPosition = statusBefore.position]() {
+            const auto status = pipeline.currentStatus();
+            return status.state == PipelinePlaybackState::Playing && status.positionIsMapped
+                && status.renderedSegment.valid && status.position >= previousPosition;
+        },
+        1500ms));
+
     const auto statusAfter = pipeline.currentStatus();
     EXPECT_EQ(statusAfter.state, PipelinePlaybackState::Playing);
     EXPECT_GT(statusAfter.position, 0U);
@@ -954,11 +962,20 @@ TEST(AudioPipelineTest, GaplessTransitionWithoutTimelineReanchorPreservesCurrent
     ASSERT_TRUE(result.success);
     ASSERT_NE(result.streamId, InvalidStreamId);
 
+    ASSERT_TRUE(waitUntil(
+        [&pipeline, previousPosition = statusBefore.position]() {
+            const auto status = pipeline.currentStatus();
+            return status.state == PipelinePlaybackState::Playing && status.positionIsMapped
+                && status.renderedSegment.valid && status.position >= previousPosition;
+        },
+        1500ms));
+
     const auto statusAfter = pipeline.currentStatus();
     EXPECT_EQ(statusAfter.state, PipelinePlaybackState::Playing);
     EXPECT_GT(statusAfter.position, 0U);
     EXPECT_TRUE(statusAfter.positionIsMapped);
     EXPECT_TRUE(statusAfter.renderedSegment.valid);
+    EXPECT_GE(statusAfter.position, statusBefore.position);
 
     pipeline.stop();
 }

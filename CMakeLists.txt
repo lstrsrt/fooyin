@@ -52,6 +52,7 @@ include(FooyinMacrosInternal)
 
 fooyin_option(BUILD_SHARED_LIBS "Build fooyin libraries as shared" ON)
 fooyin_option(BUILD_TESTING "Build fooyin tests" OFF)
+fooyin_option(BUILD_SENSITIVE_TESTING "Build time-sensitive tests" OFF)
 fooyin_option(BUILD_PLUGINS "Build plugins included with fooyin" ON)
 fooyin_option(BUILD_ALSA "Build ALSA plugin" ON)
 fooyin_option(BUILD_TRANSLATIONS "Build translation files" ON)

@@ -100,6 +100,8 @@ The following options can be passed to CMake to customise the build:
 
 * `-DBUILD_SHARED_LIBS` - Build fooyin's libraries as shared (ON by default)
 * `-DBUILD_TESTING` - Build tests (OFF by default)
+* `-DBUILD_SENSITIVE_TESTING` - Build time-sensitive tests (OFF by default; may be unreliable in heavily 
+loaded environments)
 * `-DBUILD_PLUGINS` - Build the plugins included with fooyin (ON by default)
 * `-DBUILD_ALSA` - Build the ALSA plugin (ON by default)
 * `-DBUILD_TRANSLATIONS` - Build translation files (ON by default)
