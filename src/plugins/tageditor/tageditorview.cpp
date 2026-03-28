@@ -59,8 +59,6 @@ TagEditorView::TagEditorView(ActionManager* actionManager, QWidget* parent)
     setTextElideMode(Qt::ElideRight);
     setSelectionBehavior(SelectRows);
     setMouseTracking(true);
-    horizontalHeader()->setSectionResizeMode(0, QHeaderView::Interactive);
-    horizontalHeader()->setSectionResizeMode(1, QHeaderView::Stretch);
     horizontalHeader()->setSectionsClickable(false);
     verticalHeader()->setVisible(false);
 }
