@@ -220,8 +220,8 @@ bool TagEditorModelPrivate::updateTrackMetadata(const TagEditorField& field, con
         tag = QLatin1String{Constants::MetaData::Rating};
     }
 
-    const bool isList  = split || field.multivalue;
-    const bool isFloat = (tag.compare(QLatin1String{Constants::MetaData::Rating}, Qt::CaseInsensitive) == 0);
+    const bool isList   = split || field.multivalue;
+    const bool isRating = (tag.compare(QLatin1String{Constants::MetaData::Rating}, Qt::CaseInsensitive) == 0);
 
     QStringList listValue;
     float floatValue{-1};
@@ -230,7 +230,7 @@ bool TagEditorModelPrivate::updateTrackMetadata(const TagEditorField& field, con
         listValue = value.toString().split(u";"_s, Qt::SkipEmptyParts);
         std::ranges::transform(listValue, listValue.begin(), [](const QString& val) { return val.trimmed(); });
     }
-    else if(isFloat) {
+    else if(isRating) {
         bool validFloat{false};
         floatValue = value.toFloat(&validFloat);
         if(!validFloat) {
@@ -239,12 +239,12 @@ bool TagEditorModelPrivate::updateTrackMetadata(const TagEditorField& field, con
     }
 
     for(int i{0}; Track& track : m_tracks) {
-        if(track.hasCue()) {
+        if(track.hasCue() && !isRating) {
             continue;
         }
 
         if(split && std::cmp_less(i, listValue.size())) {
-            if(isFloat) {
+            if(isRating) {
                 setTrackScriptValue(tag, listValue.at(i).toFloat(), track);
             }
             else {
@@ -254,7 +254,7 @@ bool TagEditorModelPrivate::updateTrackMetadata(const TagEditorField& field, con
         else if(isList) {
             setTrackScriptValue(tag, listValue, track);
         }
-        else if(isFloat) {
+        else if(isRating) {
             setTrackScriptValue(tag, floatValue, track);
         }
         else {
@@ -461,10 +461,28 @@ bool TagEditorModel::haveChanges()
 
 bool TagEditorModel::haveOnlyStatChanges()
 {
-    return std::ranges::all_of(
-               p->m_tags,
-               [](const auto& tag) { return tag.first == "Rating"_L1 || tag.second.status() == TagEditorItem::None; })
-        && p->m_tags.at(u"Rating"_s).status() == TagEditorItem::Changed;
+    auto isRatingField = [](const TagEditorItem& item) {
+        const QString scriptField = item.field().scriptField;
+        return scriptField.compare(QLatin1String{Constants::MetaData::RatingEditor}, Qt::CaseInsensitive) == 0
+            || scriptField.compare(QLatin1String{Constants::MetaData::Rating}, Qt::CaseInsensitive) == 0
+            || scriptField.compare(QLatin1String{Constants::MetaData::RatingStars}, Qt::CaseInsensitive) == 0;
+    };
+
+    bool changedRating{false};
+
+    for(const auto& item : p->m_tags | std::views::values) {
+        if(item.status() == TagEditorItem::None) {
+            continue;
+        }
+
+        if(!isRatingField(item)) {
+            return false;
+        }
+
+        changedRating = true;
+    }
+
+    return changedRating;
 }
 
 void TagEditorModel::applyChanges()
