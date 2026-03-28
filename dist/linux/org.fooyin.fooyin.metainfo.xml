@@ -46,6 +46,8 @@
     <content_rating type="oars-1.1" />
     <url type="homepage">https://fooyin.org</url>
     <url type="bugtracker">https://github.com/fooyin/fooyin/issues</url>
+    <url type="vcs-browser">https://github.com/fooyin/fooyin</url>
+    <url type="donation">https://github.com/sponsors/ludouzi</url>
     <screenshots>
         <screenshot type="default">
             <image>https://github.com/user-attachments/assets/8e8732a7-a7e5-4542-87b4-7d0a7b5e8fa0</image>
