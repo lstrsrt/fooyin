@@ -2,9 +2,9 @@
 
 This document outlines the upcoming features for fooyin.
 
-## Next Release
+## Next Feature Release
 
-**0.10.0** - 2026/03/27
+**0.11.0** - TBD
 
 ## New Features
 
@@ -24,9 +24,9 @@ This document outlines the upcoming features for fooyin.
 | Synchronised lyric support                    | ✅ 0.9.0   |
 | DSP plugin support                            | ✅ 0.10.0  |
 | Equaliser                                     | ✅ 0.10.0  |
+| Internet radio support                        | 🚧 0.11.0  |
 | Audio conversion                              | ❓ TBD     |
 | Metadata lookup                               | ❓ TBD     |
-| Internet radio support                        | ❓ TBD     |
 
 ## Enhancements
 
