@@ -1302,7 +1302,7 @@ void AudioEngine::maybeBeginAutoBoundaryFadeOut(uint64_t relativePosMs)
     }
 
     m_pipeline.setFaderCurve(boundarySpec.curve);
-    m_pipeline.faderFadeOut(tailFadeOutMs, m_volume, 0);
+    m_pipeline.faderFadeOut(tailFadeOutMs, 1.0, 0);
     m_autoBoundaryFadeActive     = true;
     m_autoBoundaryFadeGeneration = m_trackGeneration;
 }
@@ -1315,7 +1315,7 @@ void AudioEngine::applyAutoBoundaryFadeIn(const bool allowFadeInOnly)
 
     const int fadeInMs = std::max(0, m_fadingValues.boundary.effectiveInMs());
     m_pipeline.setFaderCurve(m_fadingValues.boundary.curve);
-    m_pipeline.faderFadeIn(fadeInMs, m_volume, 0);
+    m_pipeline.faderFadeIn(fadeInMs, 1.0, 0);
     clearAutoBoundaryFadeState();
 }
 
@@ -1329,7 +1329,7 @@ void AudioEngine::clearAutoCrossfadeTailFadeState()
 void AudioEngine::clearAutoBoundaryFadeState(bool restoreOutput)
 {
     if(restoreOutput && m_autoBoundaryFadeActive) {
-        m_pipeline.faderFadeIn(0, m_volume, 0);
+        m_pipeline.faderFadeIn(0, 1.0, 0);
     }
 
     m_autoBoundaryFadeActive     = false;

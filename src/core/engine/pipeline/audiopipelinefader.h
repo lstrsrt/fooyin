@@ -29,11 +29,11 @@ class AudioPipelineFader
 public:
     virtual ~AudioPipelineFader() = default;
 
-    virtual void setFaderCurve(Engine::FadeCurve curve)                             = 0;
-    virtual void faderFadeIn(int durationMs, double targetVolume, uint64_t token)   = 0;
-    virtual void faderFadeOut(int durationMs, double currentVolume, uint64_t token) = 0;
-    virtual void faderStop()                                                        = 0;
-    virtual void faderReset()                                                       = 0;
-    [[nodiscard]] virtual bool faderIsFading() const                                = 0;
+    virtual void setFaderCurve(Engine::FadeCurve curve)                           = 0;
+    virtual void faderFadeIn(int durationMs, double targetGain, uint64_t token)   = 0;
+    virtual void faderFadeOut(int durationMs, double currentGain, uint64_t token) = 0;
+    virtual void faderStop()                                                      = 0;
+    virtual void faderReset()                                                     = 0;
+    [[nodiscard]] virtual bool faderIsFading() const                              = 0;
 };
 } // namespace Fooyin

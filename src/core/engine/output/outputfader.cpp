@@ -30,7 +30,7 @@ OutputFader::OutputFader()
     , m_activeToken{0}
     , m_currentGain{1.0}
     , m_fadeStartGain{1.0}
-    , m_targetVolume{1.0}
+    , m_targetGain{1.0}
     , m_fadeFramesTotal{0}
     , m_fadeFramesDone{0}
     , m_curve{Engine::FadeCurve::Cosine}
@@ -52,20 +52,20 @@ void OutputFader::reset()
 
     m_currentGain   = 1.0;
     m_fadeStartGain = 1.0;
-    m_targetVolume  = 1.0;
+    m_targetGain    = 1.0;
     m_pendingCompletion.reset();
     m_activeToken = 0;
 }
 
-void OutputFader::fadeIn(int durationMs, double targetVolume, int sampleRate, uint64_t token)
+void OutputFader::fadeIn(int durationMs, double /*targetGain*/, int sampleRate, uint64_t token)
 {
     m_pendingCompletion.reset();
     m_activeToken = token;
 
     if(durationMs <= 0) {
-        m_currentGain       = targetVolume;
-        m_fadeStartGain     = targetVolume;
-        m_targetVolume      = targetVolume;
+        m_currentGain       = 1.0;
+        m_fadeStartGain     = 1.0;
+        m_targetGain        = 1.0;
         m_fadingOut         = false;
         m_fading            = false;
         m_fadeFramesTotal   = 0;
@@ -83,7 +83,7 @@ void OutputFader::fadeIn(int durationMs, double targetVolume, int sampleRate, ui
     }
 
     m_fadeStartGain = startGain;
-    m_targetVolume  = targetVolume;
+    m_targetGain    = 1.0;
     m_fadingOut     = false;
 
     const int clampedSampleRate = (sampleRate > 0) ? sampleRate : 1;
@@ -93,7 +93,7 @@ void OutputFader::fadeIn(int durationMs, double targetVolume, int sampleRate, ui
     m_fading         = true;
 }
 
-void OutputFader::fadeOut(int durationMs, double currentVolume, int sampleRate, uint64_t token)
+void OutputFader::fadeOut(int durationMs, double /*currentGain*/, int sampleRate, uint64_t token)
 {
     m_pendingCompletion.reset();
     m_activeToken = token;
@@ -101,7 +101,7 @@ void OutputFader::fadeOut(int durationMs, double currentVolume, int sampleRate, 
     if(durationMs <= 0) {
         m_currentGain       = 0.0;
         m_fadeStartGain     = 0.0;
-        m_targetVolume      = 0.0;
+        m_targetGain        = 0.0;
         m_fading            = false;
         m_fadingOut         = false;
         m_fadeFramesTotal   = 0;
@@ -110,11 +110,11 @@ void OutputFader::fadeOut(int durationMs, double currentVolume, int sampleRate, 
         return;
     }
 
-    // If a fade is already in progress (e.g. pause during resume fade-in), continue from the current gain
-    const double startGain = std::clamp(m_fading ? m_currentGain : currentVolume, 0.0, 1.0);
+    // If a fade is already in progress (e.g. pause during resume fade-in), continue from the current gain.
+    const double startGain = std::clamp(m_fading ? m_currentGain : 1.0, 0.0, 1.0);
     m_currentGain          = startGain;
     m_fadeStartGain        = startGain;
-    m_targetVolume         = 0.0;
+    m_targetGain           = 0.0;
     m_fadingOut            = true;
 
     const int clampedSampleRate = (sampleRate > 0) ? sampleRate : 1;
@@ -195,7 +195,7 @@ void OutputFader::processBuffer(ProcessingBuffer& buffer)
     int64_t doneFrames = m_fadeFramesDone;
 
     const double startGain                = m_fadeStartGain;
-    const double targetGain               = m_targetVolume;
+    const double targetGain               = m_targetGain;
     const Engine::FadeCurve curve         = m_curve;
     const bool fadingOut                  = m_fadingOut;
     const Engine::FadeDirection direction = fadingOut ? Engine::FadeDirection::Out : Engine::FadeDirection::In;
@@ -233,11 +233,9 @@ void OutputFader::processBuffer(ProcessingBuffer& buffer)
     m_currentGain    = lastGain;
 
     if(doneFrames >= totalFrames) {
-        m_fading = false;
-
-        if(targetGain <= 0.0) {
-            m_currentGain = 0.0;
-        }
+        m_fading        = false;
+        m_currentGain   = targetGain;
+        m_fadeStartGain = targetGain;
 
         const auto completionType = fadingOut ? CompletionType::FadeOutComplete : CompletionType::FadeInComplete;
         m_pendingCompletion       = Completion{.type = completionType, .token = m_activeToken};

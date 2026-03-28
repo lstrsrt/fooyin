@@ -52,8 +52,8 @@ public:
     void process(ProcessingBufferList& chunks);
 
     void reset();
-    void fadeIn(int durationMs, double targetVolume, int sampleRate, uint64_t token = 0);
-    void fadeOut(int durationMs, double currentVolume, int sampleRate, uint64_t token = 0);
+    void fadeIn(int durationMs, double targetGain, int sampleRate, uint64_t token = 0);
+    void fadeOut(int durationMs, double currentGain, int sampleRate, uint64_t token = 0);
     void stopFade();
 
     [[nodiscard]] bool isFading() const;
@@ -70,7 +70,7 @@ private:
     std::optional<Completion> m_pendingCompletion;
     double m_currentGain;
     double m_fadeStartGain;
-    double m_targetVolume;
+    double m_targetGain;
     int64_t m_fadeFramesTotal;
     int64_t m_fadeFramesDone;
     Engine::FadeCurve m_curve;

@@ -116,7 +116,7 @@ void FadeController::cancelForReinit(const Engine::FadeCurve pauseCurve)
 
 bool FadeController::handleManualChangeFade(const Track& track, bool fadingEnabled,
                                             const Engine::CrossfadingValues& crossfadingValues, bool isPlaying,
-                                            double volume, uint64_t transitionId)
+                                            double /*volume*/, uint64_t transitionId)
 {
     if(!fadingEnabled) {
         return false;
@@ -133,7 +133,7 @@ bool FadeController::handleManualChangeFade(const Track& track, bool fadingEnabl
         m_state                     = FadeState::FadingToManualChange;
         m_restoreFadeCurveAfterFade = false;
         m_manualFadeTransitionId    = transitionId;
-        m_pipelineFader->faderFadeOut(manualSpec.effectiveOutMs(), volume, armActiveFade(transitionId, true));
+        m_pipelineFader->faderFadeOut(manualSpec.effectiveOutMs(), 1.0, armActiveFade(transitionId, true));
         return true;
     }
 
@@ -146,7 +146,7 @@ bool FadeController::handleManualChangeFade(const Track& track, bool fadingEnabl
 }
 
 bool FadeController::applyPlayFade(Engine::PlaybackState prevState, bool fadingEnabled,
-                                   const Engine::FadingValues& fadingValues, double volume)
+                                   const Engine::FadingValues& fadingValues, double /*volume*/)
 {
     const bool wasFadingToPause     = (m_state == FadeState::FadingToPause);
     const bool wasFadingToStop      = (m_state == FadeState::FadingToStop);
@@ -161,7 +161,7 @@ bool FadeController::applyPlayFade(Engine::PlaybackState prevState, bool fadingE
     if(m_manualFadeInPendingMs > 0 && fadingEnabled) {
         const int fadeInMs          = std::exchange(m_manualFadeInPendingMs, 0);
         m_restoreFadeCurveAfterFade = true;
-        m_pipelineFader->faderFadeIn(fadeInMs, volume, armActiveFade(m_manualFadeTransitionId, false));
+        m_pipelineFader->faderFadeIn(fadeInMs, 1.0, armActiveFade(m_manualFadeTransitionId, false));
         return true;
     }
 
@@ -169,7 +169,7 @@ bool FadeController::applyPlayFade(Engine::PlaybackState prevState, bool fadingE
         m_resumeFadePending = false;
         if(fadingEnabled && fadingValues.pause.effectiveInMs() > 0) {
             m_pipelineFader->setFaderCurve(fadingValues.pause.curve);
-            m_pipelineFader->faderFadeIn(fadingValues.pause.effectiveInMs(), volume, 0);
+            m_pipelineFader->faderFadeIn(fadingValues.pause.effectiveInMs(), 1.0, 0);
             return true;
         }
     }
@@ -181,7 +181,7 @@ bool FadeController::applyPlayFade(Engine::PlaybackState prevState, bool fadingE
 
     if(shouldFadeIn) {
         m_pipelineFader->setFaderCurve(fadeInSpec.curve);
-        m_pipelineFader->faderFadeIn(fadeInSpec.effectiveInMs(), volume, 0);
+        m_pipelineFader->faderFadeIn(fadeInSpec.effectiveInMs(), 1.0, 0);
         return true;
     }
 
@@ -199,7 +199,7 @@ bool FadeController::applyPlayFade(Engine::PlaybackState prevState, bool fadingE
     return false;
 }
 
-bool FadeController::beginPauseFade(bool fadingEnabled, const Engine::FadingValues& fadingValues, double volume,
+bool FadeController::beginPauseFade(bool fadingEnabled, const Engine::FadingValues& fadingValues, double /*volume*/,
                                     uint64_t transportTransitionId)
 {
     if(!fadingEnabled || fadingValues.pause.effectiveOutMs() <= 0) {
@@ -214,12 +214,11 @@ bool FadeController::beginPauseFade(bool fadingEnabled, const Engine::FadingValu
     m_state              = FadeState::FadingToPause;
     m_fadingTransitionId = transportTransitionId;
     m_pipelineFader->setFaderCurve(fadingValues.pause.curve);
-    m_pipelineFader->faderFadeOut(fadingValues.pause.effectiveOutMs(), volume,
-                                  armActiveFade(transportTransitionId, true));
+    m_pipelineFader->faderFadeOut(fadingValues.pause.effectiveOutMs(), 1.0, armActiveFade(transportTransitionId, true));
     return true;
 }
 
-bool FadeController::beginStopFade(bool fadingEnabled, const Engine::FadingValues& fadingValues, double volume,
+bool FadeController::beginStopFade(bool fadingEnabled, const Engine::FadingValues& fadingValues, double /*volume*/,
                                    Engine::PlaybackState playbackState, uint64_t transportTransitionId)
 {
     if(!fadingEnabled || fadingValues.stop.effectiveOutMs() <= 0) {
@@ -244,8 +243,7 @@ bool FadeController::beginStopFade(bool fadingEnabled, const Engine::FadingValue
     m_state              = FadeState::FadingToStop;
     m_fadingTransitionId = transportTransitionId;
     m_pipelineFader->setFaderCurve(fadingValues.stop.curve);
-    m_pipelineFader->faderFadeOut(fadingValues.stop.effectiveOutMs(), volume,
-                                  armActiveFade(transportTransitionId, true));
+    m_pipelineFader->faderFadeOut(fadingValues.stop.effectiveOutMs(), 1.0, armActiveFade(transportTransitionId, true));
     return true;
 }
 
