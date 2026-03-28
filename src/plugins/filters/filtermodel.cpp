@@ -29,6 +29,7 @@
 #include <core/track.h>
 #include <gui/coverprovider.h>
 #include <gui/guiconstants.h>
+#include <gui/guisettings.h>
 #include <gui/guiutils.h>
 #include <gui/widgets/autoheaderview.h>
 #include <utils/datastream.h>
@@ -184,7 +185,7 @@ FilterModelPrivate::FilterModelPrivate(FilterModel* self, LibraryManager* librar
     , m_settings{settings}
     , m_library{library}
     , m_sorter{libraryManager}
-    , m_populator{libraryManager}
+    , m_populator{libraryManager, settings}
     , m_coverProvider{coverProvider}
     , m_decorationSize{
           CoverProvider::findThumbnailSize(m_settings->fileValue(u"Filters/IconSize", QSize{100, 100}).toSize())}
@@ -414,6 +415,13 @@ FilterModel::FilterModel(LibraryManager* libraryManager, MusicLibrary* library, 
         p->m_populator.stopThread();
         p->m_populatorThread.quit();
     });
+
+    auto refreshRatingStars = [this](const QString&) {
+        reset(p->m_columns, p->m_library ? p->m_library->tracks() : TrackList{});
+    };
+    p->m_settings->subscribe<Settings::Gui::RatingFullStarSymbol>(this, refreshRatingStars);
+    p->m_settings->subscribe<Settings::Gui::RatingHalfStarSymbol>(this, refreshRatingStars);
+    p->m_settings->subscribe<Settings::Gui::RatingEmptyStarSymbol>(this, refreshRatingStars);
 }
 
 FilterModel::~FilterModel()

@@ -30,6 +30,7 @@
 namespace Fooyin {
 class PlayerController;
 class PlaylistPopulatorPrivate;
+class SettingsManager;
 struct PlaylistPreset;
 
 using ItemList       = std::vector<PlaylistItem>;
@@ -78,7 +79,8 @@ class PlaylistPopulator : public Worker
     Q_OBJECT
 
 public:
-    explicit PlaylistPopulator(PlayerController* playerController, QObject* parent = nullptr);
+    explicit PlaylistPopulator(PlayerController* playerController, SettingsManager* settings,
+                               QObject* parent = nullptr);
     ~PlaylistPopulator() override;
 
     void setFont(const QFont& font);

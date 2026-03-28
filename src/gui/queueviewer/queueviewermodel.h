@@ -77,6 +77,7 @@ private:
     void updateShowCurrent();
 
     PlayerController* m_playerController;
+    SettingsManager* m_settings;
 
     CoverProvider m_coverProvider;
     ScriptParser m_scriptParser;

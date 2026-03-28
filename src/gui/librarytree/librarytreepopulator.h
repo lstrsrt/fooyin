@@ -32,6 +32,7 @@
 namespace Fooyin {
 class LibraryManager;
 class LibraryTreePopulatorPrivate;
+class SettingsManager;
 
 using ItemKeyMap     = std::unordered_map<Md5Hash, LibraryTreeItem>;
 using NodeKeyMap     = std::unordered_map<Md5Hash, std::vector<Md5Hash>>;
@@ -58,7 +59,7 @@ class LibraryTreePopulator : public Worker
     Q_OBJECT
 
 public:
-    explicit LibraryTreePopulator(LibraryManager* libraryManager, QObject* parent = nullptr);
+    explicit LibraryTreePopulator(LibraryManager* libraryManager, SettingsManager* settings, QObject* parent = nullptr);
     ~LibraryTreePopulator() override;
 
     void setFont(const QFont& font);

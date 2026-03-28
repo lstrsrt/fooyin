@@ -1,6 +1,7 @@
 #pragma once
 
 #include <core/player/playbackqueue.h>
+#include <core/ratingsymbols.h>
 #include <core/scripting/scriptproviders.h>
 
 namespace Fooyin {
@@ -26,6 +27,8 @@ public:
     void setEvaluationPolicy(TrackListContextPolicy policy, QString placeholder, bool escapeRichText,
                              bool useVariousArtists = false);
 
+    void setRatingStarSymbols(const RatingStarSymbols& ratingSymbols);
+
     [[nodiscard]] const ScriptPlaylistEnvironment* playlistEnvironment() const override;
     [[nodiscard]] const ScriptTrackListEnvironment* trackListEnvironment() const override;
     [[nodiscard]] const ScriptPlaybackEnvironment* playbackEnvironment() const override;
@@ -47,6 +50,9 @@ public:
     [[nodiscard]] QString trackListPlaceholder() const override;
     [[nodiscard]] bool escapeRichText() const override;
     [[nodiscard]] bool useVariousArtists() const override;
+    [[nodiscard]] QString ratingFullStarSymbol() const override;
+    [[nodiscard]] QString ratingHalfStarSymbol() const override;
+    [[nodiscard]] QString ratingEmptyStarSymbol() const override;
     [[nodiscard]] bool hasDirectQueueState() const;
 
 private:
@@ -67,6 +73,7 @@ private:
     QString m_trackListPlaceholder;
     bool m_escapeRichText;
     bool m_useVariousArtists;
+    RatingStarSymbols m_ratingSymbols;
     bool m_hasDirectQueueState;
 };
 
@@ -89,5 +96,6 @@ struct PlaybackScriptContextData
 [[nodiscard]] PlaybackScriptContextData makePlaybackScriptContext(PlayerController* playerController,
                                                                   Playlist* playlist, TrackListContextPolicy policy,
                                                                   QString placeholder = {}, bool escapeRichText = false,
-                                                                  bool useVariousArtists = false);
+                                                                  bool useVariousArtists                 = false,
+                                                                  const RatingStarSymbols& ratingSymbols = {});
 } // namespace Fooyin

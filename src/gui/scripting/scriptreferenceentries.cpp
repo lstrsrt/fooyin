@@ -128,6 +128,8 @@ const std::vector<ScriptReferenceEntry>& scriptReferenceEntries()
         variableEntry(MetaData::PlayCount, tr("Metadata"), tr("Play count")),
         variableEntry(MetaData::Rating, tr("Metadata"), tr("Numeric rating")),
         variableEntry(MetaData::RatingStars, tr("Metadata"), tr("Rating shown as stars")),
+        variableEntry(MetaData::RatingStarsPadded, tr("Metadata"),
+                      tr("Rating shown as stars with trailing empty stars")),
         variableEntry(MetaData::RatingEditor, tr("Metadata"), tr("Rating editor representation")),
         variableEntry(MetaData::Codec, tr("Metadata"), tr("Codec name")),
         variableEntry(MetaData::CodecProfile, tr("Metadata"), tr("Codec profile")),

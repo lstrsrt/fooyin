@@ -558,7 +558,7 @@ PlaylistModel::PlaylistModel(PlaylistInteractor* playlistInteractor, CoverProvid
     , m_resetting{false}
     , m_playingColour{QApplication::palette().highlight().color()}
     , m_disabledColour{Qt::red}
-    , m_populator{playlistInteractor->playerController()}
+    , m_populator{playlistInteractor->playerController(), settings}
     , m_playlistLoaded{false}
     , m_pixmapPadding{settings->value<Settings::Gui::Internal::PlaylistImagePadding>()}
     , m_pixmapPaddingTop{settings->value<Settings::Gui::Internal::PlaylistImagePaddingTop>()}
@@ -589,6 +589,14 @@ PlaylistModel::PlaylistModel(PlaylistInteractor* playlistInteractor, CoverProvid
         m_starRatingSize = size;
         invalidateData();
     });
+    auto refreshRatingStars = [this](const QString&) {
+        if(m_currentPlaylist) {
+            reset(m_currentPlaylist->playlistTracks());
+        }
+    };
+    m_settings->subscribe<Settings::Gui::RatingFullStarSymbol>(this, refreshRatingStars);
+    m_settings->subscribe<Settings::Gui::RatingHalfStarSymbol>(this, refreshRatingStars);
+    m_settings->subscribe<Settings::Gui::RatingEmptyStarSymbol>(this, refreshRatingStars);
 
     auto updateColours = [this]() {
         m_playingColour = QApplication::palette().highlight().color();

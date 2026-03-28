@@ -145,6 +145,7 @@ PlaylistScriptEnvironment::PlaylistScriptEnvironment()
     , m_trackListContextPolicy{TrackListContextPolicy::Unresolved}
     , m_escapeRichText{false}
     , m_useVariousArtists{false}
+    , m_ratingSymbols{defaultRatingStarSymbols()}
     , m_hasDirectQueueState{false}
 { }
 
@@ -191,6 +192,11 @@ void PlaylistScriptEnvironment::setEvaluationPolicy(TrackListContextPolicy polic
     m_trackListPlaceholder   = std::move(placeholder);
     m_escapeRichText         = escapeRichText;
     m_useVariousArtists      = useVariousArtists;
+}
+
+void PlaylistScriptEnvironment::setRatingStarSymbols(const RatingStarSymbols& ratingSymbols)
+{
+    m_ratingSymbols = ratingSymbols;
 }
 
 const ScriptPlaylistEnvironment* PlaylistScriptEnvironment::playlistEnvironment() const
@@ -307,6 +313,23 @@ bool PlaylistScriptEnvironment::useVariousArtists() const
     return m_useVariousArtists;
 }
 
+QString PlaylistScriptEnvironment::ratingFullStarSymbol() const
+{
+    return m_ratingSymbols.fullStarSymbol.isEmpty() ? ScriptEvaluationEnvironment::ratingFullStarSymbol()
+                                                    : m_ratingSymbols.fullStarSymbol;
+}
+
+QString PlaylistScriptEnvironment::ratingHalfStarSymbol() const
+{
+    return m_ratingSymbols.halfStarSymbol.isEmpty() ? ScriptEvaluationEnvironment::ratingHalfStarSymbol()
+                                                    : m_ratingSymbols.halfStarSymbol;
+}
+
+QString PlaylistScriptEnvironment::ratingEmptyStarSymbol() const
+{
+    return m_ratingSymbols.emptyStarSymbol;
+}
+
 bool PlaylistScriptEnvironment::hasDirectQueueState() const
 {
     return m_hasDirectQueueState;
@@ -395,7 +418,8 @@ const ScriptVariableProvider& playlistVariableProvider()
 
 PlaybackScriptContextData makePlaybackScriptContext(PlayerController* playerController, Playlist* playlist,
                                                     TrackListContextPolicy policy, QString placeholder,
-                                                    bool escapeRichText, bool useVariousArtists)
+                                                    bool escapeRichText, bool useVariousArtists,
+                                                    const RatingStarSymbols& ratingSymbols)
 {
     PlaybackScriptContextData data;
     data.context.playlist = playlist;
@@ -424,6 +448,7 @@ PlaybackScriptContextData makePlaybackScriptContext(PlayerController* playerCont
     data.environment.setTrackState(playlistTrackIndex, playlistTrackIndex,
                                    playerController ? playerController->currentTrackId() : -1, 0);
     data.environment.setPlaybackState(currentPosition, currentTrackDuration, bitrate, playState);
+    data.environment.setRatingStarSymbols(ratingSymbols);
     data.environment.setEvaluationPolicy(policy, std::move(placeholder), escapeRichText, useVariousArtists);
 
     return data;

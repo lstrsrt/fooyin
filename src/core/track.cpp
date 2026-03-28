@@ -18,6 +18,7 @@
  */
 
 #include "core/constants.h"
+#include <core/ratingsymbols.h>
 #include <core/stringpool.h>
 #include <core/track.h>
 #include <core/trackmetadatastore.h>
@@ -47,6 +48,27 @@ QString validNum(auto num)
     return {};
 };
 
+QString ratingStarsText(int rating)
+{
+    if(rating <= 0) {
+        return {};
+    }
+
+    const int clampedRating = std::clamp(rating, 0, MaxStarCount);
+    const int fullStars     = clampedRating / 2;
+    const bool halfStar     = (clampedRating % 2) != 0;
+
+    QString text;
+    text.reserve(5);
+
+    text.append(Fooyin::defaultRatingFullStarSymbol().repeated(fullStars));
+    if(halfStar) {
+        text.append(Fooyin::defaultRatingHalfStarSymbol());
+    }
+
+    return text;
+}
+
 using MetaMap = std::unordered_map<QString, std::function<QString(const Fooyin::Track& track)>>;
 const MetaMap& metaMap()
 {
@@ -68,8 +90,7 @@ const MetaMap& metaMap()
         {QString::fromLatin1(Date),         [](const Fooyin::Track& track) { return track.date(); }},
         {QString::fromLatin1(Year),         [](const Fooyin::Track& track) { return validNum(track.year()); }},
         {QString::fromLatin1(Rating),       [](const Fooyin::Track& track) { return validNum(track.rating()); }},
-        {QString::fromLatin1(RatingEditor), [](const Fooyin::Track& track) { return validNum(track.rating()); }},
-        {QString::fromLatin1(RatingStars),  [](const Fooyin::Track& track) { return validNum(track.ratingStars()); }}
+        {QString::fromLatin1(RatingEditor), [](const Fooyin::Track& track) { return validNum(track.rating()); }}
     };
     // clang-format on
     return metaMap;
@@ -835,6 +856,11 @@ float Track::rating() const
 int Track::ratingStars() const
 {
     return static_cast<int>(std::floor(p->rating * MaxStarCount));
+}
+
+QString Track::ratingStarsText() const
+{
+    return ::ratingStarsText(ratingStars());
 }
 
 bool Track::hasRGInfo() const

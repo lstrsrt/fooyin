@@ -2,6 +2,7 @@
 
 #include "fycore_export.h"
 
+#include <core/ratingsymbols.h>
 #include <core/scripting/scripttypes.h>
 
 namespace Fooyin {
@@ -23,6 +24,7 @@ public:
 
     void setEvaluationPolicy(TrackListContextPolicy policy, QString placeholder = {}, bool escapeRichText = false,
                              bool useVariousArtists = false);
+    void setRatingStarSymbols(const RatingStarSymbols& ratingSymbols);
 
     [[nodiscard]] const ScriptLibraryEnvironment* libraryEnvironment() const override;
     [[nodiscard]] const ScriptEvaluationEnvironment* evaluationEnvironment() const override;
@@ -34,6 +36,9 @@ public:
     [[nodiscard]] QString trackListPlaceholder() const override;
     [[nodiscard]] bool escapeRichText() const override;
     [[nodiscard]] bool useVariousArtists() const override;
+    [[nodiscard]] QString ratingFullStarSymbol() const override;
+    [[nodiscard]] QString ratingHalfStarSymbol() const override;
+    [[nodiscard]] QString ratingEmptyStarSymbol() const override;
 
 private:
     const LibraryManager* m_libraryManager;
@@ -41,5 +46,8 @@ private:
     QString m_trackListPlaceholder;
     bool m_escapeRichText;
     bool m_useVariousArtists;
+    QString m_fullStarSymbol;
+    QString m_halfStarSymbol;
+    QString m_emptyStarSymbol;
 };
 } // namespace Fooyin

@@ -128,6 +128,9 @@ StatusWidgetPrivate::StatusWidgetPrivate(StatusWidget* self, PlayerController* p
     , m_selectionText{new StatusLabel(m_self)}
 {
     m_scriptParser.addProvider(playlistVariableProvider());
+    m_environment.setRatingStarSymbols({m_settings->value<Settings::Gui::RatingFullStarSymbol>(),
+                                        m_settings->value<Settings::Gui::RatingHalfStarSymbol>(),
+                                        m_settings->value<Settings::Gui::RatingEmptyStarSymbol>()});
     m_environment.setEvaluationPolicy(TrackListContextPolicy::Fallback, {}, true);
     m_scriptContext.environment = &m_environment;
 
@@ -189,6 +192,27 @@ void StatusWidgetPrivate::setupConnections()
     });
     m_settings->subscribe<Settings::Gui::Internal::StatusSelectionScript>(this, [this](const QString& script) {
         m_selectionScript = script;
+        updateSelectionText();
+    });
+    m_settings->subscribe<Settings::Gui::RatingFullStarSymbol>(this, [this](const QString&) {
+        m_environment.setRatingStarSymbols({m_settings->value<Settings::Gui::RatingFullStarSymbol>(),
+                                            m_settings->value<Settings::Gui::RatingHalfStarSymbol>(),
+                                            m_settings->value<Settings::Gui::RatingEmptyStarSymbol>()});
+        updatePlayingText();
+        updateSelectionText();
+    });
+    m_settings->subscribe<Settings::Gui::RatingHalfStarSymbol>(this, [this](const QString&) {
+        m_environment.setRatingStarSymbols({m_settings->value<Settings::Gui::RatingFullStarSymbol>(),
+                                            m_settings->value<Settings::Gui::RatingHalfStarSymbol>(),
+                                            m_settings->value<Settings::Gui::RatingEmptyStarSymbol>()});
+        updatePlayingText();
+        updateSelectionText();
+    });
+    m_settings->subscribe<Settings::Gui::RatingEmptyStarSymbol>(this, [this](const QString&) {
+        m_environment.setRatingStarSymbols({m_settings->value<Settings::Gui::RatingFullStarSymbol>(),
+                                            m_settings->value<Settings::Gui::RatingHalfStarSymbol>(),
+                                            m_settings->value<Settings::Gui::RatingEmptyStarSymbol>()});
+        updatePlayingText();
         updateSelectionText();
     });
     m_settings->subscribe<Settings::Gui::LayoutEditing>(this, [this]() { showLayoutEditing(); });
@@ -315,7 +339,10 @@ void StatusWidgetPrivate::updatePlayingText()
 
         if(const Track currentTrack = m_playerController->currentTrack(); currentTrack.isValid()) {
             auto contextData = makePlaybackScriptContext(m_playerController, m_playlistHandler->activePlaylist(),
-                                                         TrackListContextPolicy::Fallback, {}, true);
+                                                         TrackListContextPolicy::Fallback, {}, true, false,
+                                                         {m_settings->value<Settings::Gui::RatingFullStarSymbol>(),
+                                                          m_settings->value<Settings::Gui::RatingHalfStarSymbol>(),
+                                                          m_settings->value<Settings::Gui::RatingEmptyStarSymbol>()});
             playingText      = m_scriptParser.evaluate(m_playingScript, currentTrack, contextData.context);
         }
         else {

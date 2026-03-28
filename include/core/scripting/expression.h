@@ -113,6 +113,7 @@ enum class VariableKind : uint8_t
     LastPlayed,
     Rating,
     RatingStars,
+    RatingStarsPadded,
     RatingEditor,
     Codec,
     CodecProfile,

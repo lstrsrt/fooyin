@@ -24,8 +24,10 @@
 #include <core/constants.h>
 #include <core/scripting/scriptenvironmenthelpers.h>
 #include <core/scripting/scriptparser.h>
+#include <gui/guisettings.h>
 #include <gui/scripting/richtextutils.h>
 #include <gui/scripting/scriptformatter.h>
+#include <utils/settings/settingsmanager.h>
 
 using namespace Qt::StringLiterals;
 
@@ -36,8 +38,10 @@ namespace Fooyin {
 class LibraryTreePopulatorPrivate
 {
 public:
-    explicit LibraryTreePopulatorPrivate(LibraryTreePopulator* self, LibraryManager* libraryManager)
+    explicit LibraryTreePopulatorPrivate(LibraryTreePopulator* self, LibraryManager* libraryManager,
+                                         SettingsManager* settings)
         : m_self{self}
+        , m_settings{settings}
         , m_scriptEnvironment{libraryManager}
     {
         m_scriptContext.environment = &m_scriptEnvironment;
@@ -50,6 +54,7 @@ public:
     bool runBatch(int size);
 
     LibraryTreePopulator* m_self;
+    SettingsManager* m_settings;
 
     ScriptParser m_parser;
     ScriptFormatter m_formatter;
@@ -169,9 +174,9 @@ bool LibraryTreePopulatorPrivate::runBatch(int size)
     return runBatch(std::min(remaining, BatchSize));
 }
 
-LibraryTreePopulator::LibraryTreePopulator(LibraryManager* libraryManager, QObject* parent)
+LibraryTreePopulator::LibraryTreePopulator(LibraryManager* libraryManager, SettingsManager* settings, QObject* parent)
     : Worker{parent}
-    , p{std::make_unique<LibraryTreePopulatorPrivate>(this, libraryManager)}
+    , p{std::make_unique<LibraryTreePopulatorPrivate>(this, libraryManager, settings)}
 { }
 
 LibraryTreePopulator::~LibraryTreePopulator() = default;
@@ -187,6 +192,9 @@ void LibraryTreePopulator::run(const LibraryTreeGrouping& grouping, const TrackL
 
     p->m_data.clear();
 
+    p->m_scriptEnvironment.setRatingStarSymbols({p->m_settings->value<Settings::Gui::RatingFullStarSymbol>(),
+                                                 p->m_settings->value<Settings::Gui::RatingHalfStarSymbol>(),
+                                                 p->m_settings->value<Settings::Gui::RatingEmptyStarSymbol>()});
     p->m_scriptEnvironment.setEvaluationPolicy(TrackListContextPolicy::Unresolved, {}, true, useVarious);
 
     if(std::exchange(p->m_currentGrouping, grouping) != grouping) {

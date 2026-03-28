@@ -10,6 +10,9 @@ LibraryScriptEnvironment::LibraryScriptEnvironment(const LibraryManager* library
     , m_trackListContextPolicy{TrackListContextPolicy::Unresolved}
     , m_escapeRichText{false}
     , m_useVariousArtists{false}
+    , m_fullStarSymbol{defaultRatingFullStarSymbol()}
+    , m_halfStarSymbol{defaultRatingHalfStarSymbol()}
+    , m_emptyStarSymbol{defaultRatingEmptyStarSymbol()}
 { }
 
 void LibraryScriptEnvironment::setEvaluationPolicy(TrackListContextPolicy policy, QString placeholder,
@@ -19,6 +22,13 @@ void LibraryScriptEnvironment::setEvaluationPolicy(TrackListContextPolicy policy
     m_trackListPlaceholder   = std::move(placeholder);
     m_escapeRichText         = escapeRichText;
     m_useVariousArtists      = useVariousArtists;
+}
+
+void LibraryScriptEnvironment::setRatingStarSymbols(const RatingStarSymbols& ratingSymbols)
+{
+    m_fullStarSymbol  = ratingSymbols.fullStarSymbol;
+    m_halfStarSymbol  = ratingSymbols.halfStarSymbol;
+    m_emptyStarSymbol = ratingSymbols.emptyStarSymbol;
 }
 
 const ScriptLibraryEnvironment* LibraryScriptEnvironment::libraryEnvironment() const
@@ -81,5 +91,20 @@ bool LibraryScriptEnvironment::escapeRichText() const
 bool LibraryScriptEnvironment::useVariousArtists() const
 {
     return m_useVariousArtists;
+}
+
+QString LibraryScriptEnvironment::ratingFullStarSymbol() const
+{
+    return m_fullStarSymbol.isEmpty() ? ScriptEvaluationEnvironment::ratingFullStarSymbol() : m_fullStarSymbol;
+}
+
+QString LibraryScriptEnvironment::ratingHalfStarSymbol() const
+{
+    return m_halfStarSymbol.isEmpty() ? ScriptEvaluationEnvironment::ratingHalfStarSymbol() : m_halfStarSymbol;
+}
+
+QString LibraryScriptEnvironment::ratingEmptyStarSymbol() const
+{
+    return m_emptyStarSymbol;
 }
 } // namespace Fooyin

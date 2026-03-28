@@ -29,7 +29,11 @@
 
 #include <memory>
 
-namespace Fooyin::Filters {
+namespace Fooyin {
+class SettingsManager;
+
+namespace Filters {
+
 using ItemKeyMap     = std::map<Md5Hash, FilterItem>;
 using TrackIdNodeMap = std::unordered_map<int, std::vector<Md5Hash>>;
 
@@ -51,7 +55,7 @@ class FilterPopulator : public Worker
     Q_OBJECT
 
 public:
-    explicit FilterPopulator(LibraryManager* libraryManager, QObject* parent = nullptr);
+    explicit FilterPopulator(LibraryManager* libraryManager, SettingsManager* settings, QObject* parent = nullptr);
 
     void setFont(const QFont& font);
     void run(const QStringList& columns, const TrackList& tracks, bool useVarious);
@@ -68,6 +72,7 @@ private:
     ScriptParser m_parser;
     ScriptFormatter m_formatter;
     LibraryScriptEnvironment m_scriptEnvironment;
+    SettingsManager* m_settings;
 
     QString m_currentColumns;
     ParsedScript m_script;
@@ -75,6 +80,7 @@ private:
     FilterItem m_root;
     PendingTreeData m_data;
 };
-} // namespace Fooyin::Filters
+} // namespace Filters
+} // namespace Fooyin
 
 Q_DECLARE_METATYPE(Fooyin::Filters::PendingTreeDataPtr)

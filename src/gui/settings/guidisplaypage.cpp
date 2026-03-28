@@ -24,10 +24,8 @@
 #include <core/internalcoresettings.h>
 #include <gui/guiconstants.h>
 #include <gui/guisettings.h>
-#include <gui/widgets/scriptlineedit.h>
 #include <utils/settings/settingsmanager.h>
 
-#include <QButtonGroup>
 #include <QComboBox>
 #include <QGridLayout>
 #include <QGroupBox>
@@ -62,13 +60,6 @@ private:
     QRadioButton* m_lightTheme;
     QRadioButton* m_darkTheme;
     QRadioButton* m_systemTheme;
-
-    ScriptLineEdit* m_titleScript;
-
-    QRadioButton* m_preferPlaying;
-    QRadioButton* m_preferSelection;
-
-    QSpinBox* m_starRatingSize;
     QSpinBox* m_allocationSize;
 };
 
@@ -79,10 +70,6 @@ GuiDisplayPageWidget::GuiDisplayPageWidget(SettingsManager* settings)
     , m_lightTheme{new QRadioButton(tr("Light"), this)}
     , m_darkTheme{new QRadioButton(tr("Dark"), this)}
     , m_systemTheme{new QRadioButton(tr("Use system icons"), this)}
-    , m_titleScript{new ScriptLineEdit(this)}
-    , m_preferPlaying{new QRadioButton(tr("Prefer currently playing track"), this)}
-    , m_preferSelection{new QRadioButton(tr("Prefer current selection"), this)}
-    , m_starRatingSize{new QSpinBox(this)}
     , m_allocationSize{new QSpinBox(this)}
 {
     auto* themeGroup       = new QGroupBox(tr("Theme"), this);
@@ -104,32 +91,6 @@ GuiDisplayPageWidget::GuiDisplayPageWidget(SettingsManager* settings)
     themeGroupLayout->addWidget(iconThemeBox, row++, 0, 1, 2);
     themeGroupLayout->setColumnStretch(1, 1);
 
-    auto* nowPlayingGroup       = new QGroupBox(tr("Now Playing"), this);
-    auto* nowPlayingGroupLayout = new QGridLayout(nowPlayingGroup);
-
-    row = 0;
-    nowPlayingGroupLayout->addWidget(new QLabel(tr("Window title") + u":"_s, this), row, 0);
-    nowPlayingGroupLayout->addWidget(m_titleScript, row++, 1, 1, 2);
-    nowPlayingGroupLayout->setColumnStretch(2, 1);
-
-    auto* infoGroupBox       = new QGroupBox(tr("Information Display"), this);
-    auto* selectionGroup     = new QButtonGroup(this);
-    auto* infoGroupBoxLayout = new QGridLayout(infoGroupBox);
-
-    selectionGroup->addButton(m_preferPlaying);
-    selectionGroup->addButton(m_preferSelection);
-
-    m_starRatingSize->setRange(5, 30);
-    m_starRatingSize->setSuffix(u" px"_s);
-
-    row = 0;
-    infoGroupBoxLayout->addWidget(new QLabel(tr("Selection info") + u":"_s, this), row++, 0, 1, 3);
-    infoGroupBoxLayout->addWidget(m_preferPlaying, row++, 0, 1, 3);
-    infoGroupBoxLayout->addWidget(m_preferSelection, row++, 0, 1, 3);
-    infoGroupBoxLayout->addWidget(new QLabel(tr("Star size") + u":"_s, this), row, 0);
-    infoGroupBoxLayout->addWidget(m_starRatingSize, row++, 1);
-    infoGroupBoxLayout->setColumnStretch(2, 1);
-
     auto* imagesGroupBox       = new QGroupBox(tr("Images"), this);
     auto* imagesGroupBoxLayout = new QGridLayout(imagesGroupBox);
 
@@ -146,8 +107,6 @@ GuiDisplayPageWidget::GuiDisplayPageWidget(SettingsManager* settings)
 
     row = 0;
     mainLayout->addWidget(themeGroup, row++, 0, 1, 2);
-    mainLayout->addWidget(nowPlayingGroup, row++, 0, 1, 2);
-    mainLayout->addWidget(infoGroupBox, row++, 0, 1, 2);
     mainLayout->addWidget(imagesGroupBox, row++, 0, 1, 2);
     mainLayout->setColumnStretch(1, 1);
     mainLayout->setRowStretch(mainLayout->rowCount(), 1);
@@ -187,17 +146,6 @@ void GuiDisplayPageWidget::load()
             break;
     }
 
-    m_titleScript->setText(m_settings->value<WindowTitleTrackScript>());
-
-    const auto option = static_cast<SelectionDisplay>(m_settings->value<InfoDisplayPrefer>());
-    if(option == SelectionDisplay::PreferPlaying) {
-        m_preferPlaying->setChecked(true);
-    }
-    else {
-        m_preferSelection->setChecked(true);
-    }
-
-    m_starRatingSize->setValue(m_settings->value<StarRatingSize>());
     m_allocationSize->setValue(m_settings->value<ImageAllocationLimit>());
 }
 
@@ -219,14 +167,6 @@ void GuiDisplayPageWidget::apply()
         iconThemeOption = IconThemeOption::System;
     }
     m_settings->set<IconTheme>(static_cast<int>(iconThemeOption));
-
-    m_settings->set<WindowTitleTrackScript>(m_titleScript->text());
-
-    const SelectionDisplay option
-        = m_preferPlaying->isChecked() ? SelectionDisplay::PreferPlaying : SelectionDisplay::PreferSelection;
-    m_settings->set<InfoDisplayPrefer>(static_cast<int>(option));
-
-    m_settings->set<StarRatingSize>(m_starRatingSize->value());
     m_settings->set<ImageAllocationLimit>(m_allocationSize->value());
 }
 
@@ -234,9 +174,6 @@ void GuiDisplayPageWidget::reset()
 {
     m_settings->reset<Style>();
     m_settings->reset<IconTheme>();
-    m_settings->reset<WindowTitleTrackScript>();
-    m_settings->reset<InfoDisplayPrefer>();
-    m_settings->reset<StarRatingSize>();
     m_settings->reset<ImageAllocationLimit>();
 }
 

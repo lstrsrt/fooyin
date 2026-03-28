@@ -23,6 +23,7 @@
 #include "search/searchwidget.h"
 #include "widgets/statuswidget.h"
 
+#include <core/ratingsymbols.h>
 #include <gui/guisettings.h>
 #include <utils/settings/settingsmanager.h>
 
@@ -41,10 +42,15 @@ Fooyin::CoverPaths defaultCoverPaths()
 {
     Fooyin::CoverPaths paths;
 
-    paths.frontCoverPaths
-        = {u"%path%/folder.*"_s, u"%path%/cover.*"_s, u"%path%/front.*"_s, u"%path%/../Artwork/folder.*"_s};
-    paths.backCoverPaths = {u"%path%/back.*"_s};
-    paths.artistPaths    = {u"%path%/artist.*"_s, u"%path%/%albumartist%.*"_s};
+    paths.frontCoverPaths.append(u"%path%/folder.*"_s);
+    paths.frontCoverPaths.append(u"%path%/cover.*"_s);
+    paths.frontCoverPaths.append(u"%path%/front.*"_s);
+    paths.frontCoverPaths.append(u"%path%/../Artwork/folder.*"_s);
+
+    paths.backCoverPaths.append(u"%path%/back.*"_s);
+
+    paths.artistPaths.append(u"%path%/artist.*"_s);
+    paths.artistPaths.append(u"%path%/%albumartist%.*"_s);
 
     return paths;
 }
@@ -98,6 +104,10 @@ GuiSettings::GuiSettings(SettingsManager* settingsManager)
     m_settings->createSetting<SearchErrorFg>(QVariant{}, u"Searching/ErrorFgColour"_s);
     m_settings->createSetting<SearchSuccessClose>(true, u"Searching/CloseOnSuccess"_s);
     m_settings->createSetting<ShowMenuBar>(true, u"Interface/ShowMenuBar"_s);
+    m_settings->createSetting<RatingFullStarSymbol>(defaultRatingFullStarSymbol(), u"Interface/RatingFullStarSymbol"_s);
+    m_settings->createSetting<RatingHalfStarSymbol>(defaultRatingHalfStarSymbol(), u"Interface/RatingHalfStarSymbol"_s);
+    m_settings->createSetting<RatingEmptyStarSymbol>(defaultRatingEmptyStarSymbol(),
+                                                     u"Interface/RatingEmptyStarSymbol"_s);
 
     m_settings->createSetting<Internal::EditingMenuLevels>(2, u"Interface/EditingMenuLevels"_s);
     m_settings->createSetting<Internal::PlaylistAltColours>(true, u"PlaylistWidget/AlternatingColours"_s);

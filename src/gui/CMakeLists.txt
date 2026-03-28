@@ -319,6 +319,8 @@ set(SOURCES
     settings/generalpage.h
     settings/guidisplaypage.cpp
     settings/guidisplaypage.h
+    settings/guitrackdisplaypage.cpp
+    settings/guitrackdisplaypage.h
     settings/guigeneralpage.cpp
     settings/guigeneralpage.h
     settings/guithemespage.cpp

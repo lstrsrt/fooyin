@@ -18,6 +18,7 @@
  */
 
 #include <core/constants.h>
+#include <core/ratingsymbols.h>
 #include <core/scripting/scriptparser.h>
 #include <core/scripting/scriptproviders.h>
 #include <core/track.h>
@@ -190,12 +191,16 @@ public:
     }
 
     void setEvaluationState(TrackListContextPolicy policy, QString placeholder = {}, bool escapeRichText = false,
-                            bool useVariousArtists = false)
+                            bool useVariousArtists = false, QString fullStarSymbol = {}, QString halfStarSymbol = {},
+                            QString emptyStarSymbol = {})
     {
         m_trackListContextPolicy = policy;
         m_trackListPlaceholder   = std::move(placeholder);
         m_escapeRichText         = escapeRichText;
         m_useVariousArtists      = useVariousArtists;
+        m_fullStarSymbol         = std::move(fullStarSymbol);
+        m_halfStarSymbol         = std::move(halfStarSymbol);
+        m_emptyStarSymbol        = std::move(emptyStarSymbol);
     }
 
     [[nodiscard]] const ScriptPlaylistEnvironment* playlistEnvironment() const override
@@ -308,6 +313,21 @@ public:
         return m_useVariousArtists;
     }
 
+    [[nodiscard]] QString ratingFullStarSymbol() const override
+    {
+        return m_fullStarSymbol.isEmpty() ? ScriptEvaluationEnvironment::ratingFullStarSymbol() : m_fullStarSymbol;
+    }
+
+    [[nodiscard]] QString ratingHalfStarSymbol() const override
+    {
+        return m_halfStarSymbol.isEmpty() ? ScriptEvaluationEnvironment::ratingHalfStarSymbol() : m_halfStarSymbol;
+    }
+
+    [[nodiscard]] QString ratingEmptyStarSymbol() const override
+    {
+        return m_emptyStarSymbol.isEmpty() ? ScriptEvaluationEnvironment::ratingEmptyStarSymbol() : m_emptyStarSymbol;
+    }
+
 private:
     int m_playlistTrackIndex{-1};
     int m_playlistTrackCount{0};
@@ -325,6 +345,9 @@ private:
     QString m_trackListPlaceholder;
     bool m_escapeRichText{false};
     bool m_useVariousArtists{false};
+    QString m_fullStarSymbol;
+    QString m_halfStarSymbol;
+    QString m_emptyStarSymbol;
 };
 
 static const StaticScriptVariableProvider EnvironmentVariableProvider{
@@ -456,7 +479,40 @@ TEST_F(ScriptParserTest, MetadataTest)
     EXPECT_EQ(u"07", m_parser.evaluate(QStringLiteral("[$num(%track%,2)]"), track));
     EXPECT_EQ(u"07.  ", m_parser.evaluate(QStringLiteral("[$num(%track%,2).  ]"), track));
 
+    const auto& defaultSymbols       = defaultRatingStarSymbols();
+    const QString unratedPaddedStars = defaultSymbols.emptyStarSymbol.repeated(5);
+    EXPECT_EQ(u"", m_parser.evaluate(QStringLiteral("%rating_stars%"), track));
+    EXPECT_EQ(unratedPaddedStars, m_parser.evaluate(QStringLiteral("%rating_stars_padded%"), track));
+
+    track.setRatingStars(7);
+    const QString compactStars = defaultSymbols.fullStarSymbol.repeated(3) + defaultSymbols.halfStarSymbol;
+    const QString paddedStars  = compactStars + defaultSymbols.emptyStarSymbol;
+    EXPECT_EQ(compactStars, m_parser.evaluate(QStringLiteral("%rating_stars%"), track));
+    EXPECT_EQ(paddedStars, m_parser.evaluate(QStringLiteral("%rating_stars_padded%"), track));
+    EXPECT_EQ(u"7", m_parser.evaluate(QStringLiteral("%rating_editor%"), track));
+
     EXPECT_EQ(u"", m_parser.evaluate(QStringLiteral("[%disc% - %track%]"), track));
+}
+
+TEST_F(ScriptParserTest, RatingStarsFormattingTest)
+{
+    ScriptParser parser;
+    parser.addProvider(EnvironmentVariableProvider);
+
+    TestPlaylistEnvironment environment;
+    environment.setEvaluationState(TrackListContextPolicy::Unresolved, {}, false, false, u"*"_s, u"+"_s, u"."_s);
+
+    ScriptContext context;
+    context.environment = &environment;
+
+    Track track;
+
+    EXPECT_EQ(u"", parser.evaluate(QStringLiteral("%rating_stars%"), track, context));
+    EXPECT_EQ(u".....", parser.evaluate(QStringLiteral("%rating_stars_padded%"), track, context));
+
+    track.setRatingStars(7);
+    EXPECT_EQ(u"***+", parser.evaluate(QStringLiteral("%rating_stars%"), track, context));
+    EXPECT_EQ(u"***+.", parser.evaluate(QStringLiteral("%rating_stars_padded%"), track, context));
 }
 
 TEST_F(ScriptParserTest, TrackListTest)
@@ -816,6 +872,8 @@ TEST_F(ScriptParserTest, QueryTest)
     // PRESENT/MISSING keyword tests
     EXPECT_EQ(1, m_parser.filter(QStringLiteral("performer PRESENT"), tracks).size());
     EXPECT_EQ(1, m_parser.filter(QStringLiteral("performer MISSING"), tracks).size());
+    EXPECT_EQ(0, m_parser.filter(QStringLiteral("rating_stars PRESENT"), tracks).size());
+    EXPECT_EQ(2, m_parser.filter(QStringLiteral("rating_stars MISSING"), tracks).size());
 
     // String matching tests
     EXPECT_EQ(1, m_parser.filter(QStringLiteral("title:wandering hor"), tracks).size());

@@ -24,6 +24,8 @@
 #include "scripting/scriptvariableproviders.h"
 
 #include <core/player/playercontroller.h>
+#include <gui/guisettings.h>
+#include <utils/settings/settingsmanager.h>
 
 #include <QTimer>
 
@@ -34,9 +36,11 @@ namespace Fooyin {
 class PlaylistPopulatorPrivate
 {
 public:
-    explicit PlaylistPopulatorPrivate(PlaylistPopulator* self, PlayerController* playerController)
+    explicit PlaylistPopulatorPrivate(PlaylistPopulator* self, PlayerController* playerController,
+                                      SettingsManager* settings)
         : m_self{self}
         , m_playerController{playerController}
+        , m_settings{settings}
     {
         m_scriptContext.environment = &m_scriptEnvironment;
         m_parser.addProvider(playlistVariableProvider());
@@ -69,6 +73,7 @@ public:
 
     PlaylistPopulator* m_self;
     PlayerController* m_playerController;
+    SettingsManager* m_settings;
 
     PlaylistPreset m_currentPreset;
     PlaylistColumnList m_columns;
@@ -577,9 +582,9 @@ void PlaylistPopulatorPrivate::runTracksGroup(const std::map<int, PlaylistTrackL
     clearBatchData();
 }
 
-PlaylistPopulator::PlaylistPopulator(PlayerController* playerController, QObject* parent)
+PlaylistPopulator::PlaylistPopulator(PlayerController* playerController, SettingsManager* settings, QObject* parent)
     : Worker{parent}
-    , p{std::make_unique<PlaylistPopulatorPrivate>(this, playerController)}
+    , p{std::make_unique<PlaylistPopulatorPrivate>(this, playerController, settings)}
 {
     qRegisterMetaType<PendingData>();
 }
@@ -593,6 +598,9 @@ void PlaylistPopulator::setFont(const QFont& font)
 
 void PlaylistPopulator::setUseVarious(bool enabled)
 {
+    p->m_scriptEnvironment.setRatingStarSymbols({p->m_settings->value<Settings::Gui::RatingFullStarSymbol>(),
+                                                 p->m_settings->value<Settings::Gui::RatingHalfStarSymbol>(),
+                                                 p->m_settings->value<Settings::Gui::RatingEmptyStarSymbol>()});
     p->m_scriptEnvironment.setEvaluationPolicy(TrackListContextPolicy::Placeholder, QStringLiteral("|Loading|"), true,
                                                enabled);
 }

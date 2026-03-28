@@ -22,6 +22,7 @@
 #include "fycore_export.h"
 
 #include <core/player/playerdefs.h>
+#include <core/ratingsymbols.h>
 #include <core/scripting/expression.h>
 #include <core/scripting/scriptvalue.h>
 #include <core/track.h>
@@ -120,6 +121,18 @@ public:
     [[nodiscard]] virtual bool useVariousArtists() const
     {
         return false;
+    }
+    [[nodiscard]] virtual QString ratingFullStarSymbol() const
+    {
+        return defaultRatingFullStarSymbol();
+    }
+    [[nodiscard]] virtual QString ratingHalfStarSymbol() const
+    {
+        return defaultRatingHalfStarSymbol();
+    }
+    [[nodiscard]] virtual QString ratingEmptyStarSymbol() const
+    {
+        return defaultRatingEmptyStarSymbol();
     }
     [[nodiscard]] virtual bool replacePathSeparators() const
     {

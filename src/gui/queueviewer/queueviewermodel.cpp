@@ -24,6 +24,7 @@
 #include <core/player/playbackqueue.h>
 #include <core/player/playercontroller.h>
 #include <gui/guiconstants.h>
+#include <gui/guisettings.h>
 #include <gui/iconloader.h>
 #include <utils/modelutils.h>
 #include <utils/settings/settingsmanager.h>
@@ -90,8 +91,9 @@ std::span<const int> queueIndexesFor(const QueueIndexLookup& queueIndexes, const
     return {};
 }
 
-PlaybackScriptContextData makeQueueScriptContext(PlayerController* playerController, const PlaylistTrack& queueTrack,
-                                                 std::span<const int> queueIndexes, int queueTotal)
+PlaybackScriptContextData makeQueueScriptContext(PlayerController* playerController, SettingsManager* settings,
+                                                 const PlaylistTrack& queueTrack, std::span<const int> queueIndexes,
+                                                 int queueTotal)
 {
     PlaybackScriptContextData data;
 
@@ -113,6 +115,9 @@ PlaybackScriptContextData makeQueueScriptContext(PlayerController* playerControl
 
     data.environment.setTrackState(queueTrack.indexInPlaylist, currentPlayingTrackIndex, currentTrackId, 0);
     data.environment.setPlaybackState(currentPosition, currentTrackDuration, bitrate, playState);
+    data.environment.setRatingStarSymbols({settings->value<Settings::Gui::RatingFullStarSymbol>(),
+                                           settings->value<Settings::Gui::RatingHalfStarSymbol>(),
+                                           settings->value<Settings::Gui::RatingEmptyStarSymbol>()});
     data.environment.setEvaluationPolicy(TrackListContextPolicy::Unresolved, {}, true);
     data.environment.setQueueState(queueIndexes, queueTotal);
 
@@ -124,6 +129,7 @@ QueueViewerModel::QueueViewerModel(std::shared_ptr<AudioLoader> audioLoader, Pla
                                    SettingsManager* settings, QObject* parent)
     : TreeModel{parent}
     , m_playerController{playerController}
+    , m_settings{settings}
     , m_coverProvider{std::move(audioLoader), settings}
     , m_showCurrent{false}
     , m_showIcon{true}
@@ -142,6 +148,10 @@ QueueViewerModel::QueueViewerModel(std::shared_ptr<AudioLoader> audioLoader, Pla
             }
         }
     });
+
+    m_settings->subscribe<Settings::Gui::RatingFullStarSymbol>(this, [this](const QString&) { regenerateTitles(); });
+    m_settings->subscribe<Settings::Gui::RatingHalfStarSymbol>(this, [this](const QString&) { regenerateTitles(); });
+    m_settings->subscribe<Settings::Gui::RatingEmptyStarSymbol>(this, [this](const QString&) { regenerateTitles(); });
 
     updateShowCurrent();
 }
@@ -339,9 +349,9 @@ void QueueViewerModel::reset(const QueueTracks& tracks)
     const int queueTotal    = static_cast<int>(tracks.size());
 
     for(const auto& track : tracks) {
-        auto* item = m_trackItems.emplace_back(std::make_unique<QueueViewerItem>(track)).get();
-        const auto contextData
-            = makeQueueScriptContext(m_playerController, track, queueIndexesFor(queueIndexes, track), queueTotal);
+        auto* item             = m_trackItems.emplace_back(std::make_unique<QueueViewerItem>(track)).get();
+        const auto contextData = makeQueueScriptContext(m_playerController, m_settings, track,
+                                                        queueIndexesFor(queueIndexes, track), queueTotal);
         item->generateTitle(&m_scriptParser, &m_scriptFormatter, m_titleScript, m_subtitleScript, contextData.context);
         rootItem()->appendChild(item);
         m_trackParents[track.track.albumHash()].emplace_back(item);
@@ -388,16 +398,16 @@ void QueueViewerModel::regenerateTitles()
     const int queueTotal     = static_cast<int>(tracks.size());
 
     for(const auto& item : m_trackItems) {
-        const auto track = item->track();
-        const auto contextData
-            = makeQueueScriptContext(m_playerController, track, queueIndexesFor(queueIndexes, track), queueTotal);
+        const auto track       = item->track();
+        const auto contextData = makeQueueScriptContext(m_playerController, m_settings, track,
+                                                        queueIndexesFor(queueIndexes, track), queueTotal);
         item->generateTitle(&m_scriptParser, &m_scriptFormatter, m_titleScript, m_subtitleScript, contextData.context);
     }
 
     if(m_currentTrackItem) {
-        const auto track = m_currentTrackItem->track();
-        const auto contextData
-            = makeQueueScriptContext(m_playerController, track, queueIndexesFor(queueIndexes, track), queueTotal);
+        const auto track       = m_currentTrackItem->track();
+        const auto contextData = makeQueueScriptContext(m_playerController, m_settings, track,
+                                                        queueIndexesFor(queueIndexes, track), queueTotal);
         m_currentTrackItem->generateTitle(&m_scriptParser, &m_scriptFormatter, m_titleScript, m_subtitleScript,
                                           contextData.context);
     }
@@ -452,7 +462,7 @@ std::unique_ptr<QueueViewerItem> QueueViewerModel::makeCurrentTrackItem(const Qu
     const auto queueIndexes = buildQueueIndexLookup(tracks);
     const int queueTotal    = static_cast<int>(tracks.size());
     const auto currentTrack = m_playerController->currentPlaylistTrack();
-    const auto contextData  = makeQueueScriptContext(m_playerController, currentTrack,
+    const auto contextData  = makeQueueScriptContext(m_playerController, m_settings, currentTrack,
                                                      queueIndexesFor(queueIndexes, currentTrack), queueTotal);
 
     auto currentTrackItem = std::make_unique<QueueViewerItem>(currentTrack);

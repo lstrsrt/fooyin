@@ -395,6 +395,11 @@ void GuiApplicationPrivate::setupConnections()
     QObject::connect(m_playlistHandler, &PlaylistHandler::tracksRemoved, m_self, updateTitleForActivePlaylist);
 
     m_settings->subscribe<Settings::Gui::Internal::WindowTitleTrackScript>(m_self, [this]() { updateWindowTitle(); });
+    m_settings->subscribe<Settings::Gui::RatingFullStarSymbol>(m_self, [this](const QString&) { updateWindowTitle(); });
+    m_settings->subscribe<Settings::Gui::RatingHalfStarSymbol>(m_self, [this](const QString&) { updateWindowTitle(); });
+    m_settings->subscribe<Settings::Gui::RatingEmptyStarSymbol>(m_self,
+                                                                [this](const QString&) { updateWindowTitle(); });
+
     QObject::connect(m_playerController, &PlayerController::currentTrackChanged, m_self,
                      [this]() { updateWindowTitle(); });
     QObject::connect(&m_selectionController, &TrackSelectionController::actionExecuted, m_playlistController.get(),
@@ -561,7 +566,10 @@ void GuiApplicationPrivate::updateWindowTitle()
     }
 
     auto contextData     = makePlaybackScriptContext(m_playerController, m_playlistHandler->activePlaylist(),
-                                                     TrackListContextPolicy::Fallback);
+                                                     TrackListContextPolicy::Fallback, {}, false, false,
+                                                     {m_settings->value<Settings::Gui::RatingFullStarSymbol>(),
+                                                      m_settings->value<Settings::Gui::RatingHalfStarSymbol>(),
+                                                      m_settings->value<Settings::Gui::RatingEmptyStarSymbol>()});
     const QString script = m_settings->value<Settings::Gui::Internal::WindowTitleTrackScript>();
     const QString title  = m_scriptParser.evaluate(script, currentTrack, contextData.context);
     m_mainWindow->setTitle(title);

@@ -40,13 +40,69 @@
 using namespace Qt::StringLiterals;
 
 namespace {
-QString trackMeta(const Fooyin::Track& track, const QStringList& args)
+QString ratingFullStarSymbol(const Fooyin::ScriptContext& context)
 {
-    if(args.empty()) {
+    const auto* environment = context.environment ? context.environment->evaluationEnvironment() : nullptr;
+    return environment ? environment->ratingFullStarSymbol() : Fooyin::defaultRatingFullStarSymbol();
+}
+
+QString ratingHalfStarSymbol(const Fooyin::ScriptContext& context)
+{
+    const auto* environment = context.environment ? context.environment->evaluationEnvironment() : nullptr;
+    return environment ? environment->ratingHalfStarSymbol() : Fooyin::defaultRatingHalfStarSymbol();
+}
+
+QString ratingEmptyStarSymbol(const Fooyin::ScriptContext& context)
+{
+    const auto* environment = context.environment ? context.environment->evaluationEnvironment() : nullptr;
+    return environment ? environment->ratingEmptyStarSymbol() : Fooyin::defaultRatingEmptyStarSymbol();
+}
+
+QString formattedRatingStars(const Fooyin::Track& track, const Fooyin::ScriptContext& context, bool includeEmptyStars)
+{
+    const int rating = track.ratingStars();
+
+    const QString fullStarSymbol  = ratingFullStarSymbol(context);
+    const QString halfStarSymbol  = ratingHalfStarSymbol(context);
+    const QString emptyStarSymbol = includeEmptyStars ? ratingEmptyStarSymbol(context) : QString{};
+
+    if(rating <= 0) {
+        return includeEmptyStars && !emptyStarSymbol.isEmpty() ? emptyStarSymbol.repeated(5) : QString{};
+    }
+
+    const int emptyStars = 5 - (rating / 2) - ((rating % 2) != 0 ? 1 : 0);
+
+    QString text;
+    for(int i{0}; i < rating / 2; ++i) {
+        text.append(fullStarSymbol);
+    }
+    if((rating % 2) != 0) {
+        text.append(halfStarSymbol);
+    }
+    if(includeEmptyStars && !emptyStarSymbol.isEmpty()) {
+        for(int i{0}; i < emptyStars; ++i) {
+            text.append(emptyStarSymbol);
+        }
+    }
+
+    return text;
+}
+
+QString trackMeta(const Fooyin::ScriptFunctionCallContext& call)
+{
+    if(call.args.empty() || !call.subject.track) {
         return {};
     }
 
-    return track.metaValue(args.front());
+    const QString tag = call.args.front().value.toUpper();
+    if(tag == QLatin1String{Fooyin::Constants::MetaData::RatingStars}) {
+        return formattedRatingStars(*call.subject.track, call.context ? *call.context : Fooyin::ScriptContext{}, false);
+    }
+    if(tag == QLatin1String{Fooyin::Constants::MetaData::RatingStarsPadded}) {
+        return formattedRatingStars(*call.subject.track, call.context ? *call.context : Fooyin::ScriptContext{}, true);
+    }
+
+    return call.subject.track->metaValue(tag);
 }
 
 QString trackInfo(const Fooyin::Track& track, const QStringList& args)
@@ -195,7 +251,7 @@ bool isTrackListVariableKind(const VariableKind kind)
 }
 
 std::optional<ScriptRegistry::FuncRet> trackMetadataValue(const VariableKind kind, const Track& track,
-                                                          const ScriptRegistry& registry)
+                                                          const ScriptRegistry& registry, const ScriptContext& context)
 {
     switch(kind) {
         case VariableKind::Track:
@@ -263,6 +319,9 @@ std::optional<ScriptRegistry::FuncRet> trackMetadataValue(const VariableKind kin
         case VariableKind::Rating:
             return track.rating();
         case VariableKind::RatingStars:
+            return formattedRatingStars(track, context, false);
+        case VariableKind::RatingStarsPadded:
+            return formattedRatingStars(track, context, true);
         case VariableKind::RatingEditor:
             return track.ratingStars();
         case VariableKind::Codec:
@@ -693,7 +752,7 @@ ScriptResult ScriptRegistry::valueForTrack(VariableKind kind, const QString& var
         return unavailableTrackListResult(m_context, var);
     }
 
-    if(const auto value = trackMetadataValue(kind, track, *this); value.has_value()) {
+    if(const auto value = trackMetadataValue(kind, track, *this, m_context); value.has_value()) {
         return calculateResult(*value);
     }
     if(const auto value = playbackVariableValue(kind, *this, track); value.has_value()) {

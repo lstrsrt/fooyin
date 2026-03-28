@@ -39,6 +39,7 @@ set(SOURCES
     ${CMAKE_SOURCE_DIR}/include/core/scripting/scripttypes.h
     ${CMAKE_SOURCE_DIR}/include/core/scripting/scriptscanner.h
     ${CMAKE_SOURCE_DIR}/include/core/scripting/scriptvalue.h
+    ${CMAKE_SOURCE_DIR}/include/core/ratingsymbols.h
     ${CMAKE_SOURCE_DIR}/include/core/stringpool.h
     ${CMAKE_SOURCE_DIR}/include/core/track.h
     ${CMAKE_SOURCE_DIR}/include/core/trackmetadatastore.h

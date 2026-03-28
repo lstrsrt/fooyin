@@ -258,8 +258,11 @@ LibraryTreeWidget::LibraryTreeWidget(ActionManager* actionManager, PlaylistContr
 
 void LibraryTreeWidget::setupConnections()
 {
-    QObject::connect(m_resetThrottler, &SignalThrottler::triggered, this,
-                     [this]() { m_model->reset(m_library->tracks()); });
+    const auto resetModel = [this]() {
+        m_model->reset(m_library->tracks());
+    };
+
+    QObject::connect(m_resetThrottler, &SignalThrottler::triggered, this, resetModel);
 
     QObject::connect(m_model, &LibraryTreeModel::dataUpdated, m_libraryTree, &QTreeView::dataChanged);
     QObject::connect(m_model, &LibraryTreeModel::modelLoaded, this, [this]() { restoreState(m_pendingState); });
@@ -310,6 +313,10 @@ void LibraryTreeWidget::setupConnections()
     m_settings->subscribe<Settings::Gui::Style>(m_model, &LibraryTreeModel::resetPalette);
 
     m_settings->subscribe<Settings::Core::UseVariousForCompilations>(this, [this]() { reset(); });
+
+    m_settings->subscribe<Settings::Gui::RatingFullStarSymbol>(this, resetModel);
+    m_settings->subscribe<Settings::Gui::RatingHalfStarSymbol>(this, resetModel);
+    m_settings->subscribe<Settings::Gui::RatingEmptyStarSymbol>(this, resetModel);
 }
 
 void LibraryTreeWidget::reset() const

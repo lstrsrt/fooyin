@@ -147,6 +147,7 @@ public:
     [[nodiscard]] int year() const;
     [[nodiscard]] float rating() const;
     [[nodiscard]] int ratingStars() const;
+    [[nodiscard]] QString ratingStarsText() const;
 
     [[nodiscard]] bool hasRGInfo() const;
     [[nodiscard]] bool hasTrackGain() const;

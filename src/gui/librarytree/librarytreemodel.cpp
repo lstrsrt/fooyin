@@ -26,6 +26,7 @@
 #include <core/library/tracksort.h>
 #include <gui/coverprovider.h>
 #include <gui/guiconstants.h>
+#include <gui/guisettings.h>
 #include <gui/guiutils.h>
 #include <gui/iconloader.h>
 #include <gui/scripting/richtextutils.h>
@@ -184,7 +185,7 @@ LibraryTreeModelPrivate::LibraryTreeModelPrivate(LibraryTreeModel* self, Library
     , m_settings{settings}
     , m_sorter{libraryManager}
     , m_coverProvider{m_audioLoader, m_settings}
-    , m_populator{libraryManager}
+    , m_populator{libraryManager, settings}
     , m_iconSize{
           CoverProvider::findThumbnailSize(m_settings->value<Settings::Gui::Internal::LibTreeIconSize>().toSize())}
 {

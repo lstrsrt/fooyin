@@ -164,6 +164,9 @@ VariableKind resolveBuiltInVariableKind(const QString& var)
     if(var == QLatin1String{MetaData::RatingStars}) {
         return VariableKind::RatingStars;
     }
+    if(var == QLatin1String{MetaData::RatingStarsPadded}) {
+        return VariableKind::RatingStarsPadded;
+    }
     if(var == QLatin1String{MetaData::RatingEditor}) {
         return VariableKind::RatingEditor;
     }

@@ -21,6 +21,7 @@
 
 #include <core/constants.h>
 #include <core/coresettings.h>
+#include <gui/guisettings.h>
 #include <gui/scripting/richtextutils.h>
 #include <utils/crypto.h>
 #include <utils/settings/settingsmanager.h>
@@ -71,9 +72,10 @@ ColumnData buildColumnData(const QStringList& columns, ScriptFormatter& formatte
 }
 } // namespace
 
-FilterPopulator::FilterPopulator(LibraryManager* libraryManager, QObject* parent)
+FilterPopulator::FilterPopulator(LibraryManager* libraryManager, SettingsManager* settings, QObject* parent)
     : Worker{parent}
     , m_scriptEnvironment{libraryManager}
+    , m_settings{settings}
 { }
 
 void FilterPopulator::setFont(const QFont& font)
@@ -87,6 +89,9 @@ void FilterPopulator::run(const QStringList& columns, const TrackList& tracks, b
 
     m_data.clear();
 
+    m_scriptEnvironment.setRatingStarSymbols({m_settings->value<Settings::Gui::RatingFullStarSymbol>(),
+                                              m_settings->value<Settings::Gui::RatingHalfStarSymbol>(),
+                                              m_settings->value<Settings::Gui::RatingEmptyStarSymbol>()});
     m_scriptEnvironment.setEvaluationPolicy(TrackListContextPolicy::Unresolved, {}, false, useVarious);
 
     const QString newColumns = columns.join("\036"_L1);

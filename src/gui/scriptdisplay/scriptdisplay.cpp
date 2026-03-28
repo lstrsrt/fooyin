@@ -28,6 +28,7 @@
 #include <core/scripting/scriptparser.h>
 #include <core/track.h>
 #include <gui/configdialog.h>
+#include <gui/guisettings.h>
 #include <gui/scripting/richtext.h>
 #include <gui/scripting/richtextutils.h>
 #include <gui/scripting/scriptformatter.h>
@@ -138,6 +139,10 @@ ScriptDisplay::ScriptDisplay(PlayerController* playerController, PlaylistHandler
     QObject::connect(m_playerController, &PlayerController::currentTrackChanged, this, &ScriptDisplay::updateText);
     QObject::connect(m_playerController, &PlayerController::currentTrackUpdated, this, &ScriptDisplay::updateText);
     QObject::connect(m_playerController, &PlayerController::playlistTrackChanged, this, &ScriptDisplay::updateText);
+
+    m_settings->subscribe<Settings::Gui::RatingFullStarSymbol>(this, [this](const QString&) { updateText(); });
+    m_settings->subscribe<Settings::Gui::RatingHalfStarSymbol>(this, [this](const QString&) { updateText(); });
+    m_settings->subscribe<Settings::Gui::RatingEmptyStarSymbol>(this, [this](const QString&) { updateText(); });
 
     QObject::connect(m_text, &QTextBrowser::anchorClicked, this,
                      [this](const QUrl& url) { activateLink(url.toString()); });
@@ -493,7 +498,10 @@ QString ScriptDisplay::evaluateScript()
 {
     if(const Track track = currentTrack(); track.isValid()) {
         auto contextData = makePlaybackScriptContext(m_playerController, m_playlistHandler->activePlaylist(),
-                                                     TrackListContextPolicy::Fallback, {}, true);
+                                                     TrackListContextPolicy::Fallback, {}, true, false,
+                                                     {m_settings->value<Settings::Gui::RatingFullStarSymbol>(),
+                                                      m_settings->value<Settings::Gui::RatingHalfStarSymbol>(),
+                                                      m_settings->value<Settings::Gui::RatingEmptyStarSymbol>()});
         return m_scriptParser.evaluate(m_config.script, track, contextData.context);
     }
 

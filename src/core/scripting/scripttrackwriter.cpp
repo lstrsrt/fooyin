@@ -86,6 +86,7 @@ bool setBuiltInTrackValue(const VariableKind kind, const ScriptFieldValue& value
             return true;
         case VariableKind::Rating:
         case VariableKind::RatingStars:
+        case VariableKind::RatingStarsPadded:
         case VariableKind::RatingEditor:
             invokeTrackSetter<&Track::setRating>(track, value);
             return true;
