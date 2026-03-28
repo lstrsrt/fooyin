@@ -42,8 +42,7 @@ class LibrarySortingPageWidget : public SettingsPageWidget
     Q_OBJECT
 
 public:
-    explicit LibrarySortingPageWidget(ActionManager* actionManager, SortingRegistry* sortingRegistry,
-                                      SettingsManager* settings);
+    explicit LibrarySortingPageWidget(SortingRegistry* sortingRegistry, SettingsManager* settings);
 
     void load() override;
     void apply() override;
@@ -63,11 +62,10 @@ private:
     QToolButton* m_openEditor;
 };
 
-LibrarySortingPageWidget::LibrarySortingPageWidget(ActionManager* actionManager, SortingRegistry* sortingRegistry,
-                                                   SettingsManager* settings)
+LibrarySortingPageWidget::LibrarySortingPageWidget(SortingRegistry* sortingRegistry, SettingsManager* settings)
     : m_sortRegistry{sortingRegistry}
     , m_settings{settings}
-    , m_sortList{new ExtendableTableView(actionManager, this)}
+    , m_sortList{new ExtendableTableView(this)}
     , m_model{new SortingModel(m_sortRegistry, this)}
     , m_sortScript{new ScriptLineEdit(this)}
     , m_libraryViewPlaylistSortScript{new ScriptLineEdit(this)}
@@ -147,16 +145,13 @@ void LibrarySortingPageWidget::updateButtonState()
     m_openEditor->setEnabled(selection.size() == 1 && selection.front().column() == 2);
 }
 
-LibrarySortingPage::LibrarySortingPage(ActionManager* actionManager, SortingRegistry* sortingRegistry,
-                                       SettingsManager* settings, QObject* parent)
+LibrarySortingPage::LibrarySortingPage(SortingRegistry* sortingRegistry, SettingsManager* settings, QObject* parent)
     : SettingsPage{settings->settingsDialog(), parent}
 {
     setId(Constants::Page::LibrarySorting);
     setName(tr("Sorting"));
     setCategory({tr("Library"), tr("Sorting")});
-    setWidgetCreator([actionManager, sortingRegistry, settings] {
-        return new LibrarySortingPageWidget(actionManager, sortingRegistry, settings);
-    });
+    setWidgetCreator([sortingRegistry, settings] { return new LibrarySortingPageWidget(sortingRegistry, settings); });
 }
 } // namespace Fooyin
 

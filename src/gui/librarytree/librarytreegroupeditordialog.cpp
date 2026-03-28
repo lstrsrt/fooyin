@@ -44,8 +44,7 @@ class LibraryTreeGroupEditorWidget : public QWidget
     Q_OBJECT
 
 public:
-    explicit LibraryTreeGroupEditorWidget(ActionManager* actionManager, LibraryTreeGroupRegistry* groupsRegistry,
-                                          QWidget* parent = nullptr);
+    explicit LibraryTreeGroupEditorWidget(LibraryTreeGroupRegistry* groupsRegistry, QWidget* parent = nullptr);
 
     void apply();
     void reset();
@@ -60,11 +59,10 @@ private:
     QFrame* m_hintFrame;
 };
 
-LibraryTreeGroupEditorWidget::LibraryTreeGroupEditorWidget(ActionManager* actionManager,
-                                                           LibraryTreeGroupRegistry* groupsRegistry, QWidget* parent)
+LibraryTreeGroupEditorWidget::LibraryTreeGroupEditorWidget(LibraryTreeGroupRegistry* groupsRegistry, QWidget* parent)
     : QWidget{parent}
     , m_groupsRegistry{groupsRegistry}
-    , m_groupList{new ExtendableTableView(actionManager, this)}
+    , m_groupList{new ExtendableTableView(this)}
     , m_model{new LibraryTreeGroupModel(m_groupsRegistry, this)}
     , m_openEditor{new QToolButton(this)}
     , m_hintFrame{new QFrame(this)}
@@ -160,15 +158,14 @@ void LibraryTreeGroupEditorWidget::updateButtonState()
                              && (selection.front().column() == 2 || selection.front().column() == 3));
 }
 
-LibraryTreeGroupEditorDialog::LibraryTreeGroupEditorDialog(ActionManager* actionManager,
-                                                           LibraryTreeGroupRegistry* groupsRegistry, QWidget* parent)
+LibraryTreeGroupEditorDialog::LibraryTreeGroupEditorDialog(LibraryTreeGroupRegistry* groupsRegistry, QWidget* parent)
     : QDialog{parent}
 {
     setAttribute(Qt::WA_DeleteOnClose);
     setWindowTitle(tr("Manage Library Tree Groupings"));
     resize(750, 500);
 
-    auto* editor = new LibraryTreeGroupEditorWidget(actionManager, groupsRegistry, this);
+    auto* editor = new LibraryTreeGroupEditorWidget(groupsRegistry, this);
     auto* info   = new QLabel(tr("Grouping presets are shared across all widgets."), this);
     info->setWordWrap(true);
 

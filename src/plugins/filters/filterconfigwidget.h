@@ -37,14 +37,14 @@ class FilterConfigDialog : public WidgetConfigDialog<FilterWidget, FilterWidget:
     Q_OBJECT
 
 public:
-    explicit FilterConfigDialog(FilterWidget* filterWidget, ActionManager* actionManager,
-                                FilterColumnRegistry* columnRegistry, QWidget* parent = nullptr);
+    explicit FilterConfigDialog(FilterWidget* filterWidget, FilterColumnRegistry* columnRegistry,
+                                QWidget* parent = nullptr);
 
-private:
+protected:
     [[nodiscard]] FilterWidget::ConfigData config() const override;
     void setConfig(const FilterWidget::ConfigData& config) override;
 
-    ActionManager* m_actionManager;
+private:
     FilterColumnRegistry* m_columnRegistry;
 
     QComboBox* m_middleClick;

@@ -43,7 +43,7 @@ constexpr auto MinimumValueColumnWidth = 150;
 
 namespace Fooyin::TagEditor {
 TagEditorView::TagEditorView(ActionManager* actionManager, QWidget* parent)
-    : ExtendableTableView{actionManager, parent}
+    : ExtendableTableView{parent}
     , m_actionManager{actionManager}
     , m_editTrigger{AllEditTriggers}
     , m_context{new WidgetContext(this, Context{"Context.TagEditor"}, this)}

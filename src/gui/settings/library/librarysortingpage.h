@@ -22,7 +22,6 @@
 #include <utils/settings/settingspage.h>
 
 namespace Fooyin {
-class ActionManager;
 class SettingsManager;
 class SortingRegistry;
 
@@ -31,7 +30,6 @@ class LibrarySortingPage : public SettingsPage
     Q_OBJECT
 
 public:
-    LibrarySortingPage(ActionManager* actionManager, SortingRegistry* sortingRegistry, SettingsManager* settings,
-                       QObject* parent = nullptr);
+    LibrarySortingPage(SortingRegistry* sortingRegistry, SettingsManager* settings, QObject* parent = nullptr);
 };
 } // namespace Fooyin

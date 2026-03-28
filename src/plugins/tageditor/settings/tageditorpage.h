@@ -22,7 +22,6 @@
 #include <utils/settings/settingspage.h>
 
 namespace Fooyin {
-class ActionManager;
 class SettingsManager;
 
 namespace TagEditor {
@@ -33,8 +32,7 @@ class TagEditorFieldsPage : public SettingsPage
     Q_OBJECT
 
 public:
-    TagEditorFieldsPage(TagEditorFieldRegistry* registry, ActionManager* actionManager, SettingsManager* settings,
-                        QObject* parent = nullptr);
+    TagEditorFieldsPage(TagEditorFieldRegistry* registry, SettingsManager* settings, QObject* parent = nullptr);
 };
 } // namespace TagEditor
 } // namespace Fooyin

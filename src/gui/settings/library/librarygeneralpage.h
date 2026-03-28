@@ -22,7 +22,6 @@
 #include <utils/settings/settingspage.h>
 
 namespace Fooyin {
-class ActionManager;
 class LibraryManager;
 class MusicLibrary;
 class SettingsManager;
@@ -32,7 +31,7 @@ class LibraryGeneralPage : public SettingsPage
     Q_OBJECT
 
 public:
-    LibraryGeneralPage(ActionManager* actionManager, LibraryManager* libraryManager, MusicLibrary* library,
-                       SettingsManager* settings, QObject* parent = nullptr);
+    LibraryGeneralPage(LibraryManager* libraryManager, MusicLibrary* library, SettingsManager* settings,
+                       QObject* parent = nullptr);
 };
 } // namespace Fooyin

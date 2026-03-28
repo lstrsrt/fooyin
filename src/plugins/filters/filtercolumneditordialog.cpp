@@ -39,8 +39,7 @@ class FilterColumnEditorWidget : public QWidget
     Q_OBJECT
 
 public:
-    explicit FilterColumnEditorWidget(ActionManager* actionManager, FilterColumnRegistry* columnRegistry,
-                                      QWidget* parent = nullptr);
+    explicit FilterColumnEditorWidget(FilterColumnRegistry* columnRegistry, QWidget* parent = nullptr);
 
     void apply();
     void reset();
@@ -54,11 +53,10 @@ private:
     QToolButton* m_openEditor;
 };
 
-FilterColumnEditorWidget::FilterColumnEditorWidget(ActionManager* actionManager, FilterColumnRegistry* columnRegistry,
-                                                   QWidget* parent)
+FilterColumnEditorWidget::FilterColumnEditorWidget(FilterColumnRegistry* columnRegistry, QWidget* parent)
     : QWidget{parent}
     , m_columnRegistry{columnRegistry}
-    , m_columnList{new ExtendableTableView(actionManager, this)}
+    , m_columnList{new ExtendableTableView(this)}
     , m_model{new FiltersColumnModel(m_columnRegistry, this)}
     , m_openEditor{new QToolButton(this)}
 {
@@ -120,15 +118,14 @@ void FilterColumnEditorWidget::updateButtonState()
     m_openEditor->setEnabled(selection.size() == 1 && selection.front().column() == 2);
 }
 
-FilterColumnEditorDialog::FilterColumnEditorDialog(ActionManager* actionManager, FilterColumnRegistry* columnRegistry,
-                                                   QWidget* parent)
+FilterColumnEditorDialog::FilterColumnEditorDialog(FilterColumnRegistry* columnRegistry, QWidget* parent)
     : QDialog{parent}
 {
     setAttribute(Qt::WA_DeleteOnClose);
     setWindowTitle(tr("Manage Filter Columns"));
     resize(700, 500);
 
-    auto* editor = new FilterColumnEditorWidget(actionManager, columnRegistry, this);
+    auto* editor = new FilterColumnEditorWidget(columnRegistry, this);
     auto* info   = new QLabel(tr("Column presets are shared across all widgets."), this);
     info->setWordWrap(true);
 

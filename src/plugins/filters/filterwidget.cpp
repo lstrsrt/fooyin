@@ -612,7 +612,7 @@ void FilterWidget::saveConfigToLayout(const ConfigData& config, QJsonObject& lay
 
 void FilterWidget::openConfigDialog()
 {
-    showConfigDialog(new FilterConfigDialog(this, m_actionManager, m_columnRegistry, this));
+    showConfigDialog(new FilterConfigDialog(this, m_columnRegistry, this));
 }
 
 void FilterWidget::finalise()
@@ -757,7 +757,7 @@ void FilterWidget::addFilterHeaderMenu(QMenu* menu, const QPoint& pos)
 
     auto* moreSettings = new QAction(FilterWidget::tr("More…"), columnsMenu);
     QObject::connect(moreSettings, &QAction::triggered, this, [this]() {
-        auto* dialog = new FilterColumnEditorDialog(m_actionManager, m_columnRegistry, this);
+        auto* dialog = new FilterColumnEditorDialog(m_columnRegistry, this);
         dialog->open();
     });
     columnsMenu->addSeparator();

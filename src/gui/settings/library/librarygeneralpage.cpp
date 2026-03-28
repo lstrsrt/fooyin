@@ -98,8 +98,7 @@ class LibraryGeneralPageWidget : public SettingsPageWidget
     Q_OBJECT
 
 public:
-    explicit LibraryGeneralPageWidget(ActionManager* actionManager, LibraryManager* libraryManager,
-                                      MusicLibrary* library, SettingsManager* settings);
+    explicit LibraryGeneralPageWidget(LibraryManager* libraryManager, MusicLibrary* library, SettingsManager* settings);
 
     void load() override;
     void apply() override;
@@ -129,12 +128,12 @@ private:
     QCheckBox* m_overwritePlaycountsOnReload;
 };
 
-LibraryGeneralPageWidget::LibraryGeneralPageWidget(ActionManager* actionManager, LibraryManager* libraryManager,
-                                                   MusicLibrary* library, SettingsManager* settings)
+LibraryGeneralPageWidget::LibraryGeneralPageWidget(LibraryManager* libraryManager, MusicLibrary* library,
+                                                   SettingsManager* settings)
     : m_libraryManager{libraryManager}
     , m_library{library}
     , m_settings{settings}
-    , m_libraryView{new LibraryTableView(actionManager, this)}
+    , m_libraryView{new LibraryTableView(this)}
     , m_model{new LibraryModel(m_libraryManager, this)}
     , m_restrictTypes{new QLineEdit(this)}
     , m_excludeTypes{new QLineEdit(this)}
@@ -304,15 +303,15 @@ void LibraryGeneralPageWidget::addLibrary() const
     m_model->markForAddition({name, dir});
 }
 
-LibraryGeneralPage::LibraryGeneralPage(ActionManager* actionManager, LibraryManager* libraryManager,
-                                       MusicLibrary* library, SettingsManager* settings, QObject* parent)
+LibraryGeneralPage::LibraryGeneralPage(LibraryManager* libraryManager, MusicLibrary* library, SettingsManager* settings,
+                                       QObject* parent)
     : SettingsPage{settings->settingsDialog(), parent}
 {
     setId(Constants::Page::LibraryGeneral);
     setName(tr("General"));
     setCategory({tr("Library")});
-    setWidgetCreator([actionManager, libraryManager, library, settings] {
-        return new LibraryGeneralPageWidget(actionManager, libraryManager, library, settings);
+    setWidgetCreator([libraryManager, library, settings] {
+        return new LibraryGeneralPageWidget(libraryManager, library, settings);
     });
 }
 } // namespace Fooyin

@@ -62,8 +62,8 @@ public:
     };
     Q_DECLARE_FLAGS(Tools, Tool)
 
-    explicit ExtendableTableView(ActionManager* actionManager, QWidget* parent = nullptr);
-    ExtendableTableView(ActionManager* actionManager, const Tools& tools, QWidget* parent = nullptr);
+    explicit ExtendableTableView(QWidget* parent = nullptr);
+    explicit ExtendableTableView(const Tools& tools, QWidget* parent = nullptr);
     ~ExtendableTableView() override;
 
     void setTools(const Tools& tools);

@@ -369,7 +369,7 @@ void LibraryTreeWidget::addGroupMenu(QMenu* parent)
 
     auto* manageGroupings = new QAction(tr("Manage groupings..."), groupMenu);
     QObject::connect(manageGroupings, &QAction::triggered, this, [this]() {
-        auto* dialog = new LibraryTreeGroupEditorDialog(m_actionManager, m_groupsRegistry, this);
+        auto* dialog = new LibraryTreeGroupEditorDialog(m_groupsRegistry, this);
         dialog->open();
     });
     groupMenu->addAction(manageGroupings);
@@ -1052,7 +1052,7 @@ void LibraryTreeWidget::saveConfigToLayout(const ConfigData& config, QJsonObject
 
 void LibraryTreeWidget::openConfigDialog()
 {
-    showConfigDialog(new LibraryTreeConfigDialog(this, m_actionManager, m_groupsRegistry, this));
+    showConfigDialog(new LibraryTreeConfigDialog(this, m_groupsRegistry, this));
 }
 
 LibraryTreeWidget::~LibraryTreeWidget()

@@ -22,7 +22,6 @@
 #include <QDialog>
 
 namespace Fooyin {
-class ActionManager;
 class LibraryTreeGroupRegistry;
 
 class LibraryTreeGroupEditorDialog : public QDialog
@@ -30,7 +29,6 @@ class LibraryTreeGroupEditorDialog : public QDialog
     Q_OBJECT
 
 public:
-    explicit LibraryTreeGroupEditorDialog(ActionManager* actionManager, LibraryTreeGroupRegistry* groupsRegistry,
-                                          QWidget* parent = nullptr);
+    explicit LibraryTreeGroupEditorDialog(LibraryTreeGroupRegistry* groupsRegistry, QWidget* parent = nullptr);
 };
 } // namespace Fooyin

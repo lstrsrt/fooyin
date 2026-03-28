@@ -21,10 +21,7 @@
 
 #include <QDialog>
 
-namespace Fooyin {
-class ActionManager;
-
-namespace Filters {
+namespace Fooyin::Filters {
 class FilterColumnRegistry;
 
 class FilterColumnEditorDialog : public QDialog
@@ -32,8 +29,6 @@ class FilterColumnEditorDialog : public QDialog
     Q_OBJECT
 
 public:
-    explicit FilterColumnEditorDialog(ActionManager* actionManager, FilterColumnRegistry* columnRegistry,
-                                      QWidget* parent = nullptr);
+    explicit FilterColumnEditorDialog(FilterColumnRegistry* columnRegistry, QWidget* parent = nullptr);
 };
-} // namespace Filters
-} // namespace Fooyin
+} // namespace Fooyin::Filters

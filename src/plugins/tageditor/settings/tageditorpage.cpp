@@ -40,7 +40,7 @@ class TagEditorFieldsPageWidget : public SettingsPageWidget
     Q_OBJECT
 
 public:
-    explicit TagEditorFieldsPageWidget(TagEditorFieldRegistry* registry, ActionManager* actionManager);
+    explicit TagEditorFieldsPageWidget(TagEditorFieldRegistry* registry);
 
     void load() override;
     void apply() override;
@@ -49,17 +49,14 @@ public:
 private:
     void updateButtonState();
 
-    ActionManager* m_actionManager;
-
     TagEditorFieldRegistry* m_registry;
     ExtendableTableView* m_fieldList;
     TagEditorFieldsModel* m_model;
 };
 
-TagEditorFieldsPageWidget::TagEditorFieldsPageWidget(TagEditorFieldRegistry* registry, ActionManager* actionManager)
-    : m_actionManager{actionManager}
-    , m_registry{registry}
-    , m_fieldList{new ExtendableTableView(m_actionManager, this)}
+TagEditorFieldsPageWidget::TagEditorFieldsPageWidget(TagEditorFieldRegistry* registry)
+    : m_registry{registry}
+    , m_fieldList{new ExtendableTableView(this)}
     , m_model{new TagEditorFieldsModel(m_registry, this)}
 {
     m_fieldList->setExtendableModel(m_model);
@@ -126,14 +123,13 @@ void TagEditorFieldsPageWidget::updateButtonState()
     m_fieldList->moveDownAction()->setEnabled(!isEmpty && canMoveDown);
 }
 
-TagEditorFieldsPage::TagEditorFieldsPage(TagEditorFieldRegistry* registry, ActionManager* actionManager,
-                                         SettingsManager* settings, QObject* parent)
+TagEditorFieldsPage::TagEditorFieldsPage(TagEditorFieldRegistry* registry, SettingsManager* settings, QObject* parent)
     : SettingsPage{settings->settingsDialog(), parent}
 {
     setId(Constants::Page::TagEditorFields);
     setName(tr("Fields"));
     setCategory({tr("Tag Editor")});
-    setWidgetCreator([registry, actionManager] { return new TagEditorFieldsPageWidget(registry, actionManager); });
+    setWidgetCreator([registry] { return new TagEditorFieldsPageWidget(registry); });
 }
 } // namespace Fooyin::TagEditor
 

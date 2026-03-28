@@ -35,10 +35,9 @@
 using namespace Qt::StringLiterals;
 
 namespace Fooyin::Filters {
-FilterConfigDialog::FilterConfigDialog(FilterWidget* filterWidget, ActionManager* actionManager,
-                                       FilterColumnRegistry* columnRegistry, QWidget* parent)
+FilterConfigDialog::FilterConfigDialog(FilterWidget* filterWidget, FilterColumnRegistry* columnRegistry,
+                                       QWidget* parent)
     : WidgetConfigDialog{filterWidget, tr("Filter Settings"), parent}
-    , m_actionManager{actionManager}
     , m_columnRegistry{columnRegistry}
     , m_middleClick{new QComboBox(this)}
     , m_doubleClick{new QComboBox(this)}
@@ -160,7 +159,7 @@ FilterConfigDialog::FilterConfigDialog(FilterWidget* filterWidget, ActionManager
         m_keepAlive->setEnabled(checked);
     });
     QObject::connect(m_manageColumns, &QPushButton::clicked, this, [this]() {
-        auto* dialog = new FilterColumnEditorDialog(m_actionManager, m_columnRegistry, this);
+        auto* dialog = new FilterColumnEditorDialog(m_columnRegistry, this);
         dialog->open();
     });
 

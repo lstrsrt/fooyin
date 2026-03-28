@@ -22,7 +22,6 @@
 #include <utils/settings/settingspage.h>
 
 namespace Fooyin {
-class ActionManager;
 class PlaylistColumnRegistry;
 class SettingsManager;
 
@@ -31,7 +30,6 @@ class PlaylistColumnPage : public SettingsPage
     Q_OBJECT
 
 public:
-    PlaylistColumnPage(ActionManager* actionManager, PlaylistColumnRegistry* columnRegistry, SettingsManager* settings,
-                       QObject* parent = nullptr);
+    PlaylistColumnPage(PlaylistColumnRegistry* columnRegistry, SettingsManager* settings, QObject* parent = nullptr);
 };
 } // namespace Fooyin

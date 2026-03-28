@@ -35,10 +35,9 @@
 using namespace Qt::StringLiterals;
 
 namespace Fooyin {
-LibraryTreeConfigDialog::LibraryTreeConfigDialog(LibraryTreeWidget* libraryTree, ActionManager* actionManager,
+LibraryTreeConfigDialog::LibraryTreeConfigDialog(LibraryTreeWidget* libraryTree,
                                                  LibraryTreeGroupRegistry* groupsRegistry, QWidget* parent)
     : WidgetConfigDialog{libraryTree, tr("Library Tree Settings"), parent}
-    , m_actionManager{actionManager}
     , m_groupsRegistry{groupsRegistry}
     , m_middleClick{new QComboBox(this)}
     , m_doubleClick{new QComboBox(this)}
@@ -164,7 +163,7 @@ LibraryTreeConfigDialog::LibraryTreeConfigDialog(LibraryTreeWidget* libraryTree,
         m_keepAlive->setEnabled(checked);
     });
     QObject::connect(m_manageGroupings, &QPushButton::clicked, this, [this]() {
-        auto* dialog = new LibraryTreeGroupEditorDialog(m_actionManager, m_groupsRegistry, this);
+        auto* dialog = new LibraryTreeGroupEditorDialog(m_groupsRegistry, this);
         dialog->open();
     });
 

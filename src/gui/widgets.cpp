@@ -274,13 +274,13 @@ void Widgets::registerPages()
     new ArtworkSearchingPage(m_settings, this);
     new ArtworkSourcesPage(m_artworkFinder, m_settings, this);
     new ArtworkDownloadPage(m_settings, this);
-    new LibraryGeneralPage(m_gui->actionManager(), m_core->libraryManager(), m_core->library(), m_settings, this);
-    new LibrarySortingPage(m_gui->actionManager(), m_core->sortingRegistry(), m_settings, this);
+    new LibraryGeneralPage(m_core->libraryManager(), m_core->library(), m_settings, this);
+    new LibrarySortingPage(m_core->sortingRegistry(), m_settings, this);
     new PlaybackPage(m_settings, this);
     new DspManagerPage(m_core->dspChainStore(), m_dspPresetRegistry, m_dspSettingsRegistry.get(), m_settings, this);
     new FadingPage(m_settings, this);
     new PlaylistGeneralPage(m_core->playlistLoader()->supportedSaveExtensions(), m_settings, this);
-    new PlaylistColumnPage(m_gui->actionManager(), m_playlistController->columnRegistry(), m_settings, this);
+    new PlaylistColumnPage(m_playlistController->columnRegistry(), m_settings, this);
     new PlaylistPresetsPage(m_playlistController->presetRegistry(), m_settings, this);
     new PluginPage(m_core->pluginManager(), m_pluginSettingsRegistry.get(), m_settings, this);
     new ShellIntegrationPage(m_settings, this);

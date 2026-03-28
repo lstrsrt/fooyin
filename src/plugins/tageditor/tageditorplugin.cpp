@@ -54,7 +54,7 @@ void TagEditorPlugin::initialise(const GuiPluginContext& context)
     m_propertiesDialog = context.propertiesDialog;
     m_widgetProvider   = context.widgetProvider;
 
-    m_fieldsPage = new TagEditorFieldsPage(m_registry, m_actionManager, m_settings, this);
+    m_fieldsPage = new TagEditorFieldsPage(m_registry, m_settings, this);
 
     // m_widgetProvider->registerWidget(
     //     u"TagEditor"_s, [this]() { return createEditor(); }, u"Tag Editor"_s);

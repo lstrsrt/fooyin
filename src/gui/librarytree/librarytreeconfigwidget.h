@@ -30,7 +30,6 @@ class QPushButton;
 class QSpinBox;
 
 namespace Fooyin {
-class ActionManager;
 class LibraryTreeGroupRegistry;
 
 class LibraryTreeConfigDialog : public WidgetConfigDialog<LibraryTreeWidget, LibraryTreeWidget::ConfigData>
@@ -38,15 +37,14 @@ class LibraryTreeConfigDialog : public WidgetConfigDialog<LibraryTreeWidget, Lib
     Q_OBJECT
 
 public:
-    explicit LibraryTreeConfigDialog(LibraryTreeWidget* libraryTree, ActionManager* actionManager,
-                                     LibraryTreeGroupRegistry* groupsRegistry, QWidget* parent = nullptr);
+    explicit LibraryTreeConfigDialog(LibraryTreeWidget* libraryTree, LibraryTreeGroupRegistry* groupsRegistry,
+                                     QWidget* parent = nullptr);
 
 protected:
     [[nodiscard]] LibraryTreeWidget::ConfigData config() const override;
     void setConfig(const LibraryTreeWidget::ConfigData& config) override;
 
 private:
-    ActionManager* m_actionManager;
     LibraryTreeGroupRegistry* m_groupsRegistry;
 
     QComboBox* m_middleClick;

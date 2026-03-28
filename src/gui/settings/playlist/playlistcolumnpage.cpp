@@ -38,7 +38,7 @@ class PlaylistColumnPageWidget : public SettingsPageWidget
     Q_OBJECT
 
 public:
-    explicit PlaylistColumnPageWidget(ActionManager* actionManager, PlaylistColumnRegistry* columnRegistry);
+    explicit PlaylistColumnPageWidget(PlaylistColumnRegistry* columnRegistry);
 
     void load() override;
     void apply() override;
@@ -47,7 +47,6 @@ public:
 private:
     void updateButtonState();
 
-    ActionManager* m_actionManager;
     PlaylistColumnRegistry* m_columnsRegistry;
 
     ExtendableTableView* m_columnList;
@@ -55,10 +54,9 @@ private:
     QToolButton* m_openEditor;
 };
 
-PlaylistColumnPageWidget::PlaylistColumnPageWidget(ActionManager* actionManager, PlaylistColumnRegistry* columnRegistry)
-    : m_actionManager{actionManager}
-    , m_columnsRegistry{columnRegistry}
-    , m_columnList{new ExtendableTableView(m_actionManager, this)}
+PlaylistColumnPageWidget::PlaylistColumnPageWidget(PlaylistColumnRegistry* columnRegistry)
+    : m_columnsRegistry{columnRegistry}
+    , m_columnList{new ExtendableTableView(this)}
     , m_model{new PlaylistColumnModel(m_columnsRegistry, this)}
     , m_openEditor{new QToolButton(this)}
 {
@@ -123,15 +121,14 @@ void PlaylistColumnPageWidget::updateButtonState()
     m_openEditor->setEnabled(selection.size() == 1 && selection.front().column() == 2);
 }
 
-PlaylistColumnPage::PlaylistColumnPage(ActionManager* actionManager, PlaylistColumnRegistry* columnRegistry,
-                                       SettingsManager* settings, QObject* parent)
+PlaylistColumnPage::PlaylistColumnPage(PlaylistColumnRegistry* columnRegistry, SettingsManager* settings,
+                                       QObject* parent)
     : SettingsPage{settings->settingsDialog(), parent}
 {
     setId(Constants::Page::PlaylistColumns);
     setName(tr("Columns"));
     setCategory({tr("Playlist"), tr("Columns")});
-    setWidgetCreator(
-        [actionManager, columnRegistry] { return new PlaylistColumnPageWidget(actionManager, columnRegistry); });
+    setWidgetCreator([columnRegistry] { return new PlaylistColumnPageWidget(columnRegistry); });
 }
 } // namespace Fooyin
 
