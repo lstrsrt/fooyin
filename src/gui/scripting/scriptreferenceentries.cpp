@@ -21,14 +21,15 @@
 
 #include <core/constants.h>
 #include <gui/scripting/scriptcommandhandler.h>
-#include <gui/scripting/scripteditor.h>
+
+#include <QCoreApplication>
 
 using namespace Qt::StringLiterals;
 
 namespace {
 QString tr(const char* text)
 {
-    return Fooyin::ScriptEditor::tr(text);
+    return QCoreApplication::translate("Fooyin", text);
 }
 
 QString variableLabel(const QString& name)
