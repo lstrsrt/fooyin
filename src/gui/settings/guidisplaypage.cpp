@@ -44,6 +44,8 @@ using namespace Settings::Gui::Internal;
 
 class GuiDisplayPageWidget : public SettingsPageWidget
 {
+    Q_OBJECT
+
 public:
     explicit GuiDisplayPageWidget(SettingsManager* settings);
 
@@ -247,3 +249,6 @@ GuiDisplayPage::GuiDisplayPage(SettingsManager* settings, QObject* parent)
     setWidgetCreator([settings] { return new GuiDisplayPageWidget(settings); });
 }
 } // namespace Fooyin
+
+#include "guidisplaypage.moc"
+#include "moc_guidisplaypage.cpp"

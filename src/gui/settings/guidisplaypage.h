@@ -26,6 +26,8 @@ class SettingsManager;
 
 class GuiDisplayPage : public SettingsPage
 {
+    Q_OBJECT
+
 public:
     explicit GuiDisplayPage(SettingsManager* settings, QObject* parent = nullptr);
 };
