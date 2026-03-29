@@ -76,6 +76,7 @@ public:
     void addTrackMetadata(const Track& track, bool extended);
     void addTrackLocation(int total, const Track& track);
     void addTrackGeneral(int total, const Track& track);
+    void addTrackPlayStats(const Track& track);
     void addTrackReplayGain(int total);
     void addTrackOther(const Track& track);
 
@@ -121,19 +122,22 @@ InfoItem* InfoPopulatorPrivate::getOrAddNode(const QString& key, const QString& 
 
 void InfoPopulatorPrivate::checkAddParentNode(InfoModel::ItemParent parent)
 {
-    if(parent == InfoModel::ItemParent::Metadata) {
+    if(parent == ItemParent::Metadata) {
         getOrAddNode(u"Metadata"_s, InfoPopulator::tr("Metadata"), ItemParent::Root, InfoItem::Header);
     }
-    else if(parent == InfoModel::ItemParent::Location) {
+    else if(parent == ItemParent::Location) {
         getOrAddNode(u"Location"_s, InfoPopulator::tr("Location"), ItemParent::Root, InfoItem::Header);
     }
-    else if(parent == InfoModel::ItemParent::General) {
+    else if(parent == ItemParent::General) {
         getOrAddNode(u"General"_s, InfoPopulator::tr("General"), ItemParent::Root, InfoItem::Header);
     }
-    else if(parent == InfoModel::ItemParent::ReplayGain) {
+    else if(parent == ItemParent::PlayStats) {
+        getOrAddNode(u"PlayStats"_s, InfoPopulator::tr("Playback Statistics"), ItemParent::Root, InfoItem::Header);
+    }
+    else if(parent == ItemParent::ReplayGain) {
         getOrAddNode(u"ReplayGain"_s, InfoPopulator::tr("ReplayGain"), ItemParent::Root, InfoItem::Header);
     }
-    else if(parent == InfoModel::ItemParent::Other) {
+    else if(parent == ItemParent::Other) {
         getOrAddNode(u"Other"_s, InfoPopulator::tr("Other"), ItemParent::Root, InfoItem::Header);
     }
 }
@@ -232,6 +236,22 @@ void InfoPopulatorPrivate::addTrackGeneral(int total, const Track& track)
                       InfoItem::Percentage);
 }
 
+void InfoPopulatorPrivate::addTrackPlayStats(const Track& track)
+{
+    if(track.playCount() > 0) {
+        checkAddEntryNode(u"PlayCount"_s, InfoPopulator::tr("Playcount"), ItemParent::PlayStats,
+                          QString::number(std::max(track.playCount(), 0)), InfoItem::Total);
+    }
+    if(track.firstPlayed() > 0) {
+        checkAddEntryNode(u"FirstPlayed"_s, InfoPopulator::tr("First Played"), ItemParent::PlayStats,
+                          track.firstPlayed(), InfoItem::Min, InfoItem::FormatUIntFunc{Utils::formatTimeMs});
+    }
+    if(track.lastPlayed() > 0) {
+        checkAddEntryNode(u"LastPlayed"_s, InfoPopulator::tr("Last Played"), ItemParent::PlayStats, track.lastPlayed(),
+                          InfoItem::Max, InfoItem::FormatUIntFunc{Utils::formatTimeMs});
+    }
+}
+
 void InfoPopulatorPrivate::addTrackReplayGain(int total)
 {
     const auto formatGain = [](const double gain) -> QString {
@@ -294,6 +314,9 @@ void InfoPopulatorPrivate::addTrackNodes(InfoItem::Options options, const TrackL
         }
         if(options & InfoItem::General) {
             addTrackGeneral(total, track);
+        }
+        if(options & InfoItem::PlayStats) {
+            addTrackPlayStats(track);
         }
         if(options & InfoItem::Other) {
             addTrackOther(track);

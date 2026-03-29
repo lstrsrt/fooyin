@@ -43,6 +43,7 @@ public:
         Metadata,
         Location,
         General,
+        PlayStats,
         ReplayGain,
         Other
     };

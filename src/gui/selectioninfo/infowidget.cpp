@@ -272,6 +272,14 @@ void InfoWidget::contextMenuEvent(QContextMenuEvent* event)
         resetModel();
     });
 
+    auto* showPlayStats = new QAction(tr("Playback Statistics"), menu);
+    showPlayStats->setCheckable(true);
+    showPlayStats->setChecked(options & InfoItem::PlayStats);
+    QAction::connect(showPlayStats, &QAction::triggered, this, [this](bool checked) {
+        m_model->setOption(InfoItem::PlayStats, checked);
+        resetModel();
+    });
+
     auto* showReplayGain = new QAction(tr("ReplayGain"), menu);
     showReplayGain->setCheckable(true);
     showReplayGain->setChecked(options & InfoItem::ReplayGain);
@@ -297,6 +305,7 @@ void InfoWidget::contextMenuEvent(QContextMenuEvent* event)
     menu->addAction(showExtendedMetadata);
     menu->addAction(showLocation);
     menu->addAction(showGeneral);
+    menu->addAction(showPlayStats);
     menu->addAction(showReplayGain);
     menu->addAction(showOther);
 

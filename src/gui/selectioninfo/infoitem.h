@@ -42,6 +42,7 @@ public:
         Concat = 0,
         Average,
         Total,
+        Min,
         Max,
         Percentage
     };
@@ -55,7 +56,8 @@ public:
         ExtendedMetadata = 1 << 3,
         Other            = 1 << 4,
         ReplayGain       = 1 << 5,
-        Default          = (Metadata | Location | General | Other)
+        PlayStats        = 1 << 6,
+        Default          = (Metadata | Location | General | PlayStats | Other)
     };
     Q_DECLARE_FLAGS(Options, Option)
 
