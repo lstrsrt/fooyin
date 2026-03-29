@@ -545,16 +545,12 @@ TagLib::StringList convertStringList(const QStringList& strList)
 
 float gainStringToFloat(const TagLib::String& gainString)
 {
-    const auto& string = convertString(gainString);
-    if(string.size() <= 1) {
-        return 0.0;
-    }
-
+    QString string = convertString(gainString).trimmed();
     if(string.endsWith("dB"_L1, Qt::CaseInsensitive)) {
-        return string.chopped(2).toFloat();
+        string.chop(2);
+        string = string.trimmed();
     }
 
-    // Lack of dB suffix is unusual, but try to convert anyway
     bool ok{false};
     const float gain = string.toFloat(&ok);
     return ok ? gain : Fooyin::Constants::InvalidGain;
