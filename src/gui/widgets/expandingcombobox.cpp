@@ -26,12 +26,27 @@ using namespace Qt::StringLiterals;
 namespace Fooyin {
 ExpandingComboBox::ExpandingComboBox(QWidget* parent)
     : QComboBox{parent}
+    , m_resizeToCurrentEnabled{true}
 {
     QObject::connect(this, &QComboBox::currentIndexChanged, this, &ExpandingComboBox::resizeToFitCurrent);
 }
 
+bool ExpandingComboBox::resizeToCurrentEnabled() const
+{
+    return m_resizeToCurrentEnabled;
+}
+
+void ExpandingComboBox::setResizeToCurrentEnabled(bool enabled)
+{
+    m_resizeToCurrentEnabled = enabled;
+}
+
 void ExpandingComboBox::resizeToFitCurrent()
 {
+    if(!m_resizeToCurrentEnabled) {
+        return;
+    }
+
     const QFontMetrics fontMetrics{font()};
 
     int maxWidth{0};

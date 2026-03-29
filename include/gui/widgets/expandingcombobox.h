@@ -31,7 +31,12 @@ class FYGUI_EXPORT ExpandingComboBox : public QComboBox
 public:
     explicit ExpandingComboBox(QWidget* parent = nullptr);
 
+    [[nodiscard]] bool resizeToCurrentEnabled() const;
+    void setResizeToCurrentEnabled(bool enabled);
     void resizeToFitCurrent();
     void resizeDropDown();
+
+private:
+    bool m_resizeToCurrentEnabled;
 };
 } // namespace Fooyin
