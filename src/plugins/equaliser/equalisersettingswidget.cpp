@@ -709,16 +709,29 @@ void EqualiserSettingsWidget::exportPreset()
     FySettings settings;
     const QString initialPath = settings.value(QLatin1String(LastPresetPathKey), QDir::homePath()).toString();
 
-    QString filePath = QFileDialog::getSaveFileName(this, tr("Export Equaliser Preset"), initialPath,
-                                                    tr("Equaliser Preset (*.feq)"));
-    if(filePath.isEmpty()) {
+    QFileDialog saveDialog(this, tr("Export Equaliser Preset"), initialPath, tr("Equaliser Preset (*.feq)"));
+    saveDialog.setAcceptMode(QFileDialog::AcceptSave);
+    saveDialog.setFileMode(QFileDialog::AnyFile);
+    saveDialog.setOption(QFileDialog::DontResolveSymlinks);
+    saveDialog.setDefaultSuffix(QStringLiteral("feq"));
+
+    if(QFileInfo{initialPath}.isDir()) {
+        saveDialog.selectFile(QStringLiteral("preset.feq"));
+    }
+    else {
+        saveDialog.selectFile(QFileInfo{initialPath}.fileName());
+    }
+
+    if(saveDialog.exec() == 0) {
         return;
     }
 
-    if(!filePath.endsWith(QStringLiteral(".feq"), Qt::CaseInsensitive)) {
-        filePath += QStringLiteral(".feq");
+    const QStringList selectedFiles = saveDialog.selectedFiles();
+    if(selectedFiles.isEmpty()) {
+        return;
     }
 
+    const QString filePath = selectedFiles.constFirst();
     QFile file(filePath);
     if(!file.open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Truncate)) {
         QMessageBox::warning(this, tr("Export Equaliser Preset"),

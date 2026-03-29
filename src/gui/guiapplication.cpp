@@ -1264,10 +1264,38 @@ void GuiApplicationPrivate::savePlaylist() const
         dir = lastPath;
     }
 
-    QString selectedFilter;
-    QString file = QFileDialog::getSaveFileName(m_mainWindow.get(), GuiApplication::tr("Save Playlist"),
-                                                dir.absoluteFilePath(playlist->name()), playlistFilter, &selectedFilter,
-                                                QFileDialog::DontResolveSymlinks);
+    QFileDialog saveDialog{m_mainWindow.get(), GuiApplication::tr("Save Playlist"), dir.absolutePath(), playlistFilter};
+    saveDialog.setAcceptMode(QFileDialog::AcceptSave);
+    saveDialog.setFileMode(QFileDialog::AnyFile);
+    saveDialog.setOption(QFileDialog::DontResolveSymlinks);
+
+    const QStringList filters = playlistFilter.split(";;"_L1, Qt::SkipEmptyParts);
+    if(!filters.isEmpty()) {
+        saveDialog.selectNameFilter(filters.constFirst());
+        if(const QString defaultSuffix = Utils::extensionFromFilter(filters.constFirst()); !defaultSuffix.isEmpty()) {
+            saveDialog.setDefaultSuffix(defaultSuffix);
+            saveDialog.selectFile(playlist->name() + u'.' + defaultSuffix);
+        }
+        QObject::connect(&saveDialog, &QFileDialog::filterSelected, &saveDialog, [&saveDialog](const QString& filter) {
+            if(const QString suffix = Utils::extensionFromFilter(filter); !suffix.isEmpty()) {
+                saveDialog.setDefaultSuffix(suffix);
+            }
+        });
+    }
+    else {
+        saveDialog.selectFile(playlist->name());
+    }
+
+    if(saveDialog.exec() == 0) {
+        return;
+    }
+
+    const QStringList selectedFiles = saveDialog.selectedFiles();
+    if(selectedFiles.isEmpty()) {
+        return;
+    }
+
+    const QString& file = selectedFiles.constFirst();
     if(file.isEmpty()) {
         return;
     }
@@ -1275,16 +1303,12 @@ void GuiApplicationPrivate::savePlaylist() const
     FyStateSettings stateSettings;
     stateSettings.setValue(Settings::Gui::Internal::LastFilePath, file);
 
-    const QString extension = Utils::extensionFromFilter(selectedFilter);
+    const QString extension = Utils::extensionFromFilter(saveDialog.selectedNameFilter());
     if(extension.isEmpty()) {
         return;
     }
 
     const QFileInfo info{file};
-    if(info.suffix() != extension) {
-        file.append("."_L1 + extension);
-    }
-
     if(auto* parser = m_core->playlistLoader()->parserForExtension(extension)) {
         QFile playlistFile{file};
         if(!playlistFile.open(QIODevice::WriteOnly)) {

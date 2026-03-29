@@ -81,17 +81,25 @@ QString exportPath(const Fooyin::Track& track, Fooyin::Track::Cover type, const 
     const QString filter = QObject::tr("Image Files") + u" (*.%1);;"_s.arg(suffix) + QObject::tr("All Files (*)");
 
     auto* dialogParent = parent ? parent : Fooyin::Utils::getMainWindow();
-    QString path = QFileDialog::getSaveFileName(dialogParent, QObject::tr("Extract Artwork"), suggestedPath, filter,
-                                                nullptr, QFileDialog::DontResolveSymlinks);
-    if(path.isEmpty()) {
+
+    QFileDialog saveDialog(dialogParent, QObject::tr("Extract Artwork"), QFileInfo{suggestedPath}.absolutePath(),
+                           filter);
+    saveDialog.setAcceptMode(QFileDialog::AcceptSave);
+    saveDialog.setFileMode(QFileDialog::AnyFile);
+    saveDialog.setOption(QFileDialog::DontResolveSymlinks);
+    saveDialog.setDefaultSuffix(suffix);
+    saveDialog.selectFile(QFileInfo{suggestedPath}.fileName());
+
+    if(saveDialog.exec() == 0) {
         return {};
     }
 
-    if(QFileInfo{path}.suffix().isEmpty()) {
-        path += u'.' + suffix;
+    const QStringList selectedFiles = saveDialog.selectedFiles();
+    if(selectedFiles.isEmpty()) {
+        return {};
     }
 
-    return QDir::cleanPath(path);
+    return QDir::cleanPath(selectedFiles.constFirst());
 }
 
 Fooyin::ArtworkResult extractEmbeddedArtwork(Fooyin::AudioLoader* loader, const Fooyin::Track& track,
@@ -218,12 +226,8 @@ QString ArtworkExporter::extractArtworkAs(const Track& track, Track::Cover type,
         return {};
     }
 
-    QString path = exportPath(track, type, artwork, parent);
-    if(path.isEmpty()) {
-        return {};
-    }
-
-    if(!writeArtwork(path, artwork)) {
+    const QString path = exportPath(track, type, artwork, parent);
+    if(path.isEmpty() || !writeArtwork(path, artwork)) {
         return {};
     }
 
