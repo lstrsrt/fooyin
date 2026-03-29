@@ -126,6 +126,7 @@ public:
     //! Convert frame count to duration.
     [[nodiscard]] uint64_t durationForFrames(int frameCount) const;
 
+    [[nodiscard]] int bitdepth() const;
     [[nodiscard]] int bytesPerFrame() const;
     [[nodiscard]] int bytesPerSample() const;
     [[nodiscard]] int bitsPerSample() const;

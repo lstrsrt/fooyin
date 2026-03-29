@@ -313,7 +313,7 @@ int AudioFormat::framesForDuration(uint64_t ms) const
 
     const auto sRate = static_cast<uint64_t>(sampleRate());
 
-    if(secs > uint64_t(std::numeric_limits<int>::max()) / sRate) {
+    if(secs > static_cast<uint64_t>(std::numeric_limits<int>::max()) / sRate) {
         return std::numeric_limits<int>::max();
     }
 
@@ -331,6 +331,26 @@ uint64_t AudioFormat::durationForFrames(int frameCount) const
     return static_cast<uint64_t>(frameCount) * 1000 / sampleRate();
 }
 
+int AudioFormat::bitdepth() const
+{
+    switch(m_sampleFormat) {
+        case SampleFormat::U8:
+            return 8;
+        case SampleFormat::S16:
+            return 16;
+        case SampleFormat::S24In32:
+            return 24;
+        case SampleFormat::S32:
+        case SampleFormat::F32:
+            return 32;
+        case SampleFormat::F64:
+            return 64;
+        case SampleFormat::Unknown:
+        default:
+            return 0;
+    }
+}
+
 int AudioFormat::bytesPerFrame() const
 {
     return bytesPerSample() * channelCount();
@@ -339,18 +359,18 @@ int AudioFormat::bytesPerFrame() const
 int AudioFormat::bytesPerSample() const
 {
     switch(m_sampleFormat) {
-        case(SampleFormat::U8):
+        case SampleFormat::U8:
             return 1;
-        case(SampleFormat::S16):
+        case SampleFormat::S16:
             return 2;
-        case(SampleFormat::S24In32):
+        case SampleFormat::S24In32:
             // Stored in low three bytes of 32bit int
-        case(SampleFormat::S32):
-        case(SampleFormat::F32):
+        case SampleFormat::S32:
+        case SampleFormat::F32:
             return 4;
-        case(SampleFormat::F64):
+        case SampleFormat::F64:
             return 8;
-        case(SampleFormat::Unknown):
+        case SampleFormat::Unknown:
         default:
             return 0;
     }
