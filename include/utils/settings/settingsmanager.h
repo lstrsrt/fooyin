@@ -287,6 +287,28 @@ public:
     }
 
     /*!
+     * Sets the value of the setting without notifying subscribers.
+     * @tparam key an enum value representing a setting key.
+     * @tparam Value the value to set.
+     * @returns true if the stored value changed.
+     */
+    template <auto key, typename Value>
+        requires ValidValueType<key, Value>
+    bool setSilently(Value value)
+    {
+        const QString mapKey = getMapKey(key);
+
+        const std::unique_lock lock(m_lock);
+
+        if(!m_settings.contains(mapKey)) {
+            return false;
+        }
+
+        SettingsEntry* setting = m_settings.at(mapKey);
+        return setting && setting->setValue(value);
+    }
+
+    /*!
      * Resets the value of the setting at the given key.
      * @tparam key an enum value representing a setting key.
      * @returns true if the setting was successfully changed.
