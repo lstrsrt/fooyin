@@ -1264,6 +1264,55 @@ FOOYIN_AUDIOENGINE_SENSITIVE_TEST(AudioEngineTest, SetAudioOutputReinitializesLo
     ASSERT_TRUE(pumpUntil([&newOutputStats]() { return newOutputStats->initCalls.load() >= 1; }, 2000ms));
 }
 
+FOOYIN_AUDIOENGINE_SENSITIVE_TEST(AudioEngineTest, BufferLengthChangeReconfiguresPlaybackWithoutReinitialisingOutput)
+{
+    ensureCoreApplication();
+    QTemporaryDir tempDir;
+    SettingsManager settings{tempDir.filePath(u"settings.ini"_s)};
+    registerMinimalEngineSettings(settings, false, false);
+
+    auto decoderStats = std::make_shared<DecoderStats>();
+    auto outputStats  = std::make_shared<OutputStats>();
+    auto loader       = std::make_shared<AudioLoader>();
+    DspRegistry registry;
+    AudioEngine engine{loader, &settings, &registry};
+
+    loader->addDecoder(u"FakeDecoder"_s, [decoderStats]() { return std::make_unique<FakeDecoder>(decoderStats); });
+    engine.setAudioOutput([outputStats]() { return std::make_unique<FakeAudioOutput>(outputStats); }, QString{});
+
+    const Track track = makeTrack(createDummyAudioFile(tempDir, u"buffer-length-reconfigure.fyt"_s), 0, 120000);
+    engine.loadTrack(makePlaybackItem(track, 1), false);
+    ASSERT_TRUE(pumpUntil([&engine]() { return engine.trackStatus() == Engine::TrackStatus::Loaded; }));
+
+    engine.play();
+    ASSERT_TRUE(pumpUntil([&engine]() { return engine.playbackState() == Engine::PlaybackState::Playing; }));
+    ASSERT_TRUE(pumpUntil([&engine]() { return engine.position() >= 250; }, 4000ms));
+
+    const uint64_t positionBefore           = engine.position();
+    const int decoderInitCallsBefore        = decoderStats->initCalls.load();
+    const int decoderSeekCallsBefore        = decoderStats->seekCalls.load();
+    const int outputInitCallsBefore         = outputStats->initCalls.load();
+    const int outputUninitCallsBefore       = outputStats->uninitCalls.load();
+    const uint64_t trackGenerationBefore    = AudioEngineTestAccessor::trackGeneration(engine);
+    const uint64_t currentTrackItemIdBefore = AudioEngineTestAccessor::currentTrackItemId(engine);
+
+    settings.set<Settings::Core::BufferLength>(8000);
+
+    ASSERT_TRUE(pumpUntil(
+        [decoderStats, decoderInitCallsBefore]() { return decoderStats->initCalls.load() > decoderInitCallsBefore; },
+        4000ms));
+    ASSERT_TRUE(pumpUntil(
+        [decoderStats, decoderSeekCallsBefore]() { return decoderStats->seekCalls.load() > decoderSeekCallsBefore; },
+        4000ms));
+    ASSERT_TRUE(pumpUntil([&engine, positionBefore]() { return engine.position() > positionBefore; }, 4000ms));
+
+    EXPECT_EQ(outputStats->initCalls.load(), outputInitCallsBefore);
+    EXPECT_EQ(outputStats->uninitCalls.load(), outputUninitCallsBefore);
+    EXPECT_EQ(AudioEngineTestAccessor::trackGeneration(engine), trackGenerationBefore);
+    EXPECT_EQ(AudioEngineTestAccessor::currentTrackItemId(engine), currentTrackItemIdBefore);
+    EXPECT_EQ(engine.playbackState(), Engine::PlaybackState::Playing);
+}
+
 FOOYIN_AUDIOENGINE_SENSITIVE_TEST(AudioEngineTest, SetDspChainWithFormatChangeReinitializesOutput)
 {
     ensureCoreApplication();

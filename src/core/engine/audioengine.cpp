@@ -856,6 +856,82 @@ void AudioEngine::cancelFadesForReinit()
     m_fadeController.cancelForReinit(m_fadingValues.pause.curve);
 }
 
+void AudioEngine::reconfigureActiveStreamBuffering(uint64_t positionMs)
+{
+    if(!m_currentTrack.isValid()) {
+        return;
+    }
+
+    const auto barrier = m_engineTaskQueue.barrierScope();
+
+    if(m_pipeline.hasOrphanStream()) {
+        qCWarning(ENGINE) << "Reconfiguring playback buffering during active transition; forcing orphan cleanup";
+        m_pipeline.cleanupOrphanImmediate();
+    }
+
+    if(isCrossfading(m_phase)) {
+        qCWarning(ENGINE) << "Reconfiguring playback buffering while crossfade state is active; forcing idle state";
+    }
+
+    clearPendingAudiblePause();
+    clearAutoCrossfadeTailFadeState();
+    clearAutoBoundaryFadeState(true);
+    clearTrackEndAutoTransitions();
+    clearPendingAnalysisData();
+    clearTrackEndLatch();
+    m_transitions.cancelPendingSeek();
+    m_transitions.setSeekInProgress(false);
+    m_transitions.clearTrackEnding();
+    m_fadeController.invalidateActiveFade();
+
+    m_decoder.stopDecoding();
+    cleanupActiveStream();
+
+    if(!initDecoder(currentPlaybackItem(), false)) {
+        updateTrackStatus(Engine::TrackStatus::Invalid);
+        return;
+    }
+
+    syncDecoderTrackMetadata();
+    m_format = m_decoder.format();
+
+    const AudioFormat oldInputFormat = m_pipeline.inputFormat();
+    AudioFormat desiredOutput        = m_pipeline.predictOutputFormat(m_format);
+    if(!desiredOutput.isValid()) {
+        desiredOutput = m_format;
+    }
+
+    const AudioFormat currentOutput = m_pipeline.outputFormat();
+    const bool inputFormatChanged   = oldInputFormat.isValid() && !Audio::inputFormatsMatch(oldInputFormat, m_format);
+    const bool outputFormatChanged  = currentOutput.isValid() && desiredOutput.isValid()
+                                   && !Audio::outputFormatsMatch(currentOutput, desiredOutput);
+    const bool hasOutput            = m_pipeline.hasOutput();
+
+    if(!hasOutput || outputFormatChanged) {
+        if(outputFormatChanged && hasOutput) {
+            qCDebug(ENGINE) << "Playback buffering reconfiguration requires output reinit";
+            m_outputController.uninitOutput();
+        }
+        if(!m_outputController.initOutput(m_format, m_volume)) {
+            updateTrackStatus(Engine::TrackStatus::Invalid);
+            return;
+        }
+    }
+    else if(inputFormatChanged) {
+        m_pipeline.applyInputFormat(m_format);
+    }
+
+    uint64_t clampedPositionMs{positionMs};
+    if(m_currentTrack.duration() > 0) {
+        clampedPositionMs = std::min<uint64_t>(clampedPositionMs, m_currentTrack.duration());
+    }
+    m_transitions.queueInitialSeek(clampedPositionMs, m_currentTrack.id(), 0);
+
+    if(!setupNewTrackStream(m_currentTrack, true)) {
+        updateTrackStatus(Engine::TrackStatus::Invalid);
+    }
+}
+
 void AudioEngine::reinitOutputForCurrentFormat()
 {
     if(!m_format.isValid()) {
@@ -2303,8 +2379,16 @@ void AudioEngine::setupSettings()
         this, [this](int policy) { m_crossfadeSwitchPolicy = static_cast<Engine::CrossfadeSwitchPolicy>(policy); });
     m_settings->subscribe<Settings::Core::Internal::CrossfadingValues>(this, updateFadeDurations);
     m_settings->subscribe<Settings::Core::BufferLength>(this, [this, updateDecodeWatermarks](int bufferLengthMs) {
-        m_playbackBufferLengthMs = std::max(200, bufferLengthMs);
+        const int clampedBufferLengthMs  = std::max(200, bufferLengthMs);
+        const bool bufferLengthChanged   = m_playbackBufferLengthMs != clampedBufferLengthMs;
+        const uint64_t currentPositionMs = position();
+
+        m_playbackBufferLengthMs = clampedBufferLengthMs;
         updateDecodeWatermarks();
+
+        if(bufferLengthChanged && m_currentTrack.isValid()) {
+            reconfigureActiveStreamBuffering(currentPositionMs);
+        }
     });
     m_settings->subscribe<Settings::Core::Internal::DecodeLowWatermarkRatio>(
         this, [this, updateDecodeWatermarks](double ratio) {
