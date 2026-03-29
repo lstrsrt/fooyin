@@ -63,11 +63,80 @@ TEST_F(CueParserTest, SingleCue)
         EXPECT_EQ(1991, tracks.at(0).year());
         EXPECT_EQ(u"Alternative", tracks.at(0).genre());
         EXPECT_EQ(u"Loveless", tracks.at(0).album());
+        EXPECT_EQ(u"My Bloody Valentine"_s, tracks.at(0).artist());
+        EXPECT_EQ(u"My Bloody Valentine"_s, tracks.at(0).albumArtist());
         EXPECT_EQ(u"Only Shallow", tracks.at(0).title());
 
         EXPECT_EQ(tracks.at(1).discNumber(), u"1"_s);
         EXPECT_EQ(tracks.at(1).trackNumber(), u"02"_s);
     }
+}
+
+TEST_F(CueParserTest, CueUsesGlobalPerformerAsArtistWhenTrackPerformersAreMissing)
+{
+    const QString cueSheet = uR"(PERFORMER "Global Artist"
+TITLE "Global Album"
+FILE "album.flac" FLAC
+  TRACK 01 AUDIO
+    TITLE "Track One"
+    INDEX 01 00:00:00
+  TRACK 02 AUDIO
+    TITLE "Track Two"
+    INDEX 01 01:00:00
+)"_s;
+
+    QByteArray cueData = cueSheet.toUtf8();
+    QBuffer buffer{&cueData};
+    ASSERT_TRUE(buffer.open(QIODevice::ReadOnly | QIODevice::Text));
+
+    PlaylistParser::ReadPlaylistEntry readEntry;
+    readEntry.readTrack = [](const Track& track) {
+        Track loaded{track};
+        loaded.setDuration(180000);
+        return loaded;
+    };
+
+    const auto tracks = m_parser->readPlaylist(&buffer, u"/music/album.flac"_s, {}, readEntry, false);
+    ASSERT_EQ(2, tracks.size());
+
+    EXPECT_EQ(u"Global Artist"_s, tracks.at(0).artist());
+    EXPECT_TRUE(tracks.at(0).albumArtist().isEmpty());
+    EXPECT_EQ(u"Global Artist"_s, tracks.at(1).artist());
+    EXPECT_TRUE(tracks.at(1).albumArtist().isEmpty());
+}
+
+TEST_F(CueParserTest, CueKeepsGlobalPerformerAsAlbumArtistWhenTrackPerformersExist)
+{
+    const QString cueSheet = uR"(PERFORMER "Album Artist"
+TITLE "Global Album"
+FILE "album.flac" FLAC
+  TRACK 01 AUDIO
+    TITLE "Track One"
+    PERFORMER "Track Artist"
+    INDEX 01 00:00:00
+  TRACK 02 AUDIO
+    TITLE "Track Two"
+    INDEX 01 01:00:00
+)"_s;
+
+    QByteArray cueData = cueSheet.toUtf8();
+    QBuffer buffer{&cueData};
+    ASSERT_TRUE(buffer.open(QIODevice::ReadOnly | QIODevice::Text));
+
+    PlaylistParser::ReadPlaylistEntry readEntry;
+    readEntry.readTrack = [](const Track& track) {
+        Track loaded{track};
+        loaded.setDuration(180000);
+        return loaded;
+    };
+
+    const auto tracks = m_parser->readPlaylist(&buffer, u"/music/album.flac"_s, {}, readEntry, false);
+    ASSERT_EQ(2, tracks.size());
+
+    EXPECT_EQ(u"Track Artist"_s, tracks.at(0).artist());
+    EXPECT_EQ(u"Album Artist"_s, tracks.at(0).albumArtist());
+    EXPECT_TRUE(tracks.at(1).artist().isEmpty());
+    EXPECT_EQ(u"Album Artist"_s, tracks.at(1).albumArtist());
 }
 
 TEST_F(CueParserTest, UnreadableCueImageTracksAreDisabled)

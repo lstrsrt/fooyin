@@ -40,7 +40,7 @@ struct CueSheet
 {
     QString cuePath;
     QString type;
-    QString albumArtist;
+    QString performer;
     QString album;
     QString composer;
     QString genre;
@@ -57,6 +57,7 @@ struct CueSheet
     bool singleTrackFile{false};
     bool hasValidIndex{false};
     bool addedTrack{false};
+    bool hasTrackPerformer{false};
 
     bool skipNotFound{false};
     bool skipFile{false};
@@ -239,12 +240,23 @@ void readTrackRemLine(Fooyin::Track& track, const QStringList& lineParts)
     }
 }
 
-void finaliseTrack(const CueSheet& sheet, Fooyin::Track& track)
+void applyCuePerformer(const CueSheet& sheet, Fooyin::Track& track)
+{
+    applyIfNotEmpty(sheet.performer, [&sheet, &track](const QString& value) {
+        if(sheet.hasTrackPerformer) {
+            track.setAlbumArtists({value});
+        }
+        else {
+            track.setArtists({value});
+        }
+    });
+}
+
+void finaliseTrack(const CueSheet& sheet, Fooyin::Track& track, bool applyPerformer = true)
 {
     track.setCuePath(sheet.cuePath);
     track.setModifiedTime(std::max(track.modifiedTime(), sheet.lastModified));
 
-    applyIfNotEmpty(sheet.albumArtist, [&track](const QString& value) { track.setAlbumArtists({value}); });
     applyIfNotEmpty(sheet.album, [&track](const QString& value) { track.setAlbum(value); });
     applyIfNotEmpty(sheet.genre, [&track](const QString& value) { track.setGenres({value}); });
     applyIfNotEmpty(sheet.date, [&track](const QString& value) { track.setDate(value); });
@@ -255,12 +267,16 @@ void finaliseTrack(const CueSheet& sheet, Fooyin::Track& track)
                  [&track](float value) { track.setRGAlbumGain(value); });
     applyIfValid(sheet.rgAlbumPeak, Fooyin::Constants::InvalidPeak,
                  [&track](float value) { track.setRGAlbumPeak(value); });
+
+    if(applyPerformer) {
+        applyCuePerformer(sheet, track);
+    }
 }
 
 void finaliseLastTrack(const CueSheet& sheet, Fooyin::Track& track, const QString& trackPath, Fooyin::TrackList& tracks)
 {
     if(track.isValid() && (QFile::exists(trackPath) || !sheet.skipNotFound)) {
-        finaliseTrack(sheet, track);
+        finaliseTrack(sheet, track, false);
         if(track.duration() > 0 && track.duration() > track.offset()) {
             track.setDuration(track.duration() - track.offset());
         }
@@ -434,9 +450,10 @@ void CueParser::processCueLine(CueSheet& sheet, const QString& line, Track& trac
     if(field.compare("PERFORMER"_L1, Qt::CaseInsensitive) == 0) {
         if(!topLevelLine && track.isValid()) {
             track.setArtists({value});
+            sheet.hasTrackPerformer = true;
         }
         else {
-            sheet.albumArtist = value;
+            sheet.performer = value;
         }
     }
     else if(field.compare("TITLE"_L1, Qt::CaseInsensitive) == 0) {
@@ -539,7 +556,7 @@ void CueParser::processCueLine(CueSheet& sheet, const QString& line, Track& trac
     else if(field.compare("TRACK"_L1, Qt::CaseInsensitive) == 0) {
         if(QFile::exists(trackPath) || !sheet.skipNotFound) {
             if(track.isValid() && !sheet.addedTrack && sheet.hasValidIndex) {
-                finaliseTrack(sheet, track);
+                finaliseTrack(sheet, track, false);
                 tracks.emplace_back(track);
             }
 

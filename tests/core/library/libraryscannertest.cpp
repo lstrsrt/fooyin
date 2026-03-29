@@ -249,8 +249,10 @@ FILE "album.flac" FLAC
     const TrackList& scannedTracks = result.tracksScanned;
 
     ASSERT_EQ(2, scannedTracks.size());
-    EXPECT_EQ(u"Embedded Artist"_s, scannedTracks.at(0).albumArtist());
-    EXPECT_EQ(u"Embedded Artist"_s, scannedTracks.at(1).albumArtist());
+    EXPECT_EQ(u"Embedded Artist"_s, scannedTracks.at(0).artist());
+    EXPECT_EQ(u"Embedded Artist"_s, scannedTracks.at(1).artist());
+    EXPECT_TRUE(scannedTracks.at(0).albumArtist().isEmpty());
+    EXPECT_TRUE(scannedTracks.at(1).albumArtist().isEmpty());
     EXPECT_EQ(u"Embedded One"_s, scannedTracks.at(0).title());
     EXPECT_EQ(u"Embedded Two"_s, scannedTracks.at(1).title());
 }
@@ -297,8 +299,10 @@ TEST(LibraryScannerTest, DroppingLocalCueAndBackingFileAddsOnlyCueTracks)
     ASSERT_EQ(2, scannedTracks.size());
     EXPECT_EQ(u"Local One"_s, scannedTracks.at(0).title());
     EXPECT_EQ(u"Local Two"_s, scannedTracks.at(1).title());
-    EXPECT_EQ(u"Local Artist"_s, scannedTracks.at(0).albumArtist());
-    EXPECT_EQ(u"Local Artist"_s, scannedTracks.at(1).albumArtist());
+    EXPECT_EQ(u"Local Artist"_s, scannedTracks.at(0).artist());
+    EXPECT_EQ(u"Local Artist"_s, scannedTracks.at(1).artist());
+    EXPECT_TRUE(scannedTracks.at(0).albumArtist().isEmpty());
+    EXPECT_TRUE(scannedTracks.at(1).albumArtist().isEmpty());
 }
 
 TEST(LibraryScannerTest, DroppingBackingFileBeforeLocalCueAddsOnlyCueTracks)
@@ -343,8 +347,10 @@ TEST(LibraryScannerTest, DroppingBackingFileBeforeLocalCueAddsOnlyCueTracks)
     ASSERT_EQ(2, scannedTracks.size());
     EXPECT_EQ(u"Local One"_s, scannedTracks.at(0).title());
     EXPECT_EQ(u"Local Two"_s, scannedTracks.at(1).title());
-    EXPECT_EQ(u"Local Artist"_s, scannedTracks.at(0).albumArtist());
-    EXPECT_EQ(u"Local Artist"_s, scannedTracks.at(1).albumArtist());
+    EXPECT_EQ(u"Local Artist"_s, scannedTracks.at(0).artist());
+    EXPECT_EQ(u"Local Artist"_s, scannedTracks.at(1).artist());
+    EXPECT_TRUE(scannedTracks.at(0).albumArtist().isEmpty());
+    EXPECT_TRUE(scannedTracks.at(1).albumArtist().isEmpty());
 }
 
 TEST(LibraryScannerTest, DroppingDirectoryWithLocalCueAndEmbeddedFileAddsOnlyEmbeddedCueTracks)
@@ -392,8 +398,10 @@ FILE "album.flac" FLAC
     const TrackList& scannedTracks = result.tracksScanned;
 
     ASSERT_EQ(2, scannedTracks.size());
-    EXPECT_EQ(u"Embedded Artist"_s, scannedTracks.at(0).albumArtist());
-    EXPECT_EQ(u"Embedded Artist"_s, scannedTracks.at(1).albumArtist());
+    EXPECT_EQ(u"Embedded Artist"_s, scannedTracks.at(0).artist());
+    EXPECT_EQ(u"Embedded Artist"_s, scannedTracks.at(1).artist());
+    EXPECT_TRUE(scannedTracks.at(0).albumArtist().isEmpty());
+    EXPECT_TRUE(scannedTracks.at(1).albumArtist().isEmpty());
     EXPECT_EQ(u"Embedded One"_s, scannedTracks.at(0).title());
     EXPECT_EQ(u"Embedded Two"_s, scannedTracks.at(1).title());
 }
