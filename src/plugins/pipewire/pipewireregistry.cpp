@@ -54,7 +54,12 @@ PipewireRegistry::PipewireRegistry(PipewireCore* core)
     pw_registry_add_listener(m_registry.get(), &m_registryListener, &registryEvents, this); // NOLINT
 }
 
-PipewireRegistry::~PipewireRegistry() = default;
+PipewireRegistry::~PipewireRegistry()
+{
+    if(m_registry) {
+        spa_hook_remove(&m_registryListener);
+    }
+}
 
 OutputDevices PipewireRegistry::devices() const
 {

@@ -36,6 +36,8 @@ namespace Fooyin::Pipewire {
 class PipeWireOutput : public AudioOutput
 {
 public:
+    PipeWireOutput();
+
     bool init(const AudioFormat& format) override;
     void uninit() override;
     void reset() override;
@@ -68,13 +70,14 @@ private:
     static void drained(void* userdata);
 
     QString m_device;
-    float m_volume{1.0};
+    float m_volume;
     AudioFormat m_format;
 
     std::unique_ptr<LockFreeRingBuffer<std::byte>> m_buffer;
-    std::atomic_size_t m_lastPwWriteBytes{0};
-    int m_targetBufferFrames{0};
+    std::atomic_size_t m_lastPwWriteBytes;
+    int m_targetBufferFrames;
 
+    bool m_loopStarted;
     std::unique_ptr<PipewireThreadLoop> m_loop;
     std::unique_ptr<PipewireContext> m_context;
     std::unique_ptr<PipewireCore> m_core;

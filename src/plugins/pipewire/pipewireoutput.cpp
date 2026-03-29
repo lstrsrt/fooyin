@@ -39,6 +39,7 @@
 #include <cstring>
 #include <ctime>
 #include <limits>
+#include <mutex>
 
 #ifdef __GNUC__
 #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
@@ -77,24 +78,30 @@ int64_t framesToMs(const uint64_t frames, const int sampleRate)
         return 0;
     }
 
-    return frames * 1000ULL / static_cast<uint64_t>(sampleRate);
+    return static_cast<int64_t>(frames) * 1000LL / static_cast<int64_t>(sampleRate);
+}
+
+void ensurePipeWireInitialised()
+{
+    static std::once_flag initOnce;
+    std::call_once(initOnce, []() { pw_init(nullptr, nullptr); });
 }
 
 spa_audio_format findSpaFormat(const Fooyin::SampleFormat& format)
 {
     switch(format) {
-        case(Fooyin::SampleFormat::U8):
+        case Fooyin::SampleFormat::U8:
             return SPA_AUDIO_FORMAT_U8;
-        case(Fooyin::SampleFormat::S16):
+        case Fooyin::SampleFormat::S16:
             return SPA_AUDIO_FORMAT_S16;
-        case(Fooyin::SampleFormat::S24In32):
-        case(Fooyin::SampleFormat::S32):
+        case Fooyin::SampleFormat::S24In32:
+        case Fooyin::SampleFormat::S32:
             return SPA_AUDIO_FORMAT_S32;
-        case(Fooyin::SampleFormat::F32):
+        case Fooyin::SampleFormat::F32:
             return SPA_AUDIO_FORMAT_F32;
-        case(Fooyin::SampleFormat::F64):
+        case Fooyin::SampleFormat::F64:
             return SPA_AUDIO_FORMAT_F64;
-        case(Fooyin::SampleFormat::Unknown):
+        case Fooyin::SampleFormat::Unknown:
         default:
             return SPA_AUDIO_FORMAT_UNKNOWN;
     }
@@ -192,7 +199,7 @@ void updateChannelMapLegacy(spa_audio_info_raw* info, int channels)
 {
     // Set channels according to: https://xiph.org/flac/format.html
     switch(channels) {
-        case(8):
+        case 8:
             info->position[7] = SPA_AUDIO_CHANNEL_SR;
             info->position[6] = SPA_AUDIO_CHANNEL_SL;
             info->position[5] = SPA_AUDIO_CHANNEL_RR;
@@ -202,7 +209,7 @@ void updateChannelMapLegacy(spa_audio_info_raw* info, int channels)
             info->position[1] = SPA_AUDIO_CHANNEL_FR;
             info->position[0] = SPA_AUDIO_CHANNEL_FL;
             break;
-        case(7):
+        case 7:
             info->position[6] = SPA_AUDIO_CHANNEL_SR;
             info->position[5] = SPA_AUDIO_CHANNEL_SL;
             info->position[4] = SPA_AUDIO_CHANNEL_RC;
@@ -211,7 +218,7 @@ void updateChannelMapLegacy(spa_audio_info_raw* info, int channels)
             info->position[1] = SPA_AUDIO_CHANNEL_FR;
             info->position[0] = SPA_AUDIO_CHANNEL_FL;
             break;
-        case(6):
+        case 6:
             info->position[5] = SPA_AUDIO_CHANNEL_RR;
             info->position[4] = SPA_AUDIO_CHANNEL_RL;
             info->position[3] = SPA_AUDIO_CHANNEL_LFE;
@@ -219,27 +226,27 @@ void updateChannelMapLegacy(spa_audio_info_raw* info, int channels)
             info->position[1] = SPA_AUDIO_CHANNEL_FR;
             info->position[0] = SPA_AUDIO_CHANNEL_FL;
             break;
-        case(5):
+        case 5:
             info->position[4] = SPA_AUDIO_CHANNEL_RR;
             info->position[3] = SPA_AUDIO_CHANNEL_RL;
             info->position[2] = SPA_AUDIO_CHANNEL_FC;
             info->position[1] = SPA_AUDIO_CHANNEL_FR;
             info->position[0] = SPA_AUDIO_CHANNEL_FL;
             break;
-        case(4):
+        case 4:
             info->position[3] = SPA_AUDIO_CHANNEL_RR;
             info->position[2] = SPA_AUDIO_CHANNEL_RL;
             info->position[1] = SPA_AUDIO_CHANNEL_FR;
             info->position[0] = SPA_AUDIO_CHANNEL_FL;
             break;
-        case(3):
+        case 3:
             info->position[2] = SPA_AUDIO_CHANNEL_FC;
             // Fall through
-        case(2):
+        case 2:
             info->position[1] = SPA_AUDIO_CHANNEL_FR;
             info->position[0] = SPA_AUDIO_CHANNEL_FL;
             break;
-        case(1):
+        case 1:
             info->position[0] = SPA_AUDIO_CHANNEL_MONO;
             break;
         default:
@@ -295,6 +302,13 @@ bool supportsPipewireLayout(const Fooyin::AudioFormat& format)
 } // namespace
 
 namespace Fooyin::Pipewire {
+PipeWireOutput::PipeWireOutput()
+    : m_volume{1.0}
+    , m_lastPwWriteBytes{0}
+    , m_targetBufferFrames{0}
+    , m_loopStarted{false}
+{ }
+
 bool PipeWireOutput::init(const AudioFormat& format)
 {
     m_format             = format;
@@ -313,7 +327,7 @@ bool PipeWireOutput::init(const AudioFormat& format)
     m_buffer                 = std::make_unique<LockFreeRingBuffer<std::byte>>(targetBytes);
     m_lastPwWriteBytes.store(0, std::memory_order_relaxed);
 
-    pw_init(nullptr, nullptr);
+    ensurePipeWireInitialised();
 
     qCDebug(PIPEWIRE) << "PipeWire backend initialised with queue target:" << m_targetBufferFrames << "frames ("
                       << BufferLength << "ms)";
@@ -324,7 +338,6 @@ bool PipeWireOutput::init(const AudioFormat& format)
 void PipeWireOutput::uninit()
 {
     uninitCore();
-    pw_deinit();
 }
 
 void PipeWireOutput::reset()
@@ -383,27 +396,22 @@ QString PipeWireOutput::device() const
     return m_device;
 }
 
-OutputDevices PipeWireOutput::getAllDevices(bool isCurrentOutput)
+OutputDevices PipeWireOutput::getAllDevices(bool /*isCurrentOutput*/)
 {
     OutputDevices devices;
 
     devices.emplace_back(u"default"_s, u"Default"_s);
 
-    if(!isCurrentOutput) {
-        pw_init(nullptr, nullptr);
-    }
+    ensurePipeWireInitialised();
 
     if(!initCore()) {
+        uninitCore();
         return {};
     }
 
     std::ranges::copy(m_registry->devices(), std::back_inserter(devices));
 
     uninitCore();
-
-    if(!isCurrentOutput) {
-        pw_deinit();
-    }
 
     return devices;
 }
@@ -582,7 +590,8 @@ AudioFormat PipeWireOutput::format() const
 
 bool PipeWireOutput::initCore()
 {
-    m_loop = std::make_unique<PipewireThreadLoop>();
+    m_loopStarted = false;
+    m_loop        = std::make_unique<PipewireThreadLoop>();
 
     if(!m_loop->loop()) {
         return false;
@@ -608,6 +617,7 @@ bool PipeWireOutput::initCore()
         qCWarning(PIPEWIRE) << "Failed to start thread loop";
         return false;
     }
+    m_loopStarted = true;
 
     {
         const ThreadLoopGuard guard{m_loop.get()};
@@ -669,30 +679,40 @@ bool PipeWireOutput::initStream()
 
 void PipeWireOutput::uninitCore()
 {
-    if(m_stream) {
-        const ThreadLoopGuard guard{m_loop.get()};
-        m_stream->flush(false);
-        m_stream.reset(nullptr);
-    }
-
     if(m_loop) {
-        m_loop->stop();
-    }
+        {
+            const ThreadLoopGuard guard{m_loop.get()};
 
-    if(m_core) {
-        m_core.reset(nullptr);
-    }
+            if(m_stream) {
+                m_stream->flush(false);
+                m_stream.reset(nullptr);
+            }
 
-    if(m_context) {
-        m_context.reset(nullptr);
-    }
+            if(m_registry) {
+                m_registry.reset(nullptr);
+            }
 
-    if(m_loop) {
+            if(m_core) {
+                m_core.reset(nullptr);
+            }
+
+            if(m_context) {
+                m_context.reset(nullptr);
+            }
+        }
+
+        if(m_loopStarted) {
+            m_loop->stop();
+            m_loopStarted = false;
+        }
+
         m_loop.reset(nullptr);
     }
-
-    if(m_registry) {
+    else {
+        m_stream.reset(nullptr);
         m_registry.reset(nullptr);
+        m_core.reset(nullptr);
+        m_context.reset(nullptr);
     }
 
     m_buffer.reset();
