@@ -54,6 +54,11 @@ fooyin_option(BUILD_SHARED_LIBS "Build fooyin libraries as shared" ON)
 fooyin_option(BUILD_TESTING "Build fooyin tests" OFF)
 fooyin_option(BUILD_SENSITIVE_TESTING "Build time-sensitive tests" OFF)
 fooyin_option(BUILD_PLUGINS "Build plugins included with fooyin" ON)
+set(PLUGIN_SELECTION "" CACHE STRING
+"Plugin selection filter. Empty builds the default set; use 'none' to build no plugins; use a semicolon
+or comma-separated list to build only those plugins, or prefix names with '-' to exclude them from the default set
+(for example: -discord or discord,lyrics)."
+)
 fooyin_option(BUILD_ALSA "Build ALSA plugin" ON)
 fooyin_option(BUILD_TRANSLATIONS "Build translation files" ON)
 fooyin_option(BUILD_CCACHE "Build using CCache if found" ON)

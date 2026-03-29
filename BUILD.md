@@ -103,6 +103,8 @@ The following options can be passed to CMake to customise the build:
 * `-DBUILD_SENSITIVE_TESTING` - Build time-sensitive tests (OFF by default; may be unreliable in heavily 
 loaded environments)
 * `-DBUILD_PLUGINS` - Build the plugins included with fooyin (ON by default)
+* `-DPLUGIN_SELECTION` - Select bundled plugins to build. Leave empty for the default set, use `none` for no plugins, 
+or use a semicolon/comma-separated list of plugin names to include or `-name` entries to exclude
 * `-DBUILD_ALSA` - Build the ALSA plugin (ON by default)
 * `-DBUILD_TRANSLATIONS` - Build translation files (ON by default)
 * `-DBUILD_CCACHE` - Build using CCache if found (ON by default)
