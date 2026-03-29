@@ -775,6 +775,12 @@ void DspManagerPageWidget::loadPreset()
 
 void DspManagerPageWidget::savePreset()
 {
+    syncChainFromActiveList();
+
+    auto presetChain{m_chain};
+    removeEntriesFromChain(presetChain.perTrackChain, m_pendingRemovedPerTrack);
+    removeEntriesFromChain(presetChain.masterChain, m_pendingRemovedMaster);
+
     const QString name = m_presetBox->currentText().trimmed();
     if(name.isEmpty()) {
         return;
@@ -790,7 +796,7 @@ void DspManagerPageWidget::savePreset()
 
         DspChainPreset preset = existing.value();
 
-        preset.chain = m_chain;
+        preset.chain = presetChain;
 
         m_presetRegistry->changeItem(preset);
 
@@ -801,7 +807,7 @@ void DspManagerPageWidget::savePreset()
 
     DspChainPreset preset;
     preset.name  = name;
-    preset.chain = m_chain;
+    preset.chain = presetChain;
 
     m_presetRegistry->addItem(preset);
     refreshPresets();
