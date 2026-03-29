@@ -25,6 +25,7 @@
 #include "ffmpegutils.h"
 #include "internalcoresettings.h"
 
+#include <core/constants.h>
 #include <core/coresettings.h>
 #include <core/engine/audiobuffer.h>
 
@@ -34,23 +35,23 @@
 
 #include <cstring>
 
-#if defined(Q_OS_WINDOWS)
+#ifdef Q_OS_WINDOWS
 #define snprintf _snprintf
 #define vsnprintf _vsnprintf
 #define strcasecmp _stricmp
 #define strncasecmp _strnicmp
 #endif
 
-#if defined(__GNUG__)
+#ifdef __GNUG__
 #pragma GCC diagnostic ignored "-Wold-style-cast"
-#elif defined(__clang__)
+#elifdef __clang__
 #pragma clang diagnostic ignored "-Wold-style-cast"
 #endif
 
 using namespace Qt::StringLiterals;
 
-constexpr AVRational TimeBaseAv           = {1, AV_TIME_BASE};
-constexpr AVRational TimeBaseMs           = {1, 1000};
+constexpr AVRational TimeBaseAv           = {.num = 1, .den = AV_TIME_BASE};
+constexpr AVRational TimeBaseMs           = {.num = 1, .den = 1000};
 constexpr auto MaxConsecutiveDecodeErrors = 8;
 
 using namespace std::chrono_literals;
@@ -101,25 +102,25 @@ QStringList fileExtensions(bool allSupported)
 QString getCodec(AVCodecID codec)
 {
     switch(codec) {
-        case(AV_CODEC_ID_AAC):
+        case AV_CODEC_ID_AAC:
             return u"AAC"_s;
-        case(AV_CODEC_ID_ALAC):
+        case AV_CODEC_ID_ALAC:
             return u"ALAC"_s;
-        case(AV_CODEC_ID_MP2):
+        case AV_CODEC_ID_MP2:
             return u"MP2"_s;
-        case(AV_CODEC_ID_MP3):
+        case AV_CODEC_ID_MP3:
             return u"MP3"_s;
-        case(AV_CODEC_ID_WAVPACK):
+        case AV_CODEC_ID_WAVPACK:
             return u"WavPack"_s;
-        case(AV_CODEC_ID_FLAC):
+        case AV_CODEC_ID_FLAC:
             return u"FLAC"_s;
-        case(AV_CODEC_ID_OPUS):
+        case AV_CODEC_ID_OPUS:
             return u"Opus"_s;
-        case(AV_CODEC_ID_VORBIS):
+        case AV_CODEC_ID_VORBIS:
             return u"Vorbis"_s;
-        case(AV_CODEC_ID_WMAV2):
+        case AV_CODEC_ID_WMAV2:
             return u"WMA"_s;
-        case(AV_CODEC_ID_DTS):
+        case AV_CODEC_ID_DTS:
             return u"DTS"_s;
         default:
             return {};
@@ -185,6 +186,26 @@ QString convertString(const char* str)
 {
     return QString::fromUtf8(str);
 };
+
+float parseReplayGain(const QString& gainStr)
+{
+    QString string = gainStr.trimmed();
+    if(string.endsWith("dB"_L1, Qt::CaseInsensitive)) {
+        string.chop(2);
+        string = string.trimmed();
+    }
+
+    bool ok{false};
+    const float gain = string.toFloat(&ok);
+    return ok ? gain : Fooyin::Constants::InvalidGain;
+}
+
+float parseReplayPeak(const QString& peakStr)
+{
+    bool ok{false};
+    const float peak = peakStr.toFloat(&ok);
+    return ok ? peak : Fooyin::Constants::InvalidPeak;
+}
 
 void parseTag(Fooyin::Track& track, AVDictionaryEntry* tag)
 {
@@ -254,6 +275,18 @@ void parseTag(Fooyin::Track& track, AVDictionaryEntry* tag)
         track.addExtraTag(u"PODCASTCATEGORY"_s, convertString(tag->value));
     }
     else if(strncasecmp(tag->key, "ID3V2_PRIV", 10) == 0) { }
+    else if(strcasecmp(tag->key, "REPLAYGAIN_TRACK_GAIN") == 0) {
+        track.setRGTrackGain(parseReplayGain(convertString(tag->value)));
+    }
+    else if(strcasecmp(tag->key, "REPLAYGAIN_TRACK_PEAK") == 0) {
+        track.setRGTrackPeak(parseReplayPeak(convertString(tag->value)));
+    }
+    else if(strcasecmp(tag->key, "REPLAYGAIN_ALBUM_GAIN") == 0) {
+        track.setRGAlbumGain(parseReplayGain(convertString(tag->value)));
+    }
+    else if(strcasecmp(tag->key, "REPLAYGAIN_ALBUM_PEAK") == 0) {
+        track.setRGAlbumPeak(parseReplayPeak(convertString(tag->value)));
+    }
     else {
         track.addExtraTag(convertString(tag->key).toUpper(), convertString(tag->value));
     }
@@ -447,7 +480,7 @@ public:
     Codec m_codec;
     AudioFormat m_audioFormat;
 
-    AVRational m_timeBase{0, 0};
+    AVRational m_timeBase{.num = 0, .den = 0};
     bool m_isSeekable{false};
     bool m_draining{false};
     bool m_error{false};
@@ -992,7 +1025,7 @@ bool FFmpegReader::readTrack(const AudioSource& /*source*/, Track& track)
     track.setCodec(getCodec(codecPar->codec_id));
     track.setSampleRate(format.sampleRate());
     track.setChannels(format.channelCount());
-    track.setBitDepth(format.bitsPerSample());
+    track.setBitDepth(format.bitdepth());
     track.setEncoding(isLossless(codecPar->codec_id) ? u"Lossless"_s : u"Lossy"_s);
 
     if(track.duration() == 0) {
