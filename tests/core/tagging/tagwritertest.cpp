@@ -22,6 +22,9 @@
 #include <core/engine/input/taglibparser.h>
 #include <core/track.h>
 
+#include <QBuffer>
+#include <QImage>
+
 #include <gtest/gtest.h>
 
 // clazy:excludeall=returning-void-expression
@@ -34,6 +37,29 @@ class TagWriterTest : public ::testing::Test
 protected:
     TagLibReader m_parser;
 };
+
+namespace {
+QByteArray createPngCover(const QSize& size)
+{
+    QImage image(size, QImage::Format_ARGB32);
+
+    for(int y{0}; y < image.height(); ++y) {
+        for(int x{0}; x < image.width(); ++x) {
+            image.setPixelColor(x, y,
+                                QColor::fromRgb((x * 255) / image.width(), (y * 255) / image.height(),
+                                                ((x + y) * 255) / (image.width() + image.height())));
+        }
+    }
+
+    QByteArray data;
+    QBuffer buffer{&data};
+    if(buffer.open(QIODevice::WriteOnly)) {
+        image.save(&buffer, "PNG");
+    }
+
+    return data;
+}
+} // namespace
 
 TEST_F(TagWriterTest, AiffWrite)
 {
@@ -155,6 +181,30 @@ TEST_F(TagWriterTest, FlacWrite)
         ASSERT_TRUE(!writeTag.isEmpty());
         EXPECT_EQ(writeTag.front(), QStringLiteral("Success"));
     }
+}
+
+TEST_F(TagWriterTest, FlacCoverWrite)
+{
+    const QString filepath = QStringLiteral(":/audio/audiotest.flac");
+    TempResource file{filepath};
+    file.checkValid();
+
+    AudioSource source;
+    source.filepath = file.fileName();
+    source.device   = &file;
+
+    const QByteArray coverData = createPngCover({4000, 4000});
+    ASSERT_FALSE(coverData.isEmpty());
+
+    TrackCovers covers;
+    covers.emplace(Track::Cover::Front, CoverImage{.mimeType = QStringLiteral("image/png"), .data = coverData});
+
+    Track track{file.fileName()};
+    ASSERT_TRUE(m_parser.writeCover(source, track, covers, Flags));
+
+    const QByteArray writtenCover = m_parser.readCover(source, track, Track::Cover::Front);
+    ASSERT_FALSE(writtenCover.isEmpty());
+    EXPECT_EQ(writtenCover, coverData);
 }
 
 TEST_F(TagWriterTest, M4aWrite)
