@@ -237,24 +237,25 @@ void MediaControlPlugin::updateDisplay()
             genres.Append(track.genreAt(index).toStdWString());
         }
 
-        m_coverProvider->trackCoverFull(track, Track::Cover::Front).then([this, updater](const QPixmap& cover) {
-            if(!ensureSmtc()) {
-                return;
-            }
+        m_coverProvider->trackCoverThumbnailAsync(track, CoverProvider::Medium, Track::Cover::Front)
+            .then([this, updater](const QPixmap& cover) {
+                if(!ensureSmtc()) {
+                    return;
+                }
 
-            if(!cover.isNull()) {
-                QByteArray ba;
-                QBuffer buffer{&ba};
-                buffer.open(QIODevice::WriteOnly);
-                cover.save(&buffer, "PNG");
+                if(!cover.isNull()) {
+                    QByteArray ba;
+                    QBuffer buffer{&ba};
+                    buffer.open(QIODevice::WriteOnly);
+                    cover.save(&buffer, "PNG");
 
-                setThumbnailAsync(ba, updater);
-            }
-            else {
-                updater.Thumbnail(nullptr);
-                updater.Update();
-            }
-        });
+                    setThumbnailAsync(ba, updater);
+                }
+                else {
+                    updater.Thumbnail(nullptr);
+                    updater.Update();
+                }
+            });
     }
     catch(const winrt::hresult_error&) {
         destroySmtc();

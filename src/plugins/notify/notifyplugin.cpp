@@ -148,7 +148,7 @@ void NotifyPlugin::trackChanged(const Track& track)
         return;
     }
 
-    m_coverProvider->trackCoverFull(track, Track::Cover::Front)
+    m_coverProvider->trackCoverThumbnailAsync(track, CoverProvider::Medium, Track::Cover::Front)
         .then(this, [this, loadGeneration = m_notificationGeneration, track](const QPixmap& cover) {
             if(loadGeneration == m_notificationGeneration && m_settings->value<Settings::Notify::Enabled>()) {
                 showNotification(track, cover);
