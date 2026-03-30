@@ -445,8 +445,14 @@ void MprisPlugin::trackChanged(const PlaylistTrack& playlistTrack)
 
     if(playlistTrack.isValid()) {
         loadMetaData(playlistTrack);
-        notify({{u"CanSeek"_s, canSeek()}, {u"CanGoNext"_s, canGoNext()}, {u"CanGoPrevious"_s, canGoPrevious()}});
     }
+
+    notify({{u"Metadata"_s, metadata()},
+            {u"CanPause"_s, canPause()},
+            {u"CanPlay"_s, canPlay()},
+            {u"CanSeek"_s, canSeek()},
+            {u"CanGoNext"_s, canGoNext()},
+            {u"CanGoPrevious"_s, canGoPrevious()}});
 }
 
 void MprisPlugin::loadMetaData(const PlaylistTrack& playlistTrack)
