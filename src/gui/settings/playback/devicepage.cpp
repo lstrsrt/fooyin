@@ -79,6 +79,7 @@ private:
     ExpandingComboBox* m_outputBox;
     QTableView* m_devices;
     OutputDevicesModel* m_model;
+    QString m_loadedOutput;
 
     std::map<QString, Engine::OutputDeviceProfiles> m_profilesByOutput;
     std::map<QString, Engine::OutputDeviceProfiles> m_loadedProfilesByOutput;
@@ -129,6 +130,7 @@ void DevicePageWidget::load()
     m_profilesByOutput.clear();
     m_loadedProfilesByOutput.clear();
     m_model->setEntries({});
+    m_loadedOutput.clear();
 
     const QSignalBlocker blocker{m_outputBox};
     m_outputBox->clear();
@@ -225,18 +227,18 @@ void DevicePageWidget::reset()
 
 void DevicePageWidget::storeCurrentOutput()
 {
-    const QString output = m_outputBox->currentText();
-    if(output.isEmpty()) {
+    if(m_loadedOutput.isEmpty()) {
         return;
     }
 
-    m_profilesByOutput[output] = m_model->profiles(output);
+    m_profilesByOutput[m_loadedOutput] = m_model->profiles(m_loadedOutput);
 }
 
 void DevicePageWidget::loadOutput(const QString& output)
 {
     if(output.isEmpty()) {
         m_model->setEntries({});
+        m_loadedOutput.clear();
         return;
     }
 
@@ -259,6 +261,7 @@ void DevicePageWidget::loadOutput(const QString& output)
     }
 
     m_model->setEntries(entries);
+    m_loadedOutput = output;
     updateColumnWidths();
 }
 
