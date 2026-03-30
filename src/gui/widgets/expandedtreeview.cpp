@@ -2990,6 +2990,10 @@ void ExpandedTreeView::setModel(QAbstractItemModel* model)
     p->m_model            = model;
     QAbstractItemView::setModel(model);
 
+    QObject::connect(model, &QAbstractItemModel::modelAboutToBeReset, this, [this]() {
+        p->interruptDelayedItemsLayout();
+        p->m_viewItems.clear();
+    });
     QObject::connect(model, &QAbstractItemModel::rowsRemoved, this, &ExpandedTreeView::rowsRemoved);
 }
 
@@ -3364,6 +3368,8 @@ void ExpandedTreeView::doItemsLayout()
 
 void ExpandedTreeView::reset()
 {
+    p->interruptDelayedItemsLayout();
+    p->m_viewItems.clear();
     QAbstractItemView::reset();
     p->doDelayedItemsLayout();
 }
