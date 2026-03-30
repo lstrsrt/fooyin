@@ -53,6 +53,7 @@ WaveBarConfigDialog::WaveBarConfigDialog(WaveBarWidget* waveBar, QWidget* parent
     , m_cursorWidth{new QSpinBox(this)}
     , m_barWidth{new QSpinBox(this)}
     , m_barGap{new QSpinBox(this)}
+    , m_supersampleFactor{new QComboBox(this)}
     , m_maxScale{new QDoubleSpinBox(this)}
     , m_centreGap{new QSpinBox(this)}
     , m_colourGroup{new QGroupBox(tr("Custom colours"), this)}
@@ -115,10 +116,27 @@ WaveBarConfigDialog::WaveBarConfigDialog(WaveBarWidget* waveBar, QWidget* parent
     m_maxScale->setRange(0.0, 2.0);
     m_maxScale->setSingleStep(0.25);
     m_maxScale->setPrefix(u"x"_s);
+
+    const QString supersampleTip{
+        tr("Internal horizontal render scale for the waveform.\n"
+           "Higher values can improve detail, but may increase CPU usage.\n"
+           "For best results at higher values, increase Number of samples as well.\n"
+           "Supersampling is intended for 1 px bars with a 0 px gap; other bar sizes can produce artifacts.")};
+    m_supersampleFactor->addItem(tr("Off"), 1);
+    m_supersampleFactor->addItem(tr("2x"), 2);
+    m_supersampleFactor->addItem(tr("4x"), 4);
+    m_supersampleFactor->addItem(tr("8x"), 8);
+    m_supersampleFactor->setToolTip(supersampleTip);
+
+    auto* supersampleLabel = new QLabel(tr("Supersampling") + u":"_s, this);
+    supersampleLabel->setToolTip(supersampleTip);
+
     scaleGroupLayout->addWidget(new QLabel(tr("Channel scale") + u":"_s, this), 0, 0);
     scaleGroupLayout->addWidget(m_channelScale, 0, 1);
     scaleGroupLayout->addWidget(new QLabel(tr("Max scale") + u":"_s, this), 1, 0);
     scaleGroupLayout->addWidget(m_maxScale, 1, 1);
+    scaleGroupLayout->addWidget(supersampleLabel, 2, 0);
+    scaleGroupLayout->addWidget(m_supersampleFactor, 2, 1);
     scaleGroupLayout->setColumnStretch(2, 1);
 
     auto* dimensionGroup       = new QGroupBox(tr("Dimension"), this);
@@ -174,14 +192,15 @@ WaveBarConfigDialog::WaveBarConfigDialog(WaveBarWidget* waveBar, QWidget* parent
 
     auto* cacheGroup       = new QGroupBox(tr("Cache"), this);
     auto* cacheGroupLayout = new QGridLayout(cacheGroup);
-    const QString numSamplesTip{tr("Number of samples (per channel) to use \n"
-                                   "for waveform data. Higher values will result \n"
-                                   "in a more accurate and detailed waveform at the \n"
-                                   "cost of using more disk space in the cache.")};
+    const QString numSamplesTip{tr("Number of samples (per channel) to use for waveform data.\n"
+                                   "Higher values produce a more accurate and detailed waveform, "
+                                   "but use more disk space in the cache.\n"
+                                   "Higher supersampling values work best with higher sample counts.")};
     auto* numSamplesLabel = new QLabel(tr("Number of samples") + u":"_s, this);
 
     m_numSamples->addItem(QString::number(2048), 2048);
     m_numSamples->addItem(QString::number(4096), 4096);
+    m_numSamples->addItem(QString::number(8192), 8192);
 
     numSamplesLabel->setToolTip(numSamplesTip);
     m_numSamples->setToolTip(numSamplesTip);
@@ -234,15 +253,16 @@ WaveBarWidget::ConfigData WaveBarConfigDialog::config() const
         .showCursor   = m_showCursor->isChecked(),
         .cursorWidth  = m_cursorWidth->value(),
         .mode         = static_cast<int>(mode),
-        .downmix   = m_downmixStereo->isChecked() ? static_cast<int>(DownmixOption::Stereo)
-                                                  : (m_downmixMono->isChecked() ? static_cast<int>(DownmixOption::Mono)
-                                                                                : static_cast<int>(DownmixOption::Off)),
-        .barWidth  = m_barWidth->value(),
-        .barGap    = m_barGap->value(),
-        .maxScale  = m_maxScale->value(),
-        .centreGap = m_centreGap->value(),
-        .channelScale  = m_channelScale->value(),
-        .colourOptions = QVariant{},
+        .downmix  = m_downmixStereo->isChecked() ? static_cast<int>(DownmixOption::Stereo)
+                                                 : (m_downmixMono->isChecked() ? static_cast<int>(DownmixOption::Mono)
+                                                                               : static_cast<int>(DownmixOption::Off)),
+        .barWidth = m_barWidth->value(),
+        .barGap   = m_barGap->value(),
+        .supersampleFactor = m_supersampleFactor->currentData().toInt(),
+        .maxScale          = m_maxScale->value(),
+        .centreGap         = m_centreGap->value(),
+        .channelScale      = m_channelScale->value(),
+        .colourOptions     = QVariant{},
     };
 
     if(m_colourGroup->isChecked()) {
@@ -278,6 +298,8 @@ void WaveBarConfigDialog::setConfig(const WaveBarWidget::ConfigData& config)
     m_channelScale->setValue(config.channelScale);
     m_barWidth->setValue(config.barWidth);
     m_barGap->setValue(config.barGap);
+    const int supersampleIndex = m_supersampleFactor->findData(config.supersampleFactor);
+    m_supersampleFactor->setCurrentIndex(supersampleIndex >= 0 ? supersampleIndex : 0);
     m_maxScale->setValue(config.maxScale);
     m_centreGap->setValue(config.centreGap);
 

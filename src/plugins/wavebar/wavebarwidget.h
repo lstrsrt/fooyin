@@ -62,6 +62,7 @@ public:
         int downmix{0};
         int barWidth{1};
         int barGap{0};
+        int supersampleFactor{1};
         double maxScale{1.0};
         int centreGap{0};
         double channelScale{0.9};

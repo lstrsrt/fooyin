@@ -49,6 +49,7 @@ public:
 
     void setSampleWidth(int width);
     void setDownmix(DownmixOption option);
+    void setSupersampleFactor(int factor);
 
 signals:
     void generatingWaveform();
@@ -69,6 +70,7 @@ private:
     int m_width;
     int m_samplesPerChannel;
     int m_sampleWidth;
+    int m_supersampleFactor;
     DownmixOption m_downmix;
     bool m_rescale;
 };

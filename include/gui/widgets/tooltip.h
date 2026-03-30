@@ -31,6 +31,7 @@ class FYGUI_EXPORT ToolTip : public QWidget
 public:
     explicit ToolTip(QWidget* parent = nullptr);
 
+    void setContent(const QString& text, const QString& subtext);
     void setText(const QString& text);
     void setSubtext(const QString& text);
     void setPosition(const QPoint& pos, Qt::Alignment align = Qt::AlignLeft);
@@ -39,6 +40,7 @@ protected:
     void paintEvent(QPaintEvent* event) override;
 
 private:
+    void updatePosition();
     void redraw();
 
     QString m_text;

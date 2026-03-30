@@ -47,20 +47,28 @@ using namespace std::chrono_literals;
 using namespace Qt::StringLiterals;
 
 // Settings
-constexpr auto ShowLabelsKey   = u"WaveBar/ShowLabels";
-constexpr auto ElapsedTotalKey = u"WaveBar/ElapsedTotal";
-constexpr auto ShowCursorKey   = u"WaveBar/ShowCursor";
-constexpr auto CursorWidthKey  = u"WaveBar/CursorWidth";
-constexpr auto ModeKey         = u"WaveBar/Mode";
-constexpr auto DownmixKey      = u"WaveBar/Downmix";
-constexpr auto BarWidthKey     = u"WaveBar/BarWidth";
-constexpr auto BarGapKey       = u"WaveBar/BarGap";
-constexpr auto MaxScaleKey     = u"WaveBar/MaxScale";
-constexpr auto CentreGapKey    = u"WaveBar/CentreGap";
-constexpr auto ChannelScaleKey = u"WaveBar/ChannelScale";
-constexpr auto ColoursKey      = u"WaveBar/Colours";
+constexpr auto ShowLabelsKey        = u"WaveBar/ShowLabels";
+constexpr auto ElapsedTotalKey      = u"WaveBar/ElapsedTotal";
+constexpr auto ShowCursorKey        = u"WaveBar/ShowCursor";
+constexpr auto CursorWidthKey       = u"WaveBar/CursorWidth";
+constexpr auto ModeKey              = u"WaveBar/Mode";
+constexpr auto DownmixKey           = u"WaveBar/Downmix";
+constexpr auto BarWidthKey          = u"WaveBar/BarWidth";
+constexpr auto BarGapKey            = u"WaveBar/BarGap";
+constexpr auto SupersampleFactorKey = u"WaveBar/SupersampleFactor";
+constexpr auto MaxScaleKey          = u"WaveBar/MaxScale";
+constexpr auto CentreGapKey         = u"WaveBar/CentreGap";
+constexpr auto ChannelScaleKey      = u"WaveBar/ChannelScale";
+constexpr auto ColoursKey           = u"WaveBar/Colours";
 
 namespace Fooyin::WaveBar {
+namespace {
+int normaliseSupersampleFactor(int factor)
+{
+    return std::clamp(factor, 1, 8);
+}
+} // namespace
+
 WaveBarWidget::WaveBarWidget(std::shared_ptr<AudioLoader> audioLoader, DbConnectionPoolPtr dbPool,
                              PlayerController* playerController, SettingsManager* settings, QWidget* parent)
     : FyWidget{parent}
@@ -144,18 +152,19 @@ WaveBarWidget::ConfigData WaveBarWidget::defaultConfig() const
 {
     auto config{factoryConfig()};
 
-    config.showLabels    = m_settings->fileValue(ShowLabelsKey, config.showLabels).toBool();
-    config.elapsedTotal  = m_settings->fileValue(ElapsedTotalKey, config.elapsedTotal).toBool();
-    config.showCursor    = m_settings->fileValue(ShowCursorKey, config.showCursor).toBool();
-    config.cursorWidth   = m_settings->fileValue(CursorWidthKey, config.cursorWidth).toInt();
-    config.mode          = m_settings->fileValue(ModeKey, config.mode).toInt();
-    config.downmix       = m_settings->fileValue(DownmixKey, config.downmix).toInt();
-    config.barWidth      = m_settings->fileValue(BarWidthKey, config.barWidth).toInt();
-    config.barGap        = m_settings->fileValue(BarGapKey, config.barGap).toInt();
-    config.maxScale      = m_settings->fileValue(MaxScaleKey, config.maxScale).toDouble();
-    config.centreGap     = m_settings->fileValue(CentreGapKey, config.centreGap).toInt();
-    config.channelScale  = m_settings->fileValue(ChannelScaleKey, config.channelScale).toDouble();
-    config.colourOptions = m_settings->fileValue(ColoursKey, config.colourOptions);
+    config.showLabels        = m_settings->fileValue(ShowLabelsKey, config.showLabels).toBool();
+    config.elapsedTotal      = m_settings->fileValue(ElapsedTotalKey, config.elapsedTotal).toBool();
+    config.showCursor        = m_settings->fileValue(ShowCursorKey, config.showCursor).toBool();
+    config.cursorWidth       = m_settings->fileValue(CursorWidthKey, config.cursorWidth).toInt();
+    config.mode              = m_settings->fileValue(ModeKey, config.mode).toInt();
+    config.downmix           = m_settings->fileValue(DownmixKey, config.downmix).toInt();
+    config.barWidth          = m_settings->fileValue(BarWidthKey, config.barWidth).toInt();
+    config.barGap            = m_settings->fileValue(BarGapKey, config.barGap).toInt();
+    config.supersampleFactor = m_settings->fileValue(SupersampleFactorKey, config.supersampleFactor).toInt();
+    config.maxScale          = m_settings->fileValue(MaxScaleKey, config.maxScale).toDouble();
+    config.centreGap         = m_settings->fileValue(CentreGapKey, config.centreGap).toInt();
+    config.channelScale      = m_settings->fileValue(ChannelScaleKey, config.channelScale).toDouble();
+    config.colourOptions     = m_settings->fileValue(ColoursKey, config.colourOptions);
 
     return config;
 }
@@ -163,18 +172,19 @@ WaveBarWidget::ConfigData WaveBarWidget::defaultConfig() const
 WaveBarWidget::ConfigData WaveBarWidget::factoryConfig() const
 {
     return {
-        .showLabels    = false,
-        .elapsedTotal  = false,
-        .showCursor    = true,
-        .cursorWidth   = 3,
-        .mode          = static_cast<int>(Default),
-        .downmix       = 0,
-        .barWidth      = 1,
-        .barGap        = 0,
-        .maxScale      = 1.0,
-        .centreGap     = 0,
-        .channelScale  = 0.9,
-        .colourOptions = QVariant{},
+        .showLabels        = false,
+        .elapsedTotal      = false,
+        .showCursor        = true,
+        .cursorWidth       = 3,
+        .mode              = static_cast<int>(Default),
+        .downmix           = 0,
+        .barWidth          = 1,
+        .barGap            = 0,
+        .supersampleFactor = 1,
+        .maxScale          = 1.0,
+        .centreGap         = 0,
+        .channelScale      = 0.9,
+        .colourOptions     = QVariant{},
     };
 }
 
@@ -208,12 +218,13 @@ void WaveBarWidget::saveDefaults(const ConfigData& config) const
 {
     auto validated{config};
 
-    validated.cursorWidth  = std::clamp(validated.cursorWidth, 1, 20);
-    validated.barWidth     = std::clamp(validated.barWidth, 1, 50);
-    validated.barGap       = std::clamp(validated.barGap, 0, 50);
-    validated.maxScale     = std::clamp(validated.maxScale, 0.0, 2.0);
-    validated.centreGap    = std::clamp(validated.centreGap, 0, 10);
-    validated.channelScale = std::clamp(validated.channelScale, 0.0, 1.0);
+    validated.cursorWidth       = std::clamp(validated.cursorWidth, 1, 20);
+    validated.barWidth          = std::clamp(validated.barWidth, 1, 50);
+    validated.barGap            = std::clamp(validated.barGap, 0, 50);
+    validated.supersampleFactor = normaliseSupersampleFactor(validated.supersampleFactor);
+    validated.maxScale          = std::clamp(validated.maxScale, 0.0, 2.0);
+    validated.centreGap         = std::clamp(validated.centreGap, 0, 10);
+    validated.channelScale      = std::clamp(validated.channelScale, 0.0, 1.0);
     validated.downmix
         = std::clamp(validated.downmix, static_cast<int>(DownmixOption::Off), static_cast<int>(DownmixOption::Mono));
     validated.mode &= static_cast<int>(MinMax | Rms | Silence);
@@ -231,6 +242,7 @@ void WaveBarWidget::saveDefaults(const ConfigData& config) const
     m_settings->fileSet(DownmixKey, validated.downmix);
     m_settings->fileSet(BarWidthKey, validated.barWidth);
     m_settings->fileSet(BarGapKey, validated.barGap);
+    m_settings->fileSet(SupersampleFactorKey, validated.supersampleFactor);
     m_settings->fileSet(MaxScaleKey, validated.maxScale);
     m_settings->fileSet(CentreGapKey, validated.centreGap);
     m_settings->fileSet(ChannelScaleKey, validated.channelScale);
@@ -247,6 +259,7 @@ void WaveBarWidget::clearSavedDefaults() const
     m_settings->fileRemove(DownmixKey);
     m_settings->fileRemove(BarWidthKey);
     m_settings->fileRemove(BarGapKey);
+    m_settings->fileRemove(SupersampleFactorKey);
     m_settings->fileRemove(MaxScaleKey);
     m_settings->fileRemove(CentreGapKey);
     m_settings->fileRemove(ChannelScaleKey);
@@ -258,12 +271,13 @@ void WaveBarWidget::applyConfig(const ConfigData& config)
 {
     auto validated{config};
 
-    validated.cursorWidth  = std::clamp(validated.cursorWidth, 1, 20);
-    validated.barWidth     = std::clamp(validated.barWidth, 1, 50);
-    validated.barGap       = std::clamp(validated.barGap, 0, 50);
-    validated.maxScale     = std::clamp(validated.maxScale, 0.0, 2.0);
-    validated.centreGap    = std::clamp(validated.centreGap, 0, 10);
-    validated.channelScale = std::clamp(validated.channelScale, 0.0, 1.0);
+    validated.cursorWidth       = std::clamp(validated.cursorWidth, 1, 20);
+    validated.barWidth          = std::clamp(validated.barWidth, 1, 50);
+    validated.barGap            = std::clamp(validated.barGap, 0, 50);
+    validated.supersampleFactor = normaliseSupersampleFactor(validated.supersampleFactor);
+    validated.maxScale          = std::clamp(validated.maxScale, 0.0, 2.0);
+    validated.centreGap         = std::clamp(validated.centreGap, 0, 10);
+    validated.channelScale      = std::clamp(validated.channelScale, 0.0, 1.0);
     validated.downmix
         = std::clamp(validated.downmix, static_cast<int>(DownmixOption::Off), static_cast<int>(DownmixOption::Mono));
     validated.mode &= static_cast<int>(MinMax | Rms | Silence);
@@ -283,6 +297,7 @@ void WaveBarWidget::applyConfig(const ConfigData& config)
     m_seekbar->setChannelScale(m_config.channelScale);
     m_seekbar->setBarWidth(m_config.barWidth);
     m_seekbar->setBarGap(m_config.barGap);
+    m_seekbar->setSupersampleFactor(m_config.supersampleFactor);
     m_seekbar->setMaxScale(m_config.maxScale);
     m_seekbar->setCentreGap(m_config.centreGap);
     m_seekbar->setMode(static_cast<WaveModes>(m_config.mode));
@@ -290,6 +305,7 @@ void WaveBarWidget::applyConfig(const ConfigData& config)
 
     m_builder->setSampleWidth(m_config.barWidth + m_config.barGap);
     m_builder->setDownmix(static_cast<DownmixOption>(m_config.downmix));
+    m_builder->setSupersampleFactor(m_config.supersampleFactor);
 
     QMetaObject::invokeMethod(m_container, [this]() { rescaleWaveform(); }, Qt::QueuedConnection);
 }
@@ -321,6 +337,9 @@ WaveBarWidget::ConfigData WaveBarWidget::configFromLayout(const QJsonObject& lay
     }
     if(layout.contains("BarGap"_L1)) {
         config.barGap = layout.value("BarGap"_L1).toInt();
+    }
+    if(layout.contains("SupersampleFactor"_L1)) {
+        config.supersampleFactor = layout.value("SupersampleFactor"_L1).toInt();
     }
     if(layout.contains("MaxScale"_L1)) {
         config.maxScale = layout.value("MaxScale"_L1).toDouble();
@@ -378,17 +397,18 @@ WaveBarWidget::ConfigData WaveBarWidget::configFromLayout(const QJsonObject& lay
 
 void WaveBarWidget::saveConfigToLayout(const ConfigData& config, QJsonObject& layout) const
 {
-    layout["ShowLabels"_L1]   = config.showLabels;
-    layout["ElapsedTotal"_L1] = config.elapsedTotal;
-    layout["ShowCursor"_L1]   = config.showCursor;
-    layout["CursorWidth"_L1]  = config.cursorWidth;
-    layout["Mode"_L1]         = config.mode;
-    layout["Downmix"_L1]      = config.downmix;
-    layout["BarWidth"_L1]     = config.barWidth;
-    layout["BarGap"_L1]       = config.barGap;
-    layout["MaxScale"_L1]     = config.maxScale;
-    layout["CentreGap"_L1]    = config.centreGap;
-    layout["ChannelScale"_L1] = config.channelScale;
+    layout["ShowLabels"_L1]        = config.showLabels;
+    layout["ElapsedTotal"_L1]      = config.elapsedTotal;
+    layout["ShowCursor"_L1]        = config.showCursor;
+    layout["CursorWidth"_L1]       = config.cursorWidth;
+    layout["Mode"_L1]              = config.mode;
+    layout["Downmix"_L1]           = config.downmix;
+    layout["BarWidth"_L1]          = config.barWidth;
+    layout["BarGap"_L1]            = config.barGap;
+    layout["SupersampleFactor"_L1] = config.supersampleFactor;
+    layout["MaxScale"_L1]          = config.maxScale;
+    layout["CentreGap"_L1]         = config.centreGap;
+    layout["ChannelScale"_L1]      = config.channelScale;
 
     const bool customColours      = config.colourOptions.isValid() && config.colourOptions.canConvert<Colours>()
                                  && !config.colourOptions.value<Colours>().isEmpty();

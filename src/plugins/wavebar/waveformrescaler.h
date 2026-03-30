@@ -42,11 +42,13 @@ public slots:
 
     void changeSampleWidth(int width);
     void changeDownmix(DownmixOption option);
+    void changeSupersampleFactor(int factor);
 
 private:
     WaveformData<float> m_data;
     int m_width;
     int m_sampleWidth;
+    int m_supersampleFactor;
     DownmixOption m_downMix;
 };
 } // namespace Fooyin::WaveBar

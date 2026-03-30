@@ -69,6 +69,7 @@ WaveformRescaler::WaveformRescaler(QObject* parent)
     : Worker{parent}
     , m_width{0}
     , m_sampleWidth{1}
+    , m_supersampleFactor{1}
     , m_downMix{DownmixOption::Off}
 { }
 
@@ -93,7 +94,8 @@ void WaveformRescaler::rescale()
     data.channelData.resize(data.channels);
 
     const double sampleSpan       = m_data.complete ? m_data.sampleCount() : m_data.samplesPerChannel;
-    const int outputSampleCount   = std::max(1, 1 + std::max(0, m_width - 1) / m_sampleWidth);
+    const int outputSlotCount     = std::max(1, 1 + (std::max(0, m_width - 1) / m_sampleWidth));
+    const int outputSampleCount   = outputSlotCount * std::max(1, m_supersampleFactor);
     const double samplesPerOutput = sampleSpan / outputSampleCount;
 
     for(int ch{0}; ch < data.channels; ++ch) {
@@ -169,6 +171,14 @@ void WaveformRescaler::changeSampleWidth(int width)
 void WaveformRescaler::changeDownmix(DownmixOption option)
 {
     if(std::exchange(m_downMix, option) != option) {
+        rescale(m_width);
+    }
+}
+
+void WaveformRescaler::changeSupersampleFactor(int factor)
+{
+    factor = std::max(1, factor);
+    if(std::exchange(m_supersampleFactor, factor) != factor) {
         rescale(m_width);
     }
 }

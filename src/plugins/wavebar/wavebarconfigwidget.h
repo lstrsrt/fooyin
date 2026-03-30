@@ -72,6 +72,7 @@ private:
     QSpinBox* m_cursorWidth;
     QSpinBox* m_barWidth;
     QSpinBox* m_barGap;
+    QComboBox* m_supersampleFactor;
     QDoubleSpinBox* m_maxScale;
     QSpinBox* m_centreGap;
 

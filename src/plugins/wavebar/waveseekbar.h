@@ -50,6 +50,7 @@ public:
     void setCentreGap(int gap);
     void setMode(WaveModes mode);
     void setColours(const Colours& colours);
+    void setSupersampleFactor(int factor);
 
     [[nodiscard]] bool isSeeking() const;
     void stopSeeking();
@@ -69,12 +70,15 @@ protected:
 
 private:
     [[nodiscard]] double positionFromValue(double value) const;
+    [[nodiscard]] double positionFromValue(double value, double renderWidth) const;
     [[nodiscard]] uint64_t valueFromPosition(int pos) const;
     void updateMousePosition(const QPoint& pos);
     void updateRange(double first, double last);
 
-    void drawChannel(QPainter& painter, int channel, double height, int first, int last, int y);
-    void drawSilence(QPainter& painter, double first, double last, double y);
+    void drawCursors(QPainter& painter);
+    void paintWaveform(QPainter& painter, const QRect& rect, double renderWidth);
+    void drawChannel(QPainter& painter, int channel, double height, int first, int last, int y, double renderWidth);
+    void drawSilence(QPainter& painter, double first, double last, double y, double currentPosition);
     void drawSeekTip();
 
     Player::PlayState m_playState;
@@ -91,6 +95,7 @@ private:
     int m_barWidth;
     int m_barGap;
     int m_sampleWidth;
+    int m_supersampleFactor;
     double m_maxScale;
     int m_centreGap;
 

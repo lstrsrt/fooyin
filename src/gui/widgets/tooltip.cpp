@@ -30,20 +30,39 @@ ToolTip::ToolTip(QWidget* parent)
     , m_align{Qt::AlignLeft}
 {
     setAttribute(Qt::WA_TransparentForMouseEvents);
+    setAttribute(Qt::WA_TranslucentBackground);
+    setAttribute(Qt::WA_NoSystemBackground);
 
     m_font.setBold(true);
     m_subFont.setPointSize(m_subFont.pointSize() - 2);
 }
 
+void ToolTip::setContent(const QString& text, const QString& subtext)
+{
+    if(m_text == text && m_subText == subtext) {
+        return;
+    }
+
+    m_text    = text;
+    m_subText = subtext;
+    redraw();
+}
+
 void ToolTip::setText(const QString& text)
 {
-    m_text = text;
+    if(std::exchange(m_text, text) == text) {
+        return;
+    }
+
     redraw();
 }
 
 void ToolTip::setSubtext(const QString& text)
 {
-    m_subText = text;
+    if(std::exchange(m_subText, text) == text) {
+        return;
+    }
+
     redraw();
 }
 
@@ -51,6 +70,7 @@ void ToolTip::setPosition(const QPoint& pos, Qt::Alignment align)
 {
     m_pos   = pos;
     m_align = align;
+    updatePosition();
 }
 
 void ToolTip::paintEvent(QPaintEvent* /*event*/)
@@ -63,6 +83,10 @@ void ToolTip::redraw()
 {
     const QFontMetrics fm{m_font};
     const QFontMetrics subFm{m_subFont};
+
+    const QColor rectColour{palette().color(QPalette::Active, QPalette::Highlight)};
+    const QColor borderColour{rectColour.darker(140)};
+    const QColor textColour{palette().color(QPalette::Active, QPalette::HighlightedText)};
 
     const int textWidth = std::max(fm.horizontalAdvance(m_text), subFm.horizontalAdvance(m_subText));
 
@@ -77,10 +101,6 @@ void ToolTip::redraw()
 
     // Cache the tooltip background
     if(rect.size() != m_cachedBg.size()) {
-        // TODO: Support custom colours
-        const QColor rectColour{palette().highlight().color()};
-        const QColor borderColour{rectColour.darker(140)};
-
         m_cachedBg = QPixmap{rect.size()};
         m_cachedBg.fill(Qt::transparent);
 
@@ -106,7 +126,7 @@ void ToolTip::redraw()
 
     p.drawPixmap(rect.topLeft(), m_cachedBg);
 
-    p.setPen(palette().highlightedText().color());
+    p.setPen(textColour);
     p.setFont(m_font);
     p.drawText(textRect, Qt::AlignHCenter, m_text);
 
@@ -114,15 +134,18 @@ void ToolTip::redraw()
     p.drawText(subTextRect, Qt::AlignHCenter, m_subText);
 
     resize(m_pixmap.size());
+    updatePosition();
+    update();
+}
 
+void ToolTip::updatePosition()
+{
     if(m_align == Qt::AlignLeft) {
-        move(m_pos.x(), m_pos.y() - m_pixmap.height());
+        move(m_pos.x(), m_pos.y() - height());
     }
     else if(m_align == Qt::AlignRight) {
-        move(m_pos.x() - m_pixmap.width(), m_pos.y() - m_pixmap.height());
+        move(m_pos.x() - width(), m_pos.y() - height());
     }
-
-    update();
 }
 } // namespace Fooyin
 

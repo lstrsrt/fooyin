@@ -31,6 +31,7 @@ WaveformBuilder::WaveformBuilder(std::shared_ptr<AudioLoader> decoderProvider, D
     , m_width{0}
     , m_samplesPerChannel{settings->value<Settings::WaveBar::NumSamples>()}
     , m_sampleWidth{1}
+    , m_supersampleFactor{1}
     , m_downmix{false}
     , m_rescale{false}
 {
@@ -110,12 +111,21 @@ void WaveformBuilder::setDownmix(DownmixOption option)
     }
 }
 
+void WaveformBuilder::setSupersampleFactor(int factor)
+{
+    factor = std::max(1, factor);
+    if(std::exchange(m_supersampleFactor, factor) != factor) {
+        updateRescaler();
+    }
+}
+
 void WaveformBuilder::updateRescaler()
 {
     m_rescaler.stopThread();
     QMetaObject::invokeMethod(&m_rescaler, [this]() {
         m_rescaler.changeSampleWidth(m_sampleWidth);
         m_rescaler.changeDownmix(m_downmix);
+        m_rescaler.changeSupersampleFactor(m_supersampleFactor);
     });
 }
 } // namespace Fooyin::WaveBar
