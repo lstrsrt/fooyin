@@ -21,6 +21,7 @@
 
 #include "internalguisettings.h"
 
+#include <gui/coverprovider.h>
 #include <gui/guiconstants.h>
 #include <gui/guipaths.h>
 #include <utils/fileutils.h>
@@ -107,7 +108,7 @@ ArtworkPageWidget::ArtworkPageWidget(SettingsManager* settings)
 
     auto* clearCacheButton = new QPushButton(tr("Clear Cache"), this);
     QObject::connect(clearCacheButton, &QPushButton::clicked, this, [this]() {
-        QDir{Gui::coverPath()}.removeRecursively();
+        CoverProvider::clearCache();
         updateCacheSize();
     });
 
