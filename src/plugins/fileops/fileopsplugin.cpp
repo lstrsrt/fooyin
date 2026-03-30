@@ -26,6 +26,7 @@
 #include "fileopssettings.h"
 
 #include <gui/guiconstants.h>
+#include <gui/statusevent.h>
 #include <gui/trackselectioncontroller.h>
 #include <utils/actions/actioncontainer.h>
 #include <utils/actions/actionmanager.h>
@@ -188,6 +189,12 @@ void FileOpsPlugin::recreateMenu()
             auto* thread = new QThread(this);
             worker->moveToThread(thread);
 
+            QObject::connect(worker, &FileOpsWorker::deleteFinished, this, [this](const TrackList& deletedTracks) {
+                const QString status = deletedTracks.empty()
+                                         ? tr("No tracks deleted")
+                                         : tr("Deleted %Ln track(s)", nullptr, static_cast<int>(deletedTracks.size()));
+                StatusEvent::post(status);
+            });
             QObject::connect(worker, &Worker::finished, thread, &QThread::quit);
             QObject::connect(thread, &QThread::finished, worker, &QObject::deleteLater);
             QObject::connect(thread, &QThread::finished, thread, &QObject::deleteLater);
