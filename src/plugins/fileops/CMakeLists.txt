@@ -2,8 +2,12 @@ create_fooyin_plugin_internal(
     fileops
     DEPENDS Fooyin::CorePrivate
             Fooyin::Gui
-    SOURCES fileopsdialog.cpp
+    SOURCES fileopsconfigdialog.cpp
+            fileopsconfigdialog.h
+            fileopsdialog.cpp
             fileopsdialog.h
+            fileopsdeletedialog.cpp
+            fileopsdeletedialog.h
             fileopsmodel.cpp
             fileopsmodel.h
             fileopsplugin.cpp

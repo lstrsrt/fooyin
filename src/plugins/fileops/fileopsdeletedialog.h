@@ -1,6 +1,6 @@
 /*
  * Fooyin
- * Copyright © 2025, Luke Taylor <LukeT1@proton.me>
+ * Copyright © 2024, Luke Taylor <LukeT1@proton.me>
  *
  * Fooyin is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,16 +19,22 @@
 
 #pragma once
 
-#include "fileopsdefs.h"
+#include <core/track.h>
 
-#include <map>
+#include <QDialog>
 
-namespace Fooyin::FileOps {
-namespace Settings {
-inline constexpr auto ConfirmDelete = "FileOps/ConfirmDelete";
-}
+namespace Fooyin {
+class SettingsManager;
 
-std::vector<FileOpPreset> getPresets();
-std::map<Operation, std::vector<FileOpPreset>> getMappedPresets();
-void savePresets(const std::vector<FileOpPreset>& presets);
-} // namespace Fooyin::FileOps
+namespace FileOps {
+
+class FileOpsDeleteDialog : public QDialog
+{
+    Q_OBJECT
+
+public:
+    FileOpsDeleteDialog(const TrackList& tracks, SettingsManager* settings, QWidget* parent = nullptr);
+};
+
+} // namespace FileOps
+} // namespace Fooyin

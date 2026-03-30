@@ -62,12 +62,17 @@ public:
 
     void simulate(const FileOpPreset& preset);
     void run();
+    void deleteFiles();
 
 signals:
     void simulated(const Fooyin::FileOps::FileOperations& operations);
+    void deleteFinished(const Fooyin::TrackList& deletedTracks);
     void operationFinished(const Fooyin::FileOps::FileOpsItem& operation);
 
 private:
+    bool prepareOperations(const FileOpPreset& preset, bool emitSimulation);
+    bool populateTrackPaths();
+
     void simulateMove();
     void simulateCopy();
     void simulateRename();
@@ -100,6 +105,7 @@ private:
     std::set<QString> m_dirsToCreate;
     std::set<QString> m_dirsToRemove;
     TrackList m_tracksToUpdate;
+    TrackList m_tracksToDelete;
 };
 } // namespace FileOps
 } // namespace Fooyin
