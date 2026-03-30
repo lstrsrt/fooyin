@@ -518,8 +518,8 @@ void CoverWidget::contextMenuEvent(QContextMenuEvent* event)
         extractAs->setStatusTip(tr("Choose where to extract this embedded artwork"));
         remove->setStatusTip(tr("Remove this artwork"));
 
-        extractFile->setEnabled(m_track.isValid() && !m_track.isInArchive());
-        extractAs->setEnabled(m_track.isValid() && !m_track.isInArchive());
+        extractFile->setEnabled(m_track.isValid());
+        extractAs->setEnabled(m_track.isValid());
 
         if(m_config.coverType == Track::Cover::Back) {
             // Only support front and artist cover for now

@@ -34,9 +34,22 @@
 using namespace Qt::StringLiterals;
 
 namespace {
+QString exportDirectory(const Fooyin::Track& track)
+{
+    if(!track.isValid()) {
+        return {};
+    }
+
+    if(track.isInArchive()) {
+        return QFileInfo{track.archivePath()}.absolutePath();
+    }
+
+    return track.path();
+}
+
 QString exportKey(const Fooyin::Track& track, Fooyin::Track::Cover type)
 {
-    return QDir::cleanPath(track.path()) + u'|' + QString::number(static_cast<int>(type));
+    return QDir::cleanPath(exportDirectory(track)) + u'|' + QString::number(static_cast<int>(type));
 }
 
 QString exportBaseName(Fooyin::Track::Cover type)
@@ -76,8 +89,8 @@ QString exportPath(const Fooyin::Track& track, Fooyin::Track::Cover type, const 
                    QWidget* parent)
 {
     const QString suffix        = exportSuffix(artwork);
-    const QString dir           = (track.isValid() && !track.isInArchive()) ? track.path() : QDir::homePath();
-    const QString suggestedPath = QDir::cleanPath(u"%1/%2.%3"_s.arg(dir, exportBaseName(type), suffix));
+    const QString exportDir     = exportDirectory(track);
+    const QString suggestedPath = QDir::cleanPath(u"%1/%2.%3"_s.arg(exportDir, exportBaseName(type), suffix));
     const QString filter = QObject::tr("Image Files") + u" (*.%1);;"_s.arg(suffix) + QObject::tr("All Files (*)");
 
     auto* dialogParent = parent ? parent : Fooyin::Utils::getMainWindow();
@@ -116,11 +129,16 @@ Fooyin::ArtworkResult extractEmbeddedArtwork(Fooyin::AudioLoader* loader, const 
 
 bool writeArtwork(const Fooyin::Track& track, Fooyin::Track::Cover type, const Fooyin::ArtworkResult& artwork)
 {
-    if(!track.isValid() || track.isInArchive() || artwork.image.isEmpty()) {
+    if(!track.isValid() || artwork.image.isEmpty()) {
         return false;
     }
 
-    const QString path{u"%1/%2.%3"_s.arg(track.path(), exportBaseName(type), exportSuffix(artwork))};
+    const QString dir = exportDirectory(track);
+    if(dir.isEmpty()) {
+        return false;
+    }
+
+    const QString path{u"%1/%2.%3"_s.arg(dir, exportBaseName(type), exportSuffix(artwork))};
     QFile file{QDir::cleanPath(path)};
     return file.open(QIODevice::WriteOnly) && file.write(artwork.image) == artwork.image.size();
 }
@@ -149,7 +167,7 @@ ArtworkExportSummary ArtworkExporter::extractTracks(AudioLoader* loader, const T
     std::set<QString> exported;
 
     for(const auto& track : std::ranges::reverse_view(tracks)) {
-        if(!track.isValid() || track.isInArchive()) {
+        if(!track.isValid()) {
             continue;
         }
 
@@ -189,7 +207,7 @@ ArtworkExportSummary ArtworkExporter::extractTracks(const TrackList& tracks, Tra
     std::set<QString> exported;
 
     for(const auto& track : std::ranges::reverse_view(tracks)) {
-        if(!track.isValid() || track.isInArchive()) {
+        if(!track.isValid()) {
             continue;
         }
 
@@ -212,7 +230,7 @@ ArtworkExportSummary ArtworkExporter::extractTracks(const TrackList& tracks, Tra
 
 QString ArtworkExporter::extractTrackAs(AudioLoader* loader, const Track& track, Track::Cover type, QWidget* parent)
 {
-    if(!loader || !track.isValid() || track.isInArchive()) {
+    if(!loader || !track.isValid()) {
         return {};
     }
 
@@ -222,6 +240,10 @@ QString ArtworkExporter::extractTrackAs(AudioLoader* loader, const Track& track,
 QString ArtworkExporter::extractArtworkAs(const Track& track, Track::Cover type, const ArtworkResult& artwork,
                                           QWidget* parent)
 {
+    if(!track.isValid()) {
+        return {};
+    }
+
     if(artwork.image.isEmpty()) {
         return {};
     }
