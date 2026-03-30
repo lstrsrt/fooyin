@@ -42,6 +42,7 @@
 #include <QImageReader>
 #include <QLoggingCategory>
 #include <QMimeDatabase>
+#include <QPromise>
 
 #include <set>
 
@@ -80,6 +81,16 @@ QString generateThumbCoverKey(const QString& key, int size)
 QString coverThumbnailPath(const QString& key)
 {
     return Fooyin::Gui::coverPath() + key + u".jpg"_s;
+}
+
+template <typename T>
+QFuture<T> makeReadyFuture(T value)
+{
+    QPromise<T> promise;
+    promise.start();
+    promise.addResult(std::move(value));
+    promise.finish();
+    return promise.future();
 }
 
 bool saveThumbnail(const QImage& cover, const QString& key)
@@ -395,10 +406,13 @@ public:
     void processCoverResult(const CoverLoader& loader);
     static QPixmap processLoadResult(const CoverLoader& loader);
     static QPixmap processOriginalLoadResult(const CoverLoader& loader);
+    static void cachePixmap(const QString& key, const QPixmap& cover, int size = 0);
     void fetchCover(const QString& key, const Track& track, Track::Cover type, bool thumbnail,
                     ThumbnailSize size = None);
     [[nodiscard]] QFuture<QPixmap> loadCover(const Track& track, Track::Cover type) const;
     [[nodiscard]] QFuture<QPixmap> loadOriginalCover(const Track& track, Track::Cover type) const;
+    [[nodiscard]] QFuture<QPixmap> loadThumbnail(const QString& key, const Track& track, ThumbnailSize size,
+                                                 Track::Cover type) const;
     QPixmap loadCachedCover(const QString& key, int size = 0);
     [[nodiscard]] QFuture<bool> hasCover(const QString& key, const Track& track, Track::Cover type) const;
 
@@ -499,6 +513,21 @@ QPixmap CoverProvider::CoverProviderPrivate::processOriginalLoadResult(const Cov
     return QPixmap::fromImage(loader.cover);
 }
 
+void CoverProvider::CoverProviderPrivate::cachePixmap(const QString& key, const QPixmap& cover, int size)
+{
+    if(cover.isNull()) {
+        return;
+    }
+
+    auto* cachedCover      = new QPixmap(cover);
+    const int cost         = cachedCover->width() * cachedCover->height() * cachedCover->depth() / 8;
+    const QString cacheKey = size == 0 ? key : generateThumbCoverKey(key, size);
+
+    if(!m_coverCache.insert(cacheKey, cachedCover, cost)) {
+        qCDebug(COV_PROV) << "Failed to cache cover for key:" << cacheKey;
+    }
+}
+
 void CoverProvider::CoverProviderPrivate::fetchCover(const QString& key, const Track& track, Track::Cover type,
                                                      bool thumbnail, ThumbnailSize size)
 {
@@ -550,6 +579,36 @@ QFuture<QPixmap> CoverProvider::CoverProviderPrivate::loadOriginalCover(const Tr
         return result;
     });
     return loaderResult.then(m_self, [](const CoverLoader& result) { return processOriginalLoadResult(result); });
+}
+
+QFuture<QPixmap> CoverProvider::CoverProviderPrivate::loadThumbnail(const QString& key, const Track& track,
+                                                                    ThumbnailSize size, Track::Cover type) const
+{
+    CoverLoader loader;
+    loader.key              = key;
+    loader.track            = track;
+    loader.type             = type;
+    loader.sourcePreference = m_sourcePreference;
+    loader.audioLoader      = m_audioLoader;
+    loader.paths            = m_paths;
+    loader.isThumb          = true;
+    loader.size             = size;
+
+    auto loaderResult = Utils::asyncExec([loader]() -> CoverLoader {
+        auto result = loadCoverImage(loader);
+        return result;
+    });
+
+    return loaderResult.then(m_self, [key, size](const CoverLoader& result) {
+        const QPixmap cover = processLoadResult(result);
+        if(cover.isNull()) {
+            m_noCoverKeys.emplace(key);
+        }
+        else {
+            cachePixmap(key, cover, size);
+        }
+        return cover;
+    });
 }
 
 QPixmap CoverProvider::CoverProviderPrivate::loadCachedCover(const QString& key, int size)
@@ -644,6 +703,42 @@ QFuture<QPixmap> CoverProvider::trackCoverOriginal(const Track& track, Track::Co
     }
 
     return p->loadOriginalCover(track, type);
+}
+
+QFuture<QPixmap> CoverProvider::trackCoverThumbnailAsync(const Track& track, ThumbnailSize size,
+                                                         Track::Cover type) const
+{
+    if(!track.isValid()) {
+        return makeReadyFuture(QPixmap{});
+    }
+
+    const QString coverKey = generateAlbumCoverKey(track, type, p->m_sourcePreference);
+    if(m_noCoverKeys.contains(coverKey)) {
+        CoverLoader loader;
+        loader.key              = coverKey;
+        loader.track            = track;
+        loader.type             = type;
+        loader.sourcePreference = p->m_sourcePreference;
+        loader.paths            = p->m_paths;
+
+        if(shouldRetryThumbnailLoad(loader)) {
+            m_noCoverKeys.erase(coverKey);
+        }
+        else {
+            return makeReadyFuture(QPixmap{});
+        }
+    }
+
+    if(const QPixmap cover = p->loadCachedCover(coverKey, size); !cover.isNull()) {
+        return makeReadyFuture(cover);
+    }
+
+    return p->loadThumbnail(coverKey, track, size, type);
+}
+
+QFuture<QPixmap> CoverProvider::trackCoverThumbnailAsync(const Track& track, const QSize& size, Track::Cover type) const
+{
+    return trackCoverThumbnailAsync(track, findThumbnailSize(size), type);
 }
 
 QPixmap CoverProvider::trackCoverThumbnail(const Track& track, ThumbnailSize size, Track::Cover type) const

@@ -90,6 +90,12 @@ public:
     /** Returns the original-size cover pixmap for @p track without applying the standard 1024px cap. */
     [[nodiscard]] QFuture<QPixmap> trackCoverOriginal(const Track& track,
                                                       Track::Cover type = Track::Cover::Front) const;
+    /** Returns the thumbnail cover pixmap for @p track asynchronously. */
+    [[nodiscard]] QFuture<QPixmap> trackCoverThumbnailAsync(const Track& track, ThumbnailSize size,
+                                                            Track::Cover type = Track::Cover::Front) const;
+    /** Returns the thumbnail cover pixmap for @p track asynchronously. */
+    [[nodiscard]] QFuture<QPixmap> trackCoverThumbnailAsync(const Track& track, const QSize& size,
+                                                            Track::Cover type = Track::Cover::Front) const;
 
     /*!
      * This will return the thumbnail picture of @p type for the @p track if it exists in the cache.
