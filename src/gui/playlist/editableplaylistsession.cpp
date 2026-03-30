@@ -1038,17 +1038,24 @@ void EditablePlaylistSession::playlistTracksAdded(PlaylistWidgetSessionHost& ses
 
 void EditablePlaylistSession::cropSelection(PlaylistWidgetSessionHost& sessionHost)
 {
-    auto& host = editableHost(sessionHost.sessionWidget());
-    if(!host.playlistController()->currentPlaylist()) {
+    auto& host            = editableHost(sessionHost.sessionWidget());
+    auto* currentPlaylist = host.playlistController()->currentPlaylist();
+    if(!currentPlaylist) {
         return;
     }
 
     const auto selected = filterSelectedIndexes(host.playlistView());
+    std::set<int> selectedTrackIndexes;
+    for(const QModelIndex& index : selected) {
+        if(index.isValid() && index.data(PlaylistItem::Type).toInt() == PlaylistItem::Track) {
+            selectedTrackIndexes.emplace(index.data(PlaylistItem::Index).toInt());
+        }
+    }
 
-    const int selectedCount      = static_cast<int>(selected.size());
-    const int playlistTrackCount = host.playlistController()->currentPlaylist()->trackCount();
+    const int selectedCount      = static_cast<int>(selectedTrackIndexes.size());
+    const int playlistTrackCount = currentPlaylist->trackCount();
 
-    if(selectedCount >= playlistTrackCount) {
+    if(selectedCount == 0 || selectedCount >= playlistTrackCount) {
         return;
     }
 
@@ -1058,36 +1065,38 @@ void EditablePlaylistSession::cropSelection(PlaylistWidgetSessionHost& sessionHo
     QModelIndexList tracksToRemove;
     std::vector<int> indexes;
 
-    for(const QModelIndex& index : selected) {
-        if(index.isValid() && index.data(PlaylistItem::Type).toInt() == PlaylistItem::Track) {
-            allTrackIndexes.removeAll(index);
+    for(const QModelIndex& index : std::as_const(allTrackIndexes)) {
+        const int trackIndex = index.data(PlaylistItem::Index).toInt();
+        if(!selectedTrackIndexes.contains(trackIndex)) {
+            indexes.emplace_back(trackIndex);
+            tracksToRemove.push_back(index);
         }
     }
 
-    for(const QModelIndex& index : std::as_const(allTrackIndexes)) {
-        indexes.emplace_back(index.data(PlaylistItem::Index).toInt());
-        tracksToRemove.push_back(index);
+    if(indexes.empty()) {
+        return;
     }
 
-    const auto oldTracks = host.playlistController()->currentPlaylist()->playlistTracks();
+    const auto removedGroups = PlaylistModel::saveTrackGroups(tracksToRemove);
+    const auto oldTracks     = currentPlaylist->playlistTracks();
 
-    host.playlistController()->playlistHandler()->removePlaylistTracks(
-        host.playlistController()->currentPlaylist()->id(), indexes);
+    host.playlistController()->aboutToChangeTracks();
+    host.playlistController()->playlistHandler()->removePlaylistTracks(currentPlaylist->id(), indexes);
+    host.playlistController()->changedTracks();
 
     if(selectedCount > 500 || playlistTrackCount - selectedCount > 500) {
-        auto* resetCmd = new ResetTracks(host.playerController(), host.playlistModel(),
-                                         host.playlistController()->currentPlaylistId(), oldTracks,
-                                         host.playlistController()->currentPlaylist()->playlistTracks());
+        auto* resetCmd = new ResetTracks(host.playerController(), host.playlistModel(), currentPlaylist->id(),
+                                         oldTracks, currentPlaylist->playlistTracks());
         host.playlistController()->addToHistory(resetCmd);
     }
     else {
-        auto* delCmd = new RemoveTracks(host.playerController(), host.playlistModel(),
-                                        host.playlistController()->currentPlaylist()->id(),
-                                        PlaylistModel::saveTrackGroups(tracksToRemove));
+        auto* delCmd
+            = new RemoveTracks(host.playerController(), host.playlistModel(), currentPlaylist->id(), removedGroups);
         host.playlistController()->addToHistory(delCmd);
     }
 
-    host.playlistModel()->updateHeader(host.playlistController()->currentPlaylist());
+    refreshActionState(sessionHost.sessionWidget());
+    host.playlistModel()->updateHeader(currentPlaylist);
 }
 
 void EditablePlaylistSession::sortTracks(PlaylistWidgetSessionHost& sessionHost, const QString& script)
