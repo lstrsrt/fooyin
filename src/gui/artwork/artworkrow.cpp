@@ -32,9 +32,12 @@
 #include <QHBoxLayout>
 #include <QImageReader>
 #include <QLabel>
+#include <QLoggingCategory>
 #include <QMenu>
 #include <QMimeDatabase>
 #include <QPushButton>
+
+Q_LOGGING_CATEGORY(ARTWORK_ROW, "fy.artworkrow")
 
 using namespace Qt::StringLiterals;
 
@@ -214,9 +217,12 @@ void ArtworkRow::finalise(int trackCount)
         QImageReader reader{&buffer, formatHint};
 
         if(!reader.canRead()) {
+            qCDebug(ARTWORK_ROW) << "Failed to use format hint" << formatHint << "when trying to load artwork row data";
             reader.setFormat({});
             reader.setDevice(&buffer);
             if(!reader.canRead()) {
+                qCWarning(ARTWORK_ROW) << u"Failed to decode artwork row image data (%1): %2"_s.arg(
+                    mimeType.name(), reader.errorString());
                 return;
             }
         }

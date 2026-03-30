@@ -44,7 +44,6 @@ struct ArtworkLoadEntry
     bool multipleImages{false};
     bool sawMissing{false};
 };
-
 } // namespace
 
 namespace Fooyin {
@@ -85,17 +84,8 @@ ArtworkProperties::ArtworkProperties(AudioLoader* loader, MusicLibrary* library,
         QObject::connect(artworkRow, &ArtworkRow::requestExtract, this, [this, artworkRow]() {
             const ArtworkResult artwork{.mimeType = artworkRow->mimeType(), .image = artworkRow->image()};
             const auto summary = ArtworkExporter::extractTracks(m_tracks, artworkRow->type(), artwork);
-            if(summary.written == 0 && summary.failed == 0) {
-                StatusEvent::post(tr("No embedded artwork found to export"));
-            }
-            else if(summary.failed == 0) {
-                StatusEvent::post(tr("Exported artwork to %Ln file(s)", nullptr, summary.written));
-            }
-            else if(summary.written == 0) {
-                StatusEvent::post(tr("Failed to export artwork"));
-            }
-            else {
-                StatusEvent::post(tr("Exported artwork to %Ln file(s); some exports failed", nullptr, summary.written));
+            if(const QString status = exportStatusMessage(summary.written, summary.failed, true); !status.isEmpty()) {
+                StatusEvent::post(status);
             }
         });
         QObject::connect(artworkRow, &ArtworkRow::requestExtractAs, this, [this, artworkRow]() {
@@ -249,8 +239,15 @@ void ArtworkProperties::apply()
     update();
 
     m_writeRequest = m_library->writeTrackCovers(coverData);
-    m_writeRequest->finished.then(this, [this, tracks = m_tracks](const WriteResult& /*result*/) {
-        std::ranges::for_each(tracks, CoverProvider::removeFromCache);
+    m_writeRequest->finished.then(this, [this, tracks = m_tracks](const WriteResult& result) {
+        if(result.succeeded > 0) {
+            std::ranges::for_each(tracks, CoverProvider::removeFromCache);
+        }
+
+        if(const QString status = writeStatusMessage(result); !status.isEmpty()) {
+            StatusEvent::post(status);
+        }
+
         m_writeRequest = {};
         m_writing      = false;
         m_artworkWidget->show();
@@ -283,6 +280,35 @@ void ArtworkProperties::paintEvent(QPaintEvent* event)
     }
 
     PropertiesTabWidget::paintEvent(event);
+}
+
+QString ArtworkProperties::writeStatusMessage(const WriteResult& result)
+{
+    return exportStatusMessage(result.succeeded, result.failed);
+}
+
+QString ArtworkProperties::exportStatusMessage(int written, int failed, bool includeEmptyMessage)
+{
+    if(written == 0 && failed == 0) {
+        if(includeEmptyMessage) {
+            return tr("No embedded artwork found to export");
+        }
+        return {};
+    }
+
+    if(failed == 0) {
+        return tr("Exported artwork to %Ln file(s)", nullptr, written);
+    }
+
+    if(written == 0) {
+        return tr("Failed to export artwork");
+    }
+
+    if(written > 0 && failed > 0) {
+        return tr("Exported artwork to %Ln file(s); some exports failed", nullptr, written);
+    }
+
+    return {};
 }
 } // namespace Fooyin
 

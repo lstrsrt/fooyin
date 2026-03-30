@@ -58,6 +58,9 @@ protected:
     void paintEvent(QPaintEvent* event) override;
 
 private:
+    static QString exportStatusMessage(int written, int failed, bool includeEmptyMessage = false);
+    static QString writeStatusMessage(const WriteResult& result);
+
     AudioLoader* m_audioLoader;
     MusicLibrary* m_library;
 
