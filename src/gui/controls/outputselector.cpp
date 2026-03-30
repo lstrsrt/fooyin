@@ -52,6 +52,7 @@ OutputSelector::OutputSelector(OutputProfileManager* profileManager, SettingsMan
 
     m_combo->setResizeToCurrentEnabled(false);
     m_combo->setSizeAdjustPolicy(QComboBox::AdjustToMinimumContentsLengthWithIcon);
+    m_label->setContentsMargins(5, 0, 0, 0);
     m_label->setContextMenuPolicy(Qt::CustomContextMenu);
     m_combo->setContextMenuPolicy(Qt::CustomContextMenu);
 
