@@ -1,5 +1,42 @@
 # Changelog
 
+## [Unreleased]
+
+### New Features
+* FileOps
+  - Add an action and shortcut to delete tracks ([#932](https://github.com/fooyin/fooyin/pull/932))
+* Playback
+  - Add per-device output profiles and an output selector ([#947](https://github.com/fooyin/fooyin/pull/947))
+
+### Improvements
+* Build/System
+  - Add CMake support for selecting which plugins to build ([#941](https://github.com/fooyin/fooyin/issues/941))
+* Interface
+  - Add a Playback Statistics section to selection info ([#942](https://github.com/fooyin/fooyin/issues/942))
+  - Add a new Track Display settings page with configurable full, half, and empty star symbols for `%rating_stars%` and `%rating_stars_padded%` ([#938](https://github.com/fooyin/fooyin/issues/938))
+  - Support extracting artwork for archive tracks
+* Library/Metadata
+  - Add ReplayGain parsing in FFmpeg, improve ReplayGain string handling, and improve audio bitdepth reporting ([#946](https://github.com/fooyin/fooyin/issues/946))
+  - Treat CUE `PERFORMER` as artist when tracks omit it ([#940](https://github.com/fooyin/fooyin/issues/940))
+
+### Fixes
+* Audio/Playback
+  - Fix PipeWire lifecycle issues during output switching and device enumeration
+  - Reinitialise playback buffering when `BufferLength` changes during playback
+  - Fix output volume being applied twice after fades ([#944](https://github.com/fooyin/fooyin/issues/944))
+  - Fix DSP preset save/load after removing DSPs
+* Interface
+  - Fix exported file naming in save dialogs and avoid portal-backed save target issues ([#937](https://github.com/fooyin/fooyin/issues/937))
+  - Fix translations for ScriptEditor references and the Interface settings page ([#935](https://github.com/fooyin/fooyin/issues/935))
+  - Fix seeking in faded areas of synced lyrics
+  - Fix leaked `ExtendableTableView` shortcut actions
+* Tag Editor
+  - Fix a crash when opening the tag editor on some systems ([#943](https://github.com/fooyin/fooyin/issues/943))
+  - Fix ratings for archive and CUE tracks
+* Testing
+  - Isolate time-sensitive audio tests to reduce load-sensitive failures ([#934](https://github.com/fooyin/fooyin/issues/934))
+
+
 ## [0.10.1](https://github.com/fooyin/fooyin/releases/tag/v0.10.1) (2026-03-27)
 
 ### Fixes
