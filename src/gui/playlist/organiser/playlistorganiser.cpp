@@ -125,7 +125,7 @@ public:
 protected:
     void mousePressEvent(QMouseEvent* event) override
     {
-        if(event->button() != Qt::LeftButton) {
+        if(event->button() > Qt::RightButton) {
             event->ignore();
             return;
         }
