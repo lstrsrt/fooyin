@@ -29,7 +29,7 @@ NotifySettings::NotifySettings(SettingsManager* settingsManager)
 {
     using namespace Settings::Notify;
 
-    m_settings->createSetting<Enabled>(true, u"Notify/Enabled"_s);
+    m_settings->createSetting<Enabled>(false, u"Notify/Enabled"_s);
     m_settings->createSetting<TitleField>(u"%title%"_s, u"Notify/TitleField"_s);
     m_settings->createSetting<BodyField>(u"%artist%[ - %album%]"_s, u"Notify/BodyField"_s);
     m_settings->createSetting<ShowAlbumArt>(true, u"Notify/ShowAlbumArt"_s);
