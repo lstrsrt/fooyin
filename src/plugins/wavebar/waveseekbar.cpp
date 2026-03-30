@@ -84,12 +84,8 @@ WaveSeekBar::WaveSeekBar(QWidget* parent)
 
 void WaveSeekBar::processData(const WaveformData<float>& waveData)
 {
-    m_data = waveData;
-
-    if(m_data.complete) {
-        const int waveformWidth = std::max(1, m_data.sampleCount() * m_sampleWidth);
-        m_scale                 = static_cast<double>(width()) / static_cast<double>(waveformWidth);
-    }
+    m_data  = waveData;
+    m_scale = 1.0;
 
     update();
 }

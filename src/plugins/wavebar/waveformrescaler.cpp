@@ -22,41 +22,45 @@
 #include <utils/settings/settingsmanager.h>
 
 namespace {
-int buildSample(Fooyin::WaveBar::WaveformSample& sample, Fooyin::WaveBar::WaveformData<float>& data, int channel,
-                double start, double end)
+double buildSample(Fooyin::WaveBar::WaveformSample& sample, const Fooyin::WaveBar::WaveformData<float>& data,
+                   int channel, double start, double end)
 {
-    int sampleCount{0};
+    double sampleWeight{0.0};
 
     if(channel < 0 || channel >= static_cast<int>(data.channelData.size())) {
-        return sampleCount;
+        return sampleWeight;
     }
 
-    auto& [inMax, inMin, inRms] = data.channelData[static_cast<size_t>(channel)];
-    const auto availableSamples = std::min({inMax.size(), inMin.size(), inRms.size()});
+    const auto& [inMax, inMin, inRms] = data.channelData[static_cast<size_t>(channel)];
+    const auto availableSamples       = std::min({inMax.size(), inMin.size(), inRms.size()});
     if(availableSamples == 0) {
-        return sampleCount;
+        return sampleWeight;
     }
 
-    const int lastIndex = std::floor(end);
+    const int firstIndex = std::max(0, static_cast<int>(std::floor(start)));
+    const int lastIndex  = std::min(static_cast<int>(availableSamples), static_cast<int>(std::ceil(end)));
 
-    for(int i = std::floor(start); i < std::ceil(end); ++i) {
-        for(int index{i}; index < lastIndex; ++index) {
-            if(index >= 0 && static_cast<size_t>(index) < availableSamples) {
-                const auto sampleIndex = static_cast<size_t>(index);
-                const float sampleMax  = inMax[sampleIndex];
-                const float sampleMin  = inMin[sampleIndex];
-                const float sampleRms  = inRms[sampleIndex];
-
-                sample.max = std::max(sample.max, sampleMax);
-                sample.min = std::min(sample.min, sampleMin);
-                sample.rms += sampleRms * sampleRms;
-
-                ++sampleCount;
-            }
+    for(int index{firstIndex}; index < lastIndex; ++index) {
+        const double sampleStart = index;
+        const double sampleEnd   = sampleStart + 1.0;
+        const double overlap     = std::min(end, sampleEnd) - std::max(start, sampleStart);
+        if(overlap <= 0.0) {
+            continue;
         }
+
+        const auto sampleIndex = static_cast<size_t>(index);
+        const float sampleMax  = inMax[sampleIndex];
+        const float sampleMin  = inMin[sampleIndex];
+        const float sampleRms  = inRms[sampleIndex];
+
+        sample.max = std::max(sample.max, sampleMax);
+        sample.min = std::min(sample.min, sampleMin);
+        sample.rms += sampleRms * sampleRms * static_cast<float>(overlap);
+
+        sampleWeight += overlap;
     }
 
-    return sampleCount;
+    return sampleWeight;
 }
 } // namespace
 
@@ -88,9 +92,9 @@ void WaveformRescaler::rescale()
 
     data.channelData.resize(data.channels);
 
-    const double sampleSize
-        = static_cast<double>(m_data.complete ? m_data.sampleCount() : m_data.samplesPerChannel) * m_sampleWidth;
-    const auto samplesPerPixel = sampleSize / m_width;
+    const double sampleSpan       = m_data.complete ? m_data.sampleCount() : m_data.samplesPerChannel;
+    const int outputSampleCount   = std::max(1, 1 + std::max(0, m_width - 1) / m_sampleWidth);
+    const double samplesPerOutput = sampleSpan / outputSampleCount;
 
     for(int ch{0}; ch < data.channels; ++ch) {
         if(ch < 0 || ch >= static_cast<int>(data.channelData.size())) {
@@ -101,27 +105,27 @@ void WaveformRescaler::rescale()
 
         double start{0.0};
 
-        for(int x{0}; x < m_width; ++x) {
+        for(int x{0}; x < outputSampleCount; ++x) {
             if(!mayRun()) {
                 return;
             }
 
-            const double end = std::max(1.0, (x + 1) * samplesPerPixel);
+            const double end = (x + 1) * samplesPerOutput;
 
-            int sampleCount{0};
+            double sampleWeight{0.0};
             WaveformSample sample;
 
             if(m_downMix == DownmixOption::Mono || (m_downMix == DownmixOption::Stereo && m_data.channels > 2)) {
                 for(int mixCh{0}; mixCh < m_data.channels; ++mixCh) {
-                    sampleCount += buildSample(sample, m_data, mixCh, start, end);
+                    sampleWeight += buildSample(sample, m_data, mixCh, start, end);
                 }
             }
             else {
-                sampleCount += buildSample(sample, m_data, ch, start, end);
+                sampleWeight += buildSample(sample, m_data, ch, start, end);
             }
 
-            if(sampleCount > 0) {
-                sample.rms /= static_cast<float>(sampleCount);
+            if(sampleWeight > 0.0) {
+                sample.rms /= static_cast<float>(sampleWeight);
                 sample.rms = std::sqrt(sample.rms);
 
                 outMax.emplace_back(sample.max);
