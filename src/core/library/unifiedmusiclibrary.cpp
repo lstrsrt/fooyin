@@ -97,6 +97,7 @@ public:
     TrackSorter m_sorter;
 
     TrackList m_tracks;
+    int m_tracksRevision{0};
     std::unordered_map<int, int> m_pendingScanUpdates;
     std::unordered_map<int, ScanSummaryCounts> m_scanSummaries;
     std::unordered_map<int, std::pair<ScanRequest::Type, bool>> m_deferredScanFinished;
@@ -130,7 +131,12 @@ void UnifiedMusicLibraryPrivate::loadTracks(TrackList tracksToLoad)
     attachMetadataStore(tracksToLoad);
     auto sortTracks = recalSortTracks(m_settings->value<Settings::Core::LibrarySortScript>(), std::move(tracksToLoad));
 
-    sortTracks.then(m_self, [this](TrackList sortedTracks) {
+    const int revision = ++m_tracksRevision;
+    sortTracks.then(m_self, [this, revision](TrackList sortedTracks) {
+        if(revision != m_tracksRevision) {
+            return;
+        }
+
         m_tracks = std::move(sortedTracks);
         emit m_self->tracksLoaded(m_tracks);
     });
@@ -167,14 +173,18 @@ QFuture<void> UnifiedMusicLibraryPrivate::addTracks(TrackList newTracks)
             }
         }
 
+        const int revision = ++m_tracksRevision;
         recalSortTracks(m_settings->value<Settings::Core::LibrarySortScript>(), m_tracks)
-            .then(m_self, [this, addedTracks = std::move(addedTracks)](TrackList sortedLibraryTracks) mutable {
-                m_tracks = std::move(sortedLibraryTracks);
+            .then(m_self,
+                  [this, revision, addedTracks = std::move(addedTracks)](TrackList sortedLibraryTracks) mutable {
+                      if(revision == m_tracksRevision) {
+                          m_tracks = std::move(sortedLibraryTracks);
+                      }
 
-                if(!addedTracks.empty()) {
-                    emit m_self->tracksAdded(addedTracks);
-                }
-            });
+                      if(!addedTracks.empty()) {
+                          emit m_self->tracksAdded(addedTracks);
+                      }
+                  });
     });
 }
 
@@ -204,11 +214,15 @@ QFuture<void> UnifiedMusicLibraryPrivate::updateTracksMetadata(TrackList tracksT
     return sortTracks.then(m_self, [this](TrackList sortedTracks) {
         updateLibraryTracks(sortedTracks);
 
+        const int revision = ++m_tracksRevision;
         recalSortTracks(m_settings->value<Settings::Core::LibrarySortScript>(), m_tracks)
-            .then(m_self, [this, sortedTracks = std::move(sortedTracks)](TrackList sortedLibraryTracks) mutable {
-                m_tracks = std::move(sortedLibraryTracks);
-                emit m_self->tracksMetadataChanged(sortedTracks);
-            });
+            .then(m_self,
+                  [this, revision, sortedTracks = std::move(sortedTracks)](TrackList sortedLibraryTracks) mutable {
+                      if(revision == m_tracksRevision) {
+                          m_tracks = std::move(sortedLibraryTracks);
+                      }
+                      emit m_self->tracksMetadataChanged(sortedTracks);
+                  });
     });
 }
 
@@ -221,11 +235,15 @@ QFuture<void> UnifiedMusicLibraryPrivate::updateTracks(TrackList tracksToUpdate)
     return sortTracks.then(m_self, [this](TrackList sortedTracks) {
         updateLibraryTracks(sortedTracks);
 
+        const int revision = ++m_tracksRevision;
         recalSortTracks(m_settings->value<Settings::Core::LibrarySortScript>(), m_tracks)
-            .then(m_self, [this, sortedTracks = std::move(sortedTracks)](TrackList sortedLibraryTracks) mutable {
-                m_tracks = std::move(sortedLibraryTracks);
-                emit m_self->tracksUpdated(sortedTracks);
-            });
+            .then(m_self,
+                  [this, revision, sortedTracks = std::move(sortedTracks)](TrackList sortedLibraryTracks) mutable {
+                      if(revision == m_tracksRevision) {
+                          m_tracks = std::move(sortedLibraryTracks);
+                      }
+                      emit m_self->tracksUpdated(sortedTracks);
+                  });
     });
 }
 
@@ -396,8 +414,13 @@ void UnifiedMusicLibraryPrivate::libraryStatusChanged(const LibraryInfo& library
 
 void UnifiedMusicLibraryPrivate::changeSort(const QString& sort)
 {
-    recalSortTracks(sort, m_tracks).then(m_self, [this](const TrackList& sortedTracks) {
-        m_tracks = sortedTracks;
+    const int revision = ++m_tracksRevision;
+    recalSortTracks(sort, m_tracks).then(m_self, [this, revision](TrackList sortedTracks) {
+        if(revision != m_tracksRevision) {
+            return;
+        }
+
+        m_tracks = std::move(sortedTracks);
         emit m_self->tracksSorted(m_tracks);
     });
 }
