@@ -338,6 +338,20 @@ bool hasCoverImage(CoverLoader loader)
     return hasImageInDirectory(loader) || hasEmbeddedCover(loader);
 }
 
+bool shouldRetryThumbnailLoad(const CoverLoader& loader)
+{
+    if(QFileInfo::exists(coverThumbnailPath(loader.key))) {
+        return true;
+    }
+
+    if(!prefersEmbedded(loader)) {
+        CoverLoader directoryLoader{loader};
+        return hasImageInDirectory(directoryLoader);
+    }
+
+    return false;
+}
+
 CoverLoader loadCoverImage(CoverLoader loader)
 {
     CoverLoader result{loader};
@@ -639,6 +653,19 @@ QPixmap CoverProvider::trackCoverThumbnail(const Track& track, ThumbnailSize siz
     }
 
     const QString coverKey = generateAlbumCoverKey(track, type, p->m_sourcePreference);
+    if(m_noCoverKeys.contains(coverKey)) {
+        CoverLoader loader;
+        loader.key              = coverKey;
+        loader.track            = track;
+        loader.type             = type;
+        loader.sourcePreference = p->m_sourcePreference;
+        loader.paths            = p->m_paths;
+
+        if(shouldRetryThumbnailLoad(loader)) {
+            m_noCoverKeys.erase(coverKey);
+        }
+    }
+
     if(!p->m_pendingCovers.contains(coverKey) && !m_noCoverKeys.contains(coverKey)) {
         QPixmap cover = p->loadCachedCover(coverKey, size);
         if(!cover.isNull()) {
@@ -697,6 +724,7 @@ void CoverProvider::clearCache()
     cache.removeRecursively();
 
     m_coverCache.clear();
+    m_noCoverKeys.clear();
 }
 
 void CoverProvider::removeFromCache(const Track& track)
