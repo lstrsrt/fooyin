@@ -566,7 +566,9 @@ QByteArray AudioLoader::readTrackCover(const Track& track, Track::Cover cover) c
         }
 
         if(reader->init(source) && reader->canReadCover()) {
-            return reader->readCover(source, track, cover);
+            if(const QByteArray coverData = reader->readCover(source, track, cover); !coverData.isEmpty()) {
+                return coverData;
+            }
         }
     }
 
