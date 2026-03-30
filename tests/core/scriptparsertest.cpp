@@ -901,6 +901,24 @@ TEST_F(ScriptParserTest, QueryTest)
     EXPECT_EQ(2, m_parser.filter(query, tracks).size());
 }
 
+TEST_F(ScriptParserTest, QueryAccentInsensitiveSearch)
+{
+    Track track;
+    track.setId(0);
+    track.setTitle(QStringLiteral("Café Sketches"));
+    track.setAlbum(QStringLiteral("Más Allá"));
+    track.setAlbumArtists({QStringLiteral("Gábor Szabó")});
+    track.setArtists({QStringLiteral("Gábor Szabó")});
+
+    const TrackList tracks{track};
+
+    EXPECT_EQ(1, m_parser.filter(QStringLiteral("gabor"), tracks).size());
+    EXPECT_EQ(1, m_parser.filter(QStringLiteral("\"gabor szabo\""), tracks).size());
+    EXPECT_EQ(1, m_parser.filter(QStringLiteral("artist:gabor"), tracks).size());
+    EXPECT_EQ(1, m_parser.filter(QStringLiteral("album:mas"), tracks).size());
+    EXPECT_EQ(1, m_parser.filter(QStringLiteral("title:cafe"), tracks).size());
+}
+
 TEST_F(ScriptParserTest, QueryAndLiteralCachesStaySeparate)
 {
     TrackList tracks;

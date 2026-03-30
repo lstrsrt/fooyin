@@ -1538,7 +1538,7 @@ ScriptResult ScriptParserPrivate::evalContains(const BoundExpression& exp, const
     }
 
     ScriptResult result;
-    result.cond = first.value.contains(second.value, Qt::CaseInsensitive);
+    result.cond = Utils::foldForSearch(first.value).contains(Utils::foldForSearch(second.value));
 
     return result;
 }
@@ -1569,7 +1569,7 @@ ScriptResult ScriptParserPrivate::evalContains(const BoundExpression& exp, const
         result.cond = matchSearch(track, second.value, value.type == Expr::QuotedLiteral);
     }
     else {
-        result.cond = first.value.contains(second.value, Qt::CaseInsensitive);
+        result.cond = Utils::foldForSearch(first.value).contains(Utils::foldForSearch(second.value));
     }
 
     return result;

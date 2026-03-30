@@ -23,6 +23,7 @@
 #include <QJsonArray>
 #include <QJsonValue>
 #include <QKeySequence>
+#include <algorithm>
 
 #include <unicode/ucsdet.h>
 
@@ -96,6 +97,28 @@ QByteArray detectEncoding(const QByteArray& content)
     ucsdet_close(csd);
 
     return encoding;
+}
+
+QString foldForSearch(QStringView text)
+{
+    const QString normalised = text.toString().normalized(QString::NormalizationForm_D);
+
+    QString folded;
+    folded.reserve(normalised.size());
+
+    for(const QChar ch : normalised) {
+        switch(ch.category()) {
+            case QChar::Mark_NonSpacing:
+            case QChar::Mark_SpacingCombining:
+            case QChar::Mark_Enclosing:
+                continue;
+            default:
+                folded.append(ch);
+                break;
+        }
+    }
+
+    return folded.toCaseFolded();
 }
 
 QString msToString(std::chrono::milliseconds ms, bool includeMs)
@@ -243,8 +266,7 @@ int levenshteinDistance(const QString& first, const QString& second, Qt::CaseSen
         col[0] = i + 1;
         bChar  = bStart;
         for(int j{0}; j < secondLength; ++j) {
-            col[j + 1]
-                = std::min(std::min(1 + col.at(j), 1 + prevCol.at(1 + j)), prevCol[j] + ((*aChar == *bChar) ? 0 : 1));
+            col[j + 1] = std::min({1 + col.at(j), 1 + prevCol.at(1 + j), prevCol[j] + ((*aChar == *bChar) ? 0 : 1)});
             ++bChar;
         }
         col.swap(prevCol);
@@ -264,7 +286,7 @@ int similarityRatio(const QString& first, const QString& second, Qt::CaseSensiti
 
     const int distance = levenshteinDistance(first, second, cs);
 
-    const double similarity = (1.0 - static_cast<double>(distance) / static_cast<double>(maxLength)) * 100;
+    const double similarity = (1.0 - (static_cast<double>(distance) / static_cast<double>(maxLength))) * 100;
     return static_cast<int>(similarity);
 }
 

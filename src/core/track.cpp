@@ -24,6 +24,7 @@
 #include <core/trackmetadatastore.h>
 
 #include <utils/crypto.h>
+#include <utils/stringutils.h>
 
 #include <QDir>
 #include <QFileInfo>
@@ -1176,8 +1177,10 @@ uint64_t Track::lastPlayed() const
 
 bool Track::hasMatch(const QString& term) const
 {
-    const auto contains = [&term](const QString& text) {
-        return text.contains(term, Qt::CaseInsensitive);
+    const QString foldedTerm = Utils::foldForSearch(term);
+
+    const auto contains = [&foldedTerm](const QString& text) {
+        return Utils::foldForSearch(text).contains(foldedTerm);
     };
 
     // clang-format off
