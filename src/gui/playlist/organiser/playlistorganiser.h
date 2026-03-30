@@ -57,6 +57,8 @@ private:
 
     void filesToPlaylist(const QList<QUrl>& urls, const UId& id);
     void filesToGroup(const QList<QUrl>& urls, const QString& group, int index);
+    void filesToGroupOrdered(const QList<QUrl>& urls, const QString& group, int index);
+    void importPlaylists(const QList<QUrl>& urls, const QString& group, int index);
     void tracksToPlaylist(const std::vector<int>& trackIds, const UId& id);
     void tracksToGroup(const std::vector<int>& trackIds, const QString& group, int index);
 

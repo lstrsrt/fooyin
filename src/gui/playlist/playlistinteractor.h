@@ -67,6 +67,16 @@ public:
         scanFiles(urls, std::forward<Func>(func));
     }
 
+    template <typename Func>
+    void playlistFilesToTracks(const QList<QUrl>& urls, Func&& func)
+    {
+        if(urls.empty()) {
+            return;
+        }
+
+        loadPlaylistTracks(urls, std::forward<Func>(func));
+    }
+
     void trackMimeToPlaylist(const QByteArray& data, const UId& id);
 
 private:

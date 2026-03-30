@@ -26,6 +26,7 @@
 #include "playlistorganisermodel.h"
 
 #include <core/library/musiclibrary.h>
+#include <core/playlist/playlist.h>
 #include <core/playlist/playlisthandler.h>
 #include <core/track.h>
 #include <gui/guiconstants.h>
@@ -37,11 +38,14 @@
 #include <utils/utils.h>
 
 #include <QContextMenuEvent>
+#include <QFileInfo>
 #include <QMainWindow>
 #include <QMenu>
 #include <QTreeView>
 #include <QVBoxLayout>
 
+#include <algorithm>
+#include <ranges>
 #include <stack>
 
 using namespace Qt::StringLiterals;
@@ -128,6 +132,22 @@ protected:
         QTreeView::mousePressEvent(event);
     }
 };
+
+bool isPlaylistUrl(const QUrl& url)
+{
+    if(!url.isLocalFile()) {
+        return false;
+    }
+
+    static const QStringList extensions = [] {
+        QStringList values = Fooyin::Playlist::supportedPlaylistExtensions();
+        std::ranges::transform(values, values.begin(), [](const QString& ext) { return ext.toLower(); });
+        return values;
+    }();
+
+    const QString extension = QFileInfo(url.toLocalFile()).suffix().toLower();
+    return extensions.contains(extension);
+}
 
 } // namespace
 
@@ -463,13 +483,90 @@ void PlaylistOrganiser::filesToGroup(const QList<QUrl>& urls, const QString& gro
         return;
     }
 
-    m_playlistInteractor->filesToTracks(urls, [this, group, index](const TrackList& tracks) {
+    filesToGroupOrdered(urls, group, index);
+}
+
+void PlaylistOrganiser::filesToGroupOrdered(const QList<QUrl>& urls, const QString& group, int index)
+{
+    if(urls.empty()) {
+        return;
+    }
+
+    const QUrl& firstUrl  = urls.constFirst();
+    const int insertIndex = index < 0 ? -1 : index;
+    QList remainingUrls{urls};
+
+    if(isPlaylistUrl(firstUrl)) {
+        remainingUrls.pop_front();
+
+        const QString name = QFileInfo{firstUrl.toLocalFile()}.completeBaseName();
+        m_playlistInteractor->playlistFilesToTracks(
+            {firstUrl}, [this, group, name, insertIndex, remainingUrls](const TrackList& tracks) {
+                int nextIndex = insertIndex;
+
+                const QSignalBlocker block{m_playlistInteractor->handler()};
+                if(auto* playlist = m_playlistInteractor->handler()->createNewPlaylist(name, tracks)) {
+                    m_model->playlistInserted(playlist, group, insertIndex);
+                    if(insertIndex >= 0) {
+                        nextIndex = insertIndex + 1;
+                    }
+                }
+
+                filesToGroupOrdered(remainingUrls, group, nextIndex);
+            });
+        return;
+    }
+
+    QList<QUrl> trackUrls;
+    while(!remainingUrls.empty() && !isPlaylistUrl(remainingUrls.constFirst())) {
+        trackUrls.append(remainingUrls.constFirst());
+        remainingUrls.pop_front();
+    }
+
+    m_playlistInteractor->filesToTracks(trackUrls, [this, group, insertIndex, remainingUrls](const TrackList& tracks) {
+        int nextIndex{insertIndex};
+
         const QSignalBlocker block{m_playlistInteractor->handler()};
         const QString name = Track::findCommonField(tracks);
+
         if(auto* playlist = m_playlistInteractor->handler()->createNewPlaylist(name, tracks)) {
-            m_model->playlistInserted(playlist, group, index);
+            m_model->playlistInserted(playlist, group, insertIndex);
+            if(insertIndex >= 0) {
+                nextIndex = insertIndex + 1;
+            }
         }
+
+        filesToGroupOrdered(remainingUrls, group, nextIndex);
     });
+}
+
+void PlaylistOrganiser::importPlaylists(const QList<QUrl>& urls, const QString& group, int index)
+{
+    if(urls.empty()) {
+        return;
+    }
+
+    const QUrl& url       = urls.constFirst();
+    const QString name    = QFileInfo{url.toLocalFile()}.completeBaseName();
+    const int insertIndex = index < 0 ? -1 : index;
+
+    QList remainingUrls{urls};
+    remainingUrls.pop_front();
+
+    m_playlistInteractor->playlistFilesToTracks(
+        {url}, [this, group, name, insertIndex, remainingUrls](const TrackList& tracks) {
+            int nextIndex = insertIndex;
+
+            const QSignalBlocker block{m_playlistInteractor->handler()};
+            if(auto* playlist = m_playlistInteractor->handler()->createNewPlaylist(name, tracks)) {
+                m_model->playlistInserted(playlist, group, insertIndex);
+                if(insertIndex >= 0) {
+                    nextIndex = insertIndex + 1;
+                }
+            }
+
+            importPlaylists(remainingUrls, group, nextIndex);
+        });
 }
 
 void PlaylistOrganiser::tracksToPlaylist(const std::vector<int>& trackIds, const UId& id)
