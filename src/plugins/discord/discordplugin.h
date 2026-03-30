@@ -24,6 +24,10 @@
 #include <core/scripting/scriptparser.h>
 #include <gui/plugins/guiplugin.h>
 
+#include <QCoro/QCoroTask>
+
+#include <optional>
+
 namespace Fooyin {
 class SignalThrottler;
 
@@ -49,6 +53,12 @@ public:
     void shutdown() override;
 
 private:
+    void startConnectTask();
+    void startDisconnectTask();
+    void startClientIdChangeTask(const QString& clientId);
+    void startUpdateActivityTask();
+    void startClearActivityTask();
+
     void toggleEnabled(bool enable);
     void updateActivity();
     void positionChanged(uint64_t ms);
@@ -63,6 +73,11 @@ private:
     SignalThrottler* m_throttler;
     ScriptParser m_scriptParser;
     int m_positionSyncedTrackId;
+
+    std::optional<QCoro::Task<>> m_clientIdTask;
+    std::optional<QCoro::Task<>> m_connectTask;
+    std::optional<QCoro::Task<>> m_disconnectTask;
+    std::optional<QCoro::Task<>> m_activityTask;
 };
 } // namespace Discord
 } // namespace Fooyin
