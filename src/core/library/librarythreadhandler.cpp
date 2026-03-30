@@ -186,8 +186,7 @@ public:
     std::unordered_map<int, WriteOperation> m_writeOperations;
     int m_currentRequestId{-1};
     bool m_currentRequestFinished{false};
-    bool m_currentRequestNeedsLibraryCompletion{false};
-    bool m_currentRequestLibraryCompleted{false};
+    int m_currentRequestPendingLibraryCompletions{0};
     bool m_currentRequestCancelled{false};
     std::optional<PendingWatcherSetup> m_pendingWatcherSetup;
 };
@@ -393,11 +392,10 @@ void LibraryThreadHandlerPrivate::execNextRequest()
     LibraryScanRequest requestToRun = m_scanRequests.front();
     requestToRun.libraryTracks      = m_library->tracks();
 
-    m_currentRequestId                     = requestToRun.id;
-    m_currentRequestFinished               = false;
-    m_currentRequestNeedsLibraryCompletion = false;
-    m_currentRequestLibraryCompleted       = false;
-    m_currentRequestCancelled              = false;
+    m_currentRequestId                        = requestToRun.id;
+    m_currentRequestFinished                  = false;
+    m_currentRequestPendingLibraryCompletions = 0;
+    m_currentRequestCancelled                 = false;
 
     switch(requestToRun.type) {
         case ScanRequest::Files:
@@ -467,7 +465,7 @@ void LibraryThreadHandlerPrivate::finishScanRequest()
 
     m_currentRequestFinished = true;
 
-    if(!m_currentRequestCancelled && m_currentRequestNeedsLibraryCompletion && !m_currentRequestLibraryCompleted) {
+    if(!m_currentRequestCancelled && m_currentRequestPendingLibraryCompletions > 0) {
         return;
     }
 
@@ -488,11 +486,10 @@ void LibraryThreadHandlerPrivate::completeCurrentScanRequest()
     std::erase_if(m_scanRequests,
                   [this](const auto& pendingRequest) { return pendingRequest.id == m_currentRequestId; });
 
-    m_currentRequestId                     = -1;
-    m_currentRequestFinished               = false;
-    m_currentRequestNeedsLibraryCompletion = false;
-    m_currentRequestLibraryCompleted       = false;
-    m_currentRequestCancelled              = false;
+    m_currentRequestId                        = -1;
+    m_currentRequestFinished                  = false;
+    m_currentRequestPendingLibraryCompletions = 0;
+    m_currentRequestCancelled                 = false;
 
     execNextRequest();
 }
@@ -746,11 +743,11 @@ LibraryThreadHandler::LibraryThreadHandler(DbConnectionPoolPtr dbPool, MusicLibr
     QObject::connect(&p->m_scanner, &LibraryScanner::progressChanged, this,
                      [this](const ScanProgress& progress) { p->updateProgress(progress); });
     QObject::connect(&p->m_scanner, &LibraryScanner::scannedTracks, this, [this](const TrackList& tracks) {
-        p->m_currentRequestNeedsLibraryCompletion = true;
+        ++p->m_currentRequestPendingLibraryCompletions;
         emit scannedTracks(p->m_currentRequestId, tracks);
     });
     QObject::connect(&p->m_scanner, &LibraryScanner::playlistLoaded, this, [this](const TrackList& tracks) {
-        p->m_currentRequestNeedsLibraryCompletion = true;
+        ++p->m_currentRequestPendingLibraryCompletions;
         emit playlistLoaded(p->m_currentRequestId, tracks);
     });
     QObject::connect(&p->m_scanner, &LibraryScanner::statusChanged, this, &LibraryThreadHandler::statusChanged);
@@ -835,7 +832,10 @@ void LibraryThreadHandler::acknowledgeTracksScanned(const int id)
         return;
     }
 
-    p->m_currentRequestLibraryCompleted = true;
+    if(p->m_currentRequestPendingLibraryCompletions > 0) {
+        --p->m_currentRequestPendingLibraryCompletions;
+    }
+
     if(p->m_currentRequestFinished) {
         p->completeCurrentScanRequest();
     }
