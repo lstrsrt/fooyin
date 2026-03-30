@@ -68,6 +68,10 @@ public:
     bool setData(const QModelIndex& index, const QVariant& value, int role) override;
     [[nodiscard]] Qt::ItemFlags flags(const QModelIndex& index) const override;
 
+    [[nodiscard]] bool hasEnabledDevices() const;
+    [[nodiscard]] bool hasDisabledDevices() const;
+    bool setAllEnabled(bool enabled);
+
     void setEntries(const std::vector<OutputProfileManager::DeviceEntry>& entries);
     [[nodiscard]] Engine::OutputDeviceProfiles profiles(const QString& output) const;
 

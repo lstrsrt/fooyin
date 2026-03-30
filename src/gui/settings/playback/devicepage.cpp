@@ -28,10 +28,12 @@
 #include <gui/widgets/expandingcombobox.h>
 #include <utils/settings/settingsmanager.h>
 
+#include <QAction>
 #include <QComboBox>
 #include <QGridLayout>
 #include <QHeaderView>
 #include <QLabel>
+#include <QMenu>
 #include <QResizeEvent>
 #include <QSignalBlocker>
 #include <QTableView>
@@ -70,6 +72,7 @@ public:
 private:
     void storeCurrentOutput();
     void loadOutput(const QString& output);
+    void showDevicesMenu(const QPoint& pos);
     void updateColumnWidths();
 
     OutputProfileManager* m_profileManager;
@@ -96,6 +99,7 @@ DevicePageWidget::DevicePageWidget(OutputProfileManager* profileManager, DspPres
     m_devices->horizontalHeader()->setSectionResizeMode(OutputDevicesModel::DspColumn, QHeaderView::Interactive);
     m_devices->horizontalHeader()->setSectionResizeMode(OutputDevicesModel::BitsColumn, QHeaderView::Interactive);
     m_devices->verticalHeader()->hide();
+    m_devices->setContextMenuPolicy(Qt::CustomContextMenu);
 
     auto* hint
         = new QLabel(u"🛈 "_s + tr("Only checked devices will appear in the output device selector widget."), this);
@@ -115,6 +119,7 @@ DevicePageWidget::DevicePageWidget(OutputProfileManager* profileManager, DspPres
         storeCurrentOutput();
         loadOutput(output);
     });
+    QObject::connect(m_devices, &QWidget::customContextMenuRequested, this, &DevicePageWidget::showDevicesMenu);
 
     updateColumnWidths();
 }
@@ -255,6 +260,24 @@ void DevicePageWidget::loadOutput(const QString& output)
 
     m_model->setEntries(entries);
     updateColumnWidths();
+}
+
+void DevicePageWidget::showDevicesMenu(const QPoint& pos)
+{
+    auto* menu = new QMenu(this);
+    menu->setAttribute(Qt::WA_DeleteOnClose);
+
+    auto* selectAllAction = new QAction(tr("Select all"), menu);
+    selectAllAction->setEnabled(m_model->hasDisabledDevices());
+    QObject::connect(selectAllAction, &QAction::triggered, this, [this]() { m_model->setAllEnabled(true); });
+    menu->addAction(selectAllAction);
+
+    auto* selectNoneAction = new QAction(tr("Select none"), menu);
+    selectNoneAction->setEnabled(m_model->hasEnabledDevices());
+    QObject::connect(selectNoneAction, &QAction::triggered, this, [this]() { m_model->setAllEnabled(false); });
+    menu->addAction(selectNoneAction);
+
+    menu->popup(m_devices->viewport()->mapToGlobal(pos));
 }
 
 void DevicePageWidget::updateColumnWidths()

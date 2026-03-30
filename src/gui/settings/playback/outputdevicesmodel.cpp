@@ -220,6 +220,36 @@ Qt::ItemFlags OutputDevicesModel::flags(const QModelIndex& index) const
     }
 }
 
+bool OutputDevicesModel::hasEnabledDevices() const
+{
+    return std::ranges::any_of(m_rows, &Row::enabled);
+}
+
+bool OutputDevicesModel::hasDisabledDevices() const
+{
+    return std::ranges::any_of(m_rows, std::not_fn(&Row::enabled));
+}
+
+bool OutputDevicesModel::setAllEnabled(bool enabled)
+{
+    bool changed{false};
+    for(auto& row : m_rows) {
+        if(row.enabled == enabled) {
+            continue;
+        }
+
+        row.enabled = enabled;
+        changed     = true;
+    }
+
+    if(changed && !m_rows.empty()) {
+        emit dataChanged(index(0, DeviceColumn), index(static_cast<int>(m_rows.size()) - 1, DeviceColumn),
+                         {Qt::CheckStateRole});
+    }
+
+    return changed;
+}
+
 void OutputDevicesModel::setEntries(const std::vector<OutputProfileManager::DeviceEntry>& entries)
 {
     beginResetModel();
