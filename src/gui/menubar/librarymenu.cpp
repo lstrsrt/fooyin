@@ -128,6 +128,17 @@ LibraryMenu::LibraryMenu(Application* core, ActionManager* actionManager, QObjec
             m_library->cancelScan(m_activeLibraryScanId);
         }
     });
+    QObject::connect(m_library, &MusicLibrary::scanSummary, this,
+                     [](int id, const ScanRequest::Type type, const ScanSummaryCounts& summary) {
+                         if(type != ScanRequest::Library || id < 0) {
+                             return;
+                         }
+
+                         StatusEvent::post(tr("Library scan finished: %1, %2, %3")
+                                               .arg(tr("%Ln track(s) added", "", summary.added),
+                                                    tr("%Ln track(s) updated", "", summary.updated),
+                                                    tr("%Ln track(s) removed", "", summary.removed)));
+                     });
 
     libraryMenu->addAction(refreshLibraryCmd);
     libraryMenu->addAction(rescanLibraryCmd);

@@ -35,11 +35,26 @@
 #include <QLoggingCategory>
 
 #include <ranges>
+#include <unordered_map>
 #include <unordered_set>
 
 using namespace std::chrono_literals;
 
 Q_LOGGING_CATEGORY(LIBRARY, "fy.library")
+
+namespace {
+int updatedTrackCount(const Fooyin::TrackList& tracks)
+{
+    return static_cast<int>(std::ranges::count_if(
+        tracks, [](const Fooyin::Track& track) { return track.isEnabled() && track.isInLibrary(); }));
+}
+
+int removedTrackCount(const Fooyin::TrackList& tracks)
+{
+    return static_cast<int>(std::ranges::count_if(
+        tracks, [](const Fooyin::Track& track) { return !track.isEnabled() || !track.isInLibrary(); }));
+}
+} // namespace
 
 namespace Fooyin {
 class UnifiedMusicLibraryPrivate
@@ -56,7 +71,9 @@ public:
     QFuture<void> updateTracks(TrackList tracksToUpdate);
     void removeTracks(const TrackList& tracksToRemove);
 
-    void handleScanResult(const ScanResult& result);
+    void handleScanResult(int id, ScanRequest::Type type, const ScanResult& result);
+    void handleScanFinished(int id, ScanRequest::Type type, bool cancelled);
+    void finishPendingScanUpdate(int id);
     void scannedTracks(int id, TrackList tracks);
     void playlistLoaded(int id, TrackList tracks);
 
@@ -80,6 +97,9 @@ public:
     TrackSorter m_sorter;
 
     TrackList m_tracks;
+    std::unordered_map<int, int> m_pendingScanUpdates;
+    std::unordered_map<int, ScanSummaryCounts> m_scanSummaries;
+    std::unordered_map<int, std::pair<ScanRequest::Type, bool>> m_deferredScanFinished;
 };
 
 UnifiedMusicLibraryPrivate::UnifiedMusicLibraryPrivate(UnifiedMusicLibrary* self, LibraryManager* libraryManager,
@@ -227,18 +247,84 @@ void UnifiedMusicLibraryPrivate::removeTracks(const TrackList& tracksToRemove)
     emit m_self->tracksDeleted(tracksToRemove);
 }
 
-void UnifiedMusicLibraryPrivate::handleScanResult(const ScanResult& result)
+void UnifiedMusicLibraryPrivate::handleScanResult(int id, const ScanRequest::Type type, const ScanResult& result)
 {
+    if(id < 0 || (type != ScanRequest::Library && type != ScanRequest::Tracks)) {
+        return;
+    }
+
+    ++m_pendingScanUpdates[id];
+
+    auto& summary = m_scanSummaries[id];
+    summary.added += static_cast<int>(result.addedTracks.size());
+    summary.updated += updatedTrackCount(result.updatedTracks);
+    summary.removed += removedTrackCount(result.updatedTracks);
+
+    const auto completeScanUpdate = [this, id]() {
+        finishPendingScanUpdate(id);
+    };
+
     if(!result.addedTracks.empty()) {
-        addTracks(result.addedTracks).then(m_self, [this, result]() {
+        addTracks(result.addedTracks).then(m_self, [this, result, completeScanUpdate]() {
             if(!result.updatedTracks.empty()) {
-                updateTracksMetadata(result.updatedTracks);
+                updateTracksMetadata(result.updatedTracks).then(m_self, completeScanUpdate);
+            }
+            else {
+                completeScanUpdate();
             }
         });
     }
     else if(!result.updatedTracks.empty()) {
-        updateTracksMetadata(result.updatedTracks);
+        updateTracksMetadata(result.updatedTracks).then(m_self, completeScanUpdate);
     }
+    else {
+        completeScanUpdate();
+    }
+}
+
+void UnifiedMusicLibraryPrivate::handleScanFinished(int id, const ScanRequest::Type type, const bool cancelled)
+{
+    if(id < 0 || !m_pendingScanUpdates.contains(id)) {
+        const auto summary = m_scanSummaries.contains(id) ? m_scanSummaries.at(id) : ScanSummaryCounts{};
+        m_scanSummaries.erase(id);
+
+        if(!cancelled) {
+            emit m_self->scanSummary(id, type, summary);
+        }
+        emit m_self->scanFinished(id, type, cancelled);
+        return;
+    }
+
+    m_deferredScanFinished[id] = {type, cancelled};
+}
+
+void UnifiedMusicLibraryPrivate::finishPendingScanUpdate(int id)
+{
+    const auto pendingIt = m_pendingScanUpdates.find(id);
+    if(pendingIt == m_pendingScanUpdates.end()) {
+        return;
+    }
+
+    if(--pendingIt->second > 0) {
+        return;
+    }
+
+    m_pendingScanUpdates.erase(pendingIt);
+
+    const auto deferredIt = m_deferredScanFinished.find(id);
+    if(deferredIt == m_deferredScanFinished.end()) {
+        return;
+    }
+
+    const auto summary = m_scanSummaries.contains(id) ? m_scanSummaries.at(id) : ScanSummaryCounts{};
+    m_scanSummaries.erase(id);
+    const auto [type, cancelled] = deferredIt->second;
+    m_deferredScanFinished.erase(deferredIt);
+
+    if(!cancelled) {
+        emit m_self->scanSummary(id, type, summary);
+    }
+    emit m_self->scanFinished(id, type, cancelled);
 }
 
 void UnifiedMusicLibraryPrivate::scannedTracks(int id, TrackList tracks)
@@ -381,13 +467,16 @@ UnifiedMusicLibrary::UnifiedMusicLibrary(LibraryManager* libraryManager, DbConne
 
     QObject::connect(&p->m_threadHandler, &LibraryThreadHandler::progressChanged, this,
                      &UnifiedMusicLibrary::scanProgress);
-    QObject::connect(&p->m_threadHandler, &LibraryThreadHandler::scanFinished, this,
-                     &UnifiedMusicLibrary::scanFinished);
+    QObject::connect(
+        &p->m_threadHandler, &LibraryThreadHandler::scanFinished, this,
+        [this](int id, const ScanRequest::Type type, bool cancelled) { p->handleScanFinished(id, type, cancelled); });
 
     QObject::connect(&p->m_threadHandler, &LibraryThreadHandler::statusChanged, this,
                      [this](const LibraryInfo& library) { p->libraryStatusChanged(library); });
     QObject::connect(&p->m_threadHandler, &LibraryThreadHandler::scanUpdate, this,
-                     [this](const ScanResult& result) { p->handleScanResult(result); });
+                     [this](int id, const ScanRequest::Type type, const ScanResult& result) {
+                         p->handleScanResult(id, type, result);
+                     });
     QObject::connect(&p->m_threadHandler, &LibraryThreadHandler::scannedTracks, this,
                      [this](int id, TrackList tracks) { p->scannedTracks(id, std::move(tracks)); });
     QObject::connect(&p->m_threadHandler, &LibraryThreadHandler::playlistLoaded, this,

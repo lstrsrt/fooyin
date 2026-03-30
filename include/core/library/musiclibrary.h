@@ -116,6 +116,13 @@ struct WriteRequest
     QFuture<WriteResult> finished;
 };
 
+struct ScanSummaryCounts
+{
+    int added{0};
+    int updated{0};
+    int removed{0};
+};
+
 /*!
  * Represents a music library containing Track objects.
  * Acts as a unified library view for all tracks in all libraries,
@@ -219,6 +226,8 @@ signals:
      * scanFinished() for the same request is emitted afterwards.
      */
     void tracksScanned(int id, const Fooyin::TrackList& tracks);
+    /** Emitted when a scan request has applied its added, updated, and removed track changes. */
+    void scanSummary(int id, Fooyin::ScanRequest::Type type, Fooyin::ScanSummaryCounts summary);
     /** Emitted exactly once when a scan request completes or is cancelled. */
     void scanFinished(int id, Fooyin::ScanRequest::Type type, bool cancelled);
 
@@ -232,3 +241,4 @@ signals:
 } // namespace Fooyin
 
 Q_DECLARE_METATYPE(Fooyin::ScanProgress)
+Q_DECLARE_METATYPE(Fooyin::ScanSummaryCounts)

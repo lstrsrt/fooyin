@@ -82,7 +82,7 @@ signals:
     void playlistLoaded(int id, const Fooyin::TrackList& tracks);
     void scanFinished(int id, Fooyin::ScanRequest::Type type, bool cancelled);
     void statusChanged(const Fooyin::LibraryInfo& library);
-    void scanUpdate(const Fooyin::ScanResult& result);
+    void scanUpdate(int id, Fooyin::ScanRequest::Type type, const Fooyin::ScanResult& result);
     void tracksUpdated(const Fooyin::TrackList& tracks);
     void tracksAvailabilityUpdated(const Fooyin::TrackList& tracks);
     void tracksStatsUpdated(const Fooyin::TrackList& tracks);

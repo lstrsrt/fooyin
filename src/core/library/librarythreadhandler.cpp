@@ -754,7 +754,11 @@ LibraryThreadHandler::LibraryThreadHandler(DbConnectionPoolPtr dbPool, MusicLibr
         emit playlistLoaded(p->m_currentRequestId, tracks);
     });
     QObject::connect(&p->m_scanner, &LibraryScanner::statusChanged, this, &LibraryThreadHandler::statusChanged);
-    QObject::connect(&p->m_scanner, &LibraryScanner::scanUpdate, this, &LibraryThreadHandler::scanUpdate);
+    QObject::connect(&p->m_scanner, &LibraryScanner::scanUpdate, this, [this](const ScanResult& result) {
+        const auto request = p->currentRequest();
+        const auto type    = request ? request->type : ScanRequest::Library;
+        emit scanUpdate(p->m_currentRequestId, type, result);
+    });
     QObject::connect(&p->m_monitor, &LibraryMonitor::statusChanged, this, &LibraryThreadHandler::statusChanged);
     QObject::connect(&p->m_monitor, &LibraryMonitor::directoriesChanged, this,
                      [this](const LibraryInfo& libraryInfo, const QStringList& dirs) {
