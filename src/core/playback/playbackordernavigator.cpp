@@ -40,18 +40,26 @@ PlaybackOrderNavigator::PlaybackOrderNavigator(SettingsManager* settings, Playli
 
 Playlist* PlaybackOrderNavigator::playbackPlaylist() const
 {
-    if(!m_playlistHandler || *m_state.isQueueTrack || !m_state.currentTrack->isValid()
-       || !m_state.currentTrack->playlistId.isValid() || m_state.currentTrack->indexInPlaylist < 0) {
+    if(*m_state.isQueueTrack) {
         return nullptr;
     }
 
-    auto* playlist = m_playlistHandler->playlistById(m_state.currentTrack->playlistId);
-    if(!playlist || m_state.currentTrack->indexInPlaylist >= playlist->trackCount()) {
+    return playlistForTrack(*m_state.currentTrack);
+}
+
+Playlist* PlaybackOrderNavigator::playlistForTrack(const PlaylistTrack& track) const
+{
+    if(!m_playlistHandler || !track.isValid() || !track.playlistId.isValid() || track.indexInPlaylist < 0) {
         return nullptr;
     }
 
-    const auto playlistTrack = playlist->playlistTrack(m_state.currentTrack->indexInPlaylist);
-    if(!playlistTrack.has_value() || !playlistTrack->track.sameIdentityAs(m_state.currentTrack->track)) {
+    auto* playlist = m_playlistHandler->playlistById(track.playlistId);
+    if(!playlist || track.indexInPlaylist >= playlist->trackCount()) {
+        return nullptr;
+    }
+
+    const auto playlistTrack = playlist->playlistTrack(track.indexInPlaylist);
+    if(!playlistTrack.has_value() || !playlistTrack->track.sameIdentityAs(track.track)) {
         return nullptr;
     }
 
@@ -170,11 +178,7 @@ void PlaybackOrderNavigator::activatePlaylistTrack(const PlaylistTrack& track)
 
 PlaylistTrack PlaybackOrderNavigator::followQueuedTrackIndex(int delta)
 {
-    if(!m_playlistHandler) {
-        return {};
-    }
-
-    if(auto* playlist = m_playlistHandler->activePlaylist()) {
+    if(auto* playlist = playlistForTrack(*m_state.currentTrack)) {
         const int nextIndex = playlist->nextIndexFrom(m_state.currentTrack->indexInPlaylist, delta, *m_state.playMode);
         if(const auto track = playlist->playlistTrack(nextIndex)) {
             return *track;

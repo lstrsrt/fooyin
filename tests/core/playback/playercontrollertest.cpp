@@ -525,4 +525,67 @@ TEST(PlayerControllerTest, CommitingNonActivePlaylistTrackDoesNotSyncPlaylistInd
     EXPECT_EQ(activePlaylist->currentTrackIndex(), 0);
     EXPECT_EQ(otherPlaylist->currentTrackIndex(), 0);
 }
+
+TEST(PlayerControllerTest, FollowPlaybackQueueContinuesFromQueuedTrackPlaylist)
+{
+    ensureCoreApplication();
+    SettingsManager settings{QDir::tempPath() + u"/fooyin_playercontroller_follow_queue_playlist_test.ini"_s};
+    registerControllerSettings(settings);
+    settings.set<Settings::Core::FollowPlaybackQueue>(true);
+
+    PlaylistHandlerHarness harness{settings};
+    ASSERT_TRUE(harness.dbInitialised);
+
+    auto* firstPlaylist  = harness.handler.createPlaylist(u"First"_s, {makeTrack(u"/tmp/first-a.flac"_s, 61, 1000),
+                                                                       makeTrack(u"/tmp/first-b.flac"_s, 62, 1000),
+                                                                       makeTrack(u"/tmp/first-c.flac"_s, 63, 1000)});
+    auto* secondPlaylist = harness.handler.createPlaylist(u"Second"_s, {makeTrack(u"/tmp/second-a.flac"_s, 71, 1000),
+                                                                        makeTrack(u"/tmp/second-b.flac"_s, 72, 1000),
+                                                                        makeTrack(u"/tmp/second-c.flac"_s, 73, 1000)});
+    ASSERT_NE(firstPlaylist, nullptr);
+    ASSERT_NE(secondPlaylist, nullptr);
+
+    harness.handler.changeActivePlaylist(firstPlaylist);
+    firstPlaylist->changeCurrentIndex(0);
+    secondPlaylist->changeCurrentIndex(0);
+
+    PlayerController controller{&settings, &harness.handler};
+
+    const auto firstTrack    = firstPlaylist->playlistTrack(0);
+    const auto queuedTrack   = secondPlaylist->playlistTrack(1);
+    const auto followedTrack = secondPlaylist->playlistTrack(2);
+    ASSERT_TRUE(firstTrack.has_value());
+    ASSERT_TRUE(queuedTrack.has_value());
+    ASSERT_TRUE(followedTrack.has_value());
+
+    std::vector<Player::TrackChangeRequest> requests;
+    QObject::connect(&controller, &PlayerController::trackChangeRequested, &controller,
+                     [&requests](const Player::TrackChangeRequest& request) { requests.emplace_back(request); });
+
+    controller.commitCurrentTrack(Player::TrackChangeRequest{
+        .track        = *firstTrack,
+        .context      = {.reason = Player::AdvanceReason::ManualSelection, .userInitiated = true},
+        .isQueueTrack = false,
+        .itemId       = 201,
+    });
+    controller.queueTrack(*queuedTrack);
+
+    controller.advance(Player::AdvanceReason::NaturalEnd);
+
+    ASSERT_EQ(requests.size(), 1U);
+    EXPECT_EQ(requests.back().track, *queuedTrack);
+    EXPECT_TRUE(requests.back().isQueueTrack);
+
+    controller.commitCurrentTrack(requests.back());
+
+    EXPECT_EQ(controller.currentPlaylistTrack(), *queuedTrack);
+    EXPECT_TRUE(controller.currentIsQueueTrack());
+    EXPECT_EQ(controller.upcomingPlaylistTrack(), *followedTrack);
+
+    controller.advance(Player::AdvanceReason::NaturalEnd);
+
+    ASSERT_EQ(requests.size(), 2U);
+    EXPECT_EQ(requests.back().track, *followedTrack);
+    EXPECT_FALSE(requests.back().isQueueTrack);
+}
 } // namespace Fooyin::Testing

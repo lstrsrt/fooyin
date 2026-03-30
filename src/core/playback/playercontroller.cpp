@@ -222,7 +222,12 @@ Player::UpcomingTrack PlayerControllerPrivate::resolveUpcomingTrack() const
             return {};
         }
         if(m_session.currentTrack().isInPlaylist() && m_settings->value<Settings::Core::FollowPlaybackQueue>()) {
-            if(auto* playlist = m_playlistHandler->activePlaylist()) {
+            if(auto* playlist = m_playlistHandler->playlistById(m_session.currentTrack().playlistId)) {
+                const auto currentTrack = playlist->playlistTrack(m_session.currentTrack().indexInPlaylist);
+                if(!currentTrack.has_value() || !currentTrack->track.sameIdentityAs(m_session.currentTrack().track)) {
+                    return {};
+                }
+
                 const int nextIndex = playlist->nextIndexFrom(m_session.currentTrack().indexInPlaylist, 1, m_playMode);
                 return {
                     .track        = playlist->playlistTrack(nextIndex).value_or(PlaylistTrack{}),

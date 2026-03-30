@@ -64,6 +64,7 @@ public:
 
 private:
     [[nodiscard]] PlaylistTrack advancePlaybackRelativeTrack(int delta);
+    [[nodiscard]] Playlist* playlistForTrack(const PlaylistTrack& track) const;
     [[nodiscard]] PlaylistTrack restartPlaylistFromBeginning();
     [[nodiscard]] PlaylistTrack restartPlaylistFromEnd();
 
