@@ -1,10 +1,12 @@
 # Changelog
 
-## [Unreleased]
+## [0.10.2](https://github.com/fooyin/fooyin/releases/tag/v0.10.2) (2026-03-30)
 
 ### New Features
 * FileOps
   - Add an action and shortcut to delete tracks ([#932](https://github.com/fooyin/fooyin/pull/932))
+* Notifications
+  - Add track change desktop notifications ([#801](https://github.com/fooyin/fooyin/pull/801))
 * Playback
   - Add per-device output profiles and an output selector ([#947](https://github.com/fooyin/fooyin/pull/947))
 
@@ -15,9 +17,15 @@
   - Add a Playback Statistics section to selection info ([#942](https://github.com/fooyin/fooyin/issues/942))
   - Add a new Track Display settings page with configurable full, half, and empty star symbols for `%rating_stars%` and `%rating_stars_padded%` ([#938](https://github.com/fooyin/fooyin/issues/938))
   - Support extracting artwork for archive tracks
+  - Add waveform render supersampling, and increase the max number of samples per channel to 8192 ([#897](https://github.com/fooyin/fooyin/issues/897))
 * Library/Metadata
   - Add ReplayGain parsing in FFmpeg, improve ReplayGain string handling, and improve audio bitdepth reporting ([#946](https://github.com/fooyin/fooyin/issues/946))
+  - Improve library scan completion handling, post summary status messages, and guard sort completions from stale overwrites ([#953](https://github.com/fooyin/fooyin/issues/953))
   - Treat CUE `PERFORMER` as artist when tracks omit it ([#940](https://github.com/fooyin/fooyin/issues/940))
+* Playlist
+  - Improve Playlist Organiser drag-and-drop handling
+* Scripting
+  - Make contains queries accent-insensitive ([#957](https://github.com/fooyin/fooyin/issues/957))
 
 ### Fixes
 * Audio/Playback
@@ -25,14 +33,26 @@
   - Reinitialise playback buffering when `BufferLength` changes during playback
   - Fix output volume being applied twice after fades ([#944](https://github.com/fooyin/fooyin/issues/944))
   - Fix DSP preset save/load after removing DSPs
+  - Fix playback queue follow-up using the queued track playlist ([#952](https://github.com/fooyin/fooyin/issues/952))
 * Interface
   - Fix exported file naming in save dialogs and avoid portal-backed save target issues ([#937](https://github.com/fooyin/fooyin/issues/937))
   - Fix translations for ScriptEditor references and the Interface settings page ([#935](https://github.com/fooyin/fooyin/issues/935))
   - Fix seeking in faded areas of synced lyrics
   - Fix leaked `ExtendableTableView` shortcut actions
+  - Fix WaveBar rescaling double counting and RMS calculation
+  - Fix stale state in `ExpandedTreeView` after model resets ([#956](https://github.com/fooyin/fooyin/issues/956))
+  - Fix artwork cache clearing so playlist thumbnails do not stay cached as no-cover
+* Integration
+  - Fix stale MPRIS play/pause capabilities after playback starts ([#955](https://github.com/fooyin/fooyin/issues/955))
+* Library/Metadata
+  - Ignore empty embedded cover data when loading artwork
+* Playlist
+  - Fix mixed playlist/file drops losing standalone tracks
+  - Fix right-click selection in Playlist Organiser
 * Tag Editor
   - Fix a crash when opening the tag editor on some systems ([#943](https://github.com/fooyin/fooyin/issues/943))
   - Fix ratings for archive and CUE tracks
+  - Improve metadata and artwork save failure reporting, and log artwork decode errors ([#939](https://github.com/fooyin/fooyin/issues/939))
 * Testing
   - Isolate time-sensitive audio tests to reduce load-sensitive failures ([#934](https://github.com/fooyin/fooyin/issues/934))
 
