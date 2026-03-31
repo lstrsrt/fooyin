@@ -244,8 +244,6 @@ InfoItem::InfoItem(ItemType type, QString name, InfoItem* parent, ValueType valu
     , m_formatNum{formatFunc}
 { }
 
-InfoItem::InfoItem(const InfoItem& other) = default;
-
 bool InfoItem::operator<(const InfoItem& other) const
 {
     const bool leftIsCustom  = m_name.startsWith(u'<');

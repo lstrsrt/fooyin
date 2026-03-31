@@ -189,7 +189,7 @@ void FileOpsPlugin::recreateMenu()
             auto* thread = new QThread(this);
             worker->moveToThread(thread);
 
-            QObject::connect(worker, &FileOpsWorker::deleteFinished, this, [this](const TrackList& deletedTracks) {
+            QObject::connect(worker, &FileOpsWorker::deleteFinished, this, [](const TrackList& deletedTracks) {
                 const QString status = deletedTracks.empty()
                                          ? tr("No tracks deleted")
                                          : tr("Deleted %Ln track(s)", nullptr, static_cast<int>(deletedTracks.size()));

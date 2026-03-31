@@ -36,7 +36,6 @@
 
 using namespace Qt::StringLiterals;
 
-constexpr auto DefaultIconSize = 20;
 constexpr std::array<const char*, 6> DateFormats{"yyyy-MM-dd hh:mm:ss", "yyyy-MM-dd hh:mm", "yyyy-MM-dd hh",
                                                  "yyyy-MM-dd",          "yyyy-MM",          "yyyy"};
 
