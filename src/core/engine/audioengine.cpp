@@ -2231,6 +2231,16 @@ void AudioEngine::onLevelFrameReady(const LevelFrame& frame)
     }
 }
 
+void AudioEngine::handleOutputStateChange(const AudioOutput::State state)
+{
+    if(state != AudioOutput::State::Disconnected || !m_format.isValid() || !m_pipeline.hasOutput()) {
+        return;
+    }
+
+    qCInfo(ENGINE) << "Audio output disconnected; attempting to reinit current output";
+    reinitOutputForCurrentFormat();
+}
+
 void AudioEngine::dispatchPendingLevelFrames()
 {
     auto reader = m_levelFrameMailbox.reader();
