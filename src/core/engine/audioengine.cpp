@@ -281,6 +281,7 @@ AudioEngine::AudioEngine(std::shared_ptr<AudioLoader> audioLoader, SettingsManag
     , m_levelFrameMailbox{8}
     , m_levelFrameDispatchQueued{false}
     , m_pipelineWakeTaskQueued{false}
+    , m_outputReconnectQueued{false}
     , m_fadeController{&m_pipeline}
     , m_outputController{this, &m_pipeline}
     , m_volume{m_settings->value<Settings::Core::OutputVolume>()}
@@ -307,6 +308,29 @@ AudioEngine::AudioEngine(std::shared_ptr<AudioLoader> audioLoader, SettingsManag
     , m_autoBoundaryFadeGeneration{0}
 {
     setupSettings();
+
+    m_outputController.setOutputStateHandler([this](AudioOutput::State state) {
+        if(state != AudioOutput::State::Disconnected || m_engineTaskQueue.isShuttingDown()) {
+            return;
+        }
+
+        if(m_outputReconnectQueued.exchange(true, std::memory_order_relaxed)) {
+            return;
+        }
+
+        QMetaObject::invokeMethod(
+            this,
+            [this, state]() {
+                m_outputReconnectQueued.store(false, std::memory_order_relaxed);
+
+                if(m_engineTaskQueue.isShuttingDown()) {
+                    return;
+                }
+
+                handleOutputStateChange(state);
+            },
+            Qt::QueuedConnection);
+    });
 
     QObject::connect(
         &m_audioClock, &AudioClock::positionChanged, this, [this](uint64_t positionMs, uint64_t generation) {

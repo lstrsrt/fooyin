@@ -21,6 +21,8 @@
 
 #include <core/engine/audiooutput.h>
 
+#include <functional>
+
 class QObject;
 class QString;
 
@@ -42,6 +44,8 @@ public:
     void setOutputCreator(const OutputCreator& outputCreator);
     //! Set desired backend device id/name for next init.
     void setOutputDevice(const QString& device);
+    //! Set runtime backend state callback for active output instances.
+    void setOutputStateHandler(std::function<void(AudioOutput::State)> handler);
 
     [[nodiscard]] const QString& outputDevice() const;
 
@@ -57,6 +61,7 @@ private:
     QObject* m_signalTarget;
     AudioPipeline* m_pipeline;
     OutputCreator m_outputCreator;
+    std::function<void(AudioOutput::State)> m_outputStateHandler;
     QString m_outputDevice;
 };
 } // namespace Fooyin

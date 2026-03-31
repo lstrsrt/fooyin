@@ -278,6 +278,7 @@ private:
     void dispatchPendingLevelFrames();
     void schedulePipelineWakeDrainTask();
     void handlePipelineWakeSignals(const AudioPipeline::PendingSignals& pendingSignals);
+    void handleOutputStateChange(AudioOutput::State state);
 
     [[nodiscard]] uint64_t beginTransportTransition();
     void clearTransportTransition();
@@ -389,6 +390,7 @@ private:
     LockFreeRingBuffer<LevelFrame> m_levelFrameMailbox;
     std::atomic<bool> m_levelFrameDispatchQueued;
     std::atomic<bool> m_pipelineWakeTaskQueued;
+    std::atomic<bool> m_outputReconnectQueued;
 
     std::unique_ptr<AudioAnalysisBus> m_analysisBus;
     AudioPipeline m_pipeline;

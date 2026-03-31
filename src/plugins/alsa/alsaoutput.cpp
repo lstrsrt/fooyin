@@ -253,6 +253,7 @@ AlsaOutput::AlsaOutput()
     : m_initialised{false}
     , m_pausable{true}
     , m_started{false}
+    , m_reinitRequested{false}
     , m_device{u"default"_s}
     , m_bufferSize{8192}
     , m_periodSize{1024}
@@ -265,7 +266,8 @@ AlsaOutput::~AlsaOutput()
 
 bool AlsaOutput::init(const AudioFormat& format)
 {
-    m_format = format;
+    m_reinitRequested = false;
+    m_format          = format;
 
     if(!initAlsa()) {
         uninit();
@@ -500,7 +502,8 @@ void AlsaOutput::resetAlsa()
     if(m_pcmHandle) {
         m_pcmHandle.reset();
     }
-    m_started = false;
+    m_started         = false;
+    m_reinitRequested = false;
     m_error.clear();
 }
 
@@ -772,6 +775,11 @@ bool AlsaOutput::attemptRecovery(snd_pcm_status_t* status)
     bool autoRecoverAttempted{false};
     snd_pcm_state_t pcmst{SND_PCM_STATE_DISCONNECTED};
 
+    const auto requestReinit = [this]() {
+        m_reinitRequested = true;
+        QMetaObject::invokeMethod(this, [this]() { emit this->stateChanged(State::Disconnected); });
+    };
+
     // Give ALSA a number of chances to recover
     for(int n{0}; n < 5; ++n) {
         if(!m_pcmHandle) {
@@ -801,7 +809,13 @@ bool AlsaOutput::attemptRecovery(snd_pcm_status_t* status)
 
         if(pcmst == SND_PCM_STATE_PREPARED) {
             if(m_started) {
-                snd_pcm_start(m_pcmHandle.get());
+                err = snd_pcm_start(m_pcmHandle.get());
+                if(err < 0) {
+                    qCWarning(ALSA) << "Could not restart prepared device:" << snd_strerror(err)
+                                    << "- forcing output reinit";
+                    requestReinit();
+                    return false;
+                }
             }
             return true;
         }
@@ -823,15 +837,23 @@ bool AlsaOutput::attemptRecovery(snd_pcm_status_t* status)
                 if(err == -ENOSYS) {
                     qCWarning(ALSA) << "Resume not supported - trying prepare…";
                     err = snd_pcm_prepare(m_pcmHandle.get());
+                    if(err < 0) {
+                        requestReinit();
+                        return false;
+                    }
                 }
-                checkError(err, "Could not be resumed");
+                if(err < 0) {
+                    qCWarning(ALSA) << "Resume failed:" << snd_strerror(err) << "- forcing output reinit";
+                    requestReinit();
+                    return false;
+                }
                 continue;
             // Device lost
             case(SND_PCM_STATE_DISCONNECTED):
             case(SND_PCM_STATE_OPEN):
             default:
-                qCWarning(ALSA) << "Device lost - stopping playback";
-                QMetaObject::invokeMethod(this, [this]() { emit this->stateChanged(State::Disconnected); });
+                qCWarning(ALSA) << "Device lost - forcing output reinit";
+                requestReinit();
                 return false;
         }
     }
@@ -850,10 +872,16 @@ bool AlsaOutput::recoverState(OutputState* state)
     const bool recovered = attemptRecovery(status);
 
     if(!recovered) {
-        qCWarning(ALSA) << "Could not recover";
+        if(m_reinitRequested) {
+            qCInfo(ALSA) << "Recovery handed off to output reinit";
+            m_reinitRequested = false;
+        }
+        else {
+            qCWarning(ALSA) << "Could not recover";
+        }
     }
 
-    if(state) {
+    if(state && recovered) {
         const auto delay  = snd_pcm_status_get_delay(status);
         state->delay      = static_cast<double>(std::max(delay, 0L)) / static_cast<double>(m_format.sampleRate());
         state->freeFrames = static_cast<int>(snd_pcm_status_get_avail(status));
@@ -861,6 +889,9 @@ bool AlsaOutput::recoverState(OutputState* state)
         // Align to period size
         state->freeFrames   = static_cast<int>(state->freeFrames / m_periodSize * m_periodSize);
         state->queuedFrames = static_cast<int>(m_bufferSize) - state->freeFrames;
+    }
+    else if(state) {
+        *state = {};
     }
 
     return recovered;

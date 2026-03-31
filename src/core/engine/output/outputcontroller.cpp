@@ -58,6 +58,11 @@ void OutputController::setOutputDevice(const QString& device)
     m_outputDevice = device;
 }
 
+void OutputController::setOutputStateHandler(std::function<void(AudioOutput::State)> handler)
+{
+    m_outputStateHandler = std::move(handler);
+}
+
 const QString& OutputController::outputDevice() const
 {
     return m_outputDevice;
@@ -85,6 +90,15 @@ bool OutputController::initOutput(const AudioFormat& format, double volume)
 
     if(!m_outputDevice.isEmpty()) {
         output->setDevice(m_outputDevice);
+    }
+
+    if(m_outputStateHandler && m_signalTarget) {
+        QObject::connect(output.get(), &AudioOutput::stateChanged, m_signalTarget,
+                         [handler = m_outputStateHandler](AudioOutput::State state) {
+                             if(handler) {
+                                 handler(state);
+                             }
+                         });
     }
 
     m_pipeline->setOutput(std::move(output));

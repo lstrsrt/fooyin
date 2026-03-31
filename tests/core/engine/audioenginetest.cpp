@@ -28,6 +28,7 @@
 #include <utils/settings/settingsmanager.h>
 
 #include <QCoreApplication>
+#include <QPointer>
 #include <QTemporaryDir>
 #include <QVariant>
 
@@ -72,6 +73,7 @@ struct OutputStats
     std::atomic<int> setVolumeCalls{0};
     std::atomic<int> setDeviceCalls{0};
     std::atomic<int> setPausedCalls{0};
+    std::atomic<int> disconnectSignals{0};
     std::atomic<int> freeFrames{256};
     std::atomic<int> queuedFrames{0};
     std::atomic<int> delayMs{0};
@@ -109,9 +111,29 @@ struct OutputStats
         return lastDevice;
     }
 
+    void setDisconnectEmitter(std::function<void()> emitter)
+    {
+        const std::scoped_lock lock{mutex};
+        disconnectEmitter = std::move(emitter);
+    }
+
+    void emitDisconnect()
+    {
+        std::function<void()> emitter;
+        {
+            const std::scoped_lock lock{mutex};
+            emitter = disconnectEmitter;
+        }
+
+        if(emitter) {
+            emitter();
+        }
+    }
+
     mutable std::mutex mutex;
     double lastVolume{1.0};
     QString lastDevice;
+    std::function<void()> disconnectEmitter;
 };
 
 QCoreApplication* ensureCoreApplication()
@@ -303,7 +325,13 @@ public:
     explicit FakeAudioOutput(std::shared_ptr<OutputStats> stats, int bufferFrames = 256)
         : m_stats{std::move(stats)}
         , m_bufferFrames{std::max(1, bufferFrames)}
-    { }
+    {
+        m_stats->setDisconnectEmitter([self = QPointer(this)]() {
+            if(self) {
+                self->simulateDisconnect();
+            }
+        });
+    }
 
     bool init(const AudioFormat& format) override
     {
@@ -398,6 +426,12 @@ public:
     [[nodiscard]] QString error() const override
     {
         return {};
+    }
+
+    void simulateDisconnect()
+    {
+        ++m_stats->disconnectSignals;
+        emit stateChanged(State::Disconnected);
     }
 
 private:
@@ -833,6 +867,42 @@ FOOYIN_AUDIOENGINE_SENSITIVE_TEST(AudioEngineTest, FadePauseWatchdogFinalisesPau
             return harness.outputStats->setPausedCalls.load() > setPausedCallsBeforePause;
         },
         2500ms));
+}
+
+FOOYIN_AUDIOENGINE_SENSITIVE_TEST(AudioEngineTest, DisconnectedOutputReinitialisesAndPlaybackCanResume)
+{
+    ensureCoreApplication();
+    EngineHarness harness{false};
+
+    const Track track = harness.createTrack(u"output-disconnect-reinit.fyt"_s, 0, 100000);
+    harness.engine.loadTrack(makePlaybackItem(track, 1), false);
+    ASSERT_TRUE(pumpUntil([&harness]() { return harness.engine.trackStatus() == Engine::TrackStatus::Loaded; }));
+
+    harness.engine.play();
+    ASSERT_TRUE(pumpUntil([&harness]() { return harness.engine.playbackState() == Engine::PlaybackState::Playing; }));
+
+    harness.engine.pause();
+    ASSERT_TRUE(
+        pumpUntil([&harness]() { return harness.engine.playbackState() == Engine::PlaybackState::Paused; }, 3000ms));
+
+    const int initCallsBeforeReconnect   = harness.outputStats->initCalls.load();
+    const int uninitCallsBeforeReconnect = harness.outputStats->uninitCalls.load();
+
+    harness.outputStats->emitDisconnect();
+
+    ASSERT_TRUE(pumpUntil(
+        [&harness, initCallsBeforeReconnect, uninitCallsBeforeReconnect]() {
+            return harness.outputStats->disconnectSignals.load() >= 1
+                && harness.outputStats->initCalls.load() > initCallsBeforeReconnect
+                && harness.outputStats->uninitCalls.load() > uninitCallsBeforeReconnect;
+        },
+        3000ms));
+
+    EXPECT_EQ(harness.engine.playbackState(), Engine::PlaybackState::Paused);
+
+    harness.engine.play();
+
+    ASSERT_TRUE(pumpUntil([&harness]() { return harness.engine.playbackState() == Engine::PlaybackState::Playing; }));
 }
 
 FOOYIN_AUDIOENGINE_SENSITIVE_TEST(AudioEngineTest, SeekDiscontinuityPublishesNearTargetQuickly)

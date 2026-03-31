@@ -79,6 +79,7 @@ private:
     bool m_initialised;
     bool m_pausable;
     bool m_started;
+    bool m_reinitRequested;
 
     QString m_device;
     QString m_error;
