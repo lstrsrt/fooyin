@@ -27,7 +27,8 @@ using namespace Qt::StringLiterals;
 namespace Fooyin {
 std::vector<PlaybackQueueInfo> PlaybackQueueDatabase::queue() const
 {
-    const auto statement = u"SELECT TrackID, PlaylistID, PlaylistTrackIndex FROM PlaybackQueue ORDER BY QueueIndex;"_s;
+    static const QString statement
+        = u"SELECT TrackID, PlaylistID, PlaylistTrackIndex FROM PlaybackQueue ORDER BY QueueIndex;"_s;
 
     DbQuery query{db(), statement};
     if(!query.exec()) {
@@ -58,8 +59,8 @@ bool PlaybackQueueDatabase::replaceQueue(const std::vector<PlaybackQueueInfo>& q
         return false;
     }
 
-    const auto statement = u"INSERT INTO PlaybackQueue (QueueIndex, TrackID, PlaylistID, PlaylistTrackIndex) "
-                           "VALUES (:queueIndex, :trackId, :playlistId, :playlistTrackIndex);"_s;
+    static const QString statement = u"INSERT INTO PlaybackQueue (QueueIndex, TrackID, PlaylistID, PlaylistTrackIndex) "
+                                     "VALUES (:queueIndex, :trackId, :playlistId, :playlistTrackIndex);"_s;
 
     for(int i{0}; const auto& item : queue) {
         DbQuery query{db(), statement};
@@ -78,7 +79,9 @@ bool PlaybackQueueDatabase::replaceQueue(const std::vector<PlaybackQueueInfo>& q
 
 bool PlaybackQueueDatabase::clearQueue() const
 {
-    DbQuery query{db(), u"DELETE FROM PlaybackQueue;"_s};
+    static const QString statement = u"DELETE FROM PlaybackQueue;"_s;
+
+    DbQuery query{db(), statement};
     return query.exec();
 }
 } // namespace Fooyin
