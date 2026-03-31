@@ -27,8 +27,9 @@ using namespace Qt::StringLiterals;
 namespace Fooyin {
 std::vector<PlaylistInfo> PlaylistDatabase::getAllPlaylists()
 {
-    const QString query = u"SELECT PlaylistID, Name, PlaylistIndex, IsAutoPlaylist, Query, SortQuery, ForceSorted "
-                          "FROM Playlists ORDER BY PlaylistIndex;"_s;
+    static const QString query
+        = u"SELECT PlaylistID, Name, PlaylistIndex, IsAutoPlaylist, Query, SortQuery, ForceSorted "
+          "FROM Playlists ORDER BY PlaylistIndex;"_s;
 
     DbQuery q{db(), query};
 
@@ -67,9 +68,9 @@ int PlaylistDatabase::insertPlaylist(const QString& name, int index, bool isAuto
         return -1;
     }
 
-    const QString statement = u"INSERT INTO Playlists (Name, PlaylistIndex, IsAutoPlaylist, Query, SortQuery, "
-                              "ForceSorted) VALUES (:name, :index, :isAutoPlaylist, :query, :sortQuery, "
-                              ":forceSorted);"_s;
+    static const QString statement = u"INSERT INTO Playlists (Name, PlaylistIndex, IsAutoPlaylist, Query, SortQuery, "
+                                     "ForceSorted) VALUES (:name, :index, :isAutoPlaylist, :query, :sortQuery, "
+                                     ":forceSorted);"_s;
 
     DbQuery query{db(), statement};
     query.bindValue(u":name"_s, name);
@@ -91,9 +92,9 @@ bool PlaylistDatabase::savePlaylist(Playlist& playlist)
     bool updated{false};
 
     if(playlist.modified()) {
-        const auto statement = u"UPDATE Playlists SET Name = :name, PlaylistIndex = :index, IsAutoPlaylist = "
-                               ":isAutoPlaylist, Query = :query, SortQuery = :sortQuery, "
-                               "ForceSorted = :forceSorted WHERE PlaylistID = :id;"_s;
+        static const QString statement = u"UPDATE Playlists SET Name = :name, PlaylistIndex = :index, IsAutoPlaylist = "
+                                         ":isAutoPlaylist, Query = :query, SortQuery = :sortQuery, "
+                                         "ForceSorted = :forceSorted WHERE PlaylistID = :id;"_s;
 
         DbQuery query{db(), statement};
 
@@ -133,7 +134,7 @@ bool PlaylistDatabase::saveModifiedPlaylists(const PlaylistList& playlists)
 
 bool PlaylistDatabase::removePlaylist(int id)
 {
-    const auto statement = u"DELETE FROM Playlists WHERE PlaylistID = :id;"_s;
+    static const QString statement = u"DELETE FROM Playlists WHERE PlaylistID = :id;"_s;
 
     DbQuery query{db(), statement};
     query.bindValue(u":id"_s, id);
@@ -147,7 +148,7 @@ bool PlaylistDatabase::renamePlaylist(int id, const QString& name)
         return false;
     }
 
-    const auto statement = u"UPDATE Playlists SET Name = :name WHERE PlaylistID = :id;"_s;
+    static const QString statement = u"UPDATE Playlists SET Name = :name WHERE PlaylistID = :id;"_s;
 
     DbQuery query{db(), statement};
     query.bindValue(u":name"_s, name);
@@ -158,7 +159,7 @@ bool PlaylistDatabase::renamePlaylist(int id, const QString& name)
 
 bool PlaylistDatabase::insertPlaylistTrack(int playlistId, const Track& track, int index)
 {
-    const QString statement
+    static const QString statement
         = u"INSERT INTO PlaylistTracks (PlaylistID, TrackID, TrackIndex) VALUES (:playlistId, :trackId, :index);"_s;
 
     DbQuery query{db(), statement};
@@ -176,7 +177,7 @@ bool PlaylistDatabase::insertPlaylistTracks(int playlistId, const TrackList& tra
     }
 
     // Remove current playlist tracks
-    const auto statement = u"DELETE FROM PlaylistTracks WHERE PlaylistID = :id;"_s;
+    static const QString statement = u"DELETE FROM PlaylistTracks WHERE PlaylistID = :id;"_s;
 
     DbQuery query{db(), statement};
     query.bindValue(u":id"_s, playlistId);
@@ -199,7 +200,8 @@ bool PlaylistDatabase::insertPlaylistTracks(int playlistId, const TrackList& tra
 TrackList PlaylistDatabase::populatePlaylistTracks(const Playlist& playlist,
                                                    const std::unordered_map<int, Track>& tracks)
 {
-    const auto statement = u"SELECT TrackID FROM PlaylistTracks WHERE PlaylistID=:playlistId ORDER BY TrackIndex;"_s;
+    static const QString statement
+        = u"SELECT TrackID FROM PlaylistTracks WHERE PlaylistID=:playlistId ORDER BY TrackIndex;"_s;
 
     DbQuery query{db(), statement};
     query.bindValue(u":playlistId"_s, playlist.dbId());

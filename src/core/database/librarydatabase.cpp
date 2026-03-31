@@ -26,7 +26,7 @@ using namespace Qt::StringLiterals;
 namespace Fooyin {
 bool LibraryDatabase::getAllLibraries(LibraryInfoMap& libraries)
 {
-    const QString statement = u"SELECT LibraryID, Name, Path FROM Libraries;"_s;
+    static const QString statement = u"SELECT LibraryID, Name, Path FROM Libraries;"_s;
 
     DbQuery query{db(), statement};
 
@@ -39,7 +39,7 @@ bool LibraryDatabase::getAllLibraries(LibraryInfoMap& libraries)
         const QString name = query.value(1).toString();
         const QString path = query.value(2).toString();
 
-        libraries.emplace(id, LibraryInfo{name, path, id});
+        libraries.emplace(id, LibraryInfo{.name = name, .path = path, .id = id});
     }
 
     return true;
@@ -51,7 +51,7 @@ int LibraryDatabase::insertLibrary(const QString& path, const QString& name)
         return -1;
     }
 
-    const QString statement = u"INSERT INTO Libraries (Name, Path) VALUES (:name, :path);"_s;
+    static const QString statement = u"INSERT INTO Libraries (Name, Path) VALUES (:name, :path);"_s;
 
     DbQuery query{db(), statement};
 
@@ -71,7 +71,7 @@ bool LibraryDatabase::removeLibrary(int id)
         return false;
     }
 
-    const QString statement = u"DELETE FROM Libraries WHERE LibraryID = :id;"_s;
+    static const QString statement = u"DELETE FROM Libraries WHERE LibraryID = :id;"_s;
 
     DbQuery query{db(), statement};
 
@@ -86,7 +86,7 @@ bool LibraryDatabase::renameLibrary(int id, const QString& name)
         return false;
     }
 
-    const QString statement = u"UPDATE Libraries SET Name = :name WHERE LibraryId = :id;"_s;
+    static const QString statement = u"UPDATE Libraries SET Name = :name WHERE LibraryId = :id;"_s;
 
     DbQuery query{db(), statement};
 

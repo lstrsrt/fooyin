@@ -27,7 +27,7 @@ using namespace Qt::StringLiterals;
 namespace Fooyin {
 QString SettingsDatabase::value(const QString& name, QString defaultValue) const
 {
-    const auto statement = u"SELECT Value FROM Settings WHERE Name = :name"_s;
+    static const QString statement = u"SELECT Value FROM Settings WHERE Name = :name"_s;
 
     QSqlQuery query{db()};
 
@@ -57,7 +57,7 @@ bool SettingsDatabase::set(const QString& name, const QVariant& value) const
         return false;
     }
 
-    const auto statement = u"INSERT OR REPLACE INTO Settings (Name, Value) VALUES (:name, :value)"_s;
+    static const QString statement = u"INSERT OR REPLACE INTO Settings (Name, Value) VALUES (:name, :value)"_s;
 
     QSqlQuery query{db()};
 

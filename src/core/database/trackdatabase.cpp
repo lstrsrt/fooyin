@@ -256,7 +256,7 @@ bool TrackDatabase::updateTracks(TrackList& tracks)
 
 bool TrackDatabase::reloadTrack(Track& track) const
 {
-    const auto statement = u"SELECT %1 FROM TracksView WHERE TrackID = :trackId;"_s.arg(fetchTrackColumns());
+    static const QString statement = u"SELECT %1 FROM TracksView WHERE TrackID = :trackId;"_s.arg(fetchTrackColumns());
 
     DbQuery query{db(), statement};
 
@@ -275,7 +275,8 @@ bool TrackDatabase::reloadTrack(Track& track) const
 
 bool TrackDatabase::reloadTracks(TrackList& tracks) const
 {
-    const auto statement = u"SELECT %1 FROM TracksView WHERE TrackID IN (:trackIds);"_s.arg(fetchTrackColumns());
+    static const QString statement
+        = u"SELECT %1 FROM TracksView WHERE TrackID IN (:trackIds);"_s.arg(fetchTrackColumns());
 
     DbQuery q{db(), statement};
 
@@ -300,7 +301,7 @@ bool TrackDatabase::reloadTracks(TrackList& tracks) const
 
 TrackList TrackDatabase::getAllTracks() const
 {
-    const auto statement = u"SELECT %1 FROM TracksView"_s.arg(fetchTrackColumns());
+    static const QString statement = u"SELECT %1 FROM TracksView"_s.arg(fetchTrackColumns());
 
     DbQuery q{db(), statement};
 
@@ -324,7 +325,8 @@ TrackList TrackDatabase::getAllTracks() const
 
 TrackList TrackDatabase::tracksByHash(const QString& hash) const
 {
-    const auto statement = u"SELECT %1 FROM TracksView WHERE TrackHash = :trackHash"_s.arg(fetchTrackColumns());
+    static const QString statement
+        = u"SELECT %1 FROM TracksView WHERE TrackHash = :trackHash"_s.arg(fetchTrackColumns());
 
     DbQuery q{db(), statement};
 
@@ -345,7 +347,7 @@ TrackList TrackDatabase::tracksByHash(const QString& hash) const
 
 int TrackDatabase::idForTrack(Track& track) const
 {
-    const QString statement
+    static const QString statement
         = u"SELECT TrackID FROM Tracks WHERE FilePath = :path AND Offset = :offset AND Subsong = :subsong;"_s;
 
     DbQuery query{db(), statement};
@@ -372,46 +374,46 @@ bool TrackDatabase::updateTrack(const Track& track)
         return false;
     }
 
-    const auto statement = u"UPDATE TRACKS SET "
-                           "FilePath = :filePath,"
-                           "Subsong = :subsong,"
-                           "Title = :title, "
-                           "TrackNumber = :trackNumber,"
-                           "TrackTotal = :trackTotal,"
-                           "Artists = :artists,"
-                           "AlbumArtist = :albumArtist,"
-                           "Album = :album,"
-                           "DiscNumber = :discNumber,"
-                           "DiscTotal = :discTotal,"
-                           "Date = :date,"
-                           "Composer = :composer,"
-                           "Performer = :performer,"
-                           "Genres = :genres,"
-                           "Comment = :comment,"
-                           "CuePath = :cuePath,"
-                           "Offset = :offset,"
-                           "Duration = :duration,"
-                           "FileSize = :fileSize,"
-                           "BitRate = :bitRate,"
-                           "SampleRate = :sampleRate,"
-                           "Channels = :channels,"
-                           "BitDepth = :bitDepth,"
-                           "Codec = :codec,"
-                           "CodecProfile = :codecProfile,"
-                           "Tool = :tool,"
-                           "TagTypes = :tagTypes,"
-                           "Encoding = :encoding,"
-                           "ExtraTags = :extraTags,"
-                           "ExtraProperties = :extraProperties,"
-                           "ModifiedDate = :modifiedDate,"
-                           "TrackHash = :trackHash,"
-                           "LibraryID = :libraryID,"
-                           "RGTrackGain = :rgTrackGain,"
-                           "RGAlbumGain = :rgAlbumGain,"
-                           "RGTrackPeak = :rgTrackPeak,"
-                           "RGAlbumPeak = :rgAlbumPeak,"
-                           "CreatedDate = :createdDate"
-                           " WHERE TrackID = :trackId;"_s;
+    static const QString statement = u"UPDATE TRACKS SET "
+                                     "FilePath = :filePath,"
+                                     "Subsong = :subsong,"
+                                     "Title = :title, "
+                                     "TrackNumber = :trackNumber,"
+                                     "TrackTotal = :trackTotal,"
+                                     "Artists = :artists,"
+                                     "AlbumArtist = :albumArtist,"
+                                     "Album = :album,"
+                                     "DiscNumber = :discNumber,"
+                                     "DiscTotal = :discTotal,"
+                                     "Date = :date,"
+                                     "Composer = :composer,"
+                                     "Performer = :performer,"
+                                     "Genres = :genres,"
+                                     "Comment = :comment,"
+                                     "CuePath = :cuePath,"
+                                     "Offset = :offset,"
+                                     "Duration = :duration,"
+                                     "FileSize = :fileSize,"
+                                     "BitRate = :bitRate,"
+                                     "SampleRate = :sampleRate,"
+                                     "Channels = :channels,"
+                                     "BitDepth = :bitDepth,"
+                                     "Codec = :codec,"
+                                     "CodecProfile = :codecProfile,"
+                                     "Tool = :tool,"
+                                     "TagTypes = :tagTypes,"
+                                     "Encoding = :encoding,"
+                                     "ExtraTags = :extraTags,"
+                                     "ExtraProperties = :extraProperties,"
+                                     "ModifiedDate = :modifiedDate,"
+                                     "TrackHash = :trackHash,"
+                                     "LibraryID = :libraryID,"
+                                     "RGTrackGain = :rgTrackGain,"
+                                     "RGAlbumGain = :rgAlbumGain,"
+                                     "RGTrackPeak = :rgTrackPeak,"
+                                     "RGAlbumPeak = :rgAlbumPeak,"
+                                     "CreatedDate = :createdDate"
+                                     " WHERE TrackID = :trackId;"_s;
 
     DbQuery query{db(), statement};
 
@@ -447,7 +449,7 @@ bool TrackDatabase::updateTrackStats(const TrackList& tracks)
 
 bool TrackDatabase::deleteTrack(int id)
 {
-    const QString statement = u"DELETE FROM Tracks WHERE TrackID = :trackID;"_s;
+    static const QString statement = u"DELETE FROM Tracks WHERE TrackID = :trackID;"_s;
 
     DbQuery query{db(), statement};
 
@@ -481,8 +483,8 @@ std::set<int> TrackDatabase::deleteLibraryTracks(int libraryId)
     std::set<int> tracksToRemove;
 
     {
-        const auto statement = u"SELECT TrackID FROM Tracks WHERE LibraryID = :libraryId AND TrackID "
-                               "NOT IN (SELECT TrackID FROM PlaylistTracks);"_s;
+        static const QString statement = u"SELECT TrackID FROM Tracks WHERE LibraryID = :libraryId AND TrackID "
+                                         "NOT IN (SELECT TrackID FROM PlaylistTracks);"_s;
 
         DbQuery query{db(), statement};
 
@@ -498,7 +500,7 @@ std::set<int> TrackDatabase::deleteLibraryTracks(int libraryId)
     }
 
     {
-        const auto statement
+        static const QString statement
             = u"DELETE FROM Tracks WHERE LibraryID = :libraryId AND TrackID NOT IN (SELECT TrackID FROM PlaylistTracks);"_s;
 
         DbQuery query{db(), statement};
@@ -510,7 +512,7 @@ std::set<int> TrackDatabase::deleteLibraryTracks(int libraryId)
         }
     }
 
-    const auto statement = u"UPDATE Tracks SET LibraryID = :nonLibraryId WHERE LibraryID = :libraryId;"_s;
+    static const QString statement = u"UPDATE Tracks SET LibraryID = :nonLibraryId WHERE LibraryID = :libraryId;"_s;
 
     DbQuery query{db(), statement};
 
@@ -533,7 +535,7 @@ void TrackDatabase::cleanupTracks()
 
 void TrackDatabase::dropViews(const QSqlDatabase& db)
 {
-    const auto statement = u"DROP VIEW IF EXISTS TracksView;"_s;
+    static const QString statement = u"DROP VIEW IF EXISTS TracksView;"_s;
 
     DbQuery query{db, statement};
 
@@ -542,54 +544,54 @@ void TrackDatabase::dropViews(const QSqlDatabase& db)
 
 void TrackDatabase::insertViews(const QSqlDatabase& db)
 {
-    const auto statement = u"CREATE VIEW IF NOT EXISTS TracksView AS "
-                           "SELECT "
-                           "Tracks.TrackID,"
-                           "Tracks.FilePath,"
-                           "Tracks.Subsong,"
-                           "Tracks.Title,"
-                           "Tracks.TrackNumber,"
-                           "Tracks.TrackTotal,"
-                           "Tracks.Artists,"
-                           "Tracks.AlbumArtist,"
-                           "Tracks.Album,"
-                           "Tracks.DiscNumber,"
-                           "Tracks.DiscTotal,"
-                           "Tracks.Date,"
-                           "Tracks.Composer,"
-                           "Tracks.Performer,"
-                           "Tracks.Genres,"
-                           "Tracks.Comment,"
-                           "Tracks.CuePath,"
-                           "Tracks.Offset,"
-                           "Tracks.Duration,"
-                           "Tracks.FileSize,"
-                           "Tracks.BitRate,"
-                           "Tracks.SampleRate,"
-                           "Tracks.Channels,"
-                           "Tracks.BitDepth,"
-                           "Tracks.Codec,"
-                           "Tracks.CodecProfile,"
-                           "Tracks.Tool,"
-                           "Tracks.TagTypes,"
-                           "Tracks.Encoding,"
-                           "Tracks.ExtraTags,"
-                           "Tracks.ExtraProperties,"
-                           "Tracks.ModifiedDate,"
-                           "Tracks.LibraryID,"
-                           "Tracks.TrackHash,"
-                           "Tracks.RGTrackGain,"
-                           "Tracks.RGAlbumGain,"
-                           "Tracks.RGTrackPeak,"
-                           "Tracks.RGAlbumPeak,"
-                           "Tracks.CreatedDate,"
-                           "TrackStats.AddedDate,"
-                           "TrackStats.FirstPlayed,"
-                           "TrackStats.LastPlayed,"
-                           "TrackStats.PlayCount,"
-                           "TrackStats.Rating"
-                           " FROM Tracks "
-                           "LEFT JOIN TrackStats ON Tracks.TrackHash = TrackStats.TrackHash;"_s;
+    static const QString statement = u"CREATE VIEW IF NOT EXISTS TracksView AS "
+                                     "SELECT "
+                                     "Tracks.TrackID,"
+                                     "Tracks.FilePath,"
+                                     "Tracks.Subsong,"
+                                     "Tracks.Title,"
+                                     "Tracks.TrackNumber,"
+                                     "Tracks.TrackTotal,"
+                                     "Tracks.Artists,"
+                                     "Tracks.AlbumArtist,"
+                                     "Tracks.Album,"
+                                     "Tracks.DiscNumber,"
+                                     "Tracks.DiscTotal,"
+                                     "Tracks.Date,"
+                                     "Tracks.Composer,"
+                                     "Tracks.Performer,"
+                                     "Tracks.Genres,"
+                                     "Tracks.Comment,"
+                                     "Tracks.CuePath,"
+                                     "Tracks.Offset,"
+                                     "Tracks.Duration,"
+                                     "Tracks.FileSize,"
+                                     "Tracks.BitRate,"
+                                     "Tracks.SampleRate,"
+                                     "Tracks.Channels,"
+                                     "Tracks.BitDepth,"
+                                     "Tracks.Codec,"
+                                     "Tracks.CodecProfile,"
+                                     "Tracks.Tool,"
+                                     "Tracks.TagTypes,"
+                                     "Tracks.Encoding,"
+                                     "Tracks.ExtraTags,"
+                                     "Tracks.ExtraProperties,"
+                                     "Tracks.ModifiedDate,"
+                                     "Tracks.LibraryID,"
+                                     "Tracks.TrackHash,"
+                                     "Tracks.RGTrackGain,"
+                                     "Tracks.RGAlbumGain,"
+                                     "Tracks.RGTrackPeak,"
+                                     "Tracks.RGAlbumPeak,"
+                                     "Tracks.CreatedDate,"
+                                     "TrackStats.AddedDate,"
+                                     "TrackStats.FirstPlayed,"
+                                     "TrackStats.LastPlayed,"
+                                     "TrackStats.PlayCount,"
+                                     "TrackStats.Rating"
+                                     " FROM Tracks "
+                                     "LEFT JOIN TrackStats ON Tracks.TrackHash = TrackStats.TrackHash;"_s;
 
     DbQuery query{db, statement};
 
@@ -598,7 +600,7 @@ void TrackDatabase::insertViews(const QSqlDatabase& db)
 
 int TrackDatabase::trackCount() const
 {
-    const auto statement = u"SELECT COUNT(*) FROM Tracks;"_s;
+    static const QString statement = u"SELECT COUNT(*) FROM Tracks;"_s;
 
     DbQuery query{db(), statement};
 
@@ -615,86 +617,87 @@ int TrackDatabase::trackCount() const
 
 bool TrackDatabase::insertTrack(Track& track, bool ignoreDuplicates) const
 {
-    const auto statement = (ignoreDuplicates ? u"INSERT OR IGNORE INTO Tracks ("_s : u"INSERT INTO Tracks ("_s)
-                         + u"FilePath,"
-                           "Subsong,"
-                           "Title,"
-                           "TrackNumber,"
-                           "TrackTotal,"
-                           "Artists,"
-                           "AlbumArtist,"
-                           "Album,"
-                           "DiscNumber,"
-                           "DiscTotal,"
-                           "Date,"
-                           "Composer,"
-                           "Performer,"
-                           "Genres,"
-                           "Comment,"
-                           "CuePath,"
-                           "Offset,"
-                           "Duration,"
-                           "FileSize,"
-                           "BitRate,"
-                           "SampleRate,"
-                           "Channels,"
-                           "BitDepth,"
-                           "Codec,"
-                           "CodecProfile,"
-                           "Tool,"
-                           "TagTypes,"
-                           "Encoding,"
-                           "ExtraTags,"
-                           "ExtraProperties,"
-                           "ModifiedDate,"
-                           "TrackHash,"
-                           "LibraryID,"
-                           "RGTrackGain,"
-                           "RGAlbumGain,"
-                           "RGTrackPeak,"
-                           "RGAlbumPeak,"
-                           "CreatedDate"
-                           ") "
-                           "VALUES ("
-                           ":filePath,"
-                           ":subsong,"
-                           ":title, "
-                           ":trackNumber,"
-                           ":trackTotal,"
-                           ":artists,"
-                           ":albumArtist,"
-                           ":album,"
-                           ":discNumber,"
-                           ":discTotal,"
-                           ":date, "
-                           ":composer,"
-                           ":performer,"
-                           ":genres,"
-                           ":comment,"
-                           ":cuePath,"
-                           ":offset,"
-                           ":duration,"
-                           ":fileSize,"
-                           ":bitRate,"
-                           ":sampleRate,"
-                           ":channels,"
-                           ":bitDepth,"
-                           ":codec,"
-                           ":codecProfile,"
-                           ":tool,"
-                           ":tagTypes,"
-                           ":encoding,"
-                           ":extraTags,"
-                           ":extraProperties,"
-                           ":modifiedDate,"
-                           ":trackHash,"
-                           ":libraryID,"
-                           ":rgTrackGain,"
-                           ":rgAlbumGain,"
-                           ":rgTrackPeak,"
-                           ":rgAlbumPeak,"
-                           ":createdDate"
-                           ");"_s;
+    static const QString statement
+        = (ignoreDuplicates ? u"INSERT OR IGNORE INTO Tracks ("_s : u"INSERT INTO Tracks ("_s)
+        + u"FilePath,"
+          "Subsong,"
+          "Title,"
+          "TrackNumber,"
+          "TrackTotal,"
+          "Artists,"
+          "AlbumArtist,"
+          "Album,"
+          "DiscNumber,"
+          "DiscTotal,"
+          "Date,"
+          "Composer,"
+          "Performer,"
+          "Genres,"
+          "Comment,"
+          "CuePath,"
+          "Offset,"
+          "Duration,"
+          "FileSize,"
+          "BitRate,"
+          "SampleRate,"
+          "Channels,"
+          "BitDepth,"
+          "Codec,"
+          "CodecProfile,"
+          "Tool,"
+          "TagTypes,"
+          "Encoding,"
+          "ExtraTags,"
+          "ExtraProperties,"
+          "ModifiedDate,"
+          "TrackHash,"
+          "LibraryID,"
+          "RGTrackGain,"
+          "RGAlbumGain,"
+          "RGTrackPeak,"
+          "RGAlbumPeak,"
+          "CreatedDate"
+          ") "
+          "VALUES ("
+          ":filePath,"
+          ":subsong,"
+          ":title, "
+          ":trackNumber,"
+          ":trackTotal,"
+          ":artists,"
+          ":albumArtist,"
+          ":album,"
+          ":discNumber,"
+          ":discTotal,"
+          ":date, "
+          ":composer,"
+          ":performer,"
+          ":genres,"
+          ":comment,"
+          ":cuePath,"
+          ":offset,"
+          ":duration,"
+          ":fileSize,"
+          ":bitRate,"
+          ":sampleRate,"
+          ":channels,"
+          ":bitDepth,"
+          ":codec,"
+          ":codecProfile,"
+          ":tool,"
+          ":tagTypes,"
+          ":encoding,"
+          ":extraTags,"
+          ":extraProperties,"
+          ":modifiedDate,"
+          ":trackHash,"
+          ":libraryID,"
+          ":rgTrackGain,"
+          ":rgAlbumGain,"
+          ":rgTrackPeak,"
+          ":rgAlbumPeak,"
+          ":createdDate"
+          ");"_s;
 
     DbQuery query{db(), statement};
 
@@ -730,8 +733,8 @@ bool TrackDatabase::insertOrUpdateStats(const Track& track) const
     float rating{0};
 
     {
-        const auto statement = u"SELECT AddedDate, FirstPlayed, LastPlayed, PlayCount, Rating FROM "
-                               "TrackStats WHERE TrackHash = :trackHash;"_s;
+        static const QString statement = u"SELECT AddedDate, FirstPlayed, LastPlayed, PlayCount, Rating FROM "
+                                         "TrackStats WHERE TrackHash = :trackHash;"_s;
 
         DbQuery query{db(), statement};
 
@@ -797,9 +800,10 @@ bool TrackDatabase::insertOrUpdateStats(const Track& track) const
         return true;
     }
 
-    const auto statement = u"INSERT OR REPLACE INTO TrackStats (TrackHash, AddedDate, FirstPlayed, LastPlayed, "
-                           u"PlayCount, Rating) VALUES "
-                           "(:trackHash, :addedDate, :firstPlayed, :lastPlayed, :playCount, :rating);"_s;
+    static const QString statement
+        = u"INSERT OR REPLACE INTO TrackStats (TrackHash, AddedDate, FirstPlayed, LastPlayed, "
+          u"PlayCount, Rating) VALUES "
+          "(:trackHash, :addedDate, :firstPlayed, :lastPlayed, :playCount, :rating);"_s;
 
     DbQuery query{db(), statement};
 
@@ -818,7 +822,7 @@ bool TrackDatabase::insertOrUpdateStats(const Track& track) const
 
 void TrackDatabase::removeUnmanagedTracks() const
 {
-    const auto statement
+    static const QString statement
         = u"DELETE FROM Tracks WHERE LibraryID = -1 AND TrackID NOT IN (SELECT TrackID FROM PlaylistTracks);"_s;
 
     DbQuery query{db(), statement};
@@ -828,7 +832,7 @@ void TrackDatabase::removeUnmanagedTracks() const
 
 void TrackDatabase::updateLastSeenStats() const
 {
-    const auto markStatement
+    static const QString markStatement
         = u"UPDATE TrackStats SET LastSeen = :lastSeen WHERE LastSeen IS NULL AND TrackHash NOT IN "
           "(SELECT TrackHash FROM Tracks);"_s;
 
@@ -836,8 +840,9 @@ void TrackDatabase::updateLastSeenStats() const
     markQuery.bindValue(u":lastSeen"_s, QDateTime::currentMSecsSinceEpoch());
     markQuery.exec();
 
-    const auto unmarkStatement = u"UPDATE TrackStats SET LastSeen = NULL WHERE LastSeen IS NOT NULL AND TrackHash IN "
-                                 "(SELECT TrackHash FROM Tracks);"_s;
+    static const QString unmarkStatement
+        = u"UPDATE TrackStats SET LastSeen = NULL WHERE LastSeen IS NOT NULL AND TrackHash IN "
+          "(SELECT TrackHash FROM Tracks);"_s;
 
     DbQuery unmarkQuery{db(), unmarkStatement};
     unmarkQuery.exec();
@@ -845,8 +850,9 @@ void TrackDatabase::updateLastSeenStats() const
 
 void TrackDatabase::deleteExpiredStats() const
 {
-    const auto statement = u"DELETE FROM TrackStats WHERE LastSeen IS NOT NULL AND LastSeen <= :clearInterval AND "
-                           "TrackHash NOT IN (SELECT TrackHash FROM Tracks);"_s;
+    static const QString statement
+        = u"DELETE FROM TrackStats WHERE LastSeen IS NOT NULL AND LastSeen <= :clearInterval AND "
+          "TrackHash NOT IN (SELECT TrackHash FROM Tracks);"_s;
 
     DbQuery query{db(), statement};
 
