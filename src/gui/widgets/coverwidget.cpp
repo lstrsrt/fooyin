@@ -74,6 +74,9 @@ CoverWidget::CoverWidget(PlayerController* playerController, TrackSelectionContr
     , m_coverProvider{new CoverProvider(audioLoader, settings, this)}
     , m_displayOption{static_cast<SelectionDisplay>(
           m_settings->value<Settings::Gui::Internal::TrackCoverDisplayOption>())}
+    , m_coverType{Track::Cover::Front}
+    , m_keepAspectRatio{false}
+    , m_fadeCoverChanges{false}
     , m_fadeAnimation{new QVariantAnimation(this)}
     , m_coverRequestId{0}
     , m_fadeProgress{1.0}
