@@ -29,6 +29,19 @@
 
 using namespace Qt::StringLiterals;
 
+namespace {
+QString widestDigitsText(QString text)
+{
+    for(QChar& ch : text) {
+        if(ch.isDigit()) {
+            ch = u'8'; // Safer upper bound
+        }
+    }
+
+    return text;
+}
+} // namespace
+
 namespace Fooyin {
 class SeekContainerPrivate
 {
@@ -36,7 +49,9 @@ public:
     SeekContainerPrivate(SeekContainer* self, PlayerController* playerController);
 
     void reset();
-    void updateLabelWidth(ClickableLabel* label) const;
+    [[nodiscard]] QString elapsedWidthText() const;
+    [[nodiscard]] QString totalWidthText() const;
+    void updateLabelWidth(ClickableLabel* label, const QString& text) const;
     void updateLabelWidths() const;
 
     void trackChanged(const Track& track);
@@ -73,9 +88,22 @@ void SeekContainerPrivate::reset()
 {
     m_max = 0;
     updateLabels(m_max);
+    updateLabelWidths();
 }
 
-void SeekContainerPrivate::updateLabelWidth(ClickableLabel* label) const
+QString SeekContainerPrivate::elapsedWidthText() const
+{
+    return widestDigitsText(Utils::msToString(m_max));
+}
+
+QString SeekContainerPrivate::totalWidthText() const
+{
+    const QString totalText        = widestDigitsText(Utils::msToString(m_max));
+    const QString elapsedTotalText = u"-"_s + totalText;
+    return m_elapsedTotal ? elapsedTotalText : totalText;
+}
+
+void SeekContainerPrivate::updateLabelWidth(ClickableLabel* label, const QString& text) const
 {
     if(!label) {
         return;
@@ -83,15 +111,14 @@ void SeekContainerPrivate::updateLabelWidth(ClickableLabel* label) const
 
     const QFontMetrics fm{label->fontMetrics()};
     const auto margins = label->contentsMargins();
-    const int width
-        = fm.horizontalAdvance(label->text()) + margins.left() + margins.right() + (2 * label->margin()) + 2;
+    const int width    = fm.horizontalAdvance(text) + margins.left() + margins.right() + (2 * label->margin()) + 2;
     label->setFixedWidth(width);
 }
 
 void SeekContainerPrivate::updateLabelWidths() const
 {
-    updateLabelWidth(m_elapsed);
-    updateLabelWidth(m_total);
+    updateLabelWidth(m_elapsed, elapsedWidthText());
+    updateLabelWidth(m_total, totalWidthText());
 }
 
 void SeekContainerPrivate::trackChanged(const Track& track)
@@ -99,6 +126,7 @@ void SeekContainerPrivate::trackChanged(const Track& track)
     if(track.isValid()) {
         m_max = track.duration();
         updateLabels(0);
+        updateLabelWidths();
     }
 }
 
@@ -121,9 +149,6 @@ void SeekContainerPrivate::stateChanged(Player::PlayState state)
 
 void SeekContainerPrivate::updateLabels(uint64_t time) const
 {
-    const auto prevElapsedSize = m_elapsed->text().size();
-    const auto prevTotalSize   = m_total->text().size();
-
     const auto elapsed = Utils::msToString(time);
     m_elapsed->setText(elapsed);
 
@@ -136,10 +161,6 @@ void SeekContainerPrivate::updateLabels(uint64_t time) const
         total = Utils::msToString(m_max);
     }
     m_total->setText(total);
-
-    if(elapsed.size() != prevElapsedSize || total.size() != prevTotalSize) {
-        updateLabelWidths();
-    }
 }
 
 SeekContainer::SeekContainer(PlayerController* playerController, QWidget* parent)
@@ -186,6 +207,7 @@ void SeekContainer::setElapsedTotal(bool enabled)
 {
     p->m_elapsedTotal = enabled;
     p->updateLabels(p->m_playerController->currentPosition());
+    p->updateLabelWidths();
 }
 
 void SeekContainer::changeEvent(QEvent* event)
