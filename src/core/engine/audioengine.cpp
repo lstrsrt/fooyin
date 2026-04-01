@@ -2976,7 +2976,11 @@ void AudioEngine::cleanupDecoderActiveStreamFromPipeline(bool removeFromMixer)
 
 void AudioEngine::clearPreparedNextTrack()
 {
+    if(m_preparedNext.has_value() && m_preparedNext->isValid() && m_preparedNext->loadedDecoder.decoder) {
+        m_preparedNext->loadedDecoder.decoder->stop();
+    }
     m_preparedNext.reset();
+
     clearPreparedCrossfadeTransition();
     clearPreparedGaplessTransition();
 }
