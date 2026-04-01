@@ -36,6 +36,7 @@ class LibraryScanState;
 class LibraryScanWriter;
 class PlaylistLoader;
 class TrackDatabase;
+class TrackMetadataStore;
 
 class FYCORE_EXPORT LibraryTrackResolver
 {
@@ -43,8 +44,9 @@ public:
     using FlushWritesHandler = std::function<void()>;
 
     LibraryTrackResolver(LibraryInfo currentLibrary, PlaylistLoader* playlistLoader, AudioLoader* audioLoader,
-                         bool playlistSkipMissing, TrackDatabase* trackDatabase, LibraryScanState* state,
-                         LibraryScanWriter* writer, TrackReloadOptions reloadOptions, FlushWritesHandler flushWrites);
+                         bool playlistSkipMissing, std::shared_ptr<TrackMetadataStore> metadataStore,
+                         TrackDatabase* trackDatabase, LibraryScanState* state, LibraryScanWriter* writer,
+                         TrackReloadOptions reloadOptions, FlushWritesHandler flushWrites);
 
     [[nodiscard]] TrackList readTracks(const QString& filepath);
     [[nodiscard]] TrackList readPlaylist(const QString& filepath);
@@ -69,6 +71,7 @@ private:
     LibraryInfo m_currentLibrary;
     PlaylistLoader* m_playlistLoader;
     AudioLoader* m_audioLoader;
+    std::shared_ptr<TrackMetadataStore> m_metadataStore;
     TrackDatabase* m_trackDatabase;
     LibraryScanState* m_state;
     LibraryScanWriter* m_writer;

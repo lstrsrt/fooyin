@@ -176,7 +176,7 @@ void TagEditorModelPrivate::reset()
 void TagEditorModelPrivate::updateFields()
 {
     const auto iterateTags = [this](const auto& tags, const bool isDefault = false) {
-        for(const auto& [field, value] : Utils::asRange(tags)) {
+        for(const auto& [field, value] : tags) {
             if(value.isEmpty() || hasDefaultField(field)) {
                 continue;
             }

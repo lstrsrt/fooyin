@@ -795,7 +795,7 @@ void writeGenericProperties(TagLib::PropertyMap& oldProperties, const Fooyin::Tr
 
     if(!skipExtra) {
         const auto customTags = track.extraTags();
-        for(const auto& [tag, values] : Fooyin::Utils::asRange(customTags)) {
+        for(const auto& [tag, values] : customTags) {
             const TagLib::String name = convertString(tag);
             oldProperties.replace(name, convertStringList(values));
         }
@@ -1629,7 +1629,7 @@ void writeMp4Tags(TagLib::MP4::Tag* mp4Tags, const Fooyin::Track& track, Fooyin:
                QString::fromLatin1(DiscTotal),     QString::fromLatin1(DiscTotalAlt)};
 
         const auto customTags = track.extraTags();
-        for(const auto& [tag, values] : Fooyin::Utils::asRange(customTags)) {
+        for(const auto& [tag, values] : customTags) {
             if(!baseMp4Tags.contains(tag)) {
                 TagLib::String tagName = findMp4Tag(tag);
                 if(tagName.isEmpty()) {

@@ -28,6 +28,7 @@
 #include <core/coresettings.h>
 #include <core/engine/audioloader.h>
 #include <core/playlist/playlistparser.h>
+#include <core/trackmetadatastore.h>
 
 #include <QBuffer>
 #include <QDateTime>
@@ -60,12 +61,14 @@ bool cueTracksUseEmbeddedCue(const Fooyin::TrackList& tracks)
 namespace Fooyin {
 LibraryTrackResolver::LibraryTrackResolver(LibraryInfo currentLibrary, PlaylistLoader* playlistLoader,
                                            AudioLoader* audioLoader, const bool playlistSkipMissing,
+                                           std::shared_ptr<TrackMetadataStore> metadataStore,
                                            TrackDatabase* trackDatabase, LibraryScanState* state,
                                            LibraryScanWriter* writer, const TrackReloadOptions reloadOptions,
                                            FlushWritesHandler flushWrites)
     : m_currentLibrary{std::move(currentLibrary)}
     , m_playlistLoader{playlistLoader}
     , m_audioLoader{audioLoader}
+    , m_metadataStore{std::move(metadataStore)}
     , m_trackDatabase{trackDatabase}
     , m_state{state}
     , m_writer{writer}
@@ -80,7 +83,7 @@ TrackList LibraryTrackResolver::readTracks(const QString& filepath)
         return readArchiveTracks(filepath);
     }
 
-    const Track track{filepath};
+    const Track track{filepath, m_metadataStore};
 
     auto loadedReader = m_audioLoader->loadReaderForTrack(track);
     if(!loadedReader.reader) {
@@ -97,7 +100,7 @@ TrackList LibraryTrackResolver::readTracks(const QString& filepath)
             return tracks;
         }
 
-        Track subTrack{filepath, subIndex};
+        Track subTrack{filepath, subIndex, m_metadataStore};
 
         if(source.device) {
             subTrack.setFileSize(source.device->size());
@@ -181,6 +184,7 @@ TrackList LibraryTrackResolver::readPlaylistTracks(const QString& path)
         }
 
         Track readTrack{playlistTrack};
+        readTrack.setMetadataStore(m_metadataStore);
         readFileProperties(readTrack);
 
         if(!m_audioLoader->readTrackMetadata(readTrack)) {
@@ -197,7 +201,11 @@ TrackList LibraryTrackResolver::readPlaylistTracks(const QString& path)
     };
 
     if(auto* parser = m_playlistLoader->parserForExtension(info.suffix())) {
-        return parser->readPlaylist(&playlistFile, path, dir, readEntry, m_playlistSkipMissing);
+        TrackList tracks = parser->readPlaylist(&playlistFile, path, dir, readEntry, m_playlistSkipMissing);
+        for(auto& track : tracks) {
+            track.setMetadataStore(m_metadataStore);
+        }
+        return tracks;
     }
 
     return {};
@@ -225,6 +233,7 @@ TrackList LibraryTrackResolver::readEmbeddedPlaylistTracks(const Track& track)
         }
 
         Track readTrack{playlistTrack};
+        readTrack.setMetadataStore(m_metadataStore);
         if(!m_audioLoader->readTrackMetadata(readTrack)) {
             return playlistTrack;
         }
@@ -242,6 +251,7 @@ TrackList LibraryTrackResolver::readEmbeddedPlaylistTracks(const Track& track)
     if(auto* parser = m_playlistLoader->parserForExtension(u"cue"_s)) {
         TrackList tracks = parser->readPlaylist(&buffer, track.filepath(), {}, readEntry, false);
         for(auto& playlistTrack : tracks) {
+            playlistTrack.setMetadataStore(m_metadataStore);
             playlistTrack.generateHash();
         }
         return tracks;
@@ -474,7 +484,7 @@ TrackList LibraryTrackResolver::readArchiveTracks(const QString& filepath)
                     return;
                 }
 
-                Track subTrack{archivePath + entry, subIndex};
+                Track subTrack{archivePath + entry, subIndex, m_metadataStore};
 
                 if(source.size > 0) {
                     subTrack.setFileSize(source.size);

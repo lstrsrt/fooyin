@@ -7,6 +7,7 @@ set(SOURCES
     ${CMAKE_SOURCE_DIR}/include/utils/async.h
     ${CMAKE_SOURCE_DIR}/include/utils/audioutils.h
     ${CMAKE_SOURCE_DIR}/include/utils/compatutils.h
+    ${CMAKE_SOURCE_DIR}/include/utils/containers.h
     ${CMAKE_SOURCE_DIR}/include/utils/crypto.h
     ${CMAKE_SOURCE_DIR}/include/utils/database/dbconnection.h
     ${CMAKE_SOURCE_DIR}/include/utils/database/dbconnectionhandler.h

@@ -164,7 +164,7 @@ void InfoPopulatorPrivate::addTrackMetadata(const Track& track, bool extended)
 
     if(extended) {
         const auto extras = track.extraTags();
-        for(const auto& [tag, values] : Utils::asRange(extras)) {
+        for(const auto& [tag, values] : extras) {
             const auto extraTag = u"<%1>"_s.arg(tag);
             checkAddEntryNode(extraTag, extraTag, ItemParent::Metadata, values);
         }
@@ -291,7 +291,7 @@ void InfoPopulatorPrivate::addTrackReplayGain(int total)
 void InfoPopulatorPrivate::addTrackOther(const Track& track)
 {
     const auto props = track.extraProperties();
-    for(const auto& [prop, value] : Utils::asRange(props)) {
+    for(const auto& [prop, value] : props) {
         const auto extraProp = u"<%1>"_s.arg(prop);
         checkAddEntryNode(extraProp, extraProp, ItemParent::Other, value, InfoItem::Percentage);
     }

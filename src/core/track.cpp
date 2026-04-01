@@ -32,6 +32,7 @@
 #include <QRegularExpression>
 
 #include <chrono>
+#include <utility>
 
 using namespace Qt::StringLiterals;
 
@@ -97,105 +98,36 @@ const MetaMap& metaMap()
     return metaMap;
 }
 
-/*!
- * Dense in-memory storage for decoded extra tags.
- *
- * Extra tags are usually cold metadata and many tracks never decode them at all.
- * When they are decoded, keeping them in a `QMap<QString, QStringList>` is
- * unnecessarily expensive for the common case of only a few keys per track.
- *
- * This structure keeps the resident form compact by storing key/value pairs in
- * insertion order inside a flat vector. Lookups are linear by design; the
- * expected key count per track is small enough that the lower memory overhead is
- * a better trade than node-based map storage.
- *
- * Conversion back to `Track::ExtraTags` is kept at the API/serialization
- * boundary only.
- */
-class CompactExtraTags
+template <typename Value, typename KeyFn>
+bool readFlatStringMap(QDataStream& stream, Fooyin::FlatStringMap<Value>& out, KeyFn&& mapKey)
 {
-public:
-    struct Entry
-    {
-        QString key;
-        QStringList values;
-    };
+    static constexpr quint32 NullCode = 0xffffffffU;
 
-    [[nodiscard]] bool contains(const QString& key) const
-    {
-        return findIndex(key) >= 0;
-    }
+    out.clear();
 
-    [[nodiscard]] QStringList value(const QString& key) const
-    {
-        if(const auto index = findIndex(key); index >= 0) {
-            return m_entries.at(index).values;
-        }
-        return {};
-    }
-
-    [[nodiscard]] bool empty() const
-    {
-        return m_entries.empty();
-    }
-
-    void clear()
-    {
-        m_entries.clear();
-    }
-
-    void reserve(qsizetype size)
-    {
-        m_entries.reserve(size);
-    }
-
-    QStringList& valuesFor(const QString& key)
-    {
-        if(const auto index = findIndex(key); index >= 0) {
-            return m_entries.at(index).values;
-        }
-
-        m_entries.emplace_back(Entry{key, {}});
-        return m_entries.back().values;
-    }
-
-    void setValues(const QString& key, const QStringList& values)
-    {
-        valuesFor(key) = values;
-    }
-
-    bool remove(const QString& key)
-    {
-        if(const auto index = findIndex(key); index >= 0) {
-            m_entries.erase(m_entries.begin() + index);
-            return true;
-        }
+    quint32 size{0};
+    stream >> size;
+    if(stream.status() != QDataStream::Ok || size == NullCode) {
+        stream.setStatus(QDataStream::SizeLimitExceeded);
         return false;
     }
 
-    [[nodiscard]] Fooyin::Track::ExtraTags toMap() const
-    {
-        Fooyin::Track::ExtraTags tags;
-        for(const auto& entry : m_entries) {
-            tags.insert(entry.key, entry.values);
+    out.reserve(size);
+
+    for(quint32 i{0}; i < size; ++i) {
+        QString key;
+        Value value;
+
+        if(!(stream >> key >> value)) {
+            out.clear();
+            return false;
         }
-        return tags;
+
+        out.insertOrAssign(mapKey(std::move(key)), std::move(value));
     }
 
-private:
-    [[nodiscard]] qsizetype findIndex(const QString& key) const
-    {
-        for(qsizetype index{0}; index < static_cast<qsizetype>(m_entries.size()); ++index) {
-            if(m_entries.at(index).key == key) {
-                return index;
-            }
-        }
-        return -1;
-    }
-
-    std::vector<Entry> m_entries;
-};
-
+    return true;
+}
 } // namespace
 
 namespace Fooyin {
@@ -207,10 +139,12 @@ public:
     [[nodiscard]] QString filename() const;
     [[nodiscard]] QString extension() const;
 
+    bool readExtraTagsToVector(QDataStream& stream, Track::ExtraTags& out) const;
+    static bool readPropsToVector(QDataStream& stream, Track::ExtraProperties& out);
     void ensureExtraTagsLoaded() const;
     [[nodiscard]] StringPool& stringPool() const;
 
-    std::shared_ptr<TrackMetadataStore> metadataStore{std::make_shared<TrackMetadataStore>()};
+    std::shared_ptr<TrackMetadataStore> metadataStore;
     int libraryId{-1};
     bool enabled{true};
     int id{-1};
@@ -231,9 +165,9 @@ public:
     QString comment;
     QString date;
     int year{-1};
-    int64_t dateSinceEpoch;
-    int64_t yearSinceEpoch;
-    mutable CompactExtraTags extraTags;
+    int64_t dateSinceEpoch{0};
+    int64_t yearSinceEpoch{0};
+    mutable Track::ExtraTags extraTags;
     mutable QByteArray extraTagsBlob;
     mutable bool extraTagsLoaded{true};
     bool extraTagsDirty{false};
@@ -313,6 +247,22 @@ QString TrackPrivate::extension() const
     return QFileInfo{isInArchive ? filepathWithinArchive : filepath}.suffix().toLower();
 }
 
+bool TrackPrivate::readExtraTagsToVector(QDataStream& stream, Track::ExtraTags& out) const
+{
+    out.clear();
+
+    return readFlatStringMap(stream, out, [this](const QString& key) {
+        return stringPool().intern(StringPool::Domain::ExtraTagKey, key.toUpper());
+    });
+}
+
+bool TrackPrivate::readPropsToVector(QDataStream& stream, Track::ExtraProperties& out)
+{
+    out.clear();
+
+    return readFlatStringMap(stream, out, [](const QString& key) { return key; });
+}
+
 void TrackPrivate::ensureExtraTagsLoaded() const
 {
     if(extraTagsLoaded) {
@@ -331,11 +281,9 @@ void TrackPrivate::ensureExtraTagsLoaded() const
     stream.setVersion(QDataStream::Qt_6_0);
 
     Track::ExtraTags loaded;
-    stream >> loaded;
-    extraTags.reserve(loaded.size());
-
-    for(auto it = loaded.cbegin(); it != loaded.cend(); ++it) {
-        extraTags.setValues(stringPool().intern(StringPool::Domain::ExtraTagKey, it.key().toUpper()), it.value());
+    if(readExtraTagsToVector(stream, loaded)) {
+        extraTags = std::move(loaded);
+        extraTagsBlob.clear();
     }
 }
 
@@ -392,13 +340,13 @@ QString internExtraTagKey(const TrackPrivate& track, const QString& tag)
     return internString(track, StringPool::Domain::ExtraTagKey, tag.toUpper());
 }
 
-CompactExtraTags internExtraTags(const TrackPrivate& track, const Track::ExtraTags& tags)
+Track::ExtraTags internExtraTags(const TrackPrivate& track, const Track::ExtraTags& tags)
 {
-    CompactExtraTags interned;
+    Track::ExtraTags interned;
     interned.reserve(tags.size());
 
-    for(auto it = tags.cbegin(); it != tags.cend(); ++it) {
-        interned.setValues(internExtraTagKey(track, it.key()), it.value());
+    for(const auto& [key, value] : tags) {
+        interned.insertOrAssign(internExtraTagKey(track, key), value);
     }
 
     return interned;
@@ -950,22 +898,19 @@ bool Track::isExtraTag(const QString& tag)
 bool Track::hasExtraTag(const QString& tag) const
 {
     p->ensureExtraTagsLoaded();
-    return p->extraTags.contains(tag);
+    return p->extraTags.contains(tag.toUpper());
 }
 
 QStringList Track::extraTag(const QString& tag) const
 {
     p->ensureExtraTagsLoaded();
-    if(p->extraTags.contains(tag)) {
-        return p->extraTags.value(tag);
-    }
-    return {};
+    return p->extraTags.value(tag.toUpper());
 }
 
 Track::ExtraTags Track::extraTags() const
 {
     p->ensureExtraTagsLoaded();
-    return p->extraTags.toMap();
+    return p->extraTags;
 }
 
 QStringList Track::removedTags() const
@@ -989,7 +934,7 @@ QByteArray Track::serialiseExtraTags() const
     QDataStream stream(&out, QIODevice::WriteOnly);
     stream.setVersion(QDataStream::Qt_6_0);
 
-    stream << p->extraTags.toMap();
+    DataStream::writeContainer(stream, p->extraTags);
 
     return out;
 }
@@ -1064,7 +1009,7 @@ QByteArray Track::serialiseExtraProperties() const
     QDataStream stream(&out, QIODevice::WriteOnly);
     stream.setVersion(QDataStream::Qt_6_0);
 
-    stream << p->extraProps;
+    DataStream::writeContainer(stream, p->extraProps);
 
     return out;
 }
@@ -1239,7 +1184,7 @@ void Track::setMetadataStore(std::shared_ptr<TrackMetadataStore> store)
     p->metadataStore = store;
 
     if(p->extraTagsLoaded && !p->extraTags.empty()) {
-        p->extraTags = internExtraTags(*p, p->extraTags.toMap());
+        p->extraTags = internExtraTags(*p, p->extraTags);
     }
 }
 
@@ -1624,8 +1569,17 @@ void Track::addExtraTag(const QString& tag, const QString& value)
     if(tag.isEmpty() || value.isEmpty()) {
         return;
     }
+
     p->ensureExtraTagsLoaded();
-    p->extraTags.valuesFor(internExtraTagKey(*p, tag)).push_back(value);
+
+    const QString extraTag = internExtraTagKey(*p, tag);
+    if(auto* values = p->extraTags.find(extraTag)) {
+        values->emplace_back(value);
+    }
+    else {
+        p->extraTags.insertOrAssign(extraTag, QStringList{value});
+    }
+
     p->extraTagsBlob.clear();
     p->extraTagsDirty = true;
 }
@@ -1635,8 +1589,17 @@ void Track::addExtraTag(const QString& tag, const QStringList& value)
     if(tag.isEmpty() || value.isEmpty()) {
         return;
     }
+
     p->ensureExtraTagsLoaded();
-    p->extraTags.valuesFor(internExtraTagKey(*p, tag)).append(value);
+
+    const QString extraTag = internExtraTagKey(*p, tag);
+    if(auto* values = p->extraTags.find(extraTag)) {
+        values->append(value);
+    }
+    else {
+        p->extraTags.insertOrAssign(extraTag, value);
+    }
+
     p->extraTagsBlob.clear();
     p->extraTagsDirty = true;
 }
@@ -1644,10 +1607,10 @@ void Track::addExtraTag(const QString& tag, const QStringList& value)
 void Track::removeExtraTag(const QString& tag)
 {
     p->ensureExtraTagsLoaded();
+
     const QString extraTag = tag.toUpper();
-    if(p->extraTags.contains(extraTag)) {
+    if(p->extraTags.erase(extraTag)) {
         p->removedTags.append(internExtraTagKey(*p, extraTag));
-        p->extraTags.remove(extraTag);
         p->extraTagsBlob.clear();
         p->extraTagsDirty = true;
     }
@@ -1656,30 +1619,33 @@ void Track::removeExtraTag(const QString& tag)
 void Track::replaceExtraTag(const QString& tag, const QString& value)
 {
     p->ensureExtraTagsLoaded();
+
     const QString extraTag = internExtraTagKey(*p, tag);
     if(value.isEmpty()) {
         removeExtraTag(extraTag);
+        return;
     }
-    else {
-        p->extraTags.setValues(extraTag, {value});
-        p->extraTagsBlob.clear();
-        p->extraTagsDirty = true;
-    }
+
+    p->extraTags.insertOrAssign(extraTag, QStringList{value});
+
+    p->extraTagsBlob.clear();
+    p->extraTagsDirty = true;
 }
 
 void Track::replaceExtraTag(const QString& tag, const QStringList& value)
 {
     p->ensureExtraTagsLoaded();
-    const QString extraTag = internExtraTagKey(*p, tag);
 
+    const QString extraTag = internExtraTagKey(*p, tag);
     if(value.isEmpty()) {
         removeExtraTag(extraTag);
+        return;
     }
-    else {
-        p->extraTags.setValues(extraTag, value);
-        p->extraTagsBlob.clear();
-        p->extraTagsDirty = true;
-    }
+
+    p->extraTags.insertOrAssign(extraTag, value);
+
+    p->extraTagsBlob.clear();
+    p->extraTagsDirty = true;
 }
 
 void Track::clearExtraTags()
@@ -1700,12 +1666,17 @@ void Track::storeExtraTags(const QByteArray& tags)
 
 void Track::setExtraProperty(const QString& prop, const QString& value)
 {
-    p->extraProps[prop] = value;
+    if(value.isEmpty()) {
+        removeExtraProperty(prop);
+        return;
+    }
+
+    p->extraProps.insertOrAssign(prop, value);
 }
 
 void Track::removeExtraProperty(const QString& prop)
 {
-    p->extraProps.remove(prop);
+    p->extraProps.erase(prop);
 }
 
 void Track::clearExtraProperties()
@@ -1715,6 +1686,8 @@ void Track::clearExtraProperties()
 
 void Track::storeExtraProperties(const QByteArray& props)
 {
+    p->extraProps.clear();
+
     if(props.isEmpty()) {
         return;
     }
@@ -1723,7 +1696,10 @@ void Track::storeExtraProperties(const QByteArray& props)
     QDataStream stream(&in, QIODevice::ReadOnly);
     stream.setVersion(QDataStream::Qt_6_0);
 
-    stream >> p->extraProps;
+    Track::ExtraProperties loaded;
+    if(p->readPropsToVector(stream, loaded)) {
+        p->extraProps = std::move(loaded);
+    }
 }
 
 void Track::setSubsong(int index)

@@ -32,6 +32,7 @@ namespace Fooyin {
 class AudioLoader;
 class PlaylistLoader;
 class TrackDatabase;
+class TrackMetadataStore;
 
 class FYCORE_EXPORT LibraryScanSession
 {
@@ -43,7 +44,8 @@ public:
     };
 
     LibraryScanSession(TrackDatabase* trackDatabase, PlaylistLoader* playlistLoader, AudioLoader* audioLoader,
-                       LibraryScanConfig config, LibraryScanHost* host);
+                       std::shared_ptr<TrackMetadataStore> metadataStore, LibraryScanConfig config,
+                       LibraryScanHost* host);
     ~LibraryScanSession();
 
     bool scanLibrary(const LibraryInfo& library, const TrackList& tracks, bool onlyModified);
@@ -72,6 +74,7 @@ private:
     TrackDatabase* m_trackDatabase;
     PlaylistLoader* m_playlistLoader;
     AudioLoader* m_audioLoader;
+    std::shared_ptr<TrackMetadataStore> m_metadataStore;
 
     LibraryScanState m_state;
     LibraryScanWriter m_writer;

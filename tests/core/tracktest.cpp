@@ -20,11 +20,26 @@
 #include <core/track.h>
 #include <core/trackmetadatastore.h>
 
+#include <QDataStream>
+#include <QIODevice>
+
 #include <gtest/gtest.h>
 
 using namespace Qt::StringLiterals;
 
 namespace Fooyin::Testing {
+namespace {
+template <typename Map>
+QByteArray serialiseLegacyMap(const Map& map)
+{
+    QByteArray out;
+    QDataStream stream{&out, QIODevice::WriteOnly};
+    stream.setVersion(QDataStream::Qt_6_0);
+    stream << map;
+    return out;
+}
+} // namespace
+
 TEST(TrackTest, DerivesPathFieldsForRegularFiles)
 {
     const Track track{u"/music/Artist/Album/track01.FlAc"_s};
@@ -95,6 +110,61 @@ TEST(TrackTest, LazilyLoadsExtraTagsFromSerialisedData)
 
     loaded.addExtraTag(u"another"_s, u"entry"_s);
     EXPECT_EQ(loaded.extraTag(u"ANOTHER"_s), (QStringList{u"entry"_s}));
+}
+
+TEST(TrackTest, DeserialisesExtraTagsFromLegacyPayload)
+{
+    const QMap<QString, QStringList> tags{{u"ANOTHER"_s, {u"entry"_s}}, {u"custom"_s, {u"value"_s, u"value2"_s}}};
+    const QByteArray blob = serialiseLegacyMap(tags);
+
+    Track loaded;
+    loaded.storeExtraTags(blob);
+
+    EXPECT_TRUE(loaded.hasExtraTag(u"CUSTOM"_s));
+    EXPECT_TRUE(loaded.hasExtraTag(u"custom"_s));
+    EXPECT_EQ(loaded.extraTag(u"CUSTOM"_s), (QStringList{u"value"_s, u"value2"_s}));
+    EXPECT_EQ(loaded.extraTag(u"another"_s), (QStringList{u"entry"_s}));
+
+    const auto extraTags = loaded.extraTags();
+    EXPECT_EQ(extraTags.size(), 2);
+    EXPECT_EQ(extraTags.value(u"ANOTHER"_s), (QStringList{u"entry"_s}));
+    EXPECT_EQ(extraTags.value(u"CUSTOM"_s), (QStringList{u"value"_s, u"value2"_s}));
+}
+
+TEST(TrackTest, DeserialisesExtraPropertiesFromLegacyPayload)
+{
+    const QMap<QString, QString> props{{u"BitDepth"_s, u"24"_s}, {u"mod_channels"_s, u"8"_s}};
+    const QByteArray blob = serialiseLegacyMap(props);
+
+    Track loaded;
+    loaded.storeExtraProperties(blob);
+
+    EXPECT_EQ(loaded.serialiseExtraProperties(), blob);
+    EXPECT_TRUE(loaded.hasExtraProperty(u"BitDepth"_s));
+    EXPECT_TRUE(loaded.hasExtraProperty(u"mod_channels"_s));
+
+    const auto extraProps = loaded.extraProperties();
+    EXPECT_EQ(extraProps.size(), 2);
+    EXPECT_EQ(extraProps.value(u"BitDepth"_s), u"24"_s);
+    EXPECT_EQ(extraProps.value(u"mod_channels"_s), u"8"_s);
+}
+
+TEST(TrackTest, DeserialisesEmptyExtraPropertyValueFromLegacyPayload)
+{
+    const QMap<QString, QString> props{{u"EmptyValue"_s, {}}, {u"Present"_s, u"value"_s}};
+    const QByteArray blob = serialiseLegacyMap(props);
+
+    Track loaded;
+    loaded.storeExtraProperties(blob);
+
+    EXPECT_EQ(loaded.serialiseExtraProperties(), blob);
+    EXPECT_TRUE(loaded.hasExtraProperty(u"EmptyValue"_s));
+    EXPECT_TRUE(loaded.hasExtraProperty(u"Present"_s));
+
+    const auto extraProps = loaded.extraProperties();
+    EXPECT_EQ(extraProps.size(), 2);
+    EXPECT_EQ(extraProps.value(u"EmptyValue"_s), QString{});
+    EXPECT_EQ(extraProps.value(u"Present"_s), u"value"_s);
 }
 
 TEST(TrackTest, SameIdentityAsUsesIdThenSegmentIdentity)

@@ -201,7 +201,7 @@ LibraryThreadHandlerPrivate::LibraryThreadHandlerPrivate(LibraryThreadHandler* s
     , m_dbPool{std::move(dbPool)}
     , m_library{library}
     , m_settings{settings}
-    , m_scanner{m_dbPool, std::move(playlistLoader), audioLoader}
+    , m_scanner{m_dbPool, std::move(playlistLoader), metadataStore, audioLoader}
     , m_trackDatabaseManager{m_dbPool, audioLoader, m_settings, std::move(metadataStore)}
 {
     m_monitor.moveToThread(&m_thread);

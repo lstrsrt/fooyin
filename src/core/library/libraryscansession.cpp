@@ -31,6 +31,7 @@
 #include <core/engine/audioloader.h>
 #include <core/library/musiclibrary.h>
 #include <core/playlist/playlist.h>
+#include <core/trackmetadatastore.h>
 
 #include <QDateTime>
 #include <QLoggingCategory>
@@ -83,12 +84,14 @@ std::set<QString> physicalPathsForTracks(const Fooyin::TrackList& tracks)
 
 namespace Fooyin {
 LibraryScanSession::LibraryScanSession(TrackDatabase* trackDatabase, PlaylistLoader* playlistLoader,
-                                       AudioLoader* audioLoader, LibraryScanConfig config, LibraryScanHost* host)
+                                       AudioLoader* audioLoader, std::shared_ptr<TrackMetadataStore> metadataStore,
+                                       LibraryScanConfig config, LibraryScanHost* host)
     : m_host{host}
     , m_config{std::move(config)}
     , m_trackDatabase{trackDatabase}
     , m_playlistLoader{playlistLoader}
     , m_audioLoader{audioLoader}
+    , m_metadataStore{std::move(metadataStore)}
     , m_state{host}
     , m_writer{trackDatabase, [this](const ScanResult& result) { handleScanWriterFlush(result); }}
     , m_resolver{nullptr}
@@ -151,6 +154,7 @@ LibraryTrackResolver LibraryScanSession::makeResolver()
                                 m_playlistLoader,
                                 m_audioLoader,
                                 m_config.playlistSkipMissing,
+                                m_metadataStore,
                                 m_trackDatabase,
                                 &m_state,
                                 &m_writer,

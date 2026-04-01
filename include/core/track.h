@@ -21,6 +21,7 @@
 
 #include "fycore_export.h"
 
+#include <utils/containers.h>
 #include <utils/datastream.h>
 
 #include <QByteArray>
@@ -64,8 +65,8 @@ public:
         Other
     };
 
-    using ExtraTags       = QMap<QString, QStringList>;
-    using ExtraProperties = QMap<QString, QString>;
+    using ExtraTags       = FlatStringMap<QStringList>;
+    using ExtraProperties = FlatStringMap<QString>;
 
     Track();
     explicit Track(std::shared_ptr<TrackMetadataStore> store);

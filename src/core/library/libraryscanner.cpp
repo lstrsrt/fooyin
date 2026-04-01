@@ -24,6 +24,7 @@
 #include "libraryscanutils.h"
 #include "playlist/playlistloader.h"
 
+#include <core/trackmetadatastore.h>
 #include <utils/database/dbconnectionhandler.h>
 #include <utils/database/dbconnectionpool.h>
 #include <utils/timer.h>
@@ -61,7 +62,7 @@ void LibraryScanner::startSession(const LibraryScanConfig& config, const Library
     m_currentLibrary = library;
     resetStopSource();
     m_session = std::make_unique<LibraryScanSession>(&m_trackDatabase, m_playlistLoader.get(), m_audioLoader.get(),
-                                                     config, this);
+                                                     m_metadataStore, config, this);
 }
 
 void LibraryScanner::finishSession()
@@ -77,10 +78,12 @@ void LibraryScanner::clearSession()
 }
 
 LibraryScanner::LibraryScanner(DbConnectionPoolPtr dbPool, std::shared_ptr<PlaylistLoader> playlistLoader,
+                               std::shared_ptr<TrackMetadataStore> metadataStore,
                                std::shared_ptr<AudioLoader> audioLoader, QObject* parent)
     : Worker{parent}
     , m_dbPool{std::move(dbPool)}
     , m_playlistLoader{std::move(playlistLoader)}
+    , m_metadataStore{std::move(metadataStore)}
     , m_audioLoader{std::move(audioLoader)}
     , m_progressOnlyModified{false}
 { }
@@ -231,7 +234,7 @@ void LibraryScanner::scanTracks(const TrackList& tracks, const bool onlyModified
             }
         }
 
-        Track updatedTrack{track.filepath()};
+        Track updatedTrack{track.filepath(), track.metadataStore()};
 
         if(m_audioLoader->readTrackMetadata(updatedTrack)) {
             updatedTrack.setId(track.id());

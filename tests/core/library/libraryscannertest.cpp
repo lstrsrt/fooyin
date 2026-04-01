@@ -26,6 +26,7 @@
 #include "core/playlist/playlistloader.h"
 
 #include <core/engine/audioloader.h>
+#include <core/trackmetadatastore.h>
 
 #include <QCoreApplication>
 #include <QFile>
@@ -192,7 +193,9 @@ TEST(LibraryScannerTest, LocalCueDoesNotBlockEmbeddedCueTracks)
     DummyScanHost host;
     LibraryScanState state{&host};
     LibraryScanWriter writer{nullptr, [](const ScanResult&) { }};
-    LibraryTrackResolver resolver{{}, &playlistLoader, &audioLoader, false, nullptr, &state, &writer, {}, [] { }};
+    auto metadataStore = std::make_shared<Fooyin::TrackMetadataStore>();
+    LibraryTrackResolver resolver{{},      &playlistLoader, &audioLoader, false, metadataStore,
+                                  nullptr, &state,          &writer,      {},    [] { }};
 
     resolver.readCue(QFileInfo{cuePath}, false);
     const int callsAfterCue = readerState->readCalls;
@@ -241,7 +244,8 @@ FILE "album.flac" FLAC
     LibraryScanConfig config;
     config.externalRestrictExt = {u"cue"_s, u"flac"_s};
     DummyScanHost host;
-    LibraryScanSession session{nullptr, playlistLoader.get(), audioLoader.get(), config, &host};
+    auto metadataStore = std::make_shared<Fooyin::TrackMetadataStore>();
+    LibraryScanSession session{nullptr, playlistLoader.get(), audioLoader.get(), metadataStore, config, &host};
     LibraryScanFilesResult result;
 
     ASSERT_TRUE(session.scanFiles({}, {QUrl::fromLocalFile(cuePath), QUrl::fromLocalFile(flacPath)}, result));
@@ -289,7 +293,8 @@ TEST(LibraryScannerTest, DroppingLocalCueAndBackingFileAddsOnlyCueTracks)
     LibraryScanConfig config;
     config.externalRestrictExt = {u"cue"_s, u"bin"_s};
     DummyScanHost host;
-    LibraryScanSession session{nullptr, playlistLoader.get(), audioLoader.get(), config, &host};
+    auto metadataStore = std::make_shared<Fooyin::TrackMetadataStore>();
+    LibraryScanSession session{nullptr, playlistLoader.get(), audioLoader.get(), metadataStore, config, &host};
     LibraryScanFilesResult result;
 
     ASSERT_TRUE(session.scanFiles({}, {QUrl::fromLocalFile(cuePath), QUrl::fromLocalFile(binPath)}, result));
@@ -337,7 +342,8 @@ TEST(LibraryScannerTest, DroppingBackingFileBeforeLocalCueAddsOnlyCueTracks)
     LibraryScanConfig config;
     config.externalRestrictExt = {u"cue"_s, u"bin"_s};
     DummyScanHost host;
-    LibraryScanSession session{nullptr, playlistLoader.get(), audioLoader.get(), config, &host};
+    auto metadataStore = std::make_shared<Fooyin::TrackMetadataStore>();
+    LibraryScanSession session{nullptr, playlistLoader.get(), audioLoader.get(), metadataStore, config, &host};
     LibraryScanFilesResult result;
 
     ASSERT_TRUE(session.scanFiles({}, {QUrl::fromLocalFile(binPath), QUrl::fromLocalFile(cuePath)}, result));
@@ -390,7 +396,8 @@ FILE "album.flac" FLAC
     LibraryScanConfig config;
     config.externalRestrictExt = {u"cue"_s, u"flac"_s};
     DummyScanHost host;
-    LibraryScanSession session{nullptr, playlistLoader.get(), audioLoader.get(), config, &host};
+    auto metadataStore = std::make_shared<Fooyin::TrackMetadataStore>();
+    LibraryScanSession session{nullptr, playlistLoader.get(), audioLoader.get(), metadataStore, config, &host};
     LibraryScanFilesResult result;
 
     ASSERT_TRUE(session.scanFiles({}, {QUrl::fromLocalFile(dir.path())}, result));
