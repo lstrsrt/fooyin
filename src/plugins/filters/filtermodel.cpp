@@ -41,6 +41,7 @@
 #include <QSize>
 #include <QThread>
 
+#include <cstdint>
 #include <set>
 #include <utility>
 
@@ -175,6 +176,7 @@ public:
 
     bool m_showSummary{true};
     int m_rowHeight{0};
+    uint64_t m_populationGen{0};
 
     TrackList m_tracksPendingRemoval;
 };
@@ -281,6 +283,7 @@ void FilterModelPrivate::batchFinished(PendingTreeData data)
 
     if(!m_tracksPendingRemoval.empty()) {
         m_self->removeTracks(m_tracksPendingRemoval);
+        m_tracksPendingRemoval.clear();
     }
 
     populateModel(data);
@@ -382,9 +385,9 @@ void FilterModelPrivate::runPopulator(const TrackList& tracks)
 {
     m_populatorThread.start();
 
-    QMetaObject::invokeMethod(&m_populator, [this, fields = columnFields(), tracks] {
+    QMetaObject::invokeMethod(&m_populator, [this, generation = m_populationGen, fields = columnFields(), tracks] {
         m_populator.setFont(filterFont());
-        m_populator.run(fields, tracks, m_settings->value<Settings::Core::UseVariousForCompilations>());
+        m_populator.run(generation, fields, tracks, m_settings->value<Settings::Core::UseVariousForCompilations>());
     });
 }
 
@@ -405,11 +408,12 @@ FilterModel::FilterModel(LibraryManager* libraryManager, MusicLibrary* library, 
 {
     qRegisterMetaType<PendingTreeDataPtr>("Fooyin::Filters::PendingTreeDataPtr");
 
-    QObject::connect(&p->m_populator, &FilterPopulator::populated, this, [this](const PendingTreeDataPtr& data) {
-        if(data) {
-            p->batchFinished(*data);
-        }
-    });
+    QObject::connect(&p->m_populator, &FilterPopulator::populated, this,
+                     [this](uint64_t generation, const PendingTreeDataPtr& data) {
+                         if(data && generation == p->m_populationGen) {
+                             p->batchFinished(*data);
+                         }
+                     });
 
     QObject::connect(&p->m_populator, &Worker::finished, this, [this]() {
         p->m_populator.stopThread();
@@ -805,6 +809,8 @@ bool FilterModel::removeColumn(int column)
 
 void FilterModel::reset(const FilterColumnList& columns, const TrackList& tracks)
 {
+    ++p->m_populationGen;
+
     if(p->m_populatorThread.isRunning()) {
         p->m_populator.stopThread();
     }

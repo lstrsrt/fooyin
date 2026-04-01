@@ -27,6 +27,7 @@
 #include <gui/scripting/scriptformatter.h>
 #include <utils/worker.h>
 
+#include <cstdint>
 #include <memory>
 
 namespace Fooyin {
@@ -58,10 +59,10 @@ public:
     explicit FilterPopulator(LibraryManager* libraryManager, SettingsManager* settings, QObject* parent = nullptr);
 
     void setFont(const QFont& font);
-    void run(const QStringList& columns, const TrackList& tracks, bool useVarious);
+    void run(uint64_t generation, const QStringList& columns, const TrackList& tracks, bool useVarious);
 
 signals:
-    void populated(Fooyin::Filters::PendingTreeDataPtr data);
+    void populated(uint64_t generation, Fooyin::Filters::PendingTreeDataPtr data);
 
 private:
     FilterItem* getOrInsertItem(const QStringList& columns, const std::vector<RichText>& richColumns);
@@ -76,6 +77,7 @@ private:
 
     QString m_currentColumns;
     ParsedScript m_script;
+    uint64_t m_generation{0};
 
     FilterItem m_root;
     PendingTreeData m_data;

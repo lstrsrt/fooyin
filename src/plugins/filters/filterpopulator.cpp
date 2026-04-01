@@ -83,10 +83,11 @@ void FilterPopulator::setFont(const QFont& font)
     m_formatter.setBaseFont(font);
 }
 
-void FilterPopulator::run(const QStringList& columns, const TrackList& tracks, bool useVarious)
+void FilterPopulator::run(uint64_t generation, const QStringList& columns, const TrackList& tracks, bool useVarious)
 {
     setState(Running);
 
+    m_generation = generation;
     m_data.clear();
 
     m_scriptEnvironment.setRatingStarSymbols({m_settings->value<Settings::Gui::RatingFullStarSymbol>(),
@@ -175,7 +176,7 @@ bool FilterPopulator::runBatch(const TrackList& tracks)
         return false;
     }
 
-    emit populated(std::make_shared<PendingTreeData>(std::move(m_data)));
+    emit populated(m_generation, std::make_shared<PendingTreeData>(std::move(m_data)));
     m_data = {};
 
     return true;
