@@ -25,12 +25,14 @@ namespace Fooyin {
 class SettingsManager;
 
 namespace Notify {
+class NotifyPlugin;
+
 class NotifyPage : public SettingsPage
 {
     Q_OBJECT
 
 public:
-    explicit NotifyPage(SettingsManager* settings, QObject* parent = nullptr);
+    explicit NotifyPage(SettingsManager* settings, NotifyPlugin* plugin, QObject* parent = nullptr);
 };
 } // namespace Notify
 } // namespace Fooyin

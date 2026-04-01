@@ -35,11 +35,25 @@ enum NotifySettings : uint32_t
     BodyField    = 3 | Type::String,
     ShowAlbumArt = 4 | Type::Bool,
     Timeout      = 5 | Type::Int,
+    Controls     = 6 | Type::Int,
 };
 Q_ENUM_NS(NotifySettings)
 } // namespace Settings::Notify
 
 namespace Notify {
+Q_NAMESPACE
+
+enum class PlaybackControlFlag
+{
+    None      = 0,
+    Previous  = 1 << 0,
+    PlayPause = 1 << 1,
+    Next      = 1 << 2,
+    Default   = PlayPause | Next
+};
+Q_DECLARE_FLAGS(PlaybackControls, PlaybackControlFlag)
+Q_FLAG_NS(PlaybackControls)
+
 class NotifySettings
 {
 public:
@@ -50,3 +64,5 @@ private:
 };
 } // namespace Notify
 } // namespace Fooyin
+
+Q_DECLARE_OPERATORS_FOR_FLAGS(Fooyin::Notify::PlaybackControls)
