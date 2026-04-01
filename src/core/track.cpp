@@ -108,7 +108,7 @@ bool readFlatStringMap(QDataStream& stream, Fooyin::FlatStringMap<Value>& out, K
     quint32 size{0};
     stream >> size;
     if(stream.status() != QDataStream::Ok || size == NullCode) {
-        stream.setStatus(QDataStream::SizeLimitExceeded);
+        stream.setStatus(QDataStream::ReadCorruptData);
         return false;
     }
 
