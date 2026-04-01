@@ -30,6 +30,7 @@ PlaybackProgressTracker::PlaybackProgressTracker()
     , m_bitrate{0}
     , m_lastPositionSecond{0}
     , m_hasLastPositionSecond{false}
+    , m_trackingActive{false}
     , m_seeking{false}
     , m_counted{false}
 { }
@@ -42,6 +43,7 @@ void PlaybackProgressTracker::reset()
     m_playedThreshold       = 0;
     m_lastPositionSecond    = 0;
     m_hasLastPositionSecond = false;
+    m_trackingActive        = false;
     m_seeking               = false;
     m_counted               = false;
 }
@@ -52,6 +54,7 @@ void PlaybackProgressTracker::onTrackCommitted(uint64_t totalDurationMs, double 
     m_position        = 0;
     m_timeListened    = 0;
     m_playedThreshold = 0;
+    m_trackingActive  = true;
     m_seeking         = false;
     m_counted         = false;
 
@@ -62,7 +65,7 @@ void PlaybackProgressTracker::onTrackCommitted(uint64_t totalDurationMs, double 
 
 PlaybackProgressTracker::PositionUpdate PlaybackProgressTracker::updatePosition(uint64_t posMs)
 {
-    if(!m_seeking && posMs > m_position) {
+    if(m_trackingActive && !m_seeking && posMs > m_position) {
         m_timeListened += (posMs - m_position);
     }
 
@@ -70,7 +73,7 @@ PlaybackProgressTracker::PositionUpdate PlaybackProgressTracker::updatePosition(
     m_position = posMs;
 
     bool reachedPlayedThreshold = false;
-    if(!m_counted && m_timeListened >= m_playedThreshold) {
+    if(m_trackingActive && !m_counted && m_timeListened >= m_playedThreshold) {
         m_counted              = true;
         reachedPlayedThreshold = true;
     }
@@ -80,8 +83,9 @@ PlaybackProgressTracker::PositionUpdate PlaybackProgressTracker::updatePosition(
 
 PlaybackProgressTracker::PositionUpdate PlaybackProgressTracker::resetPosition()
 {
-    m_position = 0;
-    m_seeking  = false;
+    m_position       = 0;
+    m_trackingActive = false;
+    m_seeking        = false;
     return currentPositionUpdate();
 }
 
@@ -91,7 +95,8 @@ bool PlaybackProgressTracker::markSeekPosition(uint64_t posMs)
         return false;
     }
 
-    m_seeking = true;
+    m_trackingActive = true;
+    m_seeking        = true;
     return true;
 }
 

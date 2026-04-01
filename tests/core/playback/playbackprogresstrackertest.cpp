@@ -90,4 +90,27 @@ TEST(PlaybackProgressTrackerTest, ResetAndBitrateUpdatesBehaveAsExpected)
     EXPECT_EQ(tracker.playedThreshold(), 0);
     EXPECT_EQ(tracker.bitrate(), 320);
 }
+
+TEST(PlaybackProgressTrackerTest, ResetPositionPreventsLateEndSampleFromCountingSkippedTrackTime)
+{
+    PlaybackProgressTracker tracker;
+    tracker.onTrackCommitted(10000, 0.99);
+
+    const auto initialUpdate = tracker.updatePosition(1000);
+    EXPECT_FALSE(initialUpdate.reachedPlayedThreshold);
+    EXPECT_EQ(tracker.timeListened(), 1000);
+
+    EXPECT_TRUE(tracker.markSeekPosition(9800));
+
+    const auto afterSeek = tracker.updatePosition(9850);
+    EXPECT_FALSE(afterSeek.reachedPlayedThreshold);
+    EXPECT_EQ(tracker.timeListened(), 1000);
+
+    const auto stoppedUpdate = tracker.resetPosition();
+    EXPECT_EQ(stoppedUpdate.positionMs, 0);
+
+    const auto lateEndUpdate = tracker.updatePosition(10000);
+    EXPECT_FALSE(lateEndUpdate.reachedPlayedThreshold);
+    EXPECT_EQ(tracker.timeListened(), 1000);
+}
 } // namespace Fooyin::Testing

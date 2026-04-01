@@ -62,6 +62,7 @@ private:
     int m_bitrate;
     uint64_t m_lastPositionSecond;
     bool m_hasLastPositionSecond;
+    bool m_trackingActive;
     bool m_seeking;
     bool m_counted;
 };
