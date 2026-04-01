@@ -1475,8 +1475,13 @@ void readMp4Tags(const TagLib::MP4::Tag* mp4Tags, Fooyin::Track& track, bool ski
     }
 }
 
-QByteArray readMp4Cover(const TagLib::MP4::Tag* mp4Tags, Fooyin::Track::Cover /*cover*/)
+QByteArray readMp4Cover(const TagLib::MP4::Tag* mp4Tags, Fooyin::Track::Cover cover)
 {
+    if(cover != Fooyin::Track::Cover::Front) {
+        // Only front cover is supported for now
+        return {};
+    }
+
     const TagLib::MP4::Item coverArtItem = mp4Tags->item(Fooyin::Mp4::Cover);
     if(!coverArtItem.isValid()) {
         return {};
