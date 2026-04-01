@@ -427,7 +427,8 @@ void SoxResamplerDSP::flush(ProcessingBufferList& chunks, FlushMode mode)
             }
 
             size_t odone{0};
-            const soxr_error_t err = soxr_process(stage.ctx, nullptr, 0, nullptr, outSpan.data(), outCapacity, &odone);
+            const soxr_error_t err
+                = soxr_process(stage.ctx.get(), nullptr, 0, nullptr, outSpan.data(), outCapacity, &odone);
 
             if(err || odone == 0) {
                 if(err) {
@@ -450,7 +451,7 @@ void SoxResamplerDSP::flush(ProcessingBufferList& chunks, FlushMode mode)
         }
 
         if(hitDrainIterationCap && shouldLogWarning(m_warningCounter)) {
-            const double runtimeDelayFrames = stage.ctx ? soxr_delay(stage.ctx) : 0.0;
+            const double runtimeDelayFrames = stage.ctx ? soxr_delay(stage.ctx.get()) : 0.0;
             qCWarning(SOXR_RESAMPLER) << "SoXR flush hit drain iteration cap:" << "stageIn=" << stage.inRate
                                       << "stageOut=" << stage.outRate << "runtimeDelayFrames=" << runtimeDelayFrames;
         }
@@ -711,7 +712,7 @@ void SoxResamplerDSP::setSampleRateFilterMode(SampleRateFilterMode mode)
 void SoxResamplerDSP::clearStage(SoxStage& stage)
 {
     if(stage.ctx) {
-        soxr_clear(stage.ctx);
+        soxr_clear(stage.ctx.get());
     }
 
     stage.latencyFrames               = 0;
@@ -737,8 +738,8 @@ bool SoxResamplerDSP::createStageCtx(Quality quality, PhaseResponse phase, doubl
     stage.passbandEnd   = qualitySpec.passband_end;
     stage.stopbandBegin = qualitySpec.stopband_begin;
 
-    stage.ctx = soxr_create(static_cast<double>(stage.inRate), static_cast<double>(stage.outRate),
-                            static_cast<unsigned>(channels), &error, &ioSpec, &qualitySpec, nullptr);
+    stage.ctx.reset(soxr_create(static_cast<double>(stage.inRate), static_cast<double>(stage.outRate),
+                                static_cast<unsigned>(channels), &error, &ioSpec, &qualitySpec, nullptr));
 
     if(error || !stage.ctx) {
         qCWarning(SOXR_RESAMPLER) << "Failed to create SoXR stage:" << (error ? error : "unknown error")
@@ -749,13 +750,12 @@ bool SoxResamplerDSP::createStageCtx(Quality quality, PhaseResponse phase, doubl
                                   << "stopbandHz=" << normalisedToHz(qualitySpec.stopband_begin, stage.inRate)
                                   << "stageIndex=" << stageIndex;
         if(stage.ctx) {
-            soxr_delete(stage.ctx);
-            stage.ctx = nullptr;
+            stage.ctx.reset();
         }
         return false;
     }
 
-    const double delay  = soxr_delay(stage.ctx);
+    const double delay  = soxr_delay(stage.ctx.get());
     stage.latencyFrames = delay > 0.0 ? static_cast<int>(std::ceil(delay)) : 0;
     stage.ratio         = static_cast<double>(stage.outRate) / static_cast<double>(stage.inRate);
 
@@ -817,12 +817,6 @@ std::set<int> SoxResamplerDSP::parseFilteredSampleRates(const QString& text) con
 
 void SoxResamplerDSP::destroyResampler()
 {
-    for(auto& s : m_stages) {
-        if(s.ctx) {
-            soxr_delete(s.ctx);
-            s.ctx = nullptr;
-        }
-    }
     m_stages.clear();
 
     m_latencyFrames = 0;
@@ -912,7 +906,7 @@ void SoxResamplerDSP::rebuildResampler()
             destroyResampler();
             return;
         }
-        m_stages.push_back(s);
+        m_stages.push_back(std::move(s));
     }
 
     refreshLatencyFramesFromStages();
@@ -936,7 +930,7 @@ void SoxResamplerDSP::refreshLatencyFramesFromStages()
             continue;
         }
 
-        const double delay  = soxr_delay(stage.ctx);
+        const double delay  = soxr_delay(stage.ctx.get());
         stage.latencyFrames = delay > 0.0 ? static_cast<int>(std::ceil(delay)) : 0;
         if(stage.latencyFrames <= 0) {
             continue;
@@ -963,7 +957,7 @@ int SoxResamplerDSP::currentPendingInputFrames() const
             continue;
         }
 
-        const double delay = soxr_delay(stage.ctx);
+        const double delay = soxr_delay(stage.ctx.get());
         if(delay <= 0.0) {
             continue;
         }
@@ -1045,7 +1039,7 @@ bool SoxResamplerDSP::processOneStageBuffer(SoxStage& stage, const ProcessingBuf
 
     while(consumedFrames < inFrames) {
         if(++iterations > maxIterations) {
-            const double runtimeDelayFrames = stage.ctx ? soxr_delay(stage.ctx) : 0.0;
+            const double runtimeDelayFrames = stage.ctx ? soxr_delay(stage.ctx.get()) : 0.0;
             const double runtimeDelayInputFrames
                 = (stage.outRate > 0)
                     ? (runtimeDelayFrames * static_cast<double>(stage.inRate)) / static_cast<double>(stage.outRate)
@@ -1084,10 +1078,10 @@ bool SoxResamplerDSP::processOneStageBuffer(SoxStage& stage, const ProcessingBuf
         const auto* inData = inSamples.data() + (consumedFrames * channels);
 
         const soxr_error_t error
-            = soxr_process(stage.ctx, inData, remainingFrames, &idone, outSpan.data(), outCapacity, &odone);
+            = soxr_process(stage.ctx.get(), inData, remainingFrames, &idone, outSpan.data(), outCapacity, &odone);
 
         if(error) {
-            const double runtimeDelayFrames = stage.ctx ? soxr_delay(stage.ctx) : 0.0;
+            const double runtimeDelayFrames = stage.ctx ? soxr_delay(stage.ctx.get()) : 0.0;
             const double runtimeDelayInputFrames
                 = (stage.outRate > 0)
                     ? (runtimeDelayFrames * static_cast<double>(stage.inRate)) / static_cast<double>(stage.outRate)
@@ -1126,7 +1120,7 @@ bool SoxResamplerDSP::processOneStageBuffer(SoxStage& stage, const ProcessingBuf
             ++tinyProgressIterations;
 
             if(tinyProgressIterations > MaxTinyProgressIterations) {
-                const double runtimeDelayFrames = stage.ctx ? soxr_delay(stage.ctx) : 0.0;
+                const double runtimeDelayFrames = stage.ctx ? soxr_delay(stage.ctx.get()) : 0.0;
                 const double runtimeDelayInputFrames
                     = (stage.outRate > 0)
                         ? (runtimeDelayFrames * static_cast<double>(stage.inRate)) / static_cast<double>(stage.outRate)
@@ -1151,7 +1145,7 @@ bool SoxResamplerDSP::processOneStageBuffer(SoxStage& stage, const ProcessingBuf
 
         if(idone == 0) {
             if(odone == 0) {
-                const double runtimeDelayFrames = stage.ctx ? soxr_delay(stage.ctx) : 0.0;
+                const double runtimeDelayFrames = stage.ctx ? soxr_delay(stage.ctx.get()) : 0.0;
                 const double runtimeDelayInputFrames
                     = (stage.outRate > 0)
                         ? (runtimeDelayFrames * static_cast<double>(stage.inRate)) / static_cast<double>(stage.outRate)

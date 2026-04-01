@@ -90,9 +90,11 @@ public:
     [[nodiscard]] SampleRateFilterMode sampleRateFilterMode() const;
 
 private:
+    using SoxrPtr = std::unique_ptr<soxr, decltype(&soxr_delete)>;
+
     struct SoxStage
     {
-        soxr_t ctx{nullptr};
+        SoxrPtr ctx{nullptr, soxr_delete};
 
         int inRate{0};
         int outRate{0};
@@ -113,9 +115,8 @@ private:
         uint64_t pendingInputStartNs{0};
     };
 
-    static bool createStageCtx(SoxResamplerDSP::Quality quality, SoxResamplerDSP::PhaseResponse phase,
-                               double passbandPercent, bool allowImagingUpsampling, int channels, size_t stageIndex,
-                               SoxStage& stage);
+    static bool createStageCtx(Quality quality, PhaseResponse phase, double passbandPercent,
+                               bool allowImagingUpsampling, int channels, size_t stageIndex, SoxStage& stage);
     static void clearStage(SoxStage& stage);
 
     void rebuildResampler();
