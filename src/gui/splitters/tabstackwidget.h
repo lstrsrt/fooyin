@@ -64,5 +64,6 @@ private:
 
     WidgetList m_widgets;
     EditableTabWidget* m_tabs;
+    bool m_rememberLast;
 };
 } // namespace Fooyin

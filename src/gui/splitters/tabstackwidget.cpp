@@ -42,6 +42,7 @@ namespace Fooyin {
 TabStackWidget::TabStackWidget(WidgetProvider* widgetProvider, SettingsManager* settings, QWidget* parent)
     : WidgetContainer{widgetProvider, settings, parent}
     , m_tabs{new EditableTabWidget(this)}
+    , m_rememberLast{false}
 {
     QObject::setObjectName(TabStackWidget::name());
 
@@ -58,7 +59,7 @@ TabStackWidget::TabStackWidget(WidgetProvider* widgetProvider, SettingsManager* 
         }
     });
     QObject::connect(m_tabs->tabBar(), &QTabBar::tabMoved, this, [this](int from, int to) {
-        if(from >= 0 && from < static_cast<int>(m_widgets.size())) {
+        if(from >= 0 && std::cmp_less(from, m_widgets.size())) {
             auto* widget = m_widgets.at(from);
             m_widgets.erase(m_widgets.begin() + from);
             m_widgets.insert(m_widgets.begin() + to, widget);
@@ -91,9 +92,13 @@ void TabStackWidget::saveLayoutData(QJsonObject& layout)
         state.append(m_tabs->tabText(i));
     }
 
-    layout["Position"_L1] = Utils::Enum::toString(m_tabs->tabPosition());
-    layout["State"_L1]    = state;
-    layout["Widgets"_L1]  = widgets;
+    layout["Position"_L1]        = Utils::Enum::toString(m_tabs->tabPosition());
+    layout["State"_L1]           = state;
+    layout["Widgets"_L1]         = widgets;
+    layout["RememberLastTab"_L1] = m_rememberLast;
+    if(m_rememberLast) {
+        layout["LastTab"_L1] = m_tabs->currentIndex();
+    }
 }
 
 void TabStackWidget::loadLayoutData(const QJsonObject& layout)
@@ -116,6 +121,16 @@ void TabStackWidget::loadLayoutData(const QJsonObject& layout)
                 m_tabs->setTabText(i++, title);
             }
         }
+    }
+
+    if(layout.contains("RememberLastTab"_L1)) {
+        m_rememberLast = layout.value("RememberLastTab"_L1).toBool();
+    }
+
+    if(m_rememberLast && layout.contains("LastTab"_L1) && m_tabs->count() > 1) {
+        auto lastIndex = layout.value("LastTab"_L1).toInt();
+        lastIndex      = std::clamp(lastIndex, 0, m_tabs->count() - 1);
+        m_tabs->setCurrentIndex(lastIndex);
     }
 }
 
@@ -283,16 +298,16 @@ void TabStackWidget::contextMenuEvent(QContextMenuEvent* event)
     const auto tabPos = m_tabs->tabPosition();
 
     switch(tabPos) {
-        case(QTabWidget::North):
+        case QTabWidget::North:
             north->setChecked(true);
             break;
-        case(QTabWidget::East):
+        case QTabWidget::East:
             east->setChecked(true);
             break;
-        case(QTabWidget::South):
+        case QTabWidget::South:
             south->setChecked(true);
             break;
-        case(QTabWidget::West):
+        case QTabWidget::West:
             west->setChecked(true);
             break;
     }
@@ -318,7 +333,13 @@ void TabStackWidget::contextMenuEvent(QContextMenuEvent* event)
     auto* remove = new QAction(tr("Re&move"), menu);
     QObject::connect(remove, &QAction::triggered, this, [this, index]() { removeWidget(index); });
 
+    auto* rememberLast = new QAction(tr("Remember &last tab"), menu);
+    rememberLast->setCheckable(true);
+    rememberLast->setChecked(m_rememberLast);
+    QObject::connect(rememberLast, &QAction::triggered, this, [this](bool checked) { m_rememberLast = checked; });
+
     menu->addMenu(posMenu);
+    menu->addAction(rememberLast);
     menu->addSeparator();
     menu->addAction(rename);
     menu->addAction(remove);
@@ -351,12 +372,12 @@ void TabStackWidget::changeTabPosition(QTabWidget::TabPosition position) const
     }
 
     switch(position) {
-        case(QTabWidget::North):
-        case(QTabWidget::South):
+        case QTabWidget::North:
+        case QTabWidget::South:
             m_tabs->editableTabBar()->setEditMode(EditableTabBar::EditMode::Inline);
             break;
-        case(QTabWidget::West):
-        case(QTabWidget::East):
+        case QTabWidget::West:
+        case QTabWidget::East:
             m_tabs->editableTabBar()->setEditMode(EditableTabBar::EditMode::Dialog);
             break;
     }
