@@ -118,7 +118,8 @@ bool readFlatStringMap(QDataStream& stream, Fooyin::FlatStringMap<Value>& out, K
         QString key;
         Value value;
 
-        if(!(stream >> key >> value)) {
+        stream >> key >> value;
+        if(stream.status() != QDataStream::Ok) {
             out.clear();
             return false;
         }
