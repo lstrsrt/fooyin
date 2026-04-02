@@ -121,9 +121,6 @@ void LibraryTreePopulatorPrivate::iterateTrack(const Track& track)
         for(int level{0}; const QString& item : displayItems) {
             const RichText richTitle = trimRichText(m_formatter.evaluate(item));
             const QString title      = richTitle.joinedText();
-            if(title.isEmpty()) {
-                continue;
-            }
 
             const auto key = Utils::generateMd5Hash(parent->key(), title);
             const QString sortTitle

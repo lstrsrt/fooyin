@@ -352,6 +352,11 @@ void LibraryTreeWidget::playlistTrackChanged(const PlaylistTrack& track)
         return;
     }
 
+    if(m_playlistGroups.empty()) {
+        m_model->setPlayingPath({}, track.track.uniqueFilepath());
+        return;
+    }
+
     auto groupIt = m_playlistGroups.upper_bound(track.indexInPlaylist);
     if(groupIt != m_playlistGroups.cbegin()) {
         --groupIt;

@@ -574,9 +574,11 @@ QVariant LibraryTreeModel::data(const QModelIndex& index, int role) const
     const auto* item = itemForIndex(index);
 
     if(p->m_playingState != Player::PlayState::Stopped) {
+        const QString parentTitle
+            = item->parent() && !item->parent()->title().isEmpty() ? item->parent()->title() : u"?"_s;
         const bool isPlayingTrack = item->childCount() == 0 && item->trackCount() == 1
                                  && item->tracks().front().uniqueFilepath() == p->m_playingPath
-                                 && item->parent()->title() == p->m_parentNode;
+                                 && parentTitle == p->m_parentNode;
         if(isPlayingTrack) {
             if(role == Qt::BackgroundRole) {
                 return p->m_playingColour;
