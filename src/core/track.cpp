@@ -142,7 +142,6 @@ public:
 
     bool readExtraTagsToVector(QDataStream& stream, Track::ExtraTags& out) const;
     static bool readPropsToVector(QDataStream& stream, Track::ExtraProperties& out);
-    void ensureExtraTagsLoaded() const;
     [[nodiscard]] StringPool& stringPool() const;
 
     std::shared_ptr<TrackMetadataStore> metadataStore;
@@ -168,10 +167,7 @@ public:
     int year{-1};
     int64_t dateSinceEpoch{0};
     int64_t yearSinceEpoch{0};
-    mutable Track::ExtraTags extraTags;
-    mutable QByteArray extraTagsBlob;
-    mutable bool extraTagsLoaded{true};
-    bool extraTagsDirty{false};
+    Track::ExtraTags extraTags;
     QStringList removedTags;
     Track::ExtraProperties extraProps;
 
@@ -262,30 +258,6 @@ bool TrackPrivate::readPropsToVector(QDataStream& stream, Track::ExtraProperties
     out.clear();
 
     return readFlatStringMap(stream, out, [](const QString& key) { return key; });
-}
-
-void TrackPrivate::ensureExtraTagsLoaded() const
-{
-    if(extraTagsLoaded) {
-        return;
-    }
-
-    extraTagsLoaded = true;
-    extraTags.clear();
-
-    if(extraTagsBlob.isEmpty()) {
-        return;
-    }
-
-    QByteArray in{extraTagsBlob};
-    QDataStream stream(&in, QIODevice::ReadOnly);
-    stream.setVersion(QDataStream::Qt_6_0);
-
-    Track::ExtraTags loaded;
-    if(readExtraTagsToVector(stream, loaded)) {
-        extraTags = std::move(loaded);
-        extraTagsBlob.clear();
-    }
 }
 
 StringPool& TrackPrivate::stringPool() const
@@ -898,19 +870,16 @@ bool Track::isExtraTag(const QString& tag)
 
 bool Track::hasExtraTag(const QString& tag) const
 {
-    p->ensureExtraTagsLoaded();
     return p->extraTags.contains(tag.toUpper());
 }
 
 QStringList Track::extraTag(const QString& tag) const
 {
-    p->ensureExtraTagsLoaded();
     return p->extraTags.value(tag.toUpper());
 }
 
 Track::ExtraTags Track::extraTags() const
 {
-    p->ensureExtraTagsLoaded();
     return p->extraTags;
 }
 
@@ -921,12 +890,6 @@ QStringList Track::removedTags() const
 
 QByteArray Track::serialiseExtraTags() const
 {
-    if(!p->extraTagsDirty && !p->extraTagsLoaded) {
-        return p->extraTagsBlob;
-    }
-
-    p->ensureExtraTagsLoaded();
-
     if(p->extraTags.empty()) {
         return {};
     }
@@ -1184,7 +1147,7 @@ void Track::setMetadataStore(std::shared_ptr<TrackMetadataStore> store)
 
     p->metadataStore = store;
 
-    if(p->extraTagsLoaded && !p->extraTags.empty()) {
+    if(!p->extraTags.empty()) {
         p->extraTags = internExtraTags(*p, p->extraTags);
     }
 }
@@ -1571,8 +1534,6 @@ void Track::addExtraTag(const QString& tag, const QString& value)
         return;
     }
 
-    p->ensureExtraTagsLoaded();
-
     const QString extraTag = internExtraTagKey(*p, tag);
     if(auto* values = p->extraTags.find(extraTag)) {
         values->emplace_back(value);
@@ -1580,9 +1541,6 @@ void Track::addExtraTag(const QString& tag, const QString& value)
     else {
         p->extraTags.insertOrAssign(extraTag, QStringList{value});
     }
-
-    p->extraTagsBlob.clear();
-    p->extraTagsDirty = true;
 }
 
 void Track::addExtraTag(const QString& tag, const QStringList& value)
@@ -1591,8 +1549,6 @@ void Track::addExtraTag(const QString& tag, const QStringList& value)
         return;
     }
 
-    p->ensureExtraTagsLoaded();
-
     const QString extraTag = internExtraTagKey(*p, tag);
     if(auto* values = p->extraTags.find(extraTag)) {
         values->append(value);
@@ -1600,27 +1556,18 @@ void Track::addExtraTag(const QString& tag, const QStringList& value)
     else {
         p->extraTags.insertOrAssign(extraTag, value);
     }
-
-    p->extraTagsBlob.clear();
-    p->extraTagsDirty = true;
 }
 
 void Track::removeExtraTag(const QString& tag)
 {
-    p->ensureExtraTagsLoaded();
-
     const QString extraTag = tag.toUpper();
     if(p->extraTags.erase(extraTag)) {
         p->removedTags.append(internExtraTagKey(*p, extraTag));
-        p->extraTagsBlob.clear();
-        p->extraTagsDirty = true;
     }
 }
 
 void Track::replaceExtraTag(const QString& tag, const QString& value)
 {
-    p->ensureExtraTagsLoaded();
-
     const QString extraTag = internExtraTagKey(*p, tag);
     if(value.isEmpty()) {
         removeExtraTag(extraTag);
@@ -1628,15 +1575,10 @@ void Track::replaceExtraTag(const QString& tag, const QString& value)
     }
 
     p->extraTags.insertOrAssign(extraTag, QStringList{value});
-
-    p->extraTagsBlob.clear();
-    p->extraTagsDirty = true;
 }
 
 void Track::replaceExtraTag(const QString& tag, const QStringList& value)
 {
-    p->ensureExtraTagsLoaded();
-
     const QString extraTag = internExtraTagKey(*p, tag);
     if(value.isEmpty()) {
         removeExtraTag(extraTag);
@@ -1644,25 +1586,29 @@ void Track::replaceExtraTag(const QString& tag, const QStringList& value)
     }
 
     p->extraTags.insertOrAssign(extraTag, value);
-
-    p->extraTagsBlob.clear();
-    p->extraTagsDirty = true;
 }
 
 void Track::clearExtraTags()
 {
-    p->ensureExtraTagsLoaded();
     p->extraTags.clear();
-    p->extraTagsBlob.clear();
-    p->extraTagsDirty = true;
 }
 
 void Track::storeExtraTags(const QByteArray& tags)
 {
     p->extraTags.clear();
-    p->extraTagsBlob   = tags;
-    p->extraTagsLoaded = tags.isEmpty();
-    p->extraTagsDirty  = false;
+
+    if(tags.isEmpty()) {
+        return;
+    }
+
+    QByteArray in{tags};
+    QDataStream stream{&in, QIODevice::ReadOnly};
+    stream.setVersion(QDataStream::Qt_6_0);
+
+    ExtraTags loaded;
+    if(p->readExtraTagsToVector(stream, loaded)) {
+        p->extraTags = std::move(loaded);
+    }
 }
 
 void Track::setExtraProperty(const QString& prop, const QString& value)
