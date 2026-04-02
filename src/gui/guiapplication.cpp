@@ -174,7 +174,7 @@ public:
     void initialiseTray();
     void updateWindowTitle();
     void checkArtwork();
-    void handleTrackStatus(Engine::TrackStatus status);
+    void handleTrackStatus(const Engine::TrackStatusContext& context);
     void handleTracksDeleted(const TrackList& tracks);
 
     static void removeExpiredCovers(const TrackList& tracks);
@@ -454,7 +454,7 @@ void GuiApplicationPrivate::setupConnections()
     QObject::connect(m_core->engine(), &EngineController::engineError, m_self,
                      [this](const QString& error) { showEngineError(error); });
     QObject::connect(m_core->engine(), &EngineController::trackStatusContextChanged, m_self,
-                     [this](const Engine::TrackStatusContext& context) { handleTrackStatus(context.status); });
+                     [this](const Engine::TrackStatusContext& context) { handleTrackStatus(context); });
 
     m_settings->subscribe<Settings::Gui::LayoutEditing>(m_self, [this]() { updateWindowTitle(); });
     const auto refreshThemedActions = [this]() {
@@ -592,11 +592,11 @@ void GuiApplicationPrivate::checkArtwork()
     }
 }
 
-void GuiApplicationPrivate::handleTrackStatus(Engine::TrackStatus status)
+void GuiApplicationPrivate::handleTrackStatus(const Engine::TrackStatusContext& context)
 {
-    const Track track = m_playerController->currentTrack();
+    const Track& track = context.track;
 
-    if(status == Engine::TrackStatus::Invalid) {
+    if(context.status == Engine::TrackStatus::Invalid) {
         if(track.isValid()) {
             if(track.isInArchive()) {
                 if(!QFileInfo::exists(track.archivePath())) {
@@ -608,7 +608,7 @@ void GuiApplicationPrivate::handleTrackStatus(Engine::TrackStatus status)
             }
         }
     }
-    else if(status == Engine::TrackStatus::Unreadable) {
+    else if(context.status == Engine::TrackStatus::Unreadable) {
         showTrackUnreableMessage(track);
     }
 }

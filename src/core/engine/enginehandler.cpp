@@ -447,7 +447,7 @@ void EngineHandler::armEndAdvanceWatchdog(const Track& track, const uint64_t gen
         }
 
         const auto elapsedMs     = static_cast<int>(std::chrono::duration_cast<std::chrono::milliseconds>(
-                                                        std::chrono::steady_clock::now() - m_endAdvanceSuppressedSince)
+                                                    std::chrono::steady_clock::now() - m_endAdvanceSuppressedSince)
                                                         .count());
         const int bufferLengthMs = std::max(250, m_settings->value<Settings::Core::BufferLength>());
         const int watchdogMs     = engineOwnedTransitionWatchdogDelayMs(bufferLengthMs);
@@ -571,6 +571,12 @@ void EngineHandler::handleTrackStatus(Engine::TrackStatus status, const Track& t
             clearPositionAcceptanceFloor();
             clearPendingBoundaryAdvance();
             clearEngineOwnedTransition();
+            if(m_pendingTrackChange.has_value() && sameTrackIdentity(m_pendingTrackChange->track.track, track)) {
+                // Failed loads never emit trackCommitted(), so adopt the attempted track here to
+                // clear the pending reques.
+                m_playerController->commitCurrentTrack(*m_pendingTrackChange);
+                m_pendingTrackChange.reset();
+            }
             break;
         case Engine::TrackStatus::Loading:
         case Engine::TrackStatus::Loaded:
