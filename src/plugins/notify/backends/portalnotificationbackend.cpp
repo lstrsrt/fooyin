@@ -30,6 +30,7 @@ constexpr auto PortalDbusPath       = "/org/freedesktop/portal/desktop";
 constexpr auto PortalDbusInterface  = "org.freedesktop.portal.Notification";
 constexpr auto PortalNotificationId = "track-change";
 constexpr auto NotificationIconName = "org.fooyin.fooyin";
+constexpr int DefaultTimeoutMs      = 5000;
 
 namespace {
 QVariantMap makePortalNotification(const Fooyin::Notify::NotificationRequest& request)
@@ -51,6 +52,7 @@ PortalNotificationBackend::PortalNotificationBackend(QObject* parent)
           QString::fromLatin1(PortalDbusService), QString::fromLatin1(PortalDbusPath),
           QString::fromLatin1(PortalDbusInterface), QDBusConnection::sessionBus(), this)}
     , m_notificationGen{0}
+    , m_notificationActive{false}
 {
     QDBusConnection::sessionBus().connect(QString::fromLatin1(PortalDbusService), QString::fromLatin1(PortalDbusPath),
                                           QString::fromLatin1(PortalDbusInterface), u"ActionInvoked"_s, this,
@@ -91,20 +93,54 @@ void PortalNotificationBackend::sendNotification(const NotificationRequest& requ
         portalNotification[u"buttons"_s] = QVariant::fromValue(buttons);
     }
 
+    const QString notificationId = currentNotificationId();
+
     auto* watcher = new QDBusPendingCallWatcher(
-        m_notificationPortal->asyncCall(u"AddNotification"_s, currentNotificationId(), portalNotification), this);
+        m_notificationPortal->asyncCall(u"AddNotification"_s, notificationId, portalNotification), this);
     QObject::connect(watcher, &QDBusPendingCallWatcher::finished, this,
                      &PortalNotificationBackend::notificationCallFinished);
+
+    const int timeoutMs = request.timeoutMs >= 0 ? request.timeoutMs : DefaultTimeoutMs;
+    if(timeoutMs > 0) {
+        m_notificationExpiryTimer.start(timeoutMs, this);
+    }
+    else {
+        m_notificationExpiryTimer.stop();
+    }
+
+    m_notificationActive = true;
 }
 
 void PortalNotificationBackend::resetIdentities()
 {
+    clearActiveNotification();
+}
+
+void PortalNotificationBackend::timerEvent(QTimerEvent* event)
+{
+    if(event->timerId() == m_notificationExpiryTimer.timerId()) {
+        clearActiveNotification();
+        return;
+    }
+
+    NotificationBackend::timerEvent(event);
+}
+
+void PortalNotificationBackend::clearActiveNotification()
+{
+    m_notificationExpiryTimer.stop();
+
+    if(m_notificationActive) {
+        m_notificationPortal->asyncCall(u"RemoveNotification"_s, currentNotificationId());
+        m_notificationActive = false;
+    }
+
     ++m_notificationGen;
 }
 
 QString PortalNotificationBackend::currentNotificationId() const
 {
-    return QStringLiteral("%1-%2").arg(QString::fromLatin1(PortalNotificationId)).arg(m_notificationGen);
+    return QStringLiteral("%1").arg(QString::fromLatin1(PortalNotificationId)).arg(m_notificationGen);
 }
 
 void PortalNotificationBackend::portalActionInvoked(const QString& id, const QString& action,
@@ -114,7 +150,7 @@ void PortalNotificationBackend::portalActionInvoked(const QString& id, const QSt
         return;
     }
 
-    ++m_notificationGen;
+    clearActiveNotification();
     emit actionInvoked(action);
 }
 
@@ -123,6 +159,8 @@ void PortalNotificationBackend::notificationCallFinished(QDBusPendingCallWatcher
     const QDBusPendingReply<> reply = *watcher;
     if(reply.isError()) {
         qCWarning(NOTIFY) << "Failed to send portal notification:" << reply.error().message();
+        m_notificationExpiryTimer.stop();
+        m_notificationActive = false;
         emit notificationSent(false);
     }
     else {

@@ -21,8 +21,10 @@
 
 #include "notificationbackend.h"
 
+#include <QBasicTimer>
 #include <QDBusInterface>
 #include <QDBusPendingCallWatcher>
+#include <QTimerEvent>
 
 namespace Fooyin::Notify {
 class PortalNotificationBackend : public NotificationBackend
@@ -38,7 +40,11 @@ public:
     void sendNotification(const NotificationRequest& request) override;
     void resetIdentities() override;
 
+protected:
+    void timerEvent(QTimerEvent* event) override;
+
 private:
+    void clearActiveNotification();
     [[nodiscard]] QString currentNotificationId() const;
     void notificationCallFinished(QDBusPendingCallWatcher* watcher);
 
@@ -48,6 +54,8 @@ private slots:
 private:
     QDBusInterface* m_notificationPortal;
     NotificationCapabilities m_capabilities;
+    QBasicTimer m_notificationExpiryTimer;
     uint64_t m_notificationGen;
+    bool m_notificationActive;
 };
 } // namespace Fooyin::Notify

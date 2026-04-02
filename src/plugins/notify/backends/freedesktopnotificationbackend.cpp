@@ -27,6 +27,7 @@ using namespace Qt::StringLiterals;
 constexpr auto FreedesktopDbusService = "org.freedesktop.Notifications";
 constexpr auto FreedesktopDbusPath    = "/org/freedesktop/Notifications";
 constexpr auto NotificationIconName   = "org.fooyin.fooyin";
+constexpr auto DefaultTimeoutMs       = 5000;
 
 namespace Fooyin::Notify {
 FreedesktopNotificationBackend::FreedesktopNotificationBackend(QObject* parent)
@@ -93,17 +94,43 @@ void FreedesktopNotificationBackend::sendNotification(const NotificationRequest&
         hints[u"image-data"_s] = QVariant::fromValue(imageData);
     }
 
-    auto* watcher = new QDBusPendingCallWatcher(
-        m_notifications->Notify(QApplication::applicationDisplayName(), m_lastNotificationId,
-                                QString::fromLatin1(NotificationIconName), request.title, request.body, actions, hints,
-                                request.timeoutMs),
-        this);
+    const uint32_t replacesId = m_notificationExpiryTimer.isActive() ? m_lastNotificationId : 0;
+
+    auto* watcher
+        = new QDBusPendingCallWatcher(m_notifications->Notify(QApplication::applicationDisplayName(), replacesId,
+                                                              QString::fromLatin1(NotificationIconName), request.title,
+                                                              request.body, actions, hints, request.timeoutMs),
+                                      this);
     QObject::connect(watcher, &QDBusPendingCallWatcher::finished, this,
                      &FreedesktopNotificationBackend::notificationCallFinished);
+
+    const int timeoutMs = request.timeoutMs >= 0 ? request.timeoutMs : DefaultTimeoutMs;
+    if(timeoutMs > 0) {
+        m_notificationExpiryTimer.start(timeoutMs, this);
+    }
+    else {
+        clearActiveNotification();
+    }
 }
 
 void FreedesktopNotificationBackend::resetIdentities()
 {
+    clearActiveNotification();
+}
+
+void FreedesktopNotificationBackend::timerEvent(QTimerEvent* event)
+{
+    if(event->timerId() == m_notificationExpiryTimer.timerId()) {
+        clearActiveNotification();
+        return;
+    }
+
+    NotificationBackend::timerEvent(event);
+}
+
+void FreedesktopNotificationBackend::clearActiveNotification()
+{
+    m_notificationExpiryTimer.stop();
     m_lastNotificationId = 0;
 }
 
@@ -117,7 +144,12 @@ bool FreedesktopNotificationBackend::supportsActions() const
     return reply.value().contains(u"actions"_s);
 }
 
-void FreedesktopNotificationBackend::notificationClosed(uint /*id*/, uint /*reason*/) { }
+void FreedesktopNotificationBackend::notificationClosed(uint id, uint /*reason*/)
+{
+    if(id == m_lastNotificationId) {
+        clearActiveNotification();
+    }
+}
 
 void FreedesktopNotificationBackend::notificationActionInvoked(uint id, const QString& actionKey)
 {
@@ -125,7 +157,7 @@ void FreedesktopNotificationBackend::notificationActionInvoked(uint id, const QS
         return;
     }
 
-    m_lastNotificationId = 0;
+    clearActiveNotification();
     emit actionInvoked(actionKey);
 }
 

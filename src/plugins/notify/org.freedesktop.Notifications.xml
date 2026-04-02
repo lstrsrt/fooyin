@@ -13,6 +13,9 @@
             <arg name="expire_timeout" type="i" direction="in" />
             <arg name="id" type="u" direction="out" />
         </method>
+        <method name="CloseNotification">
+            <arg name="id" type="u" direction="in"/>
+        </method>
         <signal name="NotificationClosed">
             <arg name="id" type="u" />
             <arg name="reason" type="u" />

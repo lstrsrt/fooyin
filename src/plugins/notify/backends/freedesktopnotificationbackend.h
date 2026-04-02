@@ -22,8 +22,10 @@
 #include "notificationbackend.h"
 #include "notificationsinterface.h"
 
+#include <QBasicTimer>
 #include <QDBusInterface>
 #include <QDBusPendingCallWatcher>
+#include <QTimerEvent>
 
 namespace Fooyin::Notify {
 class FreedesktopNotificationBackend : public NotificationBackend
@@ -39,7 +41,11 @@ public:
     void sendNotification(const NotificationRequest& request) override;
     void resetIdentities() override;
 
+protected:
+    void timerEvent(QTimerEvent* event) override;
+
 private:
+    void clearActiveNotification();
     [[nodiscard]] bool supportsActions() const;
     void notificationClosed(uint id, uint reason);
     void notificationCallFinished(QDBusPendingCallWatcher* watcher);
@@ -50,6 +56,7 @@ private slots:
 private:
     OrgFreedesktopNotificationsInterface* m_notifications;
     NotificationCapabilities m_capabilities;
+    QBasicTimer m_notificationExpiryTimer;
     uint32_t m_lastNotificationId;
 };
 } // namespace Fooyin::Notify
