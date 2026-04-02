@@ -73,6 +73,8 @@ public:
     void finishPendingStopAfterCurrentReset();
     void clearStopAfterCurrentForManualSkip();
     [[nodiscard]] bool trackEndAutoTransitionsEnabled() const;
+    [[nodiscard]] bool canRewindCurrentTrack() const;
+    [[nodiscard]] bool canPerformPrevious() const;
 
     [[nodiscard]] Player::UpcomingTrack resolveUpcomingTrack() const;
     void emitUpcomingTrackChangedIfNeeded();
@@ -191,6 +193,27 @@ void PlayerControllerPrivate::clearStopAfterCurrentForManualSkip()
 bool PlayerControllerPrivate::trackEndAutoTransitionsEnabled() const
 {
     return !m_stopAfterCurrentArmed;
+}
+
+bool PlayerControllerPrivate::canRewindCurrentTrack() const
+{
+    return m_settings->value<Settings::Core::RewindPreviousTrack>() && m_session.currentTrack().isValid()
+        && m_progressTracker.position() > 5000;
+}
+
+bool PlayerControllerPrivate::canPerformPrevious() const
+{
+    if(canRewindCurrentTrack()) {
+        return true;
+    }
+
+    const auto restartTarget = m_cursor.restartTargetFor(PlaybackCursor::Command::Previous, m_playState);
+    if(m_playState == Player::PlayState::Stopped && restartTarget != PlaybackOrderNavigator::RestartTarget::None
+       && !m_session.isQueueTrack()) {
+        return true;
+    }
+
+    return m_navigator.previewPlaybackRelativeTrack(-1).isValid();
 }
 
 Player::UpcomingTrack PlayerControllerPrivate::resolveUpcomingTrack() const
@@ -672,7 +695,7 @@ void PlayerController::previous()
 {
     p->clearStopAfterCurrentForManualSkip();
 
-    if(p->m_settings->value<Settings::Core::RewindPreviousTrack>() && currentPosition() > 5000) {
+    if(p->canRewindCurrentTrack()) {
         seek(0);
         return;
     }
@@ -919,7 +942,7 @@ bool PlayerController::hasNextTrack() const
 
 bool PlayerController::hasPreviousTrack() const
 {
-    return p->m_navigator.previewPlaybackRelativeTrack(-1).isValid();
+    return p->canPerformPrevious();
 }
 
 bool PlayerController::trackEndAutoTransitionsEnabled() const

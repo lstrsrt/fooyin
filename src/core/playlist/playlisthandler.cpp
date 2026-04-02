@@ -210,7 +210,9 @@ void PlaylistHandlerPrivate::handleTracksChanged(const TrackList& tracks)
         const auto updatedIndexes = Utils::updateCommonTracks(playlistTracks, tracks, Utils::CommonOperation::Update);
 
         if(!updatedIndexes.empty()) {
-            playlist->replaceTracks(playlistTracks);
+            for(const int index : updatedIndexes) {
+                playlist->updateTrackAtIndex(index, playlistTracks.at(index));
+            }
             emit m_self->tracksChanged(playlist.get(), updatedIndexes);
         }
     }
@@ -260,7 +262,9 @@ void PlaylistHandlerPrivate::handleTracksUpdated(const TrackList& tracks)
         const auto updatedIndexes = Utils::updateCommonTracks(playlistTracks, tracks, Utils::CommonOperation::Update);
 
         if(!updatedIndexes.empty()) {
-            playlist->replaceTracks(playlistTracks);
+            for(const int index : updatedIndexes) {
+                playlist->updateTrackAtIndex(index, playlistTracks.at(index));
+            }
             emit m_self->tracksUpdated(playlist.get(), updatedIndexes);
         }
     }

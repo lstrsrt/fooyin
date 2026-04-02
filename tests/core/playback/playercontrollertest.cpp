@@ -227,6 +227,22 @@ public:
         return {};
     }
 
+    void emitTracksUpdatedForTests(const TrackList& tracks)
+    {
+        for(const auto& updatedTrack : tracks) {
+            const auto it = std::ranges::find_if(m_tracks, [&updatedTrack](const Track& libraryTrack) {
+                return updatedTrack.id() >= 0 ? libraryTrack.id() == updatedTrack.id()
+                                              : libraryTrack.sameIdentityAs(updatedTrack);
+            });
+
+            if(it != m_tracks.end()) {
+                *it = updatedTrack;
+            }
+        }
+
+        emit tracksUpdated(tracks);
+    }
+
 private:
     TrackList m_tracks;
 };
@@ -374,6 +390,22 @@ TEST(PlayerControllerTest, PreviousClearsStopAfterCurrentWhenResetEnabled)
 
     EXPECT_FALSE(settings.value<Settings::Core::StopAfterCurrent>());
     EXPECT_TRUE(controller.trackEndAutoTransitionsEnabled());
+}
+
+TEST(PlayerControllerTest, PreviousCapabilityIncludesRewindingCurrentTrack)
+{
+    SettingsManager settings{QDir::tempPath() + u"/fooyin_playercontroller_prev_capability_rewind_test.ini"_s};
+    registerControllerSettings(settings);
+    settings.set<Settings::Core::RewindPreviousTrack>(true);
+
+    PlayerController controller{&settings, nullptr};
+    controller.commitCurrentTrack(makeTrack(u"/tmp/prev-capability.flac"_s, 17, 10000));
+
+    EXPECT_FALSE(controller.hasPreviousTrack());
+
+    controller.setCurrentPosition(6000);
+
+    EXPECT_TRUE(controller.hasPreviousTrack());
 }
 
 TEST(PlayerControllerTest, CommittingQueueTrackOnlyRemovesFirstDuplicateQueueEntry)
@@ -587,5 +619,48 @@ TEST(PlayerControllerTest, FollowPlaybackQueueContinuesFromQueuedTrackPlaylist)
     ASSERT_EQ(requests.size(), 2U);
     EXPECT_EQ(requests.back().track, *followedTrack);
     EXPECT_FALSE(requests.back().isQueueTrack);
+}
+
+TEST(PlayerControllerTest, LibraryTrackUpdatesPreserveShuffleHistory)
+{
+    ensureCoreApplication();
+    SettingsManager settings{QDir::tempPath() + u"/fooyin_playercontroller_preserve_shuffle_history_test.ini"_s};
+    registerControllerSettings(settings);
+
+    PlaylistHandlerHarness harness{settings};
+    ASSERT_TRUE(harness.dbInitialised);
+
+    const TrackList tracks{
+        makeTrack(u"/tmp/shuffle-a.flac"_s, 81, 1000),
+        makeTrack(u"/tmp/shuffle-b.flac"_s, 82, 1000),
+        makeTrack(u"/tmp/shuffle-c.flac"_s, 83, 1000),
+        makeTrack(u"/tmp/shuffle-d.flac"_s, 84, 1000),
+        makeTrack(u"/tmp/shuffle-e.flac"_s, 85, 1000),
+    };
+
+    auto* playlist = harness.handler.createPlaylist(u"Shuffle"_s, tracks);
+    ASSERT_NE(playlist, nullptr);
+
+    harness.handler.changeActivePlaylist(playlist);
+    playlist->changeCurrentIndex(0);
+
+    const auto mode = Playlist::PlayModes(Playlist::ShuffleTracks);
+
+    const Track advancedTrack = playlist->nextTrackChange(1, mode);
+    ASSERT_TRUE(advancedTrack.isValid());
+
+    const int currentIndex = playlist->currentTrackIndex();
+    ASSERT_GT(currentIndex, 0);
+
+    const int previousIndex = playlist->nextIndexFrom(currentIndex, -1, mode);
+    ASSERT_EQ(previousIndex, 0);
+
+    Track updatedTrack = playlist->currentTrack();
+    updatedTrack.setPlayCount(updatedTrack.playCount() + 1);
+
+    harness.library.emitTracksUpdatedForTests({updatedTrack});
+
+    EXPECT_EQ(playlist->currentTrackIndex(), currentIndex);
+    EXPECT_EQ(playlist->nextIndexFrom(currentIndex, -1, mode), previousIndex);
 }
 } // namespace Fooyin::Testing
