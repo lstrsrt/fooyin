@@ -256,7 +256,7 @@ public:
         Q_UNUSED(options)
 
         ++m_stats->initCalls;
-        m_track     = track;
+        m_track = track;
         m_format.setSampleRate(track.filenameExt().contains(u"sr2000"_s) ? 2000 : 1000);
         m_position  = track.offset();
         m_started   = false;
