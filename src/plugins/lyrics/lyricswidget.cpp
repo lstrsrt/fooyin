@@ -70,6 +70,15 @@ constexpr auto ScrollTimeout = 100;
 #endif
 
 namespace {
+bool hasSameTagLyrics(const Fooyin::Track& lhs, const Fooyin::Track& rhs, const Fooyin::SettingsManager* settings)
+{
+    const QStringList searchTags
+        = settings->fileValue(Fooyin::Lyrics::Settings::SearchTags, Fooyin::Lyrics::Defaults::searchTags())
+              .toStringList();
+    return std::ranges::all_of(searchTags,
+                               [&lhs, &rhs](const QString& tag) { return lhs.extraTag(tag) == rhs.extraTag(tag); });
+}
+
 QMargins clampedMargins(const QMargins& margins)
 {
     return {
@@ -217,8 +226,9 @@ void LyricsWidget::updateLyrics(const Track& track, bool force)
 
     const Track previousTrack{m_currentTrack};
 
-    const bool sameTrack      = previousTrack.sameIdentityAs(track);
-    const bool preserveLyrics = sameTrack && force && m_currentLyrics.isValid();
+    const bool sameTrack = previousTrack.sameIdentityAs(track);
+    const bool preserveLyrics
+        = sameTrack && force && m_currentLyrics.isValid() && hasSameTagLyrics(previousTrack, track, m_settings);
 
     m_currentTrack = track;
 
@@ -226,28 +236,28 @@ void LyricsWidget::updateLyrics(const Track& track, bool force)
         return;
     }
 
+    if(preserveLyrics) {
+        return;
+    }
+
     m_lyrics.clear();
 
-    if(!preserveLyrics) {
-        if(m_scrollAnim) {
-            m_scrollAnim->stop();
-        }
-        m_lyricsView->verticalScrollBar()->setValue(0);
-        m_lyricsView->setEdgeFadeEnabled(false);
-
-        m_currentLyrics    = {};
-        m_currentLineStart = -1;
-        m_currentLineEnd   = -1;
-        m_model->setLyrics({});
+    if(m_scrollAnim) {
+        m_scrollAnim->stop();
     }
+    m_lyricsView->verticalScrollBar()->setValue(0);
+    m_lyricsView->setEdgeFadeEnabled(false);
+
+    m_currentLyrics    = {};
+    m_currentLineStart = -1;
+    m_currentLineEnd   = -1;
+    m_model->setLyrics({});
 
     if(!track.isValid()) {
         return;
     }
 
-    if(!preserveLyrics) {
-        m_lyricsView->setDisplayString(m_parser.evaluate(m_config.noLyricsScript, track));
-    }
+    m_lyricsView->setDisplayString(m_parser.evaluate(m_config.noLyricsScript, track));
 
     m_finderConnection = QObject::connect(m_lyricsFinder, &LyricsFinder::lyricsFound, this, &LyricsWidget::loadLyrics);
 

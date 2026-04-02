@@ -36,9 +36,22 @@
 #include <QTextBlock>
 #include <QTextEdit>
 
+#include <algorithm>
+
 using namespace Qt::StringLiterals;
 
 constexpr auto TimestampRegex = R"(\[\d{2}:\d{2}\.\d{2,3}\])";
+
+namespace {
+bool hasSameTagLyrics(const Fooyin::Track& lhs, const Fooyin::Track& rhs, const Fooyin::SettingsManager* settings)
+{
+    const QStringList searchTags
+        = settings->fileValue(Fooyin::Lyrics::Settings::SearchTags, Fooyin::Lyrics::Defaults::searchTags())
+              .toStringList();
+    return std::ranges::all_of(searchTags,
+                               [&lhs, &rhs](const QString& tag) { return lhs.extraTag(tag) == rhs.extraTag(tag); });
+}
+} // namespace
 
 namespace Fooyin::Lyrics {
 LyricsEditor::LyricsEditor(const Track& track, std::shared_ptr<NetworkAccessManager> networkAccess,
@@ -73,9 +86,15 @@ LyricsEditor::LyricsEditor(Lyrics lyrics, PlayerController* playerController, Ly
 
 void LyricsEditor::updateTrack(const Track& track)
 {
+    if(m_track.isValid() && !m_track.sameIdentityAs(track)) {
+        return;
+    }
+
+    const bool preserveLyrics = m_lyrics.isValid() && hasSameTagLyrics(m_track, track, m_settings);
+
     m_track = track;
 
-    if(m_lyricsFinder) {
+    if(m_lyricsFinder && !preserveLyrics) {
         m_lyricsFinder->findLocalLyrics(m_track);
     }
 }
