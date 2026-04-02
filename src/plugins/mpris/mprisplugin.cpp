@@ -522,7 +522,7 @@ void MprisPlugin::loadMetaData(const PlaylistTrack& playlistTrack)
     const QString coverKey = Utils::generateHash(u"MPRIS"_s, track.hash());
 
     if(m_currCoverKey != coverKey) {
-        m_coverProvider->trackCoverThumbnailAsync(track, CoverProvider::ExtraLarge, Track::Cover::Front)
+        m_coverProvider->trackCoverFull(track, Track::Cover::Front)
             .then(this, [this, loadGeneration = m_coverLoadGeneration, coverKey, track,
                          loadArtAndReload](const QPixmap& cover) {
                 if(loadGeneration != m_coverLoadGeneration) {
