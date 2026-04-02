@@ -53,6 +53,7 @@
 #include <array>
 #include <atomic>
 #include <limits>
+#include <string_view>
 #include <utility>
 
 Q_LOGGING_CATEGORY(ENGINE, "fy.engine")
@@ -246,6 +247,11 @@ bool gaplessFormatsMatch(const Fooyin::AudioFormat& currentMixFormat, const Fooy
 {
     return currentMixFormat.isValid() && nextMixFormat.isValid()
         && Fooyin::Audio::inputFormatsMatch(currentMixFormat, nextMixFormat);
+}
+
+bool isFormatMismatchReadinessReason(const char* readinessReason)
+{
+    return readinessReason != nullptr && std::string_view{readinessReason} == "format-mismatch";
 }
 
 QEvent::Type engineTaskEventType()
@@ -2855,6 +2861,7 @@ bool AudioEngine::initDecoder(const Engine::PlaybackItem& item, bool allowPrepar
     if(m_preparedNext && samePlaybackItem(item, m_preparedNext->item)) {
         auto& prepared               = *m_preparedNext;
         const bool hasPreparedStream = prepared.preparedStream != nullptr;
+        const bool decoderAdvanced   = prepared.preparedDecodePositionMs > track.offset();
 
         if(!m_decoder.adoptPreparedDecoder(std::move(prepared.loadedDecoder), track)) {
             qCWarning(ENGINE) << "Failed to adopt prepared decoder";
@@ -2870,6 +2877,9 @@ bool AudioEngine::initDecoder(const Engine::PlaybackItem& item, bool allowPrepar
             else {
                 m_decoder.seek(m_decoder.startPosition());
             }
+        }
+        else if(decoderAdvanced) {
+            m_decoder.seek(m_decoder.startPosition());
         }
 
         clearPreparedNextTrack();
@@ -3113,6 +3123,17 @@ bool AudioEngine::prepareNextTrackImmediate(const Engine::PlaybackItem& item, co
 
     prepared.item  = item;
     m_preparedNext = std::move(prepared);
+
+    const char* readinessReason = "eligible";
+    (void)evaluateAutoTransitionEligibility(track, false, false, &readinessReason);
+    if(isFormatMismatchReadinessReason(readinessReason) && m_preparedNext->preparedStream) {
+        qCDebug(ENGINE) << "Discarding prepared next-track stream after format mismatch:"
+                        << "trackId=" << track.id() << "itemId=" << item.itemId
+                        << "preparedBufferedMs=" << m_preparedNext->preparedStream->bufferedDurationMs()
+                        << "preparedDecodePosMs=" << m_preparedNext->preparedDecodePositionMs;
+        m_preparedNext->preparedStream.reset();
+    }
+
     return true;
 }
 
@@ -3168,6 +3189,14 @@ void AudioEngine::applyPreparedNextTrackResult(uint64_t jobToken, uint64_t reque
     if(preparedValid) {
         m_preparedNext = std::move(prepared);
         ready          = evaluateAutoTransitionEligibility(track, false, false, &readinessReason).has_value();
+
+        if(isFormatMismatchReadinessReason(readinessReason) && m_preparedNext->preparedStream) {
+            qCDebug(ENGINE) << "Discarding prepared next-track stream after format mismatch:"
+                            << "trackId=" << track.id() << "itemId=" << itemId
+                            << "preparedBufferedMs=" << preparedBufferedMs
+                            << "preparedDecodePosMs=" << preparedDecodePosMs;
+            m_preparedNext->preparedStream.reset();
+        }
     }
     else {
         clearPreparedNextTrack();
@@ -3338,26 +3367,51 @@ void AudioEngine::executeFullReinitLoad(const Engine::PlaybackItem& item, bool m
         m_fadeController.invalidateActiveFade();
     }
 
-    if(!initDecoder(item, !manualChange)) {
+    const bool preparedNextMatchesItem
+        = !manualChange && m_preparedNext && samePlaybackItem(item, m_preparedNext->item);
+    const AudioFormat oldInputFormat = m_pipeline.inputFormat();
+    const AudioFormat currentOutput  = m_pipeline.outputFormat();
+    const bool hasOutput             = m_pipeline.hasOutput();
+
+    const auto desiredOutputForFormat = [this](const AudioFormat& format) {
+        AudioFormat desiredOutput = m_pipeline.predictOutputFormat(format);
+        if(!desiredOutput.isValid()) {
+            desiredOutput = format;
+        }
+        return desiredOutput;
+    };
+
+    if(preparedNextMatchesItem && hasOutput && m_preparedNext->format.isValid()) {
+        const AudioFormat preparedDesiredOutput = desiredOutputForFormat(m_preparedNext->format);
+        const bool outputFormatChanged          = currentOutput.isValid() && preparedDesiredOutput.isValid()
+                                               && !Audio::outputFormatsMatch(currentOutput, preparedDesiredOutput);
+
+        if(outputFormatChanged) {
+            qCDebug(ENGINE) << "Format change bypasses prepared decoder reuse; reopening decoder at track start";
+            clearPreparedNextTrack();
+        }
+    }
+
+    const auto initDecoderForLoad = [this, &item](bool allowPreparedStream) {
+        if(!initDecoder(item, allowPreparedStream)) {
+            return false;
+        }
+
+        syncDecoderTrackMetadata();
+        m_format = m_decoder.format();
+        return true;
+    };
+
+    if(!initDecoderForLoad(!manualChange)) {
         updateTrackStatus(Engine::TrackStatus::Invalid);
         return;
     }
 
-    syncDecoderTrackMetadata();
-    m_format = m_decoder.format();
     m_transitions.clearTrackEnding();
-
-    const AudioFormat oldInputFormat = m_pipeline.inputFormat();
-    AudioFormat desiredOutput        = m_pipeline.predictOutputFormat(m_format);
-    if(!desiredOutput.isValid()) {
-        desiredOutput = m_format;
-    }
-
-    const AudioFormat currentOutput = m_pipeline.outputFormat();
+    const AudioFormat desiredOutput = desiredOutputForFormat(m_format);
     const bool inputFormatChanged   = oldInputFormat.isValid() && !Audio::inputFormatsMatch(oldInputFormat, m_format);
     const bool outputFormatChanged  = currentOutput.isValid() && desiredOutput.isValid()
                                    && !Audio::outputFormatsMatch(currentOutput, desiredOutput);
-    const bool hasOutput            = m_pipeline.hasOutput();
 
     if(!hasOutput || outputFormatChanged) {
         if(outputFormatChanged && hasOutput) {
@@ -3683,7 +3737,7 @@ bool AudioEngine::armPreparedCrossfadeTransition(const Engine::PlaybackItem& ite
     const bool hasEarlyAutoTailFade = m_autoCrossfadeTailFadeActive && m_autoCrossfadeTailFadeGeneration == generation
                                    && m_autoCrossfadeTailFadeStreamId == activeStreamId
                                    && activeStreamId != InvalidStreamId;
-    const bool skipFadeOutStart     = hasEarlyAutoTailFade && overlapDurationMs <= 0;
+    const bool skipFadeOutStart = hasEarlyAutoTailFade && overlapDurationMs <= 0;
 
     const uint64_t overlapWindowMs = static_cast<uint64_t>(std::max(0, overlapDurationMs));
     const uint64_t requiredBufferedMs

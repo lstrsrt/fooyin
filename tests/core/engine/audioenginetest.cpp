@@ -257,6 +257,7 @@ public:
 
         ++m_stats->initCalls;
         m_track     = track;
+        m_format.setSampleRate(track.filenameExt().contains(u"sr2000"_s) ? 2000 : 1000);
         m_position  = track.offset();
         m_started   = false;
         m_initValid = true;
@@ -556,6 +557,11 @@ public:
         engine.m_crossfadeSwitchPolicy = switchPolicy;
     }
 
+    static void setGaplessEnabled(AudioEngine& engine, bool enabled)
+    {
+        engine.m_gaplessEnabled = enabled;
+    }
+
     static void setAutoAdvanceState(AudioEngine& engine, uint64_t generation, AutoTransitionMode mode,
                                     bool overlapStartAnchorSeen, bool overlapMidpointAnchorSeen,
                                     bool boundaryAnchorSeen)
@@ -617,6 +623,16 @@ public:
     static bool hasPreparedNext(const AudioEngine& engine)
     {
         return engine.m_preparedNext.has_value();
+    }
+
+    static bool preparedNextHasStream(const AudioEngine& engine)
+    {
+        return engine.m_preparedNext.has_value() && engine.m_preparedNext->preparedStream != nullptr;
+    }
+
+    static uint64_t preparedDecodePositionMs(const AudioEngine& engine)
+    {
+        return engine.m_preparedNext.has_value() ? engine.m_preparedNext->preparedDecodePositionMs : 0;
     }
 
     static bool preparedCrossfadeActive(const AudioEngine& engine)
@@ -1423,6 +1439,72 @@ FOOYIN_AUDIOENGINE_SENSITIVE_TEST(AudioEngineTest, SetDspChainWithFormatChangeRe
 
     ASSERT_TRUE(
         pumpUntil([&harness, initBefore]() { return harness.outputStats->initCalls.load() > initBefore; }, 3000ms));
+}
+
+FOOYIN_AUDIOENGINE_SENSITIVE_TEST(AudioEngineTest, FormatChangeReloadDoesNotReusePreparedDecoderPosition)
+{
+    ensureCoreApplication();
+    EngineHarness harness{false};
+
+    const Track currentTrack = harness.createTrack(u"prepared-reinit-current.fyt"_s, 0, 120000);
+    const Track nextTrack    = harness.createTrack(u"prepared-reinit-next-sr2000.fyt"_s, 0, 120000);
+    const auto currentItem   = makePlaybackItem(currentTrack, 1);
+    const auto nextItem      = makePlaybackItem(nextTrack, 2);
+
+    harness.engine.loadTrack(currentItem, false);
+    ASSERT_TRUE(pumpUntil([&harness]() { return harness.engine.trackStatus() == Engine::TrackStatus::Loaded; }));
+
+    harness.engine.play();
+    ASSERT_TRUE(pumpUntil([&harness]() { return harness.engine.playbackState() == Engine::PlaybackState::Playing; }));
+    ASSERT_TRUE(pumpUntil([&harness]() { return harness.engine.position() > 0; }, 3000ms));
+
+    ASSERT_TRUE(AudioEngineTestAccessor::prepareNextTrackImmediate(harness.engine, nextItem, 1200));
+
+    const int decoderInitBeforeSwitch = harness.decoderStats->initCalls.load();
+    const int outputUninitBefore      = harness.outputStats->uninitCalls.load();
+
+    harness.engine.loadTrack(nextItem, false);
+
+    ASSERT_TRUE(pumpUntil(
+        [&harness, outputUninitBefore]() { return harness.outputStats->uninitCalls.load() > outputUninitBefore; },
+        4000ms));
+    ASSERT_TRUE(pumpUntil(
+        [&harness, decoderInitBeforeSwitch]() {
+            return harness.decoderStats->initCalls.load() > decoderInitBeforeSwitch;
+        },
+        4000ms));
+    ASSERT_TRUE(
+        pumpUntil([&harness]() { return harness.engine.trackStatus() == Engine::TrackStatus::Buffered; }, 4000ms));
+    ASSERT_TRUE(
+        pumpUntil([&harness]() { return harness.engine.playbackState() == Engine::PlaybackState::Playing; }, 4000ms));
+
+    ASSERT_TRUE(pumpUntil([&harness]() { return harness.engine.position() > 0; }, 2000ms));
+    const uint64_t restartedPosition = harness.engine.position();
+    EXPECT_LT(restartedPosition, 400U);
+}
+
+FOOYIN_AUDIOENGINE_SENSITIVE_TEST(AudioEngineTest, FormatMismatchPreparationDiscardsPreparedStream)
+{
+    ensureCoreApplication();
+    EngineHarness harness{false};
+    AudioEngineTestAccessor::setGaplessEnabled(harness.engine, true);
+
+    const Track currentTrack = harness.createTrack(u"prepared-mismatch-current.fyt"_s, 0, 120000);
+    const Track nextTrack    = harness.createTrack(u"prepared-mismatch-next-sr2000.fyt"_s, 0, 120000);
+    const auto currentItem   = makePlaybackItem(currentTrack, 1);
+    const auto nextItem      = makePlaybackItem(nextTrack, 2);
+
+    harness.engine.loadTrack(currentItem, false);
+    ASSERT_TRUE(pumpUntil([&harness]() { return harness.engine.trackStatus() == Engine::TrackStatus::Loaded; }));
+
+    harness.engine.play();
+    ASSERT_TRUE(pumpUntil([&harness]() { return harness.engine.playbackState() == Engine::PlaybackState::Playing; }));
+    ASSERT_TRUE(pumpUntil([&harness]() { return harness.engine.position() > 0; }, 3000ms));
+
+    ASSERT_TRUE(AudioEngineTestAccessor::prepareNextTrackImmediate(harness.engine, nextItem, 1200));
+    ASSERT_TRUE(AudioEngineTestAccessor::hasPreparedNext(harness.engine));
+    EXPECT_FALSE(AudioEngineTestAccessor::preparedNextHasStream(harness.engine));
+    EXPECT_GT(AudioEngineTestAccessor::preparedDecodePositionMs(harness.engine), 0U);
 }
 
 FOOYIN_AUDIOENGINE_REGULAR_TEST(AudioEngineTest, SetAnalysisDataSubscriptionsAcceptsRuntimeChanges)
