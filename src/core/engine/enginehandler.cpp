@@ -447,7 +447,7 @@ void EngineHandler::armEndAdvanceWatchdog(const Track& track, const uint64_t gen
         }
 
         const auto elapsedMs     = static_cast<int>(std::chrono::duration_cast<std::chrono::milliseconds>(
-                                                    std::chrono::steady_clock::now() - m_endAdvanceSuppressedSince)
+                                                        std::chrono::steady_clock::now() - m_endAdvanceSuppressedSince)
                                                         .count());
         const int bufferLengthMs = std::max(250, m_settings->value<Settings::Core::BufferLength>());
         const int watchdogMs     = engineOwnedTransitionWatchdogDelayMs(bufferLengthMs);
