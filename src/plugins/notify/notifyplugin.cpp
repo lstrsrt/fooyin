@@ -19,7 +19,8 @@
 
 #include "notifyplugin.h"
 
-#include "notificationsinterface.h"
+#include "backends/freedesktopnotificationbackend.h"
+#include "backends/portalnotificationbackend.h"
 #include "settings/notifypage.h"
 #include "settings/notifysettings.h"
 
@@ -27,103 +28,23 @@
 #include <core/player/playercontroller.h>
 #include <utils/settings/settingsmanager.h>
 
-#include <QApplication>
-#include <QDBusArgument>
-#include <QDBusConnection>
-#include <QDBusInterface>
 #include <QDBusMetaType>
-#include <QDBusPendingCallWatcher>
-#include <QDBusPendingReply>
-#include <QImage>
-#include <QLoggingCategory>
 #include <QPixmap>
-
-Q_LOGGING_CATEGORY(NOTIFY, "fy.notify")
 
 using namespace Qt::StringLiterals;
 
-constexpr auto FreedesktopDbusService = "org.freedesktop.Notifications";
-constexpr auto FreedesktopDbusPath    = "/org/freedesktop/Notifications";
-constexpr auto PortalDbusService      = "org.freedesktop.portal.Desktop";
-constexpr auto PortalDbusPath         = "/org/freedesktop/portal/desktop";
-constexpr auto PortalDbusInterface    = "org.freedesktop.portal.Notification";
-constexpr auto PortalNotificationId   = "track-change";
-constexpr auto NotificationIconName   = "org.fooyin.fooyin";
-constexpr auto PreviousActionId       = "previous";
-constexpr auto PlayPauseActionId      = "play-pause";
-constexpr auto NextActionId           = "next";
-
-namespace {
-struct ImageData
-{
-    int width{0};
-    int height{0};
-    int rowstride{0};
-    bool hasAlpha{false};
-    int bitsPerSample{0};
-    int channels{0};
-    QByteArray data;
-};
-
-using PortalButtons = QList<QVariantMap>;
-
-QDBusArgument& operator<<(QDBusArgument& argument, const ImageData& image)
-{
-    argument.beginStructure();
-    argument << image.width;
-    argument << image.height;
-    argument << image.rowstride;
-    argument << image.hasAlpha;
-    argument << image.bitsPerSample;
-    argument << image.channels;
-    argument << image.data;
-    argument.endStructure();
-
-    return argument;
-}
-
-const QDBusArgument& operator>>(const QDBusArgument& argument, ImageData& image)
-{
-    argument.beginStructure();
-    argument >> image.width;
-    argument >> image.height;
-    argument >> image.rowstride;
-    argument >> image.hasAlpha;
-    argument >> image.bitsPerSample;
-    argument >> image.channels;
-    argument >> image.data;
-    argument.endStructure();
-
-    return argument;
-}
-
-QVariantMap makePortalNotification(const QString& title, const QString& body)
-{
-    QVariantMap notification{
-        {u"title"_s, title},
-        {u"body"_s, body},
-        {u"icon"_s, QString::fromLatin1(NotificationIconName)},
-    };
-
-    return notification;
-}
-} // namespace
-
-Q_DECLARE_METATYPE(ImageData)
-Q_DECLARE_METATYPE(PortalButtons)
+constexpr auto PreviousActionId  = "previous";
+constexpr auto PlayPauseActionId = "play-pause";
+constexpr auto NextActionId      = "next";
 
 namespace Fooyin::Notify {
 NotifyPlugin::NotifyPlugin()
     : m_playerController{nullptr}
     , m_settings{nullptr}
     , m_coverProvider{nullptr}
-    , m_notifications{nullptr}
-    , m_notificationPortal{nullptr}
+    , m_activeBackend{nullptr}
     , m_notifyPage{nullptr}
-    , m_backend{NotificationBackend::None}
     , m_notificationGeneration{0}
-    , m_portalNotificationGeneration{0}
-    , m_lastNotificationId{0}
     , m_notificationRequestInFlight{false}
 { }
 
@@ -144,7 +65,8 @@ void NotifyPlugin::initialise(const GuiPluginContext& /*context*/)
 
     qDBusRegisterMetaType<ImageData>();
     qDBusRegisterMetaType<PortalButtons>();
-    initialiseNotificationBackend();
+
+    initialiseNotificationBackends();
 
     QObject::connect(m_playerController, &PlayerController::currentTrackChanged, this, &NotifyPlugin::trackChanged);
     QObject::connect(m_playerController, &PlayerController::playStateChanged, this, &NotifyPlugin::playStateChanged);
@@ -152,46 +74,20 @@ void NotifyPlugin::initialise(const GuiPluginContext& /*context*/)
 
 bool NotifyPlugin::supportsAlbumArt()
 {
-    initialiseNotificationBackend();
-    return m_backend == NotificationBackend::Freedesktop;
+    initialiseNotificationBackends();
+    return currentCapabilities().albumArt;
 }
 
 bool NotifyPlugin::supportsPlaybackControls()
 {
-    initialiseNotificationBackend();
-    if(m_backend == NotificationBackend::Freedesktop) {
-        return freedesktopSupportsActions();
-    }
-
-    return m_backend == NotificationBackend::Portal;
+    initialiseNotificationBackends();
+    return currentCapabilities().playbackControls;
 }
 
 bool NotifyPlugin::supportsTimeout()
 {
-    initialiseNotificationBackend();
-    return m_backend == NotificationBackend::Freedesktop;
-}
-
-void NotifyPlugin::notificationClosed(uint /*id*/, uint /*reason*/) { }
-
-void NotifyPlugin::notificationActionInvoked(uint id, const QString& actionKey)
-{
-    if(id != m_lastNotificationId) {
-        return;
-    }
-
-    m_lastNotificationId = 0;
-    handleNotificationAction(actionKey);
-}
-
-void NotifyPlugin::portalActionInvoked(const QString& id, const QString& action, const QVariantList& /*parameter*/)
-{
-    if(id != currentPortalNotificationId()) {
-        return;
-    }
-
-    ++m_portalNotificationGeneration;
-    handleNotificationAction(action);
+    initialiseNotificationBackends();
+    return currentCapabilities().timeout;
 }
 
 void NotifyPlugin::playStateChanged(Player::PlayState state)
@@ -214,9 +110,9 @@ void NotifyPlugin::trackChanged(const Track& track)
         return;
     }
 
-    initialiseNotificationBackend();
+    initialiseNotificationBackends();
 
-    if(m_backend != NotificationBackend::Freedesktop || !m_settings->value<Settings::Notify::ShowAlbumArt>()) {
+    if(!currentCapabilities().albumArt || !m_settings->value<Settings::Notify::ShowAlbumArt>()) {
         showNotification(track, QPixmap{});
         return;
     }
@@ -261,90 +157,53 @@ void NotifyPlugin::sendPendingNotification()
         return;
     }
 
-    initialiseNotificationBackend();
+    initialiseNotificationBackends();
 
     const PendingNotification notification = std::move(*m_pendingNotification);
     m_pendingNotification.reset();
     m_notificationRequestInFlight = true;
 
-    switch(m_backend) {
-        case NotificationBackend::Freedesktop:
-            sendFreedesktopNotification(notification);
-            break;
-        case NotificationBackend::Portal:
-            sendPortalNotification(notification);
-            break;
-        case NotificationBackend::None:
-            qCWarning(NOTIFY) << "Failed to connect to any D-Bus notification service";
-            m_notificationRequestInFlight = false;
-            break;
+    if(!m_activeBackend) {
+        qCWarning(NOTIFY) << "Failed to connect to any notification backend";
+        m_notificationRequestInFlight = false;
+        return;
+    }
+
+    const NotificationRequest request{
+        .title     = notification.title,
+        .body      = notification.body,
+        .cover     = notification.cover,
+        .actions   = notificationActions(),
+        .timeoutMs = m_settings->value<Settings::Notify::Timeout>(),
+    };
+
+    m_activeBackend->sendNotification(request);
+}
+
+void NotifyPlugin::initialiseNotificationBackends()
+{
+    if(!m_backends.empty()) {
+        return;
+    }
+
+    m_backends = {new FreedesktopNotificationBackend(this), new PortalNotificationBackend(this)};
+
+    for(int index{0}; std::cmp_less(index, m_backends.size()); ++index) {
+        auto* backend = m_backends.at(index);
+
+        QObject::connect(backend, &NotificationBackend::actionInvoked, this, &NotifyPlugin::handleNotificationAction);
+        QObject::connect(backend, &NotificationBackend::notificationSent, this,
+                         [this, backend](bool success) { notificationSent(backend, success); });
+
+        if(!m_activeBackend && backend->isValid()) {
+            m_activeBackend = backend;
+        }
     }
 }
 
-void NotifyPlugin::initialiseNotificationBackend()
+NotificationCapabilities NotifyPlugin::currentCapabilities() const
 {
-    if(m_backend == NotificationBackend::Freedesktop && m_notifications && m_notifications->isValid()) {
-        return;
-    }
-
-    if(m_backend == NotificationBackend::Portal && m_notificationPortal && m_notificationPortal->isValid()) {
-        return;
-    }
-
-    if(!m_notifications) {
-        m_notifications = new OrgFreedesktopNotificationsInterface(QString::fromLatin1(FreedesktopDbusService),
-                                                                   QString::fromLatin1(FreedesktopDbusPath),
-                                                                   QDBusConnection::sessionBus(), this);
-
-        QObject::connect(m_notifications, &OrgFreedesktopNotificationsInterface::NotificationClosed, this,
-                         &NotifyPlugin::notificationClosed);
-        // clang-format off
-        QDBusConnection::sessionBus().connect(
-            QString::fromLatin1(FreedesktopDbusService), QString::fromLatin1(FreedesktopDbusPath),
-            QString::fromLatin1(FreedesktopDbusService), u"ActionInvoked"_s, this,
-            SLOT(notificationActionInvoked(uint,QString)));
-        // clang-format om
-    }
-
-    if(m_notifications->isValid()) {
-        m_backend = NotificationBackend::Freedesktop;
-        return;
-    }
-
-    if(!m_notificationPortal) {
-        m_notificationPortal
-            = new QDBusInterface(QString::fromLatin1(PortalDbusService), QString::fromLatin1(PortalDbusPath),
-                                 QString::fromLatin1(PortalDbusInterface), QDBusConnection::sessionBus(), this);
-
-        // clang-format off
-       QDBusConnection::sessionBus().connect(
-            QString::fromLatin1(PortalDbusService), QString::fromLatin1(PortalDbusPath),
-            QString::fromLatin1(PortalDbusInterface), u"ActionInvoked"_s, this,
-            SLOT(portalActionInvoked(QString,QString,QVariantList)));
-        // clang-format om
-    }
-
-    if(m_notificationPortal->isValid()) {
-        m_backend = NotificationBackend::Portal;
-        return;
-    }
-
-    m_backend = NotificationBackend::None;
-}
-
-bool NotifyPlugin::freedesktopSupportsActions() const
-{
-    if(!m_notifications || !m_notifications->isValid()) {
-        return false;
-    }
-
-    const QDBusReply<QStringList> reply = m_notifications->call(u"GetCapabilities"_s);
-    if(!reply.isValid()) {
-        return false;
-    }
-
-    const QStringList capabilities = reply.value();
-    return capabilities.contains(u"actions"_s);
+    return m_activeBackend ? m_activeBackend->capabilities() : NotificationCapabilities{};
 }
 
 PlaybackControls NotifyPlugin::playbackControls() const
@@ -352,75 +211,47 @@ PlaybackControls NotifyPlugin::playbackControls() const
     return PlaybackControls::fromInt(m_settings->value<Settings::Notify::Controls>());
 }
 
-QString NotifyPlugin::currentPortalNotificationId() const
-{
-    return QStringLiteral("%1-%2").arg(QString::fromLatin1(PortalNotificationId)).arg(m_portalNotificationGeneration);
-}
-
 void NotifyPlugin::resetNotificationIdentities()
 {
-    m_lastNotificationId = 0;
-    ++m_portalNotificationGeneration;
+    for(auto* backend : std::as_const(m_backends)) {
+        backend->resetIdentities();
+    }
 }
 
-QStringList NotifyPlugin::notificationActions() const
+QList<NotificationAction> NotifyPlugin::notificationActions() const
 {
     const PlaybackControls controls = playbackControls();
-    if(controls == PlaybackControls{} || !freedesktopSupportsActions()) {
+    if(controls == PlaybackControls{} || !currentCapabilities().playbackControls) {
         return {};
     }
 
     const QString playPauseLabel
         = m_playerController->playState() == Player::PlayState::Playing ? tr("Pause") : tr("Play");
 
-    QStringList actions;
+    QList<NotificationAction> actions;
 
     if(controls.testFlag(PlaybackControlFlag::Previous) && m_playerController->hasPreviousTrack()) {
-        actions << QString::fromLatin1(PreviousActionId) << tr("Previous");
+        actions << NotificationAction{
+            .id    = QString::fromLatin1(PreviousActionId),
+            .label = tr("Previous"),
+        };
     }
 
     if(controls.testFlag(PlaybackControlFlag::PlayPause)) {
-        actions << QString::fromLatin1(PlayPauseActionId) << playPauseLabel;
+        actions << NotificationAction{
+            .id    = QString::fromLatin1(PlayPauseActionId),
+            .label = playPauseLabel,
+        };
     }
 
     if(controls.testFlag(PlaybackControlFlag::Next) && m_playerController->hasNextTrack()) {
-        actions << QString::fromLatin1(NextActionId) << tr("Next");
+        actions << NotificationAction{
+            .id    = QString::fromLatin1(NextActionId),
+            .label = tr("Next"),
+        };
     }
 
     return actions;
-}
-
-QList<QVariantMap> NotifyPlugin::notificationButtons() const
-{
-    QList<QVariantMap> buttons;
-
-    const PlaybackControls controls = playbackControls();
-    if(controls == PlaybackControls{}) {
-        return buttons;
-    }
-
-    if(controls.testFlag(PlaybackControlFlag::Previous) && m_playerController->hasPreviousTrack()) {
-        buttons << QVariantMap{
-            {u"action"_s, QString::fromLatin1(PreviousActionId)},
-            {u"label"_s, tr("Previous")},
-        };
-    }
-
-    if(controls.testFlag(PlaybackControlFlag::PlayPause)) {
-        buttons << QVariantMap{
-            {u"action"_s, QString::fromLatin1(PlayPauseActionId)},
-            {u"label"_s, m_playerController->playState() == Player::PlayState::Playing ? tr("Pause") : tr("Play")},
-        };
-    }
-
-    if(controls.testFlag(PlaybackControlFlag::Next) && m_playerController->hasNextTrack()) {
-        buttons << QVariantMap{
-            {u"action"_s, QString::fromLatin1(NextActionId)},
-            {u"label"_s, tr("Next")},
-        };
-    }
-
-    return buttons;
 }
 
 void NotifyPlugin::handleNotificationAction(const QString& actionKey)
@@ -440,91 +271,12 @@ void NotifyPlugin::handleNotificationAction(const QString& actionKey)
     }
 }
 
-void NotifyPlugin::sendFreedesktopNotification(const PendingNotification& notification)
+void NotifyPlugin::notificationSent(NotificationBackend* backend, bool success)
 {
-    const QString appName = QApplication::applicationDisplayName();
-    const QString appIcon = QString::fromLatin1(NotificationIconName);
-    const int timeout     = m_settings->value<Settings::Notify::Timeout>();
-
-    const QStringList actions = notificationActions();
-    QVariantMap hints;
-
-    if(!notification.cover.isNull()) {
-        const QImage image = notification.cover.toImage()
-                                 .scaled(128, 128, Qt::KeepAspectRatio, Qt::SmoothTransformation)
-                                 .convertToFormat(QImage::Format_RGBA8888);
-
-        const QByteArray imageBytes{reinterpret_cast<const char*>(image.constBits()),
-                                    static_cast<int>(image.sizeInBytes())};
-
-        const ImageData imageData{
-            .width         = image.width(),
-            .height        = image.height(),
-            .rowstride     = static_cast<int>(image.bytesPerLine()),
-            .hasAlpha      = true,
-            .bitsPerSample = 8,
-            .channels      = 4,
-            .data          = imageBytes,
-        };
-
-        hints[u"image-data"_s] = QVariant::fromValue(imageData);
-    }
-
-    auto* watcher = new QDBusPendingCallWatcher(m_notifications->Notify(appName, m_lastNotificationId, appIcon,
-                                                                        notification.title, notification.body, actions,
-                                                                        hints, timeout),
-                                                this);
-    QObject::connect(watcher, &QDBusPendingCallWatcher::finished, this,
-                     [this, notification](QDBusPendingCallWatcher* finishedWatcher) {
-                         notificationCallFinished(NotificationBackend::Freedesktop, notification, finishedWatcher);
-                     });
-}
-
-void NotifyPlugin::sendPortalNotification(const PendingNotification& notification)
-{
-    QVariantMap portalNotification = makePortalNotification(notification.title, notification.body);
-    if(const PortalButtons buttons = notificationButtons(); !buttons.isEmpty()) {
-        portalNotification[u"buttons"_s] = QVariant::fromValue(buttons);
-    }
-
-    auto* watcher = new QDBusPendingCallWatcher(
-        m_notificationPortal->asyncCall(u"AddNotification"_s, currentPortalNotificationId(),
-                                        portalNotification),
-        this);
-    QObject::connect(watcher, &QDBusPendingCallWatcher::finished, this,
-                     [this, notification](QDBusPendingCallWatcher* finishedWatcher) {
-                         notificationCallFinished(NotificationBackend::Portal, notification, finishedWatcher);
-                     });
-}
-
-void NotifyPlugin::notificationCallFinished(NotificationBackend backend, const PendingNotification& notification,
-                                            QDBusPendingCallWatcher* watcher)
-{
-    bool shouldRetryWithPortal = false;
-
-    if(backend == NotificationBackend::Freedesktop) {
-        const QDBusPendingReply<uint> reply = *watcher;
-        if(!reply.isError()) {
-            m_lastNotificationId = reply.value();
-        }
-        else {
-            shouldRetryWithPortal = true;
-            qCWarning(NOTIFY) << "Failed to send freedesktop notification:" << reply.error().message();
-        }
-    }
-    else {
-        const QDBusPendingReply<> reply = *watcher;
-        if(reply.isError()) {
-            qCWarning(NOTIFY) << "Failed to send portal notification:" << reply.error().message();
-        }
-    }
-
-    watcher->deleteLater();
     m_notificationRequestInFlight = false;
 
-    if(shouldRetryWithPortal) {
-        m_backend = NotificationBackend::Portal;
-        m_pendingNotification = notification;
+    if(!success && backend == m_activeBackend) {
+        qCWarning(NOTIFY) << "Notification delivery failed on active backend";
     }
 
     if(m_pendingNotification.has_value()) {

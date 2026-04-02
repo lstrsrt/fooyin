@@ -6,8 +6,14 @@ if(NOT Qt6DBus_FOUND)
 endif()
 
 set(SOURCES
+        notificationbackend.cpp
+        notificationbackend.h
     notifyplugin.cpp
     notifyplugin.h
+        backends/freedesktopnotificationbackend.cpp
+        backends/freedesktopnotificationbackend.h
+        backends/portalnotificationbackend.cpp
+        backends/portalnotificationbackend.h
     settings/notifypage.cpp
     settings/notifypage.h
     settings/notifysettings.cpp
