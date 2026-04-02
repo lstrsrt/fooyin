@@ -631,10 +631,8 @@ TEST(PlayerControllerTest, LibraryTrackUpdatesPreserveShuffleHistory)
     ASSERT_TRUE(harness.dbInitialised);
 
     const TrackList tracks{
-        makeTrack(u"/tmp/shuffle-a.flac"_s, 81, 1000),
-        makeTrack(u"/tmp/shuffle-b.flac"_s, 82, 1000),
-        makeTrack(u"/tmp/shuffle-c.flac"_s, 83, 1000),
-        makeTrack(u"/tmp/shuffle-d.flac"_s, 84, 1000),
+        makeTrack(u"/tmp/shuffle-a.flac"_s, 81, 1000), makeTrack(u"/tmp/shuffle-b.flac"_s, 82, 1000),
+        makeTrack(u"/tmp/shuffle-c.flac"_s, 83, 1000), makeTrack(u"/tmp/shuffle-d.flac"_s, 84, 1000),
         makeTrack(u"/tmp/shuffle-e.flac"_s, 85, 1000),
     };
 
