@@ -1,5 +1,48 @@
 # Changelog
 
+## [0.10.3](https://github.com/fooyin/fooyin/releases/tag/v0.10.3) (2026-04-02)
+
+### New Features
+
+* Interface
+  - Add an option for tab stacks to remember and restore the last selected tab
+* Notifications
+  - Add playback controls and a portal fallback to desktop notifications
+
+### Improvements
+
+* Filters
+  - Avoid eager cover loading in icon mode
+
+### Fixes
+
+* Audio/Playback
+  - Fix ALSA device disconnection handling regression ([#962](https://github.com/fooyin/fooyin/issues/962))
+  - Fix prepared-track fallback after format changes, so the next track starts from the
+    beginning ([#967](https://github.com/fooyin/fooyin/issues/967))
+  - Fix duplicate error dialogs for failed track loads
+  - Fix playcount incrementing after seeking to the end of the last track
+  - Preserve shuffle history on track updates and improve previous-track
+    availability ([#968](https://github.com/fooyin/fooyin/issues/968))
+* Filters
+  - Ignore stale filter population results after resets ([#964](https://github.com/fooyin/fooyin/issues/964))
+  - Fix poor performance by avoiding eager cover loading in icon mode
+* Interface
+  - Fix seek label resizing so WaveBar layouts stay stable ([#966](https://github.com/fooyin/fooyin/issues/966))
+  - Improve artwork placeholder sizing and avoid repeated synchronous no-cover retries
+  - Restore `?` grouping and playback markers for metadata-less tracks in Library
+    Tree ([#958](https://github.com/fooyin/fooyin/issues/958))
+  - Fix Library Tree playback tracking for empty group titles
+* Lyrics
+  - Preserve lyrics on track updates ([#970](https://github.com/fooyin/fooyin/issues/970))
+* Library/Metadata
+  - Restrict MP4 artwork support to front covers only ([#963](https://github.com/fooyin/fooyin/issues/963))
+  - Fix a potential library scan crash caused by extra-tag loading ([#958](https://github.com/fooyin/fooyin/issues/958))
+* MPRIS
+  - Fix cached album artwork being shown ([#968](https://github.com/fooyin/fooyin/issues/968))
+* SoX Resampler
+  - Resolve a memory leak
+
 ## [0.10.2](https://github.com/fooyin/fooyin/releases/tag/v0.10.2) (2026-03-30)
 
 ### New Features
