@@ -283,6 +283,7 @@ target_link_libraries(
     fooyin_core
     PRIVATE fooyin_version 
             fooyin_config
+        QCoro6::Core
             ${FFMPEG_LIBRARIES}
     PUBLIC Qt6::Core
            Qt6::Widgets
