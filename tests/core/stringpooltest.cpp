@@ -60,6 +60,18 @@ TEST(StringPoolTest, ResolvesPackedLists)
     EXPECT_EQ(pool.joined(StringPool::Domain::Artist, ref, u"; "_s), u"Shared Artist; Featured Artist"_s);
 }
 
+TEST(StringPoolTest, ReusesEquivalentPackedLists)
+{
+    StringPool pool;
+
+    const auto firstRef = pool.internList(StringPool::Domain::Artist, {u"Shared Artist"_s, u"Featured Artist"_s});
+    const auto secondRef
+        = pool.internList(StringPool::Domain::Artist, {QString{u"Shared Artist"_s}, QString{u"Featured Artist"_s}});
+
+    EXPECT_EQ(firstRef.offset, secondRef.offset);
+    EXPECT_EQ(firstRef.size, secondRef.size);
+}
+
 TEST(StringPoolTest, InternsExtraTagKeysInUpperCase)
 {
     Track track;

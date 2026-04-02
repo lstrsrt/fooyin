@@ -20,6 +20,7 @@
 #include <core/stringpool.h>
 
 #include <array>
+#include <functional>
 #include <mutex>
 #include <unordered_map>
 #include <vector>
@@ -30,10 +31,23 @@ class StringPoolPrivate
 public:
     struct Bucket
     {
+        struct ListKeyHash
+        {
+            [[nodiscard]] size_t operator()(const std::vector<StringPool::StringId>& stringIds) const
+            {
+                size_t seed = stringIds.size();
+                for(const auto id : stringIds) {
+                    seed ^= std::hash<StringPool::StringId>{}(id) + 0x9E3779B9U + (seed << 6) + (seed >> 2);
+                }
+                return seed;
+            }
+        };
+
         mutable std::mutex mutex;
         std::unordered_map<QString, StringPool::StringId> ids;
         std::vector<QString> strings{{}};
         std::vector<StringPool::StringId> listEntries;
+        std::unordered_map<std::vector<StringPool::StringId>, StringPool::StringListRef, ListKeyHash> lists;
     };
 
     static constexpr auto DomainCount = static_cast<size_t>(StringPool::Domain::ExtraTagKey) + 1;
@@ -94,27 +108,37 @@ StringPool::StringListRef StringPool::internList(Domain domain, const QStringLis
 
     const std::scoped_lock lock{bucket.mutex};
 
-    const auto offset = static_cast<uint32_t>(bucket.listEntries.size());
-    bucket.listEntries.reserve(bucket.listEntries.size() + static_cast<size_t>(values.size()));
+    std::vector<StringId> internedIds;
+    internedIds.reserve(values.size());
 
     for(const auto& value : values) {
         if(value.isEmpty()) {
-            bucket.listEntries.push_back(EmptyStringId);
+            internedIds.push_back(EmptyStringId);
             continue;
         }
 
         if(const auto it = bucket.ids.find(value); it != bucket.ids.cend()) {
-            bucket.listEntries.push_back(it->second);
+            internedIds.push_back(it->second);
             continue;
         }
 
         const auto id = static_cast<StringId>(bucket.strings.size());
         bucket.strings.push_back(value);
         bucket.ids.emplace(bucket.strings.back(), id);
-        bucket.listEntries.push_back(id);
+        internedIds.push_back(id);
     }
 
-    return {.offset = offset, .size = static_cast<uint32_t>(values.size())};
+    if(const auto it = bucket.lists.find(internedIds); it != bucket.lists.cend()) {
+        return it->second;
+    }
+
+    const auto offset = static_cast<uint32_t>(bucket.listEntries.size());
+    bucket.listEntries.reserve(bucket.listEntries.size() + internedIds.size());
+    bucket.listEntries.insert(bucket.listEntries.end(), internedIds.cbegin(), internedIds.cend());
+
+    const StringListRef ref{.offset = offset, .size = static_cast<uint32_t>(internedIds.size())};
+    bucket.lists.emplace(std::move(internedIds), ref);
+    return ref;
 }
 
 QString StringPool::resolve(Domain domain, StringId id) const
