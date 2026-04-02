@@ -204,12 +204,21 @@ void FilterDelegate::paint(QPainter* painter, const QStyleOptionViewItem& option
 QSize FilterDelegate::sizeHint(const QStyleOptionViewItem& option, const QModelIndex& index) const
 {
     QStyleOptionViewItem opt{option};
-    initStyleOption(&opt, index);
-    setupFilterOption(&opt, index);
+    const auto* view = qobject_cast<const ExpandedTreeView*>(option.widget);
+
+    // In icon mode ExpandedTreeView asks sizeHint() for every row during layout. Use a
+    // layout-only option setup here so we don't fetch Qt::DecorationRole
+    // and eagerly start cover loads for everyrow.
+    if(view && view->viewMode() == ExpandedTreeView::ViewMode::Icon) {
+        initLayoutOnlyOption(&opt, index);
+    }
+    else {
+        initStyleOption(&opt, index);
+        setupFilterOption(&opt, index);
+    }
 
     opt.decorationSize = option.decorationSize;
 
-    const auto* view     = qobject_cast<const ExpandedTreeView*>(opt.widget);
     const QStyle* style  = opt.widget ? opt.widget->style() : QApplication::style();
     const QSize textSize = richTextSize(opt, index);
     QSize size           = view && view->viewMode() == ExpandedTreeView::ViewMode::Icon
@@ -428,27 +437,78 @@ QSize FilterDelegate::iconItemSize(const QStyleOptionViewItem& option, const QMo
     const QSize textSize = richTextSize(option, index);
 
     static constexpr int horizontalMargin{12};
-    const int verticalMargin = std::max(2, style->pixelMetric(QStyle::PM_FocusFrameHMargin, &option, option.widget));
+    const int verticalMargin  = std::max(2, style->pixelMetric(QStyle::PM_FocusFrameVMargin, &option, option.widget));
+    const int verticalPadding = 2 * verticalMargin;
 
     switch(view->captionDisplay()) {
         case ExpandedTreeView::CaptionDisplay::Bottom: {
             return {std::max(option.decorationSize.width(), textSize.width() + horizontalMargin),
-                    option.decorationSize.height() + (IconCaptionMargin / 2) + textSize.height() + verticalMargin};
+                    option.decorationSize.height() + (IconCaptionMargin / 2) + textSize.height() + verticalPadding};
         }
         case ExpandedTreeView::CaptionDisplay::Right: {
             const QSize styleSize = style->sizeFromContents(QStyle::CT_ItemViewItem, &option, textSize, option.widget);
             const int itemWidth   = option.rect.width() > 0 ? option.rect.width()
                                                             : option.decorationSize.width() + IconCaptionMargin
                                                                   + textSize.width() + horizontalMargin;
-            const int itemHeight  = std::max(
-                {styleSize.height(), option.decorationSize.height(), textSize.height() + (2 * verticalMargin)});
+            const int itemHeight  = std::max({styleSize.height(), option.decorationSize.height() + verticalPadding,
+                                              textSize.height() + verticalPadding});
             return {itemWidth, itemHeight};
         }
         case ExpandedTreeView::CaptionDisplay::None:
-            return option.decorationSize;
+            return {option.decorationSize.width(), option.decorationSize.height() + verticalPadding};
     }
 
     return {};
+}
+
+void FilterDelegate::initLayoutOnlyOption(QStyleOptionViewItem* option, const QModelIndex& index) const
+{
+    if(!option) {
+        return;
+    }
+
+    option->index = index;
+    option->features &= ~(QStyleOptionViewItem::HasDisplay | QStyleOptionViewItem::HasDecoration
+                          | QStyleOptionViewItem::HasCheckIndicator);
+    option->text.clear();
+    option->icon = {};
+
+    const QVariant fontRole = index.data(Qt::FontRole);
+    if(fontRole.isValid() && !fontRole.isNull()) {
+        option->font        = qvariant_cast<QFont>(fontRole).resolve(option->font);
+        option->fontMetrics = QFontMetrics(option->font);
+    }
+
+    const QVariant foregroundRole = index.data(Qt::ForegroundRole);
+    if(foregroundRole.canConvert<QBrush>()) {
+        option->palette.setBrush(QPalette::Text, qvariant_cast<QBrush>(foregroundRole));
+    }
+
+    const QVariant alignmentRole = index.data(Qt::TextAlignmentRole);
+    if(alignmentRole.isValid() && !alignmentRole.isNull()) {
+        option->displayAlignment = static_cast<Qt::Alignment>(alignmentRole.toInt());
+    }
+
+    const QVariant checkStateRole = index.data(Qt::CheckStateRole);
+    if(checkStateRole.isValid() && !checkStateRole.isNull()) {
+        option->features |= QStyleOptionViewItem::HasCheckIndicator;
+        option->checkState = static_cast<Qt::CheckState>(checkStateRole.toInt());
+    }
+
+    const QVariant displayRole = index.data(Qt::DisplayRole);
+    if(displayRole.isValid() && !displayRole.isNull()) {
+        option->text = displayText(displayRole, option->locale);
+        if(!option->text.isEmpty()) {
+            option->features |= QStyleOptionViewItem::HasDisplay;
+        }
+    }
+
+    const QVariant backgroundRole = index.data(Qt::BackgroundRole);
+    option->backgroundBrush       = qvariant_cast<QBrush>(backgroundRole);
+
+    option->features |= QStyleOptionViewItem::HasDecoration;
+    setupFilterOption(option, index);
+    option->styleObject = nullptr;
 }
 
 void FilterDelegate::setupFilterOption(QStyleOptionViewItem* option, const QModelIndex& index)

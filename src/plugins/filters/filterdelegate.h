@@ -47,6 +47,7 @@ private:
     [[nodiscard]] QSize richTextSize(const QStyleOptionViewItem& option, const QModelIndex& index) const;
     [[nodiscard]] QSize iconItemSize(const QStyleOptionViewItem& option, const QModelIndex& index) const;
 
+    void initLayoutOnlyOption(QStyleOptionViewItem* option, const QModelIndex& index) const;
     static void setupFilterOption(QStyleOptionViewItem* option, const QModelIndex& index);
     static void drawRichTextLines(QPainter* painter, const QStyleOptionViewItem& option, QRect rect,
                                   const IconCaptionLineList& lines);
