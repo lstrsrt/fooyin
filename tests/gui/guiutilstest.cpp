@@ -26,14 +26,16 @@
 #include <QTemporaryDir>
 #include <QUrl>
 
+using namespace Qt::StringLiterals;
+
 namespace Fooyin::Testing {
 TEST(GuiUtilsTest, PopulateExternalTrackMimeDataIncludesUniqueExistingLocalFiles)
 {
     const QTemporaryDir tempDir;
     ASSERT_TRUE(tempDir.isValid());
 
-    const QString firstPath  = tempDir.filePath(QStringLiteral("first.flac"));
-    const QString secondPath = tempDir.filePath(QStringLiteral("second.mp3"));
+    const QString firstPath  = tempDir.filePath(u"first.flac"_s);
+    const QString secondPath = tempDir.filePath(u"second.mp3"_s);
 
     QFile firstFile{firstPath};
     ASSERT_TRUE(firstFile.open(QIODevice::WriteOnly));
@@ -46,7 +48,7 @@ TEST(GuiUtilsTest, PopulateExternalTrackMimeDataIncludesUniqueExistingLocalFiles
     const TrackList tracks{
         Track{firstPath},
         Track{firstPath},
-        Track{tempDir.filePath(QStringLiteral("missing.ogg"))},
+        Track{tempDir.filePath(u"missing.ogg"_s)},
         Track{secondPath},
     };
 
@@ -58,13 +60,13 @@ TEST(GuiUtilsTest, PopulateExternalTrackMimeDataIncludesUniqueExistingLocalFiles
     ASSERT_EQ(2, urls.size());
     EXPECT_EQ(QUrl::fromLocalFile(firstPath), urls.at(0));
     EXPECT_EQ(QUrl::fromLocalFile(secondPath), urls.at(1));
-    EXPECT_EQ(firstPath + QStringLiteral("\n") + secondPath, mimeData.text());
+    EXPECT_EQ(firstPath + u"\n"_s + secondPath, mimeData.text());
 }
 
 TEST(GuiUtilsTest, PopulateExternalTrackMimeDataSkipsInvalidSelections)
 {
     QMimeData mimeData;
-    Gui::populateExternalTrackMimeData({Track{}, Track{QStringLiteral("/definitely/missing.flac")}}, &mimeData);
+    Gui::populateExternalTrackMimeData({Track{}, Track{u"/definitely/missing.flac"_s}}, &mimeData);
 
     EXPECT_FALSE(mimeData.hasUrls());
     EXPECT_FALSE(mimeData.hasText());

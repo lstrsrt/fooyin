@@ -450,12 +450,12 @@ class FormatShiftDsp final : public DspNode
 public:
     QString name() const override
     {
-        return QStringLiteral("FormatShiftDsp");
+        return u"FormatShiftDsp"_s;
     }
 
     QString id() const override
     {
-        return QStringLiteral("test.dsp.format_shift");
+        return u"test.dsp.format_shift"_s;
     }
 
     void prepare(const AudioFormat& format) override
@@ -1421,9 +1421,9 @@ FOOYIN_AUDIOENGINE_SENSITIVE_TEST(AudioEngineTest, SetDspChainWithFormatChangeRe
     ensureCoreApplication();
     EngineHarness harness{false};
 
-    harness.registry.registerDsp({.id      = QStringLiteral("test.dsp.format_shift"),
-                                  .name    = QStringLiteral("FormatShift"),
-                                  .factory = []() { return std::make_unique<FormatShiftDsp>(); }});
+    harness.registry.registerDsp({.id = u"test.dsp.format_shift"_s, .name = u"FormatShift"_s, .factory = []() {
+                                      return std::make_unique<FormatShiftDsp>();
+                                  }});
 
     const Track track = harness.createTrack(u"dsp-format-change.fyt"_s, 0, 100000);
     harness.engine.loadTrack(makePlaybackItem(track, 1), false);
@@ -1431,7 +1431,7 @@ FOOYIN_AUDIOENGINE_SENSITIVE_TEST(AudioEngineTest, SetDspChainWithFormatChangeRe
     const int initBefore = harness.outputStats->initCalls.load();
 
     Engine::DspDefinition shift;
-    shift.id = QStringLiteral("test.dsp.format_shift");
+    shift.id = u"test.dsp.format_shift"_s;
 
     Engine::DspChains chains;
     chains.masterChain.push_back(shift);

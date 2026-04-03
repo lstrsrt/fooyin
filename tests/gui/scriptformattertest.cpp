@@ -22,6 +22,8 @@
 
 #include <gtest/gtest.h>
 
+using namespace Qt::StringLiterals;
+
 namespace Fooyin::Testing {
 class ScriptFormatterTest : public ::testing::Test
 {
@@ -31,42 +33,42 @@ protected:
 
 TEST_F(ScriptFormatterTest, NoFormat)
 {
-    const auto result = m_formattter.evaluate(QStringLiteral("I am a test."));
+    const auto result = m_formattter.evaluate(u"I am a test."_s);
     EXPECT_EQ(1, result.size());
     EXPECT_FALSE(result.blocks.front().format.colour.isValid());
 }
 
 TEST_F(ScriptFormatterTest, Bold)
 {
-    const auto result = m_formattter.evaluate(QStringLiteral("<b>I</b> am a test."));
+    const auto result = m_formattter.evaluate(u"<b>I</b> am a test."_s);
     ASSERT_EQ(2, result.size());
     EXPECT_TRUE(result.blocks.front().format.font.bold());
 }
 
 TEST_F(ScriptFormatterTest, Italic)
 {
-    const auto result = m_formattter.evaluate(QStringLiteral("<i>I</i> am a test."));
+    const auto result = m_formattter.evaluate(u"<i>I</i> am a test."_s);
     ASSERT_EQ(2, result.size());
     EXPECT_TRUE(result.blocks.front().format.font.italic());
 }
 
 TEST_F(ScriptFormatterTest, Rgb)
 {
-    const auto result = m_formattter.evaluate(QStringLiteral("<rgb=255,0,0>I am a test."));
+    const auto result = m_formattter.evaluate(u"<rgb=255,0,0>I am a test."_s);
     ASSERT_EQ(1, result.size());
     EXPECT_EQ(255, result.blocks.front().format.colour.red());
 }
 
 TEST_F(ScriptFormatterTest, ColorName)
 {
-    const auto result = m_formattter.evaluate(QStringLiteral("<color=red>I am a test."));
+    const auto result = m_formattter.evaluate(u"<color=red>I am a test."_s);
     ASSERT_EQ(1, result.size());
-    EXPECT_EQ(QColor(QStringLiteral("red")), result.blocks.front().format.colour);
+    EXPECT_EQ(QColor(u"red"_s), result.blocks.front().format.colour);
 }
 
 TEST_F(ScriptFormatterTest, ColorHex)
 {
-    const auto result = m_formattter.evaluate(QStringLiteral("<color=#00ff00>I am a test."));
+    const auto result = m_formattter.evaluate(u"<color=#00ff00>I am a test."_s);
     ASSERT_EQ(1, result.size());
     EXPECT_EQ(0, result.blocks.front().format.colour.red());
     EXPECT_EQ(255, result.blocks.front().format.colour.green());
@@ -75,27 +77,27 @@ TEST_F(ScriptFormatterTest, ColorHex)
 
 TEST_F(ScriptFormatterTest, BaseColour)
 {
-    const QColor colour{QStringLiteral("#123456")};
+    const QColor colour{u"#123456"_s};
     m_formattter.setBaseColour(colour);
 
-    const auto result = m_formattter.evaluate(QStringLiteral("I am a test."));
+    const auto result = m_formattter.evaluate(u"I am a test."_s);
     ASSERT_EQ(1, result.size());
     EXPECT_EQ(colour, result.blocks.front().format.colour);
 }
 
 TEST_F(ScriptFormatterTest, EscapedLeftAngle)
 {
-    const auto result = m_formattter.evaluate(QStringLiteral("\\<A"));
+    const auto result = m_formattter.evaluate(u"\\<A"_s);
     ASSERT_EQ(1, result.size());
-    EXPECT_EQ(QStringLiteral("<A"), result.blocks.front().text);
+    EXPECT_EQ(u"<A"_s, result.blocks.front().text);
 }
 
 TEST_F(ScriptFormatterTest, Link)
 {
-    const auto result = m_formattter.evaluate(QStringLiteral("<a href=\"https://example.com\">Example</a>"));
+    const auto result = m_formattter.evaluate(u"<a href=\"https://example.com\">Example</a>"_s);
     ASSERT_EQ(1, result.size());
-    EXPECT_EQ(QStringLiteral("Example"), result.blocks.front().text);
-    EXPECT_EQ(QStringLiteral("https://example.com"), result.blocks.front().format.link);
+    EXPECT_EQ(u"Example"_s, result.blocks.front().text);
+    EXPECT_EQ(u"https://example.com"_s, result.blocks.front().format.link);
     EXPECT_TRUE(result.blocks.front().format.font.underline());
 }
 } // namespace Fooyin::Testing

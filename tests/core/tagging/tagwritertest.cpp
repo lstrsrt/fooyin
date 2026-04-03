@@ -31,6 +31,8 @@
 
 constexpr auto Flags = Fooyin::AudioReader::Metadata;
 
+using namespace Qt::StringLiterals;
+
 namespace Fooyin::Testing {
 class TagWriterTest : public ::testing::Test
 {
@@ -63,7 +65,7 @@ QByteArray createPngCover(const QSize& size)
 
 TEST_F(TagWriterTest, AiffWrite)
 {
-    const QString filepath = QStringLiteral(":/audio/audiotest.aiff");
+    const QString filepath = u":/audio/audiotest.aiff"_s;
     TempResource file{filepath};
     file.checkValid();
 
@@ -76,21 +78,21 @@ TEST_F(TagWriterTest, AiffWrite)
         ASSERT_TRUE(m_parser.readTrack(source, track));
 
         track.setId(0);
-        track.setTitle(QStringLiteral("TestTitle"));
-        track.setAlbum({QStringLiteral("TestAlbum")});
-        track.setAlbumArtists({QStringLiteral("TestAArtist")});
-        track.setArtists({QStringLiteral("TestArtist")});
-        track.setDate(QStringLiteral("2023-12-12"));
-        track.setTrackNumber(QStringLiteral("9"));
-        track.setTrackTotal(QStringLiteral("99"));
-        track.setDiscNumber(QStringLiteral("4"));
-        track.setDiscTotal(QStringLiteral("44"));
-        track.setGenres({QStringLiteral("TestGenre")});
-        track.setPerformers({QStringLiteral("TestPerformer")});
-        track.setComposers({QStringLiteral("testComposer")});
-        track.setComment(QStringLiteral("TestComment"));
-        track.addExtraTag(QStringLiteral("WRITETEST"), QStringLiteral("Success"));
-        track.removeExtraTag(QStringLiteral("TEST"));
+        track.setTitle(u"TestTitle"_s);
+        track.setAlbum({u"TestAlbum"_s});
+        track.setAlbumArtists({u"TestAArtist"_s});
+        track.setArtists({u"TestArtist"_s});
+        track.setDate(u"2023-12-12"_s);
+        track.setTrackNumber(u"9"_s);
+        track.setTrackTotal(u"99"_s);
+        track.setDiscNumber(u"4"_s);
+        track.setDiscTotal(u"44"_s);
+        track.setGenres({u"TestGenre"_s});
+        track.setPerformers({u"TestPerformer"_s});
+        track.setComposers({u"testComposer"_s});
+        track.setComment(u"TestComment"_s);
+        track.addExtraTag(u"WRITETEST"_s, u"Success"_s);
+        track.removeExtraTag(u"TEST"_s);
 
         ASSERT_TRUE(m_parser.writeTrack(source, track, Flags));
     }
@@ -99,32 +101,32 @@ TEST_F(TagWriterTest, AiffWrite)
         Track track{file.fileName()};
         ASSERT_TRUE(m_parser.readTrack(source, track));
 
-        EXPECT_EQ(track.title(), QStringLiteral("TestTitle"));
-        EXPECT_EQ(track.album(), QStringLiteral("TestAlbum"));
-        EXPECT_EQ(track.albumArtist(), QStringLiteral("TestAArtist"));
-        EXPECT_EQ(track.artist(), QStringLiteral("TestArtist"));
-        EXPECT_EQ(track.date(), QStringLiteral("2023-12-12"));
-        EXPECT_EQ(track.trackNumber(), QStringLiteral("9"));
-        EXPECT_EQ(track.trackTotal(), QStringLiteral("99"));
-        EXPECT_EQ(track.discNumber(), QStringLiteral("4"));
-        EXPECT_EQ(track.discTotal(), QStringLiteral("44"));
-        EXPECT_EQ(track.genre(), QStringLiteral("TestGenre"));
-        EXPECT_EQ(track.performer(), QStringLiteral("TestPerformer"));
-        EXPECT_EQ(track.composer(), QStringLiteral("testComposer"));
-        EXPECT_EQ(track.comment(), QStringLiteral("TestComment"));
+        EXPECT_EQ(track.title(), u"TestTitle"_s);
+        EXPECT_EQ(track.album(), u"TestAlbum"_s);
+        EXPECT_EQ(track.albumArtist(), u"TestAArtist"_s);
+        EXPECT_EQ(track.artist(), u"TestArtist"_s);
+        EXPECT_EQ(track.date(), u"2023-12-12"_s);
+        EXPECT_EQ(track.trackNumber(), u"9"_s);
+        EXPECT_EQ(track.trackTotal(), u"99"_s);
+        EXPECT_EQ(track.discNumber(), u"4"_s);
+        EXPECT_EQ(track.discTotal(), u"44"_s);
+        EXPECT_EQ(track.genre(), u"TestGenre"_s);
+        EXPECT_EQ(track.performer(), u"TestPerformer"_s);
+        EXPECT_EQ(track.composer(), u"testComposer"_s);
+        EXPECT_EQ(track.comment(), u"TestComment"_s);
 
-        const auto testTag = track.extraTag(QStringLiteral("TEST"));
+        const auto testTag = track.extraTag(u"TEST"_s);
         EXPECT_TRUE(testTag.empty());
 
-        const auto writeTag = track.extraTag(QStringLiteral("WRITETEST"));
+        const auto writeTag = track.extraTag(u"WRITETEST"_s);
         ASSERT_TRUE(!writeTag.isEmpty());
-        EXPECT_EQ(writeTag.front(), QStringLiteral("Success"));
+        EXPECT_EQ(writeTag.front(), u"Success"_s);
     }
 }
 
 TEST_F(TagWriterTest, FlacWrite)
 {
-    const QString filepath = QStringLiteral(":/audio/audiotest.flac");
+    const QString filepath = u":/audio/audiotest.flac"_s;
     TempResource file{filepath};
     file.checkValid();
 
@@ -137,21 +139,21 @@ TEST_F(TagWriterTest, FlacWrite)
         ASSERT_TRUE(m_parser.readTrack({filepath, &file, nullptr}, track));
 
         track.setId(0);
-        track.setTitle(QStringLiteral("TestTitle"));
-        track.setAlbum({QStringLiteral("TestAlbum")});
-        track.setAlbumArtists({QStringLiteral("TestAArtist")});
-        track.setArtists({QStringLiteral("TestArtist")});
-        track.setDate(QStringLiteral("2023-12-12"));
-        track.setTrackNumber(QStringLiteral("9"));
-        track.setTrackTotal(QStringLiteral("99"));
-        track.setDiscNumber(QStringLiteral("4"));
-        track.setDiscTotal(QStringLiteral("44"));
-        track.setGenres({QStringLiteral("TestGenre")});
-        track.setPerformers({QStringLiteral("TestPerformer")});
-        track.setComposers({QStringLiteral("testComposer")});
-        track.setComment(QStringLiteral("TestComment"));
-        track.addExtraTag(QStringLiteral("WRITETEST"), QStringLiteral("Success"));
-        track.removeExtraTag(QStringLiteral("TEST"));
+        track.setTitle(u"TestTitle"_s);
+        track.setAlbum({u"TestAlbum"_s});
+        track.setAlbumArtists({u"TestAArtist"_s});
+        track.setArtists({u"TestArtist"_s});
+        track.setDate(u"2023-12-12"_s);
+        track.setTrackNumber(u"9"_s);
+        track.setTrackTotal(u"99"_s);
+        track.setDiscNumber(u"4"_s);
+        track.setDiscTotal(u"44"_s);
+        track.setGenres({u"TestGenre"_s});
+        track.setPerformers({u"TestPerformer"_s});
+        track.setComposers({u"testComposer"_s});
+        track.setComment(u"TestComment"_s);
+        track.addExtraTag(u"WRITETEST"_s, u"Success"_s);
+        track.removeExtraTag(u"TEST"_s);
 
         ASSERT_TRUE(m_parser.writeTrack(source, track, Flags));
     }
@@ -160,32 +162,32 @@ TEST_F(TagWriterTest, FlacWrite)
         Track track{file.fileName()};
         ASSERT_TRUE(m_parser.readTrack({filepath, &file, nullptr}, track));
 
-        EXPECT_EQ(track.title(), QStringLiteral("TestTitle"));
-        EXPECT_EQ(track.album(), QStringLiteral("TestAlbum"));
-        EXPECT_EQ(track.albumArtist(), QStringLiteral("TestAArtist"));
-        EXPECT_EQ(track.artist(), QStringLiteral("TestArtist"));
-        EXPECT_EQ(track.date(), QStringLiteral("2023-12-12"));
-        EXPECT_EQ(track.trackNumber(), QStringLiteral("9"));
-        EXPECT_EQ(track.trackTotal(), QStringLiteral("99"));
-        EXPECT_EQ(track.discNumber(), QStringLiteral("4"));
-        EXPECT_EQ(track.discTotal(), QStringLiteral("44"));
-        EXPECT_EQ(track.genre(), QStringLiteral("TestGenre"));
-        EXPECT_EQ(track.performer(), QStringLiteral("TestPerformer"));
-        EXPECT_EQ(track.composer(), QStringLiteral("testComposer"));
-        EXPECT_EQ(track.comment(), QStringLiteral("TestComment"));
+        EXPECT_EQ(track.title(), u"TestTitle"_s);
+        EXPECT_EQ(track.album(), u"TestAlbum"_s);
+        EXPECT_EQ(track.albumArtist(), u"TestAArtist"_s);
+        EXPECT_EQ(track.artist(), u"TestArtist"_s);
+        EXPECT_EQ(track.date(), u"2023-12-12"_s);
+        EXPECT_EQ(track.trackNumber(), u"9"_s);
+        EXPECT_EQ(track.trackTotal(), u"99"_s);
+        EXPECT_EQ(track.discNumber(), u"4"_s);
+        EXPECT_EQ(track.discTotal(), u"44"_s);
+        EXPECT_EQ(track.genre(), u"TestGenre"_s);
+        EXPECT_EQ(track.performer(), u"TestPerformer"_s);
+        EXPECT_EQ(track.composer(), u"testComposer"_s);
+        EXPECT_EQ(track.comment(), u"TestComment"_s);
 
-        const auto testTag = track.extraTag(QStringLiteral("TEST"));
+        const auto testTag = track.extraTag(u"TEST"_s);
         EXPECT_TRUE(testTag.empty());
 
-        const auto writeTag = track.extraTag(QStringLiteral("WRITETEST"));
+        const auto writeTag = track.extraTag(u"WRITETEST"_s);
         ASSERT_TRUE(!writeTag.isEmpty());
-        EXPECT_EQ(writeTag.front(), QStringLiteral("Success"));
+        EXPECT_EQ(writeTag.front(), u"Success"_s);
     }
 }
 
 TEST_F(TagWriterTest, FlacCoverWrite)
 {
-    const QString filepath = QStringLiteral(":/audio/audiotest.flac");
+    const QString filepath = u":/audio/audiotest.flac"_s;
     TempResource file{filepath};
     file.checkValid();
 
@@ -197,7 +199,7 @@ TEST_F(TagWriterTest, FlacCoverWrite)
     ASSERT_FALSE(coverData.isEmpty());
 
     TrackCovers covers;
-    covers.emplace(Track::Cover::Front, CoverImage{.mimeType = QStringLiteral("image/png"), .data = coverData});
+    covers.emplace(Track::Cover::Front, CoverImage{.mimeType = u"image/png"_s, .data = coverData});
 
     Track track{file.fileName()};
     ASSERT_TRUE(m_parser.writeCover(source, track, covers, Flags));
@@ -209,7 +211,7 @@ TEST_F(TagWriterTest, FlacCoverWrite)
 
 TEST_F(TagWriterTest, M4aWrite)
 {
-    const QString filepath = QStringLiteral(":/audio/audiotest.m4a");
+    const QString filepath = u":/audio/audiotest.m4a"_s;
     TempResource file{filepath};
     file.checkValid();
 
@@ -222,21 +224,21 @@ TEST_F(TagWriterTest, M4aWrite)
         ASSERT_TRUE(m_parser.readTrack(source, track));
 
         track.setId(0);
-        track.setTitle(QStringLiteral("TestTitle"));
-        track.setAlbum({QStringLiteral("TestAlbum")});
-        track.setAlbumArtists({QStringLiteral("TestAArtist")});
-        track.setArtists({QStringLiteral("TestArtist")});
-        track.setDate(QStringLiteral("2023-12-12"));
-        track.setTrackNumber(QStringLiteral("9"));
-        track.setTrackTotal(QStringLiteral("99"));
-        track.setDiscNumber(QStringLiteral("4"));
-        track.setDiscTotal(QStringLiteral("44"));
-        track.setGenres({QStringLiteral("TestGenre")});
-        track.setPerformers({QStringLiteral("TestPerformer")});
-        track.setComposers({QStringLiteral("testComposer")});
-        track.setComment(QStringLiteral("TestComment"));
-        track.addExtraTag(QStringLiteral("WRITETEST"), QStringLiteral("Success"));
-        track.removeExtraTag(QStringLiteral("TEST"));
+        track.setTitle(u"TestTitle"_s);
+        track.setAlbum({u"TestAlbum"_s});
+        track.setAlbumArtists({u"TestAArtist"_s});
+        track.setArtists({u"TestArtist"_s});
+        track.setDate(u"2023-12-12"_s);
+        track.setTrackNumber(u"9"_s);
+        track.setTrackTotal(u"99"_s);
+        track.setDiscNumber(u"4"_s);
+        track.setDiscTotal(u"44"_s);
+        track.setGenres({u"TestGenre"_s});
+        track.setPerformers({u"TestPerformer"_s});
+        track.setComposers({u"testComposer"_s});
+        track.setComment(u"TestComment"_s);
+        track.addExtraTag(u"WRITETEST"_s, u"Success"_s);
+        track.removeExtraTag(u"TEST"_s);
 
         ASSERT_TRUE(m_parser.writeTrack(source, track, Flags));
     }
@@ -245,32 +247,32 @@ TEST_F(TagWriterTest, M4aWrite)
         Track track{file.fileName()};
         ASSERT_TRUE(m_parser.readTrack({filepath, &file, nullptr}, track));
 
-        EXPECT_EQ(track.title(), QStringLiteral("TestTitle"));
-        EXPECT_EQ(track.album(), QStringLiteral("TestAlbum"));
-        EXPECT_EQ(track.albumArtist(), QStringLiteral("TestAArtist"));
-        EXPECT_EQ(track.artist(), QStringLiteral("TestArtist"));
-        EXPECT_EQ(track.date(), QStringLiteral("2023-12-12"));
-        EXPECT_EQ(track.trackNumber(), QStringLiteral("9"));
-        EXPECT_EQ(track.trackTotal(), QStringLiteral("99"));
-        EXPECT_EQ(track.discNumber(), QStringLiteral("4"));
-        EXPECT_EQ(track.discTotal(), QStringLiteral("44"));
-        EXPECT_EQ(track.genre(), QStringLiteral("TestGenre"));
-        EXPECT_EQ(track.performer(), QStringLiteral("TestPerformer"));
-        EXPECT_EQ(track.composer(), QStringLiteral("testComposer"));
-        EXPECT_EQ(track.comment(), QStringLiteral("TestComment"));
+        EXPECT_EQ(track.title(), u"TestTitle"_s);
+        EXPECT_EQ(track.album(), u"TestAlbum"_s);
+        EXPECT_EQ(track.albumArtist(), u"TestAArtist"_s);
+        EXPECT_EQ(track.artist(), u"TestArtist"_s);
+        EXPECT_EQ(track.date(), u"2023-12-12"_s);
+        EXPECT_EQ(track.trackNumber(), u"9"_s);
+        EXPECT_EQ(track.trackTotal(), u"99"_s);
+        EXPECT_EQ(track.discNumber(), u"4"_s);
+        EXPECT_EQ(track.discTotal(), u"44"_s);
+        EXPECT_EQ(track.genre(), u"TestGenre"_s);
+        EXPECT_EQ(track.performer(), u"TestPerformer"_s);
+        EXPECT_EQ(track.composer(), u"testComposer"_s);
+        EXPECT_EQ(track.comment(), u"TestComment"_s);
 
-        const auto testTag = track.extraTag(QStringLiteral("TEST"));
+        const auto testTag = track.extraTag(u"TEST"_s);
         EXPECT_TRUE(testTag.empty());
 
-        const auto writeTag = track.extraTag(QStringLiteral("WRITETEST"));
+        const auto writeTag = track.extraTag(u"WRITETEST"_s);
         ASSERT_TRUE(!writeTag.isEmpty());
-        EXPECT_EQ(writeTag.front(), QStringLiteral("Success"));
+        EXPECT_EQ(writeTag.front(), u"Success"_s);
     }
 }
 
 TEST_F(TagWriterTest, Mp3Write)
 {
-    const QString filepath = QStringLiteral(":/audio/audiotest.mp3");
+    const QString filepath = u":/audio/audiotest.mp3"_s;
     TempResource file{filepath};
     file.checkValid();
 
@@ -283,21 +285,21 @@ TEST_F(TagWriterTest, Mp3Write)
         ASSERT_TRUE(m_parser.readTrack(source, track));
 
         track.setId(0);
-        track.setTitle(QStringLiteral("TestTitle"));
-        track.setAlbum({QStringLiteral("TestAlbum")});
-        track.setAlbumArtists({QStringLiteral("TestAArtist")});
-        track.setArtists({QStringLiteral("TestArtist")});
-        track.setDate(QStringLiteral("2023-12-12"));
-        track.setTrackNumber(QStringLiteral("9"));
-        track.setTrackTotal(QStringLiteral("99"));
-        track.setDiscNumber(QStringLiteral("4"));
-        track.setDiscTotal(QStringLiteral("44"));
-        track.setGenres({QStringLiteral("TestGenre")});
-        track.setPerformers({QStringLiteral("TestPerformer")});
-        track.setComposers({QStringLiteral("testComposer")});
-        track.setComment(QStringLiteral("TestComment"));
-        track.addExtraTag(QStringLiteral("WRITETEST"), QStringLiteral("Success"));
-        track.removeExtraTag(QStringLiteral("TEST"));
+        track.setTitle(u"TestTitle"_s);
+        track.setAlbum({u"TestAlbum"_s});
+        track.setAlbumArtists({u"TestAArtist"_s});
+        track.setArtists({u"TestArtist"_s});
+        track.setDate(u"2023-12-12"_s);
+        track.setTrackNumber(u"9"_s);
+        track.setTrackTotal(u"99"_s);
+        track.setDiscNumber(u"4"_s);
+        track.setDiscTotal(u"44"_s);
+        track.setGenres({u"TestGenre"_s});
+        track.setPerformers({u"TestPerformer"_s});
+        track.setComposers({u"testComposer"_s});
+        track.setComment(u"TestComment"_s);
+        track.addExtraTag(u"WRITETEST"_s, u"Success"_s);
+        track.removeExtraTag(u"TEST"_s);
 
         ASSERT_TRUE(m_parser.writeTrack(source, track, Flags));
     }
@@ -306,32 +308,32 @@ TEST_F(TagWriterTest, Mp3Write)
         Track track{file.fileName()};
         ASSERT_TRUE(m_parser.readTrack({filepath, &file, nullptr}, track));
 
-        EXPECT_EQ(track.title(), QStringLiteral("TestTitle"));
-        EXPECT_EQ(track.album(), QStringLiteral("TestAlbum"));
-        EXPECT_EQ(track.albumArtist(), QStringLiteral("TestAArtist"));
-        EXPECT_EQ(track.artist(), QStringLiteral("TestArtist"));
-        EXPECT_EQ(track.date(), QStringLiteral("2023-12-12"));
-        EXPECT_EQ(track.trackNumber(), QStringLiteral("9"));
-        EXPECT_EQ(track.trackTotal(), QStringLiteral("99"));
-        EXPECT_EQ(track.discNumber(), QStringLiteral("4"));
-        EXPECT_EQ(track.discTotal(), QStringLiteral("44"));
-        EXPECT_EQ(track.genre(), QStringLiteral("TestGenre"));
-        EXPECT_EQ(track.performer(), QStringLiteral("TestPerformer"));
-        EXPECT_EQ(track.composer(), QStringLiteral("testComposer"));
-        EXPECT_EQ(track.comment(), QStringLiteral("TestComment"));
+        EXPECT_EQ(track.title(), u"TestTitle"_s);
+        EXPECT_EQ(track.album(), u"TestAlbum"_s);
+        EXPECT_EQ(track.albumArtist(), u"TestAArtist"_s);
+        EXPECT_EQ(track.artist(), u"TestArtist"_s);
+        EXPECT_EQ(track.date(), u"2023-12-12"_s);
+        EXPECT_EQ(track.trackNumber(), u"9"_s);
+        EXPECT_EQ(track.trackTotal(), u"99"_s);
+        EXPECT_EQ(track.discNumber(), u"4"_s);
+        EXPECT_EQ(track.discTotal(), u"44"_s);
+        EXPECT_EQ(track.genre(), u"TestGenre"_s);
+        EXPECT_EQ(track.performer(), u"TestPerformer"_s);
+        EXPECT_EQ(track.composer(), u"testComposer"_s);
+        EXPECT_EQ(track.comment(), u"TestComment"_s);
 
-        const auto testTag = track.extraTag(QStringLiteral("TEST"));
+        const auto testTag = track.extraTag(u"TEST"_s);
         EXPECT_TRUE(testTag.empty());
 
-        const auto writeTag = track.extraTag(QStringLiteral("WRITETEST"));
+        const auto writeTag = track.extraTag(u"WRITETEST"_s);
         ASSERT_TRUE(!writeTag.isEmpty());
-        EXPECT_EQ(writeTag.front(), QStringLiteral("Success"));
+        EXPECT_EQ(writeTag.front(), u"Success"_s);
     }
 }
 
 TEST_F(TagWriterTest, OggWrite)
 {
-    const QString filepath = QStringLiteral(":/audio/audiotest.ogg");
+    const QString filepath = u":/audio/audiotest.ogg"_s;
     TempResource file{filepath};
     file.checkValid();
 
@@ -344,21 +346,21 @@ TEST_F(TagWriterTest, OggWrite)
         ASSERT_TRUE(m_parser.readTrack(source, track));
 
         track.setId(0);
-        track.setTitle(QStringLiteral("TestTitle"));
-        track.setAlbum({QStringLiteral("TestAlbum")});
-        track.setAlbumArtists({QStringLiteral("TestAArtist")});
-        track.setArtists({QStringLiteral("TestArtist")});
-        track.setDate(QStringLiteral("2023-12-12"));
-        track.setTrackNumber(QStringLiteral("9"));
-        track.setTrackTotal(QStringLiteral("99"));
-        track.setDiscNumber(QStringLiteral("4"));
-        track.setDiscTotal(QStringLiteral("44"));
-        track.setGenres({QStringLiteral("TestGenre")});
-        track.setPerformers({QStringLiteral("TestPerformer")});
-        track.setComposers({QStringLiteral("testComposer")});
-        track.setComment(QStringLiteral("TestComment"));
-        track.addExtraTag(QStringLiteral("WRITETEST"), QStringLiteral("Success"));
-        track.removeExtraTag(QStringLiteral("TEST"));
+        track.setTitle(u"TestTitle"_s);
+        track.setAlbum({u"TestAlbum"_s});
+        track.setAlbumArtists({u"TestAArtist"_s});
+        track.setArtists({u"TestArtist"_s});
+        track.setDate(u"2023-12-12"_s);
+        track.setTrackNumber(u"9"_s);
+        track.setTrackTotal(u"99"_s);
+        track.setDiscNumber(u"4"_s);
+        track.setDiscTotal(u"44"_s);
+        track.setGenres({u"TestGenre"_s});
+        track.setPerformers({u"TestPerformer"_s});
+        track.setComposers({u"testComposer"_s});
+        track.setComment(u"TestComment"_s);
+        track.addExtraTag(u"WRITETEST"_s, u"Success"_s);
+        track.removeExtraTag(u"TEST"_s);
 
         ASSERT_TRUE(m_parser.writeTrack(source, track, Flags));
     }
@@ -367,32 +369,32 @@ TEST_F(TagWriterTest, OggWrite)
         Track track{file.fileName()};
         ASSERT_TRUE(m_parser.readTrack({filepath, &file, nullptr}, track));
 
-        EXPECT_EQ(track.title(), QStringLiteral("TestTitle"));
-        EXPECT_EQ(track.album(), QStringLiteral("TestAlbum"));
-        EXPECT_EQ(track.albumArtist(), QStringLiteral("TestAArtist"));
-        EXPECT_EQ(track.artist(), QStringLiteral("TestArtist"));
-        EXPECT_EQ(track.date(), QStringLiteral("2023-12-12"));
-        EXPECT_EQ(track.trackNumber(), QStringLiteral("9"));
-        EXPECT_EQ(track.trackTotal(), QStringLiteral("99"));
-        EXPECT_EQ(track.discNumber(), QStringLiteral("4"));
-        EXPECT_EQ(track.discTotal(), QStringLiteral("44"));
-        EXPECT_EQ(track.genre(), QStringLiteral("TestGenre"));
-        EXPECT_EQ(track.performer(), QStringLiteral("TestPerformer"));
-        EXPECT_EQ(track.composer(), QStringLiteral("testComposer"));
-        EXPECT_EQ(track.comment(), QStringLiteral("TestComment"));
+        EXPECT_EQ(track.title(), u"TestTitle"_s);
+        EXPECT_EQ(track.album(), u"TestAlbum"_s);
+        EXPECT_EQ(track.albumArtist(), u"TestAArtist"_s);
+        EXPECT_EQ(track.artist(), u"TestArtist"_s);
+        EXPECT_EQ(track.date(), u"2023-12-12"_s);
+        EXPECT_EQ(track.trackNumber(), u"9"_s);
+        EXPECT_EQ(track.trackTotal(), u"99"_s);
+        EXPECT_EQ(track.discNumber(), u"4"_s);
+        EXPECT_EQ(track.discTotal(), u"44"_s);
+        EXPECT_EQ(track.genre(), u"TestGenre"_s);
+        EXPECT_EQ(track.performer(), u"TestPerformer"_s);
+        EXPECT_EQ(track.composer(), u"testComposer"_s);
+        EXPECT_EQ(track.comment(), u"TestComment"_s);
 
-        const auto testTag = track.extraTag(QStringLiteral("TEST"));
+        const auto testTag = track.extraTag(u"TEST"_s);
         EXPECT_TRUE(testTag.empty());
 
-        const auto writeTag = track.extraTag(QStringLiteral("WRITETEST"));
+        const auto writeTag = track.extraTag(u"WRITETEST"_s);
         ASSERT_TRUE(!writeTag.isEmpty());
-        EXPECT_EQ(writeTag.front(), QStringLiteral("Success"));
+        EXPECT_EQ(writeTag.front(), u"Success"_s);
     }
 }
 
 TEST_F(TagWriterTest, OpusWrite)
 {
-    const QString filepath = QStringLiteral(":/audio/audiotest.opus");
+    const QString filepath = u":/audio/audiotest.opus"_s;
     TempResource file{filepath};
     file.checkValid();
 
@@ -405,21 +407,21 @@ TEST_F(TagWriterTest, OpusWrite)
         ASSERT_TRUE(m_parser.readTrack(source, track));
 
         track.setId(0);
-        track.setTitle(QStringLiteral("TestTitle"));
-        track.setAlbum({QStringLiteral("TestAlbum")});
-        track.setAlbumArtists({QStringLiteral("TestAArtist")});
-        track.setArtists({QStringLiteral("TestArtist")});
-        track.setDate(QStringLiteral("2023-12-12"));
-        track.setTrackNumber(QStringLiteral("9"));
-        track.setTrackTotal(QStringLiteral("99"));
-        track.setDiscNumber(QStringLiteral("4"));
-        track.setDiscTotal(QStringLiteral("44"));
-        track.setGenres({QStringLiteral("TestGenre")});
-        track.setPerformers({QStringLiteral("TestPerformer")});
-        track.setComposers({QStringLiteral("testComposer")});
-        track.setComment(QStringLiteral("TestComment"));
-        track.addExtraTag(QStringLiteral("WRITETEST"), QStringLiteral("Success"));
-        track.removeExtraTag(QStringLiteral("TEST"));
+        track.setTitle(u"TestTitle"_s);
+        track.setAlbum({u"TestAlbum"_s});
+        track.setAlbumArtists({u"TestAArtist"_s});
+        track.setArtists({u"TestArtist"_s});
+        track.setDate(u"2023-12-12"_s);
+        track.setTrackNumber(u"9"_s);
+        track.setTrackTotal(u"99"_s);
+        track.setDiscNumber(u"4"_s);
+        track.setDiscTotal(u"44"_s);
+        track.setGenres({u"TestGenre"_s});
+        track.setPerformers({u"TestPerformer"_s});
+        track.setComposers({u"testComposer"_s});
+        track.setComment(u"TestComment"_s);
+        track.addExtraTag(u"WRITETEST"_s, u"Success"_s);
+        track.removeExtraTag(u"TEST"_s);
 
         ASSERT_TRUE(m_parser.writeTrack(source, track, Flags));
     }
@@ -428,32 +430,32 @@ TEST_F(TagWriterTest, OpusWrite)
         Track track{file.fileName()};
         ASSERT_TRUE(m_parser.readTrack({filepath, &file, nullptr}, track));
 
-        EXPECT_EQ(track.title(), QStringLiteral("TestTitle"));
-        EXPECT_EQ(track.album(), QStringLiteral("TestAlbum"));
-        EXPECT_EQ(track.albumArtist(), QStringLiteral("TestAArtist"));
-        EXPECT_EQ(track.artist(), QStringLiteral("TestArtist"));
-        EXPECT_EQ(track.date(), QStringLiteral("2023-12-12"));
-        EXPECT_EQ(track.trackNumber(), QStringLiteral("9"));
-        EXPECT_EQ(track.trackTotal(), QStringLiteral("99"));
-        EXPECT_EQ(track.discNumber(), QStringLiteral("4"));
-        EXPECT_EQ(track.discTotal(), QStringLiteral("44"));
-        EXPECT_EQ(track.genre(), QStringLiteral("TestGenre"));
-        EXPECT_EQ(track.performer(), QStringLiteral("TestPerformer"));
-        EXPECT_EQ(track.composer(), QStringLiteral("testComposer"));
-        EXPECT_EQ(track.comment(), QStringLiteral("TestComment"));
+        EXPECT_EQ(track.title(), u"TestTitle"_s);
+        EXPECT_EQ(track.album(), u"TestAlbum"_s);
+        EXPECT_EQ(track.albumArtist(), u"TestAArtist"_s);
+        EXPECT_EQ(track.artist(), u"TestArtist"_s);
+        EXPECT_EQ(track.date(), u"2023-12-12"_s);
+        EXPECT_EQ(track.trackNumber(), u"9"_s);
+        EXPECT_EQ(track.trackTotal(), u"99"_s);
+        EXPECT_EQ(track.discNumber(), u"4"_s);
+        EXPECT_EQ(track.discTotal(), u"44"_s);
+        EXPECT_EQ(track.genre(), u"TestGenre"_s);
+        EXPECT_EQ(track.performer(), u"TestPerformer"_s);
+        EXPECT_EQ(track.composer(), u"testComposer"_s);
+        EXPECT_EQ(track.comment(), u"TestComment"_s);
 
-        const auto testTag = track.extraTag(QStringLiteral("TEST"));
+        const auto testTag = track.extraTag(u"TEST"_s);
         EXPECT_TRUE(testTag.empty());
 
-        const auto writeTag = track.extraTag(QStringLiteral("WRITETEST"));
+        const auto writeTag = track.extraTag(u"WRITETEST"_s);
         ASSERT_TRUE(!writeTag.isEmpty());
-        EXPECT_EQ(writeTag.front(), QStringLiteral("Success"));
+        EXPECT_EQ(writeTag.front(), u"Success"_s);
     }
 }
 
 TEST_F(TagWriterTest, WavWrite)
 {
-    const QString filepath = QStringLiteral(":/audio/audiotest.wav");
+    const QString filepath = u":/audio/audiotest.wav"_s;
     TempResource file{filepath};
     file.checkValid();
 
@@ -466,21 +468,21 @@ TEST_F(TagWriterTest, WavWrite)
         ASSERT_TRUE(m_parser.readTrack(source, track));
 
         track.setId(0);
-        track.setTitle(QStringLiteral("TestTitle"));
-        track.setAlbum({QStringLiteral("TestAlbum")});
-        track.setAlbumArtists({QStringLiteral("TestAArtist")});
-        track.setArtists({QStringLiteral("TestArtist")});
-        track.setDate(QStringLiteral("2023-12-12"));
-        track.setTrackNumber(QStringLiteral("9"));
-        track.setTrackTotal(QStringLiteral("99"));
-        track.setDiscNumber(QStringLiteral("4"));
-        track.setDiscTotal(QStringLiteral("44"));
-        track.setGenres({QStringLiteral("TestGenre")});
-        track.setPerformers({QStringLiteral("TestPerformer")});
-        track.setComposers({QStringLiteral("testComposer")});
-        track.setComment(QStringLiteral("TestComment"));
-        track.addExtraTag(QStringLiteral("WRITETEST"), QStringLiteral("Success"));
-        track.removeExtraTag(QStringLiteral("TEST"));
+        track.setTitle(u"TestTitle"_s);
+        track.setAlbum({u"TestAlbum"_s});
+        track.setAlbumArtists({u"TestAArtist"_s});
+        track.setArtists({u"TestArtist"_s});
+        track.setDate(u"2023-12-12"_s);
+        track.setTrackNumber(u"9"_s);
+        track.setTrackTotal(u"99"_s);
+        track.setDiscNumber(u"4"_s);
+        track.setDiscTotal(u"44"_s);
+        track.setGenres({u"TestGenre"_s});
+        track.setPerformers({u"TestPerformer"_s});
+        track.setComposers({u"testComposer"_s});
+        track.setComment(u"TestComment"_s);
+        track.addExtraTag(u"WRITETEST"_s, u"Success"_s);
+        track.removeExtraTag(u"TEST"_s);
 
         ASSERT_TRUE(m_parser.writeTrack(source, track, Flags));
     }
@@ -489,26 +491,26 @@ TEST_F(TagWriterTest, WavWrite)
         Track track{file.fileName()};
         ASSERT_TRUE(m_parser.readTrack(source, track));
 
-        EXPECT_EQ(track.title(), QStringLiteral("TestTitle"));
-        EXPECT_EQ(track.album(), QStringLiteral("TestAlbum"));
-        EXPECT_EQ(track.albumArtist(), QStringLiteral("TestAArtist"));
-        EXPECT_EQ(track.artist(), QStringLiteral("TestArtist"));
-        EXPECT_EQ(track.date(), QStringLiteral("2023-12-12"));
-        EXPECT_EQ(track.trackNumber(), QStringLiteral("9"));
-        EXPECT_EQ(track.trackTotal(), QStringLiteral("99"));
-        EXPECT_EQ(track.discNumber(), QStringLiteral("4"));
-        EXPECT_EQ(track.discTotal(), QStringLiteral("44"));
-        EXPECT_EQ(track.genre(), QStringLiteral("TestGenre"));
-        EXPECT_EQ(track.performer(), QStringLiteral("TestPerformer"));
-        EXPECT_EQ(track.composer(), QStringLiteral("testComposer"));
-        EXPECT_EQ(track.comment(), QStringLiteral("TestComment"));
+        EXPECT_EQ(track.title(), u"TestTitle"_s);
+        EXPECT_EQ(track.album(), u"TestAlbum"_s);
+        EXPECT_EQ(track.albumArtist(), u"TestAArtist"_s);
+        EXPECT_EQ(track.artist(), u"TestArtist"_s);
+        EXPECT_EQ(track.date(), u"2023-12-12"_s);
+        EXPECT_EQ(track.trackNumber(), u"9"_s);
+        EXPECT_EQ(track.trackTotal(), u"99"_s);
+        EXPECT_EQ(track.discNumber(), u"4"_s);
+        EXPECT_EQ(track.discTotal(), u"44"_s);
+        EXPECT_EQ(track.genre(), u"TestGenre"_s);
+        EXPECT_EQ(track.performer(), u"TestPerformer"_s);
+        EXPECT_EQ(track.composer(), u"testComposer"_s);
+        EXPECT_EQ(track.comment(), u"TestComment"_s);
 
-        const auto testTag = track.extraTag(QStringLiteral("TEST"));
+        const auto testTag = track.extraTag(u"TEST"_s);
         EXPECT_TRUE(testTag.empty());
 
-        const auto writeTag = track.extraTag(QStringLiteral("WRITETEST"));
+        const auto writeTag = track.extraTag(u"WRITETEST"_s);
         ASSERT_TRUE(!writeTag.isEmpty());
-        EXPECT_EQ(writeTag.front(), QStringLiteral("Success"));
+        EXPECT_EQ(writeTag.front(), u"Success"_s);
     }
 }
 } // namespace Fooyin::Testing

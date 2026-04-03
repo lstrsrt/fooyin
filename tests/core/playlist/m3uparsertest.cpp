@@ -44,7 +44,7 @@ protected:
 
 TEST_F(M3uParserTest, StandardM3u)
 {
-    const QString filepath = QStringLiteral(":/playlists/standardtest.m3u");
+    const QString filepath = u":/playlists/standardtest.m3u"_s;
     QFile file{filepath};
     if(file.open(QIODevice::ReadOnly)) {
         QDir dir{filepath};
@@ -64,7 +64,7 @@ TEST_F(M3uParserTest, StandardM3u)
 
 TEST_F(M3uParserTest, ExtendedM3u)
 {
-    const QString filepath = QStringLiteral(":/playlists/extendedtest.m3u");
+    const QString filepath = u":/playlists/extendedtest.m3u"_s;
     QFile file{filepath};
     if(file.open(QIODevice::ReadOnly)) {
         QDir dir{filepath};

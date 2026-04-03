@@ -31,6 +31,7 @@
 #include <vector>
 
 using namespace std::chrono_literals;
+using namespace Qt::StringLiterals;
 
 constexpr auto SampleRate = 100;
 constexpr auto Channels   = 1;
@@ -260,12 +261,12 @@ public:
 
     QString name() const override
     {
-        return QStringLiteral("RateTagDsp");
+        return u"RateTagDsp"_s;
     }
 
     QString id() const override
     {
-        return QStringLiteral("test.dsp.rate_tag");
+        return u"test.dsp.rate_tag"_s;
     }
 
     void prepare(const AudioFormat&) override { }
@@ -327,12 +328,12 @@ public:
 
     QString name() const override
     {
-        return QStringLiteral("ObserveInputRateDsp");
+        return u"ObserveInputRateDsp"_s;
     }
 
     QString id() const override
     {
-        return QStringLiteral("test.dsp.observe_input_rate");
+        return u"test.dsp.observe_input_rate"_s;
     }
 
     void prepare(const AudioFormat&) override { }
@@ -1025,9 +1026,9 @@ TEST(AudioPipelineTest, UpdatesMasterInputRateWhenPerTrackChainChangesDuringPlay
     backend->setMaxWriteFrames(1);
 
     DspRegistry registry;
-    registry.registerDsp({.id      = QStringLiteral("test.dsp.rate_tag"),
-                          .name    = QStringLiteral("RateTag"),
-                          .factory = []() { return std::make_unique<RateTagDsp>(SampleRate * 2); }});
+    registry.registerDsp({.id = u"test.dsp.rate_tag"_s, .name = u"RateTag"_s, .factory = []() {
+                              return std::make_unique<RateTagDsp>(SampleRate * 2);
+                          }});
 
     pipeline.setDspRegistry(&registry);
     pipeline.setOutput(std::move(output));
@@ -1063,8 +1064,8 @@ TEST(AudioPipelineTest, UpdatesMasterInputRateWhenPerTrackChainChangesDuringPlay
     };
 
     Engine::DspDefinition perTrackRateTag;
-    perTrackRateTag.id   = QStringLiteral("test.dsp.rate_tag");
-    perTrackRateTag.name = QStringLiteral("RateTag");
+    perTrackRateTag.id   = u"test.dsp.rate_tag"_s;
+    perTrackRateTag.name = u"RateTag"_s;
 
     Engine::DspChain perTrack;
     perTrack.push_back(perTrackRateTag);
@@ -1138,9 +1139,9 @@ TEST(AudioPipelineTest, SetDspChainHardUpdateClearsMappedSegmentState)
     backend->setFreeFrames(64);
 
     DspRegistry registry;
-    registry.registerDsp({.id      = QStringLiteral("test.dsp.rate_tag"),
-                          .name    = QStringLiteral("RateTag"),
-                          .factory = []() { return std::make_unique<RateTagDsp>(SampleRate * 2); }});
+    registry.registerDsp({.id = u"test.dsp.rate_tag"_s, .name = u"RateTag"_s, .factory = []() {
+                              return std::make_unique<RateTagDsp>(SampleRate * 2);
+                          }});
     pipeline.setDspRegistry(&registry);
 
     pipeline.setOutput(std::move(output));
@@ -1167,8 +1168,8 @@ TEST(AudioPipelineTest, SetDspChainHardUpdateClearsMappedSegmentState)
 
     std::vector<DspNodePtr> emptyMaster;
     Engine::DspDefinition perTrackRateTag;
-    perTrackRateTag.id   = QStringLiteral("test.dsp.rate_tag");
-    perTrackRateTag.name = QStringLiteral("RateTag");
+    perTrackRateTag.id   = u"test.dsp.rate_tag"_s;
+    perTrackRateTag.name = u"RateTag"_s;
     Engine::DspChain perTrack;
     perTrack.push_back(perTrackRateTag);
 

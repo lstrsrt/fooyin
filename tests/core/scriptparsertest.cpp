@@ -362,136 +362,136 @@ static const StaticScriptVariableProvider EnvironmentVariableProvider{
 
 TEST_F(ScriptParserTest, BasicLiteral)
 {
-    EXPECT_EQ(u"I am a test.", m_parser.evaluate(QStringLiteral("I am a test.")));
+    EXPECT_EQ(u"I am a test.", m_parser.evaluate(u"I am a test."_s));
     EXPECT_EQ(u"", m_parser.evaluate(QString{}));
 }
 
 TEST_F(ScriptParserTest, EscapeComment)
 {
-    EXPECT_EQ(u"I am a % test.", m_parser.evaluate(QStringLiteral(R"("I am a \% test.")")));
-    EXPECT_EQ(u"I am an \"escape test.", m_parser.evaluate(QStringLiteral(R"("I am an \"escape test.")")));
+    EXPECT_EQ(u"I am a % test.", m_parser.evaluate(uR"("I am a \% test.")"_s));
+    EXPECT_EQ(u"I am an \"escape test.", m_parser.evaluate(uR"("I am an \"escape test.")"_s));
 }
 
 TEST_F(ScriptParserTest, Quote)
 {
-    EXPECT_EQ(u"I %am% a $test$.", m_parser.evaluate(QStringLiteral(R"("I %am% a $test$.")")));
+    EXPECT_EQ(u"I %am% a $test$.", m_parser.evaluate(uR"("I %am% a $test$.")"_s));
 }
 
 TEST_F(ScriptParserTest, StringTest)
 {
-    EXPECT_EQ(u"01", m_parser.evaluate(QStringLiteral("$num(1,2)")));
-    EXPECT_EQ(u"04", m_parser.evaluate(QStringLiteral("$num(04,2)")));
-    EXPECT_EQ(u"", m_parser.evaluate(QStringLiteral("$num()")));
-    EXPECT_EQ(u"01", m_parser.evaluate(QStringLiteral("[$num(1,2)]")));
-    EXPECT_EQ(u"A replace cesc", m_parser.evaluate(QStringLiteral("$replace(A replace test,t,c)")));
-    EXPECT_EQ(u"", m_parser.evaluate(QStringLiteral("$replace()")));
-    EXPECT_EQ(u"test", m_parser.evaluate(QStringLiteral("$slice(A slice test,8)")));
-    EXPECT_EQ(u"slice", m_parser.evaluate(QStringLiteral("$slice(A slice test,2,5)")));
-    EXPECT_EQ(u"", m_parser.evaluate(QStringLiteral("$slice()")));
-    EXPECT_EQ(u"", m_parser.evaluate(QStringLiteral("$slice(1,2,3,4,5)")));
-    EXPECT_EQ(u"A chop", m_parser.evaluate(QStringLiteral("$chop(A chop test,5)")));
-    EXPECT_EQ(u"", m_parser.evaluate(QStringLiteral("$chop()")));
-    EXPECT_EQ(u"", m_parser.evaluate(QStringLiteral("$chop(1,2,3,4,5)")));
-    EXPECT_EQ(u"L", m_parser.evaluate(QStringLiteral("$left(Left test,1)")));
-    EXPECT_EQ(u"", m_parser.evaluate(QStringLiteral("$left(1,2,3,4,5)")));
-    EXPECT_EQ(u"", m_parser.evaluate(QStringLiteral("$left()")));
-    EXPECT_EQ(u"est", m_parser.evaluate(QStringLiteral("$right(Right test,3)")));
-    EXPECT_EQ(u"", m_parser.evaluate(QStringLiteral("$right()")));
-    EXPECT_EQ(u"", m_parser.evaluate(QStringLiteral("$right(1,2,3,4,5)")));
-    EXPECT_EQ(u"a  ", m_parser.evaluate(QStringLiteral("[$pad(a,3)]")));
-    EXPECT_EQ(u"  a", m_parser.evaluate(QStringLiteral("[$padright(a,3)]")));
-    EXPECT_EQ(u"x", m_parser.evaluate(QStringLiteral("[$if2(,x)]")));
-    EXPECT_EQ(u"fallback", m_parser.evaluate(QStringLiteral("$if3(,,fallback)")));
-    EXPECT_EQ(u"second", m_parser.evaluate(QStringLiteral("$if3(,second,third,fallback)")));
+    EXPECT_EQ(u"01", m_parser.evaluate(u"$num(1,2)"_s));
+    EXPECT_EQ(u"04", m_parser.evaluate(u"$num(04,2)"_s));
+    EXPECT_EQ(u"", m_parser.evaluate(u"$num()"_s));
+    EXPECT_EQ(u"01", m_parser.evaluate(u"[$num(1,2)]"_s));
+    EXPECT_EQ(u"A replace cesc", m_parser.evaluate(u"$replace(A replace test,t,c)"_s));
+    EXPECT_EQ(u"", m_parser.evaluate(u"$replace()"_s));
+    EXPECT_EQ(u"test", m_parser.evaluate(u"$slice(A slice test,8)"_s));
+    EXPECT_EQ(u"slice", m_parser.evaluate(u"$slice(A slice test,2,5)"_s));
+    EXPECT_EQ(u"", m_parser.evaluate(u"$slice()"_s));
+    EXPECT_EQ(u"", m_parser.evaluate(u"$slice(1,2,3,4,5)"_s));
+    EXPECT_EQ(u"A chop", m_parser.evaluate(u"$chop(A chop test,5)"_s));
+    EXPECT_EQ(u"", m_parser.evaluate(u"$chop()"_s));
+    EXPECT_EQ(u"", m_parser.evaluate(u"$chop(1,2,3,4,5)"_s));
+    EXPECT_EQ(u"L", m_parser.evaluate(u"$left(Left test,1)"_s));
+    EXPECT_EQ(u"", m_parser.evaluate(u"$left(1,2,3,4,5)"_s));
+    EXPECT_EQ(u"", m_parser.evaluate(u"$left()"_s));
+    EXPECT_EQ(u"est", m_parser.evaluate(u"$right(Right test,3)"_s));
+    EXPECT_EQ(u"", m_parser.evaluate(u"$right()"_s));
+    EXPECT_EQ(u"", m_parser.evaluate(u"$right(1,2,3,4,5)"_s));
+    EXPECT_EQ(u"a  ", m_parser.evaluate(u"[$pad(a,3)]"_s));
+    EXPECT_EQ(u"  a", m_parser.evaluate(u"[$padright(a,3)]"_s));
+    EXPECT_EQ(u"x", m_parser.evaluate(u"[$if2(,x)]"_s));
+    EXPECT_EQ(u"fallback", m_parser.evaluate(u"$if3(,,fallback)"_s));
+    EXPECT_EQ(u"second", m_parser.evaluate(u"$if3(,second,third,fallback)"_s));
     EXPECT_EQ(u"winnerwinner",
-              m_parser.evaluate(QStringLiteral("$if3(,$put(choice,winner),$put(choice,wrong),fallback)$get(choice)")));
-    EXPECT_EQ(u"          X", m_parser.evaluate(QStringLiteral("$padright(,$mul($sub(3,1),5))X")));
-    EXPECT_EQ(u"true", m_parser.evaluate(QStringLiteral("$if($stricmp(cmp,cMp),true,false)")));
-    EXPECT_EQ(u"false", m_parser.evaluate(QStringLiteral("$if($strcmp(cmp,cMp),true,false)")));
-    EXPECT_EQ(u"", m_parser.evaluate(QStringLiteral("$split(a;b;c,;)")));
-    EXPECT_EQ(u"", m_parser.evaluate(QStringLiteral("$split(a;b;c,;,0)")));
-    EXPECT_EQ(u"a", m_parser.evaluate(QStringLiteral("$split(a;b;c,;,1)")));
-    EXPECT_EQ(u"b", m_parser.evaluate(QStringLiteral("$split(a;b;c,;,2)")));
-    EXPECT_EQ(u"c", m_parser.evaluate(QStringLiteral("$split(a;b;c,;,3)")));
-    EXPECT_EQ(u"", m_parser.evaluate(QStringLiteral("$split(a;b;c,;,4)")));
+              m_parser.evaluate(u"$if3(,$put(choice,winner),$put(choice,wrong),fallback)$get(choice)"_s));
+    EXPECT_EQ(u"          X", m_parser.evaluate(u"$padright(,$mul($sub(3,1),5))X"_s));
+    EXPECT_EQ(u"true", m_parser.evaluate(u"$if($stricmp(cmp,cMp),true,false)"_s));
+    EXPECT_EQ(u"false", m_parser.evaluate(u"$if($strcmp(cmp,cMp),true,false)"_s));
+    EXPECT_EQ(u"", m_parser.evaluate(u"$split(a;b;c,;)"_s));
+    EXPECT_EQ(u"", m_parser.evaluate(u"$split(a;b;c,;,0)"_s));
+    EXPECT_EQ(u"a", m_parser.evaluate(u"$split(a;b;c,;,1)"_s));
+    EXPECT_EQ(u"b", m_parser.evaluate(u"$split(a;b;c,;,2)"_s));
+    EXPECT_EQ(u"c", m_parser.evaluate(u"$split(a;b;c,;,3)"_s));
+    EXPECT_EQ(u"", m_parser.evaluate(u"$split(a;b;c,;,4)"_s));
 }
 
 TEST_F(ScriptParserTest, MathTest)
 {
-    EXPECT_EQ(3, m_parser.evaluate(QStringLiteral("$add(1,2)")).toInt());
-    EXPECT_EQ(2, m_parser.evaluate(QStringLiteral("$sub(10,8)")).toInt());
-    EXPECT_EQ(99, m_parser.evaluate(QStringLiteral("$mul(3,33)")).toInt());
-    EXPECT_EQ(11, m_parser.evaluate(QStringLiteral("$div(33,3)")).toInt());
-    EXPECT_EQ(1, m_parser.evaluate(QStringLiteral("$mod(10,3)")).toInt());
-    EXPECT_EQ(u"3", m_parser.evaluate(QStringLiteral("[$add(1,2)]")));
-    EXPECT_EQ(u"2", m_parser.evaluate(QStringLiteral("[$sub(10,8)]")));
-    EXPECT_EQ(u"99", m_parser.evaluate(QStringLiteral("[$mul(3,33)]")));
-    EXPECT_EQ(u"11", m_parser.evaluate(QStringLiteral("[$div(33,3)]")));
-    EXPECT_EQ(u"1", m_parser.evaluate(QStringLiteral("[$mod(10,3)]")));
-    EXPECT_EQ(2, m_parser.evaluate(QStringLiteral("$min(3,2,3,9,23,100,4)")).toInt());
-    EXPECT_EQ(100, m_parser.evaluate(QStringLiteral("$max(3,2,3,9,23,100,4)")).toInt());
+    EXPECT_EQ(3, m_parser.evaluate(u"$add(1,2)"_s).toInt());
+    EXPECT_EQ(2, m_parser.evaluate(u"$sub(10,8)"_s).toInt());
+    EXPECT_EQ(99, m_parser.evaluate(u"$mul(3,33)"_s).toInt());
+    EXPECT_EQ(11, m_parser.evaluate(u"$div(33,3)"_s).toInt());
+    EXPECT_EQ(1, m_parser.evaluate(u"$mod(10,3)"_s).toInt());
+    EXPECT_EQ(u"3", m_parser.evaluate(u"[$add(1,2)]"_s));
+    EXPECT_EQ(u"2", m_parser.evaluate(u"[$sub(10,8)]"_s));
+    EXPECT_EQ(u"99", m_parser.evaluate(u"[$mul(3,33)]"_s));
+    EXPECT_EQ(u"11", m_parser.evaluate(u"[$div(33,3)]"_s));
+    EXPECT_EQ(u"1", m_parser.evaluate(u"[$mod(10,3)]"_s));
+    EXPECT_EQ(2, m_parser.evaluate(u"$min(3,2,3,9,23,100,4)"_s).toInt());
+    EXPECT_EQ(100, m_parser.evaluate(u"$max(3,2,3,9,23,100,4)"_s).toInt());
 }
 
 TEST_F(ScriptParserTest, ConditionalTest)
 {
-    EXPECT_EQ(u"true", m_parser.evaluate(QStringLiteral("$ifequal(1,1,true,false)")));
-    EXPECT_EQ(u"false", m_parser.evaluate(QStringLiteral("$ifgreater(23,32,true,false)")));
-    EXPECT_EQ(u"true", m_parser.evaluate(QStringLiteral("$iflonger(aaa,2,true,false)")));
-    EXPECT_EQ(u"true", m_parser.evaluate(QStringLiteral("[$if(1,true,false)]")));
-    EXPECT_EQ(u"first", m_parser.evaluate(QStringLiteral("[$if2(first,second)]")));
-    EXPECT_EQ(u"true", m_parser.evaluate(QStringLiteral("[$ifequal(1,1,true,false)]")));
-    EXPECT_EQ(u"true", m_parser.evaluate(QStringLiteral("[$ifgreater(5,3,true,false)]")));
-    EXPECT_EQ(u"true", m_parser.evaluate(QStringLiteral("[$iflonger(aaa,2,true,false)]")));
-    EXPECT_EQ(u"<A", m_parser.evaluate(QStringLiteral("$if(1,<A,X)")));
-    EXPECT_EQ(u"<rgb=255,0,0>A", m_parser.evaluate(QStringLiteral("$if(1,<rgb=255,0,0>A,X)")));
-    EXPECT_EQ(u"\\<A", m_parser.evaluate(QStringLiteral("$if(1,\\<A,X)")));
-    EXPECT_EQ(u"\\<rgb=255,0,0>", m_parser.evaluate(QStringLiteral("$if(1,\\<rgb=255,0,0>,X)")));
+    EXPECT_EQ(u"true", m_parser.evaluate(u"$ifequal(1,1,true,false)"_s));
+    EXPECT_EQ(u"false", m_parser.evaluate(u"$ifgreater(23,32,true,false)"_s));
+    EXPECT_EQ(u"true", m_parser.evaluate(u"$iflonger(aaa,2,true,false)"_s));
+    EXPECT_EQ(u"true", m_parser.evaluate(u"[$if(1,true,false)]"_s));
+    EXPECT_EQ(u"first", m_parser.evaluate(u"[$if2(first,second)]"_s));
+    EXPECT_EQ(u"true", m_parser.evaluate(u"[$ifequal(1,1,true,false)]"_s));
+    EXPECT_EQ(u"true", m_parser.evaluate(u"[$ifgreater(5,3,true,false)]"_s));
+    EXPECT_EQ(u"true", m_parser.evaluate(u"[$iflonger(aaa,2,true,false)]"_s));
+    EXPECT_EQ(u"<A", m_parser.evaluate(u"$if(1,<A,X)"_s));
+    EXPECT_EQ(u"<rgb=255,0,0>A", m_parser.evaluate(u"$if(1,<rgb=255,0,0>A,X)"_s));
+    EXPECT_EQ(u"\\<A", m_parser.evaluate(u"$if(1,\\<A,X)"_s));
+    EXPECT_EQ(u"\\<rgb=255,0,0>", m_parser.evaluate(u"$if(1,\\<rgb=255,0,0>,X)"_s));
 }
 
 TEST_F(ScriptParserTest, MetadataTest)
 {
     Track track;
-    track.setTitle(QStringLiteral("A Test"));
+    track.setTitle(u"A Test"_s);
 
-    EXPECT_EQ(u"A Test", m_parser.evaluate(QStringLiteral("%title%"), track));
-    EXPECT_EQ(u"A Test", m_parser.evaluate(QStringLiteral("[%title%]"), track));
-    EXPECT_EQ(u"A Test", m_parser.evaluate(QStringLiteral("%title%[ - %album%]"), track));
+    EXPECT_EQ(u"A Test", m_parser.evaluate(u"%title%"_s, track));
+    EXPECT_EQ(u"A Test", m_parser.evaluate(u"[%title%]"_s, track));
+    EXPECT_EQ(u"A Test", m_parser.evaluate(u"%title%[ - %album%]"_s, track));
 
-    track.setAlbum(QStringLiteral("A Test Album"));
+    track.setAlbum(u"A Test Album"_s);
 
-    EXPECT_EQ(u"A Test Album", m_parser.evaluate(QStringLiteral("[%album%]"), track));
-    EXPECT_EQ(u"A Test - A Test Album", m_parser.evaluate(QStringLiteral("%title%[ - %album%]"), track));
+    EXPECT_EQ(u"A Test Album", m_parser.evaluate(u"[%album%]"_s, track));
+    EXPECT_EQ(u"A Test - A Test Album", m_parser.evaluate(u"%title%[ - %album%]"_s, track));
 
-    track.setGenres({QStringLiteral("Pop"), QStringLiteral("Rock")});
+    track.setGenres({u"Pop"_s, u"Rock"_s});
 
-    EXPECT_EQ(u"Pop, Rock", m_parser.evaluate(QStringLiteral("%genre%"), track));
-    EXPECT_EQ(u"Pop\037Rock", m_parser.evaluate(QStringLiteral("%<genre>%"), track));
+    EXPECT_EQ(u"Pop, Rock", m_parser.evaluate(u"%genre%"_s, track));
+    EXPECT_EQ(u"Pop\037Rock", m_parser.evaluate(u"%<genre>%"_s, track));
 
-    track.setArtists({QStringLiteral("Me"), QStringLiteral("You")});
+    track.setArtists({u"Me"_s, u"You"_s});
 
-    EXPECT_EQ(u"Pop, Rock - Me, You", m_parser.evaluate(QStringLiteral("%genre% - %artist%"), track));
+    EXPECT_EQ(u"Pop, Rock - Me, You", m_parser.evaluate(u"%genre% - %artist%"_s, track));
     EXPECT_EQ(u"Pop - Me\037Rock - Me\037Pop - You\037Rock - You",
-              m_parser.evaluate(QStringLiteral("%<genre>% - %<artist>%"), track));
+              m_parser.evaluate(u"%<genre>% - %<artist>%"_s, track));
 
     track.setTrackNumber(u"7"_s);
-    EXPECT_EQ(u"7", m_parser.evaluate(QStringLiteral("[%track%]"), track));
-    EXPECT_EQ(u"07", m_parser.evaluate(QStringLiteral("$num(%track%,2)"), track));
-    EXPECT_EQ(u"07", m_parser.evaluate(QStringLiteral("[$num(%track%,2)]"), track));
-    EXPECT_EQ(u"07.  ", m_parser.evaluate(QStringLiteral("[$num(%track%,2).  ]"), track));
+    EXPECT_EQ(u"7", m_parser.evaluate(u"[%track%]"_s, track));
+    EXPECT_EQ(u"07", m_parser.evaluate(u"$num(%track%,2)"_s, track));
+    EXPECT_EQ(u"07", m_parser.evaluate(u"[$num(%track%,2)]"_s, track));
+    EXPECT_EQ(u"07.  ", m_parser.evaluate(u"[$num(%track%,2).  ]"_s, track));
 
     const auto& defaultSymbols       = defaultRatingStarSymbols();
     const QString unratedPaddedStars = defaultSymbols.emptyStarSymbol.repeated(5);
-    EXPECT_EQ(u"", m_parser.evaluate(QStringLiteral("%rating_stars%"), track));
-    EXPECT_EQ(unratedPaddedStars, m_parser.evaluate(QStringLiteral("%rating_stars_padded%"), track));
+    EXPECT_EQ(u"", m_parser.evaluate(u"%rating_stars%"_s, track));
+    EXPECT_EQ(unratedPaddedStars, m_parser.evaluate(u"%rating_stars_padded%"_s, track));
 
     track.setRatingStars(7);
     const QString compactStars = defaultSymbols.fullStarSymbol.repeated(3) + defaultSymbols.halfStarSymbol;
     const QString paddedStars  = compactStars + defaultSymbols.emptyStarSymbol;
-    EXPECT_EQ(compactStars, m_parser.evaluate(QStringLiteral("%rating_stars%"), track));
-    EXPECT_EQ(paddedStars, m_parser.evaluate(QStringLiteral("%rating_stars_padded%"), track));
-    EXPECT_EQ(u"7", m_parser.evaluate(QStringLiteral("%rating_editor%"), track));
+    EXPECT_EQ(compactStars, m_parser.evaluate(u"%rating_stars%"_s, track));
+    EXPECT_EQ(paddedStars, m_parser.evaluate(u"%rating_stars_padded%"_s, track));
+    EXPECT_EQ(u"7", m_parser.evaluate(u"%rating_editor%"_s, track));
 
-    EXPECT_EQ(u"", m_parser.evaluate(QStringLiteral("[%disc% - %track%]"), track));
+    EXPECT_EQ(u"", m_parser.evaluate(u"[%disc% - %track%]"_s, track));
 }
 
 TEST_F(ScriptParserTest, RatingStarsFormattingTest)
@@ -507,12 +507,12 @@ TEST_F(ScriptParserTest, RatingStarsFormattingTest)
 
     Track track;
 
-    EXPECT_EQ(u"", parser.evaluate(QStringLiteral("%rating_stars%"), track, context));
-    EXPECT_EQ(u".....", parser.evaluate(QStringLiteral("%rating_stars_padded%"), track, context));
+    EXPECT_EQ(u"", parser.evaluate(u"%rating_stars%"_s, track, context));
+    EXPECT_EQ(u".....", parser.evaluate(u"%rating_stars_padded%"_s, track, context));
 
     track.setRatingStars(7);
-    EXPECT_EQ(u"***+", parser.evaluate(QStringLiteral("%rating_stars%"), track, context));
-    EXPECT_EQ(u"***+.", parser.evaluate(QStringLiteral("%rating_stars_padded%"), track, context));
+    EXPECT_EQ(u"***+", parser.evaluate(u"%rating_stars%"_s, track, context));
+    EXPECT_EQ(u"***+.", parser.evaluate(u"%rating_stars_padded%"_s, track, context));
 }
 
 TEST_F(ScriptParserTest, TrackListTest)
@@ -520,28 +520,28 @@ TEST_F(ScriptParserTest, TrackListTest)
     TrackList tracks;
 
     Track track1;
-    track1.setGenres({QStringLiteral("Pop")});
+    track1.setGenres({u"Pop"_s});
     track1.setDuration(2000);
     tracks.push_back(track1);
 
     Track track2;
-    track2.setGenres({QStringLiteral("Rock")});
+    track2.setGenres({u"Rock"_s});
     track2.setDuration(3000);
     tracks.push_back(track2);
 
-    EXPECT_EQ(u"2", m_parser.evaluate(QStringLiteral("%trackcount%"), tracks));
-    EXPECT_EQ(u"00:05", m_parser.evaluate(QStringLiteral("%playtime%"), tracks));
-    EXPECT_EQ(u"Pop / Rock", m_parser.evaluate(QStringLiteral("%genres%"), tracks));
+    EXPECT_EQ(u"2", m_parser.evaluate(u"%trackcount%"_s, tracks));
+    EXPECT_EQ(u"00:05", m_parser.evaluate(u"%playtime%"_s, tracks));
+    EXPECT_EQ(u"Pop / Rock", m_parser.evaluate(u"%genres%"_s, tracks));
 }
 
 TEST_F(ScriptParserTest, MetaTest)
 {
     Track track;
-    track.setArtists({QStringLiteral("The Verve")});
+    track.setArtists({u"The Verve"_s});
 
-    EXPECT_EQ(u"The Verve", m_parser.evaluate(QStringLiteral("%albumartist%"), track));
-    EXPECT_EQ(u"", m_parser.evaluate(QStringLiteral("$meta(albumartist)"), track));
-    EXPECT_EQ(u"The Verve", m_parser.evaluate(QStringLiteral("$meta(artist)"), track));
+    EXPECT_EQ(u"The Verve", m_parser.evaluate(u"%albumartist%"_s, track));
+    EXPECT_EQ(u"", m_parser.evaluate(u"$meta(albumartist)"_s, track));
+    EXPECT_EQ(u"The Verve", m_parser.evaluate(u"$meta(artist)"_s, track));
 }
 
 TEST_F(ScriptParserTest, InfoTest)
@@ -549,8 +549,8 @@ TEST_F(ScriptParserTest, InfoTest)
     Track track;
     track.setChannels(2);
 
-    EXPECT_EQ(u"Stereo", m_parser.evaluate(QStringLiteral("%channels%"), track));
-    EXPECT_EQ(u"2", m_parser.evaluate(QStringLiteral("$info(channels)"), track));
+    EXPECT_EQ(u"Stereo", m_parser.evaluate(u"%channels%"_s, track));
+    EXPECT_EQ(u"2", m_parser.evaluate(u"$info(channels)"_s, track));
 }
 
 TEST_F(ScriptParserTest, RegistryContextVariables)
@@ -565,8 +565,8 @@ TEST_F(ScriptParserTest, RegistryContextVariables)
     context.environment = &environment;
     const Track track;
 
-    EXPECT_EQ(u"5", parser.evaluate(QStringLiteral("%list_index%"), track, context));
-    EXPECT_EQ(u"2", parser.evaluate(QStringLiteral("%depth%"), track, context));
+    EXPECT_EQ(u"5", parser.evaluate(u"%list_index%"_s, track, context));
+    EXPECT_EQ(u"2", parser.evaluate(u"%depth%"_s, track, context));
 }
 
 TEST_F(ScriptParserTest, VariableProvidersInstallIntoRegistry)
@@ -575,7 +575,7 @@ TEST_F(ScriptParserTest, VariableProvidersInstallIntoRegistry)
     parser.addProvider(ProviderVariableProvider);
     const Track track;
 
-    EXPECT_EQ(QString::fromLatin1(Constants::FrontCover), parser.evaluate(QStringLiteral("%frontcover%"), track));
+    EXPECT_EQ(QString::fromLatin1(Constants::FrontCover), parser.evaluate(u"%frontcover%"_s, track));
 }
 
 TEST_F(ScriptParserTest, StatefulVariableProvidersInstallIntoRegistry)
@@ -588,14 +588,14 @@ TEST_F(ScriptParserTest, StatefulVariableProvidersInstallIntoRegistry)
     context.environment = &environment;
     const Track track;
 
-    EXPECT_EQ(u"stateful", parser.evaluate(QStringLiteral("%statefulvar%"), track, context));
+    EXPECT_EQ(u"stateful", parser.evaluate(u"%statefulvar%"_s, track, context));
 }
 
 TEST_F(ScriptParserTest, FunctionProvidersInstallIntoRegistry)
 {
     ScriptParser parser;
     parser.addProvider(ProviderFunctionProvider);
-    const ParsedScript parsed = parser.parse(QStringLiteral("$prefix(test)"));
+    const ParsedScript parsed = parser.parse(u"$prefix(test)"_s);
 
     EXPECT_EQ(u"fn:test", parser.evaluate(parsed));
     EXPECT_EQ(u"fn:test", parser.evaluate(parsed));
@@ -609,7 +609,7 @@ TEST_F(ScriptParserTest, StatefulFunctionProvidersInstallIntoRegistry)
     environment.setState({}, u"ctx:"_s);
     ScriptContext context;
     context.environment       = &environment;
-    const ParsedScript parsed = parser.parse(QStringLiteral("$stateful_prefix(test)"));
+    const ParsedScript parsed = parser.parse(u"$stateful_prefix(test)"_s);
 
     EXPECT_EQ(u"ctx:test", parser.evaluate(parsed, context));
     EXPECT_EQ(u"ctx:test", parser.evaluate(parsed, context));
@@ -627,14 +627,14 @@ TEST_F(ScriptParserTest, ContextEnvironmentVariables)
     context.environment = &environment;
     const Track track;
 
-    EXPECT_EQ(u"5", parser.evaluate(QStringLiteral("%list_index%"), track, context));
-    EXPECT_EQ(u"2", parser.evaluate(QStringLiteral("%depth%"), track, context));
-    EXPECT_EQ(u"1", parser.evaluate(QStringLiteral("%queueindex%"), track, context));
-    EXPECT_EQ(u"1", parser.evaluate(QStringLiteral("%queue_index%"), track, context));
-    EXPECT_EQ(u"1, 3", parser.evaluate(QStringLiteral("%queueindexes%"), track, context));
-    EXPECT_EQ(u"1, 3", parser.evaluate(QStringLiteral("%queue_indexes%"), track, context));
-    EXPECT_EQ(u"7", parser.evaluate(QStringLiteral("%queuetotal%"), track, context));
-    EXPECT_EQ(u"7", parser.evaluate(QStringLiteral("%queue_total%"), track, context));
+    EXPECT_EQ(u"5", parser.evaluate(u"%list_index%"_s, track, context));
+    EXPECT_EQ(u"2", parser.evaluate(u"%depth%"_s, track, context));
+    EXPECT_EQ(u"1", parser.evaluate(u"%queueindex%"_s, track, context));
+    EXPECT_EQ(u"1", parser.evaluate(u"%queue_index%"_s, track, context));
+    EXPECT_EQ(u"1, 3", parser.evaluate(u"%queueindexes%"_s, track, context));
+    EXPECT_EQ(u"1, 3", parser.evaluate(u"%queue_indexes%"_s, track, context));
+    EXPECT_EQ(u"7", parser.evaluate(u"%queuetotal%"_s, track, context));
+    EXPECT_EQ(u"7", parser.evaluate(u"%queue_total%"_s, track, context));
 }
 
 TEST_F(ScriptParserTest, QueueTotalRequiresQueuedTrack)
@@ -649,8 +649,8 @@ TEST_F(ScriptParserTest, QueueTotalRequiresQueuedTrack)
     context.environment = &environment;
     const Track track;
 
-    EXPECT_EQ(u"", parser.evaluate(QStringLiteral("%queuetotal%"), track, context));
-    EXPECT_EQ(u"", parser.evaluate(QStringLiteral("%queue_total%"), track, context));
+    EXPECT_EQ(u"", parser.evaluate(u"%queuetotal%"_s, track, context));
+    EXPECT_EQ(u"", parser.evaluate(u"%queue_total%"_s, track, context));
 }
 
 TEST_F(ScriptParserTest, ContextEvaluationEnvironmentControlsPolicyAndEscaping)
@@ -663,10 +663,10 @@ TEST_F(ScriptParserTest, ContextEvaluationEnvironmentControlsPolicyAndEscaping)
     ScriptContext context;
     context.environment = &environment;
     Track track;
-    track.setTitle(QStringLiteral("A < B"));
+    track.setTitle(u"A < B"_s);
 
-    EXPECT_EQ(u"|Loading|", parser.evaluate(QStringLiteral("%trackcount%"), track, context));
-    EXPECT_EQ(u"A \\< B", parser.evaluate(QStringLiteral("%title%"), track, context));
+    EXPECT_EQ(u"|Loading|", parser.evaluate(u"%trackcount%"_s, track, context));
+    EXPECT_EQ(u"A \\< B", parser.evaluate(u"%title%"_s, track, context));
 }
 
 TEST_F(ScriptParserTest, ContextTrackListEnvironmentProvidesFallbackData)
@@ -676,12 +676,12 @@ TEST_F(ScriptParserTest, ContextTrackListEnvironmentProvidesFallbackData)
     TrackList tracks;
 
     Track track1;
-    track1.setGenres({QStringLiteral("Pop")});
+    track1.setGenres({u"Pop"_s});
     track1.setDuration(2000);
     tracks.push_back(track1);
 
     Track track2;
-    track2.setGenres({QStringLiteral("Rock")});
+    track2.setGenres({u"Rock"_s});
     track2.setDuration(3000);
     tracks.push_back(track2);
 
@@ -693,8 +693,8 @@ TEST_F(ScriptParserTest, ContextTrackListEnvironmentProvidesFallbackData)
     context.environment = &environment;
     const Track track;
 
-    EXPECT_EQ(u"2", parser.evaluate(QStringLiteral("%trackcount%"), track, context));
-    EXPECT_EQ(u"00:05", parser.evaluate(QStringLiteral("%playtime%"), track, context));
+    EXPECT_EQ(u"2", parser.evaluate(u"%trackcount%"_s, track, context));
+    EXPECT_EQ(u"00:05", parser.evaluate(u"%playtime%"_s, track, context));
 }
 
 TEST_F(ScriptParserTest, ContextPlaybackEnvironmentProvidesPlaybackVariables)
@@ -709,10 +709,10 @@ TEST_F(ScriptParserTest, ContextPlaybackEnvironmentProvidesPlaybackVariables)
     Track track;
     track.setBitrate(192);
 
-    EXPECT_EQ(u"00:45", parser.evaluate(QStringLiteral("%playback_time%"), track, context));
-    EXPECT_EQ(u"75", parser.evaluate(QStringLiteral("%playback_time_remaining_s%"), track, context));
-    EXPECT_EQ(u"1", parser.evaluate(QStringLiteral("%isplaying%"), track, context));
-    EXPECT_EQ(u"320", parser.evaluate(QStringLiteral("%bitrate%"), track, context));
+    EXPECT_EQ(u"00:45", parser.evaluate(u"%playback_time%"_s, track, context));
+    EXPECT_EQ(u"75", parser.evaluate(u"%playback_time_remaining_s%"_s, track, context));
+    EXPECT_EQ(u"1", parser.evaluate(u"%isplaying%"_s, track, context));
+    EXPECT_EQ(u"320", parser.evaluate(u"%bitrate%"_s, track, context));
 }
 
 TEST_F(ScriptParserTest, ContextLibraryEnvironmentProvidesLibraryVariables)
@@ -720,16 +720,16 @@ TEST_F(ScriptParserTest, ContextLibraryEnvironmentProvidesLibraryVariables)
     ScriptParser parser;
 
     TestPlaylistEnvironment environment;
-    environment.setLibraryState(QStringLiteral("Main"), QStringLiteral("/music"));
+    environment.setLibraryState(u"Main"_s, u"/music"_s);
 
     ScriptContext context;
     context.environment = &environment;
     Track track;
-    track.setFilePath(QStringLiteral("/music/Artist/Album/Track.flac"));
+    track.setFilePath(u"/music/Artist/Album/Track.flac"_s);
 
-    EXPECT_EQ(u"Main", parser.evaluate(QStringLiteral("%libraryname%"), track, context));
-    EXPECT_EQ(u"/music", parser.evaluate(QStringLiteral("%librarypath%"), track, context));
-    EXPECT_EQ(u"Artist/Album/Track.flac", parser.evaluate(QStringLiteral("%relativepath%"), track, context));
+    EXPECT_EQ(u"Main", parser.evaluate(u"%libraryname%"_s, track, context));
+    EXPECT_EQ(u"/music", parser.evaluate(u"%librarypath%"_s, track, context));
+    EXPECT_EQ(u"Artist/Album/Track.flac", parser.evaluate(u"%relativepath%"_s, track, context));
 }
 
 TEST_F(ScriptParserTest, TrackEvaluationDoesNotUseTrackListContextByDefault)
@@ -752,8 +752,8 @@ TEST_F(ScriptParserTest, TrackEvaluationDoesNotUseTrackListContextByDefault)
     ScriptContext context;
     context.environment = &environment;
 
-    EXPECT_EQ(u"%TRACKCOUNT%", parser.evaluate(QStringLiteral("%trackcount%"), track1, context));
-    EXPECT_EQ(u"%PLAYLIST_DURATION%", parser.evaluate(QStringLiteral("%playlist_duration%"), track1, context));
+    EXPECT_EQ(u"%TRACKCOUNT%", parser.evaluate(u"%trackcount%"_s, track1, context));
+    EXPECT_EQ(u"%PLAYLIST_DURATION%", parser.evaluate(u"%playlist_duration%"_s, track1, context));
 }
 
 TEST_F(ScriptParserTest, TrackEvaluationCanUseTrackListContextWhenEnabled)
@@ -777,8 +777,8 @@ TEST_F(ScriptParserTest, TrackEvaluationCanUseTrackListContextWhenEnabled)
     ScriptContext context;
     context.environment = &environment;
 
-    EXPECT_EQ(u"2", parser.evaluate(QStringLiteral("%trackcount%"), track1, context));
-    EXPECT_EQ(u"00:05", parser.evaluate(QStringLiteral("%playlist_duration%"), track1, context));
+    EXPECT_EQ(u"2", parser.evaluate(u"%trackcount%"_s, track1, context));
+    EXPECT_EQ(u"00:05", parser.evaluate(u"%playlist_duration%"_s, track1, context));
 }
 
 TEST_F(ScriptParserTest, TrackEvaluationCanUseTrackListPlaceholderPolicy)
@@ -798,8 +798,8 @@ TEST_F(ScriptParserTest, TrackEvaluationCanUseTrackListPlaceholderPolicy)
     ScriptContext context;
     context.environment = &environment;
 
-    EXPECT_EQ(u"|Loading|", parser.evaluate(QStringLiteral("%trackcount%"), track1, context));
-    EXPECT_EQ(u"|Loading|", parser.evaluate(QStringLiteral("%playlist_duration%"), track1, context));
+    EXPECT_EQ(u"|Loading|", parser.evaluate(u"%trackcount%"_s, track1, context));
+    EXPECT_EQ(u"|Loading|", parser.evaluate(u"%playlist_duration%"_s, track1, context));
 }
 
 TEST_F(ScriptParserTest, QueryTest)
@@ -808,22 +808,22 @@ TEST_F(ScriptParserTest, QueryTest)
 
     Track track1;
     track1.setId(0);
-    track1.setTitle(QStringLiteral("Wandering Horizon"));
-    track1.setAlbum(QStringLiteral("Electric Dreams"));
-    track1.setAlbumArtists({QStringLiteral("Solar Artist 1"), QStringLiteral("Stellar Artist 2")});
-    track1.setArtists({QStringLiteral("Lunar Sound 1"), QStringLiteral("Galactic Echo 2")});
-    track1.setDate(QStringLiteral("2021-05-17"));
-    track1.setTrackNumber(QStringLiteral("7"));
-    track1.setDiscNumber(QStringLiteral("2"));
+    track1.setTitle(u"Wandering Horizon"_s);
+    track1.setAlbum(u"Electric Dreams"_s);
+    track1.setAlbumArtists({u"Solar Artist 1"_s, u"Stellar Artist 2"_s});
+    track1.setArtists({u"Lunar Sound 1"_s, u"Galactic Echo 2"_s});
+    track1.setDate(u"2021-05-17"_s);
+    track1.setTrackNumber(u"7"_s);
+    track1.setDiscNumber(u"2"_s);
     track1.setBitDepth(24);
     track1.setSampleRate(44100);
     track1.setBitrate(1000);
-    track1.setComment(QStringLiteral("Awesome track with deep beats"));
-    track1.setComposers({QStringLiteral("Sound Designer 1"), QStringLiteral("Master Composer 2")});
-    track1.setPerformers({QStringLiteral("Vocalist 1"), QStringLiteral("Instrumentalist 2")});
+    track1.setComment(u"Awesome track with deep beats"_s);
+    track1.setComposers({u"Sound Designer 1"_s, u"Master Composer 2"_s});
+    track1.setPerformers({u"Vocalist 1"_s, u"Instrumentalist 2"_s});
     track1.setDuration(210000);
     track1.setFileSize(45600000);
-    track1.setDate(QStringLiteral("1991-03-29"));
+    track1.setDate(u"1991-03-29"_s);
     track1.setFirstPlayed(QDateTime::currentDateTime().addMonths(-2).toMSecsSinceEpoch());
     track1.setLastPlayed(QDateTime::currentDateTime().addDays(-6).toMSecsSinceEpoch());
     track1.setPlayCount(1);
@@ -831,73 +831,73 @@ TEST_F(ScriptParserTest, QueryTest)
 
     Track track2;
     track2.setId(1);
-    track2.setTitle(QStringLiteral("Celestial Waves"));
-    track2.setAlbum(QStringLiteral("Chasing Light"));
-    track2.setAlbumArtists({QStringLiteral("Horizon Band"), QStringLiteral("Sunset Group")});
-    track2.setArtists({QStringLiteral("Ocean Vibes"), QStringLiteral("Sky Whisper")});
-    track2.setDate(QStringLiteral("2023-11-12"));
-    track2.setTrackNumber(QStringLiteral("4"));
-    track2.setDiscNumber(QStringLiteral("1"));
+    track2.setTitle(u"Celestial Waves"_s);
+    track2.setAlbum(u"Chasing Light"_s);
+    track2.setAlbumArtists({u"Horizon Band"_s, u"Sunset Group"_s});
+    track2.setArtists({u"Ocean Vibes"_s, u"Sky Whisper"_s});
+    track2.setDate(u"2023-11-12"_s);
+    track2.setTrackNumber(u"4"_s);
+    track2.setDiscNumber(u"1"_s);
     track2.setBitDepth(24);
     track2.setSampleRate(48000);
     track2.setBitrate(950);
-    track2.setComment(QStringLiteral("A serene journey through sound"));
-    track2.setComposers({QStringLiteral("Melody Creator 1"), QStringLiteral("Harmony Producer 2")});
+    track2.setComment(u"A serene journey through sound"_s);
+    track2.setComposers({u"Melody Creator 1"_s, u"Harmony Producer 2"_s});
     track2.setDuration(195000);
     track2.setFileSize(32000000);
-    track2.setDate(QStringLiteral("2010-09-15"));
+    track2.setDate(u"2010-09-15"_s);
     track2.setFirstPlayed(QDateTime(QDate(2021, 1, 1), QTime(0, 0, 0)).toMSecsSinceEpoch());
     track2.setLastPlayed(QDateTime::currentDateTime().addDays(-3).toMSecsSinceEpoch());
     track2.setPlayCount(8);
     tracks.push_back(track2);
 
     // Basic operator tests
-    EXPECT_EQ(1, m_parser.filter(QStringLiteral("$info(duration)=210000"), tracks).size());
-    EXPECT_EQ(1, m_parser.filter(QStringLiteral("playcount>1"), tracks).size());
-    EXPECT_EQ(1, m_parser.filter(QStringLiteral("playcount GREATER 1"), tracks).size());
-    EXPECT_EQ(0, m_parser.filter(QStringLiteral("playcount LESS 1"), tracks).size());
-    EXPECT_EQ(2, m_parser.filter(QStringLiteral("playcount>=1"), tracks).size());
-    EXPECT_EQ(0, m_parser.filter(QStringLiteral("playcount>=A"), tracks).size());
+    EXPECT_EQ(1, m_parser.filter(u"$info(duration)=210000"_s, tracks).size());
+    EXPECT_EQ(1, m_parser.filter(u"playcount>1"_s, tracks).size());
+    EXPECT_EQ(1, m_parser.filter(u"playcount GREATER 1"_s, tracks).size());
+    EXPECT_EQ(0, m_parser.filter(u"playcount LESS 1"_s, tracks).size());
+    EXPECT_EQ(2, m_parser.filter(u"playcount>=1"_s, tracks).size());
+    EXPECT_EQ(0, m_parser.filter(u"playcount>=A"_s, tracks).size());
 
     // Logical operator tests
-    EXPECT_EQ(1, m_parser.filter(QStringLiteral("title=Wandering Horizon AND genre MISSING"), tracks).size());
-    EXPECT_EQ(2, m_parser.filter(QStringLiteral("playcount=1 OR playcount=8"), tracks).size());
-    EXPECT_EQ(2, m_parser.filter(QStringLiteral("playcount=1 XOR playcount=8"), tracks).size());
-    EXPECT_EQ(0, m_parser.filter(QStringLiteral("playcount=1 XOR playcount=1"), tracks).size());
+    EXPECT_EQ(1, m_parser.filter(u"title=Wandering Horizon AND genre MISSING"_s, tracks).size());
+    EXPECT_EQ(2, m_parser.filter(u"playcount=1 OR playcount=8"_s, tracks).size());
+    EXPECT_EQ(2, m_parser.filter(u"playcount=1 XOR playcount=8"_s, tracks).size());
+    EXPECT_EQ(0, m_parser.filter(u"playcount=1 XOR playcount=1"_s, tracks).size());
 
     // Negation test
-    EXPECT_EQ(1, m_parser.filter(QStringLiteral("!playcount=1"), tracks).size());
-    EXPECT_EQ(0, m_parser.filter(QStringLiteral("NOT playcount>=1"), tracks).size());
+    EXPECT_EQ(1, m_parser.filter(u"!playcount=1"_s, tracks).size());
+    EXPECT_EQ(0, m_parser.filter(u"NOT playcount>=1"_s, tracks).size());
 
     // PRESENT/MISSING keyword tests
-    EXPECT_EQ(1, m_parser.filter(QStringLiteral("performer PRESENT"), tracks).size());
-    EXPECT_EQ(1, m_parser.filter(QStringLiteral("performer MISSING"), tracks).size());
-    EXPECT_EQ(0, m_parser.filter(QStringLiteral("rating_stars PRESENT"), tracks).size());
-    EXPECT_EQ(2, m_parser.filter(QStringLiteral("rating_stars MISSING"), tracks).size());
+    EXPECT_EQ(1, m_parser.filter(u"performer PRESENT"_s, tracks).size());
+    EXPECT_EQ(1, m_parser.filter(u"performer MISSING"_s, tracks).size());
+    EXPECT_EQ(0, m_parser.filter(u"rating_stars PRESENT"_s, tracks).size());
+    EXPECT_EQ(2, m_parser.filter(u"rating_stars MISSING"_s, tracks).size());
 
     // String matching tests
-    EXPECT_EQ(1, m_parser.filter(QStringLiteral("title:wandering hor"), tracks).size());
-    EXPECT_EQ(0, m_parser.filter(QStringLiteral("title=wandering hor"), tracks).size());
-    EXPECT_EQ(2, m_parser.filter(QStringLiteral("title:Wa"), tracks).size());
+    EXPECT_EQ(1, m_parser.filter(u"title:wandering hor"_s, tracks).size());
+    EXPECT_EQ(0, m_parser.filter(u"title=wandering hor"_s, tracks).size());
+    EXPECT_EQ(2, m_parser.filter(u"title:Wa"_s, tracks).size());
 
     // Date comparisons
-    EXPECT_EQ(1, m_parser.filter(QStringLiteral("date BEFORE 2000"), tracks).size());
-    EXPECT_EQ(1, m_parser.filter(QStringLiteral("date AFTER 2000"), tracks).size());
-    EXPECT_EQ(1, m_parser.filter(QStringLiteral("firstplayed SINCE 2022"), tracks).size());
-    EXPECT_EQ(2, m_parser.filter(QStringLiteral("lastplayed DURING LAST WEEK"), tracks).size());
-    EXPECT_EQ(0, m_parser.filter(QStringLiteral("lastplayed DURING 2"), tracks).size());
+    EXPECT_EQ(1, m_parser.filter(u"date BEFORE 2000"_s, tracks).size());
+    EXPECT_EQ(1, m_parser.filter(u"date AFTER 2000"_s, tracks).size());
+    EXPECT_EQ(1, m_parser.filter(u"firstplayed SINCE 2022"_s, tracks).size());
+    EXPECT_EQ(2, m_parser.filter(u"lastplayed DURING LAST WEEK"_s, tracks).size());
+    EXPECT_EQ(0, m_parser.filter(u"lastplayed DURING 2"_s, tracks).size());
 
     // Grouping and complex queries
-    EXPECT_EQ(2, m_parser.filter(QStringLiteral("(playcount>=1 AND bitrate>500) OR title:Celestial"), tracks).size());
-    EXPECT_EQ(2, m_parser.filter(QStringLiteral("(playcount>=1 AND (bitrate>500 OR bitrate=950))"), tracks).size());
-    EXPECT_EQ(1, m_parser.filter(QStringLiteral("(playcount=8 OR (bitrate>950 AND duration>200000))"), tracks).size());
-    EXPECT_EQ(0, m_parser.filter(QStringLiteral("(playcount=8 AND (bitrate<900 OR duration<180000))"), tracks).size());
+    EXPECT_EQ(2, m_parser.filter(u"(playcount>=1 AND bitrate>500) OR title:Celestial"_s, tracks).size());
+    EXPECT_EQ(2, m_parser.filter(u"(playcount>=1 AND (bitrate>500 OR bitrate=950))"_s, tracks).size());
+    EXPECT_EQ(1, m_parser.filter(u"(playcount=8 OR (bitrate>950 AND duration>200000))"_s, tracks).size());
+    EXPECT_EQ(0, m_parser.filter(u"(playcount=8 AND (bitrate<900 OR duration<180000))"_s, tracks).size());
 
-    QString query = QStringLiteral("(title:Wand AND album:Elec) OR (title:Celest AND playcount=8)");
+    QString query = u"(title:Wand AND album:Elec) OR (title:Celest AND playcount=8)"_s;
     EXPECT_EQ(2, m_parser.filter(query, tracks).size());
-    query = QStringLiteral("(title:Wandering OR (playcount=1 AND bitrate>900))");
+    query = u"(title:Wandering OR (playcount=1 AND bitrate>900))"_s;
     EXPECT_EQ(1, m_parser.filter(query, tracks).size());
-    query = QStringLiteral("((playcount>=1 AND bitrate>500) OR title:Celest) AND (duration_ms>180000)");
+    query = u"((playcount>=1 AND bitrate>500) OR title:Celest) AND (duration_ms>180000)"_s;
     EXPECT_EQ(2, m_parser.filter(query, tracks).size());
 }
 
@@ -905,18 +905,18 @@ TEST_F(ScriptParserTest, QueryAccentInsensitiveSearch)
 {
     Track track;
     track.setId(0);
-    track.setTitle(QStringLiteral("Café Sketches"));
-    track.setAlbum(QStringLiteral("Más Allá"));
-    track.setAlbumArtists({QStringLiteral("Gábor Szabó")});
-    track.setArtists({QStringLiteral("Gábor Szabó")});
+    track.setTitle(u"Café Sketches"_s);
+    track.setAlbum(u"Más Allá"_s);
+    track.setAlbumArtists({u"Gábor Szabó"_s});
+    track.setArtists({u"Gábor Szabó"_s});
 
     const TrackList tracks{track};
 
-    EXPECT_EQ(1, m_parser.filter(QStringLiteral("gabor"), tracks).size());
-    EXPECT_EQ(1, m_parser.filter(QStringLiteral("\"gabor szabo\""), tracks).size());
-    EXPECT_EQ(1, m_parser.filter(QStringLiteral("artist:gabor"), tracks).size());
-    EXPECT_EQ(1, m_parser.filter(QStringLiteral("album:mas"), tracks).size());
-    EXPECT_EQ(1, m_parser.filter(QStringLiteral("title:cafe"), tracks).size());
+    EXPECT_EQ(1, m_parser.filter(u"gabor"_s, tracks).size());
+    EXPECT_EQ(1, m_parser.filter(u"\"gabor szabo\""_s, tracks).size());
+    EXPECT_EQ(1, m_parser.filter(u"artist:gabor"_s, tracks).size());
+    EXPECT_EQ(1, m_parser.filter(u"album:mas"_s, tracks).size());
+    EXPECT_EQ(1, m_parser.filter(u"title:cafe"_s, tracks).size());
 }
 
 TEST_F(ScriptParserTest, QueryAndLiteralCachesStaySeparate)
@@ -927,7 +927,7 @@ TEST_F(ScriptParserTest, QueryAndLiteralCachesStaySeparate)
     track.setPlayCount(2);
     tracks.push_back(track);
 
-    EXPECT_EQ(1, m_parser.filter(QStringLiteral("playcount>1"), tracks).size());
-    EXPECT_EQ(u"playcount>1", m_parser.evaluate(QStringLiteral("playcount>1"), track));
+    EXPECT_EQ(1, m_parser.filter(u"playcount>1"_s, tracks).size());
+    EXPECT_EQ(u"playcount>1", m_parser.evaluate(u"playcount>1"_s, track));
 }
 } // namespace Fooyin::Testing
