@@ -1765,11 +1765,12 @@ QRect IconView::visualRect(const QModelIndex& index, RectRule rule, bool /*inclu
 
 void IconView::invalidate()
 {
-    m_uniformRowWidth  = 0;
-    m_uniformRowHeight = 0;
-    m_segmentSize      = 0;
-    m_itemSpacing      = haveBottomCaptions() ? std::max(m_p->m_iconHorizontalGap, 0) : MinItemSpacing;
-    m_rowSpacing       = haveSideCaptions() ? 0 : (haveBottomCaptions() ? m_p->m_iconVerticalGap : IconRowSpacing);
+    m_uniformRowWidth                   = 0;
+    m_uniformRowHeight                  = 0;
+    m_segmentSize                       = 0;
+    const bool useConfiguredGridSpacing = !haveSideCaptions();
+    m_itemSpacing = useConfiguredGridSpacing ? std::max(m_p->m_iconHorizontalGap, 0) : MinItemSpacing;
+    m_rowSpacing  = haveSideCaptions() ? 0 : m_p->m_iconVerticalGap;
 }
 
 void IconView::doItemLayout()
@@ -1792,9 +1793,9 @@ void IconView::doItemLayout()
     int segPosition{topLeft.y()};
     int rowStartPosition{segStartPosition};
 
-    const bool fixedBottomCaptionSpacing = haveBottomCaptions() && m_p->m_iconHorizontalGap >= 0;
+    const bool fixedGridSpacing = !haveSideCaptions() && m_p->m_iconHorizontalGap >= 0;
 
-    if(!haveSideCaptions() && !fixedBottomCaptionSpacing) {
+    if(!haveSideCaptions() && !fixedGridSpacing) {
         segStartPosition += m_itemSpacing;
         segEndPosition -= m_itemSpacing;
     }
@@ -1802,7 +1803,7 @@ void IconView::doItemLayout()
     // Determine the number of items per row
     const int count = itemCount();
     for(int i{1}; i <= count; ++i) {
-        const int spacingCount  = fixedBottomCaptionSpacing ? std::max(0, i - 1) : i - 1;
+        const int spacingCount  = fixedGridSpacing ? std::max(0, i - 1) : i - 1;
         const int requiredWidth = (i * itemWidth(0)) + (spacingCount * m_itemSpacing);
         if(requiredWidth > (segEndPosition - segStartPosition)) {
             m_segmentSize = (i == 1) ? 1 : i - 1;
@@ -1822,7 +1823,7 @@ void IconView::doItemLayout()
     const int itmWidth            = haveSideCaptions() ? totalWidthAvailable / m_segmentSize : itemWidth(0);
     const int maxPadding          = static_cast<int>(totalWidthAvailable * maxPaddingRatio);
 
-    if(!fixedBottomCaptionSpacing) {
+    if(!fixedGridSpacing) {
         const int totalPadding = totalWidthAvailable - totalItemWidth;
         m_itemSpacing          = std::max(0, totalPadding / (m_segmentSize + 1));
 
@@ -1845,7 +1846,7 @@ void IconView::doItemLayout()
         if(segColumn == 0) {
             rowStartPosition = segStartPosition;
 
-            if(fixedBottomCaptionSpacing) {
+            if(fixedGridSpacing) {
                 const int itemsOnRow     = std::min(m_segmentSize, count - i);
                 const int rowWidth       = (itemsOnRow * itmWidth) + (std::max(0, itemsOnRow - 1) * m_itemSpacing);
                 const int remainingWidth = totalWidthAvailable - rowWidth;
@@ -1856,7 +1857,7 @@ void IconView::doItemLayout()
         if(haveSideCaptions()) {
             item.x = segStartPosition + (segColumn * itmWidth);
         }
-        else if(fixedBottomCaptionSpacing) {
+        else if(fixedGridSpacing) {
             item.x = rowStartPosition + (segColumn * (itmWidth + m_itemSpacing));
         }
         else {
