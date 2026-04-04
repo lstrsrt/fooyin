@@ -53,12 +53,12 @@ public:
 private:
     bool m_repeatTrack;
     bool m_isDecoding;
-    FySettings m_settings;
+    bool m_shouldFade;
     AudioFormat m_format;
     MusicEmuPtr m_emu;
     int m_subsong;
     int m_duration;
-    int m_loopLength;
+    int m_fadeLength;
     Track m_changedTrack;
 };
 
