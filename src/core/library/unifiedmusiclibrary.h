@@ -29,7 +29,7 @@ class LibraryManager;
 class SettingsManager;
 class UnifiedMusicLibraryPrivate;
 
-class UnifiedMusicLibrary : public MusicLibrary
+class FYCORE_EXPORT UnifiedMusicLibrary : public MusicLibrary
 {
     Q_OBJECT
 

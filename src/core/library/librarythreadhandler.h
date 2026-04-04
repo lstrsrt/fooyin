@@ -62,6 +62,7 @@ public:
     ScanRequest scanTracks(const TrackList& tracks, bool onlyModified);
     ScanRequest scanFiles(const QList<QUrl>& files);
     ScanRequest loadPlaylist(const QList<QUrl>& files);
+    void acknowledgeScanResultApplied(int id);
     void acknowledgeTracksScanned(int id);
 
     void saveUpdatedTracks(const TrackList& tracks);

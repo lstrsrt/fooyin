@@ -78,7 +78,7 @@ enum CoreInternalSettings : uint32_t
 Q_ENUM_NS(CoreInternalSettings)
 } // namespace Settings::Core::Internal
 
-class CoreSettings
+class FYCORE_EXPORT CoreSettings
 {
 public:
     explicit CoreSettings(SettingsManager* settingsManager);

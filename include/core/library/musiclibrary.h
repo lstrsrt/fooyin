@@ -226,6 +226,8 @@ signals:
      * scanFinished() for the same request is emitted afterwards.
      */
     void tracksScanned(int id, const Fooyin::TrackList& tracks);
+    /** Internal acknowledgement emitted after a scan update batch has been committed into tracks(). */
+    void scanApplyCompleted(int id);
     /** Emitted when a scan request has applied its added, updated, and removed track changes. */
     void scanSummary(int id, Fooyin::ScanRequest::Type type, Fooyin::ScanSummaryCounts summary);
     /** Emitted exactly once when a scan request completes or is cancelled. */
