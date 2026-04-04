@@ -1769,8 +1769,9 @@ void IconView::invalidate()
     m_uniformRowHeight                  = 0;
     m_segmentSize                       = 0;
     const bool useConfiguredGridSpacing = !haveSideCaptions();
-    m_itemSpacing = useConfiguredGridSpacing ? std::max(m_p->m_iconHorizontalGap, 0) : MinItemSpacing;
-    m_rowSpacing  = haveSideCaptions() ? 0 : m_p->m_iconVerticalGap;
+    m_itemSpacing
+        = useConfiguredGridSpacing && m_p->m_iconHorizontalGap >= 0 ? m_p->m_iconHorizontalGap : MinItemSpacing;
+    m_rowSpacing = haveSideCaptions() ? 0 : m_p->m_iconVerticalGap;
 }
 
 void IconView::doItemLayout()
