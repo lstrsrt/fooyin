@@ -276,6 +276,9 @@ void FilterWidget::setViewState(const FilterViewState& state)
     }
 
     m_applyingViewState = false;
+    // Restored layouts can publish rows before the widget has gone through a resize,
+    // so nudge the view to recalculate delegate-driven row heights immediately.
+    QMetaObject::invokeMethod(m_view->itemDelegate(), "sizeHintChanged", Q_ARG(QModelIndex, {}));
 }
 
 QString FilterWidget::name() const
