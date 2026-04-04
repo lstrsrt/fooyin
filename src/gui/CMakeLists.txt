@@ -459,6 +459,7 @@ set(SOURCES
 
 create_fooyin_library(
     fooyin_gui
+        ADD_PRIVATE_TARGET
     EXPORT_NAME Gui
     SOURCES ${SOURCES}
 )
