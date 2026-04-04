@@ -33,6 +33,7 @@
 
 #include <QCoreApplication>
 #include <QDir>
+#include <QSignalSpy>
 #include <QStandardPaths>
 #include <QTemporaryDir>
 
@@ -279,23 +280,21 @@ struct PlaylistHandlerHarness
 
 TEST(PlayerControllerTest, ChangeAndCommitTrackUpdatePublicState)
 {
+    ensureCoreApplication();
     SettingsManager settings{QDir::tempPath() + u"/fooyin_playercontroller_change_commit_test.ini"_s};
     registerControllerSettings(settings);
     PlayerController controller{&settings, nullptr};
 
-    int requestCount{0};
-    Player::TrackChangeRequest lastRequest;
-    QObject::connect(&controller, &PlayerController::trackChangeRequested, &controller,
-                     [&requestCount, &lastRequest](const Player::TrackChangeRequest& request) {
-                         ++requestCount;
-                         lastRequest = request;
-                     });
+    QSignalSpy requestSpy{&controller, &PlayerController::trackChangeRequested};
 
     const Track track = makeTrack(u"/tmp/controller.flac"_s, 11, 2000);
     controller.changeCurrentTrack(PlaylistTrack{.track = track, .playlistId = UId::create(), .indexInPlaylist = 0},
                                   {.reason = Player::AdvanceReason::ManualSelection, .userInitiated = true});
 
-    ASSERT_EQ(requestCount, 1);
+    ASSERT_EQ(requestSpy.count(), 1);
+    const QVariantList requestArgs = requestSpy.takeFirst();
+    ASSERT_EQ(requestArgs.size(), 1);
+    const auto lastRequest = requestArgs.front().value<Player::TrackChangeRequest>();
     EXPECT_EQ(lastRequest.track.track, track);
     EXPECT_GT(lastRequest.itemId, 0);
     EXPECT_EQ(lastRequest.context.reason, Player::AdvanceReason::ManualSelection);
@@ -312,51 +311,47 @@ TEST(PlayerControllerTest, ChangeAndCommitTrackUpdatePublicState)
 
 TEST(PlayerControllerTest, PlayAndPauseEmitTransportStateChanges)
 {
+    ensureCoreApplication();
     SettingsManager settings{QDir::tempPath() + u"/fooyin_playercontroller_play_pause_test.ini"_s};
     registerControllerSettings(settings);
     PlayerController controller{&settings, nullptr};
 
-    int transportPlayCount{0};
-    int transportPauseCount{0};
-    int playStateChanges{0};
-
-    QObject::connect(&controller, &PlayerController::transportPlayRequested, &controller,
-                     [&transportPlayCount]() { ++transportPlayCount; });
-    QObject::connect(&controller, &PlayerController::transportPauseRequested, &controller,
-                     [&transportPauseCount]() { ++transportPauseCount; });
-    QObject::connect(&controller, &PlayerController::playStateChanged, &controller,
-                     [&playStateChanges]() { ++playStateChanges; });
+    QSignalSpy transportPlaySpy{&controller, &PlayerController::transportPlayRequested};
+    QSignalSpy transportPauseSpy{&controller, &PlayerController::transportPauseRequested};
+    QSignalSpy playStateSpy{&controller, &PlayerController::playStateChanged};
 
     controller.changeCurrentTrack(makeTrack(u"/tmp/pending.flac"_s, 12, 1500));
     controller.play();
 
     EXPECT_EQ(controller.playState(), Player::PlayState::Playing);
-    EXPECT_EQ(transportPlayCount, 1);
-    EXPECT_EQ(playStateChanges, 1);
+    EXPECT_EQ(transportPlaySpy.count(), 1);
+    EXPECT_EQ(playStateSpy.count(), 1);
 
     controller.pause();
 
     EXPECT_EQ(controller.playState(), Player::PlayState::Paused);
-    EXPECT_EQ(transportPauseCount, 1);
-    EXPECT_EQ(playStateChanges, 2);
+    EXPECT_EQ(transportPauseSpy.count(), 1);
+    EXPECT_EQ(playStateSpy.count(), 2);
 }
 
 TEST(PlayerControllerTest, TrackPlayedEmitsOnceAfterCrossingThreshold)
 {
+    ensureCoreApplication();
     SettingsManager settings{QDir::tempPath() + u"/fooyin_playercontroller_track_played_test.ini"_s};
     registerControllerSettings(settings);
     PlayerController controller{&settings, nullptr};
 
-    int playedCount{0};
-    QObject::connect(&controller, &PlayerController::trackPlayed, &controller,
-                     [&playedCount](const Track&) { ++playedCount; });
+    QSignalSpy playedSpy{&controller, &PlayerController::trackPlayed};
 
     controller.commitCurrentTrack(makeTrack(u"/tmp/played.flac"_s, 13, 1000));
     controller.setCurrentPosition(100);
     controller.setCurrentPosition(500);
     controller.setCurrentPosition(800);
 
-    EXPECT_EQ(playedCount, 1);
+    ASSERT_EQ(playedSpy.count(), 1);
+    const QVariantList playedArgs = playedSpy.takeFirst();
+    ASSERT_EQ(playedArgs.size(), 1);
+    EXPECT_EQ(playedArgs.front().value<Track>(), makeTrack(u"/tmp/played.flac"_s, 13, 1000));
 }
 
 TEST(PlayerControllerTest, NextClearsStopAfterCurrentWhenResetEnabled)
@@ -410,6 +405,7 @@ TEST(PlayerControllerTest, PreviousCapabilityIncludesRewindingCurrentTrack)
 
 TEST(PlayerControllerTest, CommittingQueueTrackOnlyRemovesFirstDuplicateQueueEntry)
 {
+    ensureCoreApplication();
     SettingsManager settings{QDir::tempPath() + u"/fooyin_playercontroller_queue_duplicate_commit_test.ini"_s};
     registerControllerSettings(settings);
     PlayerController controller{&settings, nullptr};
@@ -417,11 +413,7 @@ TEST(PlayerControllerTest, CommittingQueueTrackOnlyRemovesFirstDuplicateQueueEnt
     const Track track = makeTrack(u"/tmp/queue-duplicate.flac"_s, 16, 1000);
     const PlaylistTrack queuedTrack{.track = track, .playlistId = {}};
 
-    QueueTracks dequeuedTracks;
-    QObject::connect(&controller, &PlayerController::tracksDequeued, &controller,
-                     [&dequeuedTracks](const QueueTracks& tracks) {
-                         dequeuedTracks.insert(dequeuedTracks.end(), tracks.cbegin(), tracks.cend());
-                     });
+    QSignalSpy dequeuedSpy{&controller, &PlayerController::tracksDequeued};
 
     controller.queueTracks({queuedTrack, queuedTrack});
     controller.commitCurrentTrack(Player::TrackChangeRequest{
@@ -431,7 +423,11 @@ TEST(PlayerControllerTest, CommittingQueueTrackOnlyRemovesFirstDuplicateQueueEnt
         .itemId       = 102,
     });
 
-    ASSERT_EQ(dequeuedTracks.size(), 1);
+    ASSERT_EQ(dequeuedSpy.count(), 1);
+    const QVariantList dequeuedArgs = dequeuedSpy.takeFirst();
+    ASSERT_EQ(dequeuedArgs.size(), 1);
+    const auto dequeuedTracks = dequeuedArgs.front().value<QueueTracks>();
+    ASSERT_EQ(dequeuedTracks.size(), 1U);
     EXPECT_EQ(dequeuedTracks.front(), queuedTrack);
     EXPECT_EQ(controller.queuedTracksCount(), 1);
     EXPECT_EQ(controller.playbackQueue().track(0), queuedTrack);
@@ -590,9 +586,7 @@ TEST(PlayerControllerTest, FollowPlaybackQueueContinuesFromQueuedTrackPlaylist)
     ASSERT_TRUE(queuedTrack.has_value());
     ASSERT_TRUE(followedTrack.has_value());
 
-    std::vector<Player::TrackChangeRequest> requests;
-    QObject::connect(&controller, &PlayerController::trackChangeRequested, &controller,
-                     [&requests](const Player::TrackChangeRequest& request) { requests.emplace_back(request); });
+    QSignalSpy requestSpy{&controller, &PlayerController::trackChangeRequested};
 
     controller.commitCurrentTrack(Player::TrackChangeRequest{
         .track        = *firstTrack,
@@ -604,11 +598,12 @@ TEST(PlayerControllerTest, FollowPlaybackQueueContinuesFromQueuedTrackPlaylist)
 
     controller.advance(Player::AdvanceReason::NaturalEnd);
 
-    ASSERT_EQ(requests.size(), 1U);
-    EXPECT_EQ(requests.back().track, *queuedTrack);
-    EXPECT_TRUE(requests.back().isQueueTrack);
+    ASSERT_EQ(requestSpy.count(), 1);
+    const auto queuedRequest = requestSpy.at(0).at(0).value<Player::TrackChangeRequest>();
+    EXPECT_EQ(queuedRequest.track, *queuedTrack);
+    EXPECT_TRUE(queuedRequest.isQueueTrack);
 
-    controller.commitCurrentTrack(requests.back());
+    controller.commitCurrentTrack(queuedRequest);
 
     EXPECT_EQ(controller.currentPlaylistTrack(), *queuedTrack);
     EXPECT_TRUE(controller.currentIsQueueTrack());
@@ -616,9 +611,10 @@ TEST(PlayerControllerTest, FollowPlaybackQueueContinuesFromQueuedTrackPlaylist)
 
     controller.advance(Player::AdvanceReason::NaturalEnd);
 
-    ASSERT_EQ(requests.size(), 2U);
-    EXPECT_EQ(requests.back().track, *followedTrack);
-    EXPECT_FALSE(requests.back().isQueueTrack);
+    ASSERT_EQ(requestSpy.count(), 2);
+    const auto followedRequest = requestSpy.at(1).at(0).value<Player::TrackChangeRequest>();
+    EXPECT_EQ(followedRequest.track, *followedTrack);
+    EXPECT_FALSE(followedRequest.isQueueTrack);
 }
 
 TEST(PlayerControllerTest, LibraryTrackUpdatesPreserveShuffleHistory)

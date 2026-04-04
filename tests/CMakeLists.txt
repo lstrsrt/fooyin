@@ -12,6 +12,7 @@ function(fooyin_add_test name)
                     Fooyin::CorePrivate
                     Fooyin::Gui
                     Fooyin::Utils
+            Qt6::Test
                     GTest::gtest_main
     )
     gtest_discover_tests(${name})
