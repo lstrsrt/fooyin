@@ -24,6 +24,8 @@
 #include <core/track.h>
 #include <utils/worker.h>
 
+#include <memory>
+
 namespace Fooyin {
 class InfoPopulatorPrivate;
 class LibraryManager;
@@ -40,6 +42,8 @@ struct InfoData
     }
 };
 
+using InfoDataPtr = std::shared_ptr<InfoData>;
+
 class InfoPopulator : public Worker
 {
     Q_OBJECT
@@ -51,9 +55,11 @@ public:
     void run(InfoItem::Options options, const TrackList& tracks);
 
 signals:
-    void populated(Fooyin::InfoData data);
+    void populated(Fooyin::InfoDataPtr data);
 
 private:
     std::unique_ptr<InfoPopulatorPrivate> p;
 };
 } // namespace Fooyin
+
+Q_DECLARE_METATYPE(Fooyin::InfoDataPtr)

@@ -30,6 +30,7 @@
 #include <QFileInfo>
 
 #include <set>
+#include <tuple>
 
 using namespace Qt::StringLiterals;
 
@@ -113,8 +114,9 @@ InfoItem* InfoPopulatorPrivate::getOrAddNode(const QString& key, const QString& 
         return &m_data.nodes.at(key);
     }
 
-    const InfoItem item{type, name, nullptr, valueType, numFunc};
-    InfoItem* node = &m_data.nodes.emplace(key, std::move(item)).first->second;
+    auto [it, inserted] = m_data.nodes.emplace(std::piecewise_construct, std::forward_as_tuple(key),
+                                               std::forward_as_tuple(type, name, nullptr, valueType, numFunc));
+    InfoItem* node      = &it->second;
     m_data.parents[Utils::Enum::toString(parent)].emplace_back(key);
 
     return node;
@@ -357,10 +359,11 @@ void InfoPopulator::run(InfoItem::Options options, const TrackList& tracks)
     p->addTrackNodes(options, tracks);
 
     if(mayRun()) {
-        emit populated(p->m_data);
+        emit populated(std::make_shared<InfoData>(std::move(p->m_data)));
         emit finished();
     }
 
+    p->m_data = {};
     p->reset();
 
     setState(Idle);

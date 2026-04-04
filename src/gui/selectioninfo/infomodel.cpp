@@ -34,12 +34,15 @@ InfoModel::InfoModel(LibraryManager* libraryManager, QObject* parent)
     : TreeModel{parent}
     , m_populator{libraryManager}
 {
+    qRegisterMetaType<InfoDataPtr>("Fooyin::InfoDataPtr");
+
     m_populator.moveToThread(&m_populatorThread);
 
     m_headerFont.setPointSize(m_headerFont.pointSize() + HeaderFontDelta);
     m_headerFont.setBold(true);
 
-    QObject::connect(&m_populator, &InfoPopulator::populated, this, &InfoModel::populate);
+    QObject::connect(&m_populator, &InfoPopulator::populated, this,
+                     [this](InfoDataPtr data) { populate(std::move(data)); });
 }
 
 Qt::ItemFlags InfoModel::flags(const QModelIndex& index) const
@@ -163,15 +166,21 @@ void InfoModel::resetModel(const TrackList& tracks)
     QMetaObject::invokeMethod(&m_populator, [this, tracks] { m_populator.run(m_options, tracks); });
 }
 
-void InfoModel::populate(const InfoData& data)
+void InfoModel::populate(InfoDataPtr data)
 {
     beginResetModel();
     resetRoot();
     m_nodes.clear();
 
-    m_nodes = data.nodes;
+    if(!data) {
+        endResetModel();
+        return;
+    }
 
-    for(const auto& [parentKey, children] : data.parents) {
+    auto parents = std::move(data->parents);
+    m_nodes      = std::move(data->nodes);
+
+    for(const auto& [parentKey, children] : parents) {
         InfoItem* parent{nullptr};
 
         if(parentKey == "Root"_L1) {

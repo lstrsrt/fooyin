@@ -65,7 +65,7 @@ public:
     void resetModel(const TrackList& tracks);
 
 private:
-    void populate(const InfoData& data);
+    void populate(InfoDataPtr data);
 
     QThread m_populatorThread;
     InfoPopulator m_populator;
