@@ -36,6 +36,11 @@ using namespace Qt::StringLiterals;
 using BindingsMap = std::map<QString, QVariant>;
 
 namespace {
+float normaliseTrackRating(float rating)
+{
+    return rating > 0 ? rating : -1.0F;
+}
+
 QString fetchTrackColumns()
 {
     static const QString columns = u"TrackID,"
@@ -812,7 +817,7 @@ bool TrackDatabase::insertOrUpdateStats(const Track& track) const
     uint64_t firstPlayed{0};
     uint64_t lastPlayed{0};
     int playCount{0};
-    float rating{0};
+    float rating{-1.0F};
 
     {
         static const QString statement = u"SELECT AddedDate, FirstPlayed, LastPlayed, PlayCount, Rating FROM "
@@ -831,7 +836,7 @@ bool TrackDatabase::insertOrUpdateStats(const Track& track) const
             firstPlayed = query.value(1).toULongLong();
             lastPlayed  = query.value(2).toULongLong();
             playCount   = query.value(3).toInt();
-            rating      = query.value(4).toFloat();
+            rating      = normaliseTrackRating(query.value(4).toFloat());
         }
     }
 
@@ -841,7 +846,7 @@ bool TrackDatabase::insertOrUpdateStats(const Track& track) const
     const uint64_t trackFirstPlayed = track.firstPlayed();
     const uint64_t trackLastPlayed  = track.lastPlayed();
     const int trackPlayCount        = track.playCount();
-    const float trackRating         = track.rating();
+    const float trackRating         = normaliseTrackRating(track.rating());
 
     qCDebug(TRK_DB) << "Evaluating track stats update:" << "hash=" << track.hash()
                     << "incomingPlayCount=" << trackPlayCount << "dbPlayCount=" << playCount
