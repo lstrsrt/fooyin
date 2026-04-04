@@ -366,6 +366,8 @@ endif()
 # ---- Fooyin testing ----
 
 if(BUILD_TESTING)
+    find_package(Qt6 REQUIRED COMPONENTS Test)
+    set_package_properties(Qt6Test PROPERTIES TYPE REQUIRED)
     find_package(GTest)
     add_subdirectory(tests)
 endif()
