@@ -20,6 +20,7 @@
 #pragma once
 
 #include "filterfwd.h"
+#include "filterrows.h"
 
 #include <core/track.h>
 #include <gui/fywidget.h>
@@ -32,7 +33,6 @@ class CoverProvider;
 class LibraryManager;
 class MusicLibrary;
 class SettingsManager;
-class SignalThrottler;
 class WidgetContext;
 enum class TrackAction;
 
@@ -46,6 +46,13 @@ class FilterWidget : public FyWidget
     Q_OBJECT
 
 public:
+    struct FilterViewState
+    {
+        FilterRowList rows;
+        std::vector<RowKey> selectedKeys;
+        QString searchText;
+    };
+
     explicit FilterWidget(ActionManager* actionManager, FilterColumnRegistry* columnRegistry,
                           LibraryManager* libraryManager, MusicLibrary* library, CoverProvider* coverProvider,
                           SettingsManager* settings, QWidget* parent = nullptr);
@@ -53,11 +60,11 @@ public:
 
     [[nodiscard]] Id group() const;
     [[nodiscard]] int index() const;
+    [[nodiscard]] const FilterColumnList& columns() const;
     [[nodiscard]] bool multipleColumns() const;
     [[nodiscard]] bool isActive() const;
-    [[nodiscard]] TrackList tracks() const;
-    [[nodiscard]] TrackList filteredTracks() const;
-    [[nodiscard]] QString searchFilter() const;
+    [[nodiscard]] std::vector<RowKey> selectedKeys() const;
+    [[nodiscard]] QString searchText() const;
     [[nodiscard]] WidgetContext* widgetContext() const;
     [[nodiscard]] TrackAction doubleClickAction() const;
     [[nodiscard]] TrackAction middleClickAction() const;
@@ -71,14 +78,7 @@ public:
 
     void setGroup(const Id& group);
     void setIndex(int index);
-    void refetchFilteredTracks();
-    void setFilteredTracks(const TrackList& tracks);
-    void clearFilteredTracks();
-    void showSearchResults(const TrackList& tracks);
-    void clearSearchResults();
-
-    void reset(const TrackList& tracks);
-    void softReset(const TrackList& tracks);
+    void setViewState(const FilterViewState& state);
 
     [[nodiscard]] QString name() const override;
     [[nodiscard]] QString layoutName() const override;
@@ -110,12 +110,7 @@ public:
     void clearSavedDefaults() const;
     void applyConfig(const ConfigData& config);
 
-    void tracksAdded(const TrackList& tracks);
-    void tracksChanged(const TrackList& tracks);
-    void tracksUpdated(const TrackList& tracks);
-    void tracksRemoved(const TrackList& tracks);
-
-    void addFilterHeaderMenu(QMenu* menu, const QPoint& pos);
+    void addFilterHeaderMenu(QMenu* menu, const QPoint& pos, bool includeWidgetActions = true);
 
 signals:
     void doubleClicked();
@@ -123,13 +118,12 @@ signals:
 
     void filterDeleted();
     void filterUpdated();
-    void finishedUpdating();
-    void selectionChanged();
+    void selectionKeysChanged(const std::vector<RowKey>& keys);
     void configChanged();
     void requestHeaderMenu(Fooyin::AutoHeaderView* header, const QPoint& pos);
     void requestContextMenu(const QPoint& pos);
     void requestEditConnections();
-    void requestSearch(const QString& search);
+    void searchTextChanged(const QString& search);
 
 protected:
     void contextMenuEvent(QContextMenuEvent* event) override;
@@ -138,7 +132,6 @@ protected:
 private:
     void setupConnections();
 
-    void refreshFilteredTracks();
     void handleSelectionChanged(const QItemSelection& selected, const QItemSelection& deselected);
     void updateViewMode(ExpandedTreeView::ViewMode mode);
     void updateCaptions(ExpandedTreeView::CaptionDisplay captions);
@@ -162,20 +155,16 @@ private:
     AutoHeaderView* m_header;
     FilterModel* m_model;
     FilterSortModel* m_sortProxy;
-    SignalThrottler* m_resetThrottler;
 
     Id m_group;
     int m_index;
     FilterColumnList m_columns;
     bool m_multipleColumns;
-    TrackList m_tracks;
-    TrackList m_filteredTracks;
 
     WidgetContext* m_widgetContext;
 
     QString m_searchStr;
-    bool m_searching;
-    bool m_updating;
+    bool m_applyingViewState;
 
     QByteArray m_headerState;
 

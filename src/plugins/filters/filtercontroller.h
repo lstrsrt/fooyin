@@ -43,6 +43,7 @@ struct FilterGroup
     Id id;
     std::vector<FilterWidget*> filters;
     TrackList filteredTracks;
+    bool hasActiveFilters{false};
     int updateCount{0};
 };
 
@@ -75,10 +76,6 @@ public:
     bool removeFilter(FilterWidget* widget);
 
 signals:
-    void tracksRemoved(const Fooyin::TrackList& tracks);
-    void tracksChanged(const Fooyin::TrackList& tracks);
-    void tracksUpdated(const Fooyin::TrackList& tracks);
-
 private:
     std::unique_ptr<FilterControllerPrivate> p;
 };

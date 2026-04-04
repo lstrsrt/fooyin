@@ -21,6 +21,7 @@
 
 #include "filterfwd.h"
 #include "filteritem.h"
+#include "filterrows.h"
 
 #include <core/track.h>
 #include <utils/stringcollator.h>
@@ -30,7 +31,6 @@
 
 namespace Fooyin {
 class CoverProvider;
-class LibraryManager;
 class MusicLibrary;
 class SettingsManager;
 
@@ -56,8 +56,8 @@ class FilterModel : public TreeModel<FilterItem>
     Q_OBJECT
 
 public:
-    explicit FilterModel(LibraryManager* libraryManager, MusicLibrary* library, CoverProvider* coverProvider,
-                         SettingsManager* settings, QObject* parent = nullptr);
+    explicit FilterModel(MusicLibrary* library, CoverProvider* coverProvider, SettingsManager* settings,
+                         QObject* parent = nullptr);
     ~FilterModel() override;
 
     [[nodiscard]] bool showSummary() const;
@@ -88,16 +88,9 @@ public:
 
     [[nodiscard]] QModelIndexList indexesForKeys(const std::vector<Md5Hash>& keys) const;
 
-    void addTracks(const TrackList& tracks);
-    void updateTracks(const TrackList& tracks);
-    void refreshTracks(const TrackList& tracks);
-    void removeTracks(const TrackList& tracks);
     bool removeColumn(int column);
 
-    void reset(const FilterColumnList& columns, const TrackList& tracks);
-
-signals:
-    void modelUpdated();
+    void setRows(const FilterColumnList& columns, const FilterRowList& rows);
 
 protected:
     friend class FilterModelPrivate;

@@ -19,6 +19,8 @@
 
 #pragma once
 
+#include "fygui_export.h"
+
 #include <core/track.h>
 #include <gui/theme/fytheme.h>
 #include <utils/settings/settingsentry.h>
@@ -119,7 +121,7 @@ struct ArtworkSaveOptions
 using ArtworkSaveMethods = QMap<Track::Cover, ArtworkSaveOptions>;
 
 namespace Settings::Gui::Internal {
-Q_NAMESPACE
+Q_NAMESPACE_EXPORT(FYGUI_EXPORT)
 
 constexpr auto PlaylistCurrentPreset = "PlaylistWidget/CurrentPreset";
 constexpr auto LastFilePath          = "Interface/LastFilePath";
@@ -169,7 +171,7 @@ enum GuiInternalSettings : uint32_t
 Q_ENUM_NS(GuiInternalSettings)
 } // namespace Settings::Gui::Internal
 
-class GuiSettings
+class FYGUI_EXPORT GuiSettings
 {
 public:
     explicit GuiSettings(SettingsManager* settingsManager);

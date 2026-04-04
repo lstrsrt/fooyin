@@ -24,18 +24,15 @@
 #include "filterconfigwidget.h"
 #include "filtercontroller.h"
 #include "filterdelegate.h"
-#include "filterfwd.h"
 #include "filteritem.h"
 #include "filtermodel.h"
 
-#include <core/track.h>
 #include <gui/guiconstants.h>
 #include <gui/trackselectioncontroller.h>
 #include <gui/widgets/autoheaderview.h>
 #include <gui/widgets/expandedtreeview.h>
 #include <utils/actions/widgetcontext.h>
 #include <utils/settings/settingsmanager.h>
-#include <utils/signalthrottler.h>
 #include <utils/tooltipfilter.h>
 #include <utils/utils.h>
 
@@ -45,9 +42,10 @@
 #include <QHeaderView>
 #include <QJsonObject>
 #include <QMenu>
+#include <QSignalBlocker>
 
 #include <algorithm>
-#include <unordered_set>
+#include <utility>
 
 using namespace Qt::StringLiterals;
 
@@ -63,46 +61,17 @@ constexpr auto FilterKeepAliveKey         = u"Filters/KeepAlive";
 constexpr auto FilterIconSizeKey          = u"Filters/IconSize";
 constexpr auto FilterIconHorizontalGapKey = u"Filters/IconHorizontalGap";
 constexpr auto FilterIconVerticalGapKey   = u"Filters/IconVerticalGap";
-
-Fooyin::TrackList fetchAllTracks(QAbstractItemView* view)
-{
-    std::unordered_set<int> ids;
-    Fooyin::TrackList tracks;
-
-    const QModelIndex parent;
-    const int rowCount = view->model()->rowCount(parent);
-    ids.reserve(rowCount);
-
-    for(int row{0}; row < rowCount; ++row) {
-        const QModelIndex index = view->model()->index(row, 0, parent);
-        if(!index.data(Fooyin::Filters::FilterItem::IsSummary).toBool()) {
-            const auto indexTracks = index.data(Fooyin::Filters::FilterItem::Tracks).value<Fooyin::TrackList>();
-
-            for(const Fooyin::Track& track : indexTracks) {
-                const int id = track.id();
-                if(!ids.contains(id)) {
-                    ids.emplace(id);
-                    tracks.push_back(track);
-                }
-            }
-        }
-    }
-
-    return tracks;
-}
 } // namespace
 
 namespace Fooyin::Filters {
 class FilterView : public ExpandedTreeView
 {
-    Q_OBJECT
-
 public:
     using ExpandedTreeView::ExpandedTreeView;
 };
 
 FilterWidget::FilterWidget(ActionManager* actionManager, FilterColumnRegistry* columnRegistry,
-                           LibraryManager* libraryManager, MusicLibrary* library, CoverProvider* coverProvider,
+                           LibraryManager* /*libraryManager*/, MusicLibrary* library, CoverProvider* coverProvider,
                            SettingsManager* settings, QWidget* parent)
     : FyWidget{parent}
     , m_actionManager{actionManager}
@@ -110,16 +79,14 @@ FilterWidget::FilterWidget(ActionManager* actionManager, FilterColumnRegistry* c
     , m_settings{settings}
     , m_view{new FilterView(this)}
     , m_header{new AutoHeaderView(Qt::Horizontal, this)}
-    , m_model{new FilterModel(libraryManager, library, coverProvider, m_settings, this)}
+    , m_model{new FilterModel(library, coverProvider, m_settings, this)}
     , m_sortProxy{new FilterSortModel(this)}
-    , m_resetThrottler{new SignalThrottler(this)}
     , m_index{-1}
     , m_multipleColumns{false}
     , m_widgetContext{new WidgetContext(
           this, Context{IdList{Constants::Context::TrackSelection, Id{"Fooyin.Context.FilterWidget."}.append(id())}},
           this)}
-    , m_searching{false}
-    , m_updating{false}
+    , m_applyingViewState{false}
     , m_showHeader{true}
     , m_showScrollbar{true}
     , m_alternatingColours{false}
@@ -167,7 +134,6 @@ FilterWidget::FilterWidget(ActionManager* actionManager, FilterColumnRegistry* c
 
 FilterWidget::~FilterWidget()
 {
-    QObject::disconnect(m_resetThrottler, nullptr, this, nullptr);
     emit filterDeleted();
 }
 
@@ -181,6 +147,11 @@ int FilterWidget::index() const
     return m_index;
 }
 
+const FilterColumnList& FilterWidget::columns() const
+{
+    return m_columns;
+}
+
 bool FilterWidget::multipleColumns() const
 {
     return m_multipleColumns;
@@ -188,20 +159,26 @@ bool FilterWidget::multipleColumns() const
 
 bool FilterWidget::isActive() const
 {
-    return !m_filteredTracks.empty();
+    return !selectedKeys().empty();
 }
 
-TrackList FilterWidget::tracks() const
+std::vector<RowKey> FilterWidget::selectedKeys() const
 {
-    return m_tracks;
+    const QModelIndexList selectedRows = m_view->selectionModel()->selectedRows();
+
+    std::vector<RowKey> keys;
+    keys.reserve(selectedRows.size());
+
+    for(const QModelIndex& index : selectedRows) {
+        if(index.isValid()) {
+            keys.emplace_back(index.data(FilterItem::Key).toByteArray());
+        }
+    }
+
+    return keys;
 }
 
-TrackList FilterWidget::filteredTracks() const
-{
-    return m_filteredTracks;
-}
-
-QString FilterWidget::searchFilter() const
+QString FilterWidget::searchText() const
 {
     return m_searchStr;
 }
@@ -261,81 +238,44 @@ void FilterWidget::setIndex(int index)
     m_index = index;
 }
 
-void FilterWidget::refetchFilteredTracks()
+void FilterWidget::setViewState(const FilterViewState& state)
 {
-    refreshFilteredTracks();
-}
+    m_applyingViewState = true;
+    m_searchStr         = state.searchText;
 
-void FilterWidget::setFilteredTracks(const TrackList& tracks)
-{
-    m_filteredTracks = tracks;
-}
+    m_model->setRows(m_columns, state.rows);
 
-void FilterWidget::clearFilteredTracks()
-{
-    m_filteredTracks.clear();
-}
+    auto* selectionModel = m_view->selectionModel();
+    const QSignalBlocker blocker{selectionModel};
+    selectionModel->clearSelection();
 
-void FilterWidget::showSearchResults(const TrackList& tracks)
-{
-    m_searching = true;
+    const QModelIndexList selectedIndexes = m_model->indexesForKeys(state.selectedKeys);
+    if(!selectedIndexes.empty()) {
+        QItemSelection indexesToSelect;
+        indexesToSelect.reserve(selectedIndexes.size());
 
-    QObject::connect(
-        m_model, &FilterModel::modelUpdated, this, [this]() { m_searching = false; }, Qt::SingleShotConnection);
+        const int columnCount = static_cast<int>(m_columns.size());
 
-    m_model->reset(m_columns, tracks);
-}
-
-void FilterWidget::clearSearchResults()
-{
-    m_searching = true;
-
-    QObject::connect(
-        m_model, &FilterModel::modelUpdated, this, [this]() { m_searching = false; }, Qt::SingleShotConnection);
-
-    m_model->reset(m_columns, m_tracks);
-}
-
-void FilterWidget::reset(const TrackList& tracks)
-{
-    m_tracks = tracks;
-    m_resetThrottler->throttle();
-}
-
-void FilterWidget::softReset(const TrackList& tracks)
-{
-    m_updating = true;
-
-    std::vector<Md5Hash> selected;
-    const QModelIndexList selectedRows = m_view->selectionModel()->selectedRows();
-    for(const QModelIndex& index : selectedRows) {
-        selected.emplace_back(index.data(FilterItem::Key).toByteArray());
-    }
-
-    reset(tracks);
-
-    QObject::connect(
-        m_model, &FilterModel::modelUpdated, this,
-        [this, selected]() {
-            const QModelIndexList selectedIndexes = m_model->indexesForKeys(selected);
-
-            QItemSelection indexesToSelect;
-            indexesToSelect.reserve(selectedIndexes.size());
-
-            const int columnCount = static_cast<int>(m_columns.size());
-
-            for(const QModelIndex& index : selectedIndexes) {
-                if(index.isValid()) {
-                    const QModelIndex proxyIndex = m_sortProxy->mapFromSource(index);
-                    const QModelIndex last       = proxyIndex.siblingAtColumn(columnCount - 1);
-                    indexesToSelect.append({proxyIndex, last.isValid() ? last : proxyIndex});
-                }
+        for(const QModelIndex& index : selectedIndexes) {
+            if(!index.isValid()) {
+                continue;
             }
 
-            m_view->selectionModel()->select(indexesToSelect, QItemSelectionModel::ClearAndSelect);
-            m_updating = false;
-        },
-        Qt::SingleShotConnection);
+            const QModelIndex proxyIndex = m_sortProxy->mapFromSource(index);
+            if(!proxyIndex.isValid()) {
+                continue;
+            }
+
+            const QModelIndex last = proxyIndex.siblingAtColumn(std::max(columnCount - 1, 0));
+            indexesToSelect.append({proxyIndex, last.isValid() ? last : proxyIndex});
+        }
+
+        if(!indexesToSelect.empty()) {
+            selectionModel->select(indexesToSelect, QItemSelectionModel::ClearAndSelect);
+        }
+    }
+
+    m_applyingViewState = false;
 }
 
 QString FilterWidget::name() const
@@ -641,72 +581,14 @@ void FilterWidget::finalise()
 
 void FilterWidget::searchEvent(const QString& search)
 {
-    m_filteredTracks.clear();
-    emit requestSearch(search);
-    m_searchStr = search;
-}
-
-void FilterWidget::tracksAdded(const TrackList& tracks)
-{
-    m_model->addTracks(tracks);
-}
-
-void FilterWidget::tracksChanged(const TrackList& tracks)
-{
-    if(tracks.empty()) {
-        emit finishedUpdating();
+    if(std::exchange(m_searchStr, search) == search) {
         return;
     }
 
-    m_updating = true;
-
-    const QModelIndexList selectedRows = m_view->selectionModel()->selectedRows();
-
-    std::vector<Md5Hash> selected;
-    for(const QModelIndex& index : selectedRows) {
-        if(index.isValid()) {
-            selected.emplace_back(index.data(FilterItem::Key).toByteArray());
-        }
-    }
-
-    m_model->updateTracks(tracks);
-
-    QObject::connect(
-        m_model, &FilterModel::modelUpdated, this,
-        [this, selected]() {
-            const QModelIndexList selectedIndexes = m_model->indexesForKeys(selected);
-
-            QItemSelection indexesToSelect;
-            indexesToSelect.reserve(selectedIndexes.size());
-
-            const int columnCount = static_cast<int>(m_columns.size());
-
-            for(const QModelIndex& index : selectedIndexes) {
-                if(index.isValid()) {
-                    const QModelIndex proxyIndex = m_sortProxy->mapFromSource(index);
-                    const QModelIndex last       = proxyIndex.siblingAtColumn(columnCount - 1);
-                    indexesToSelect.append({proxyIndex, last.isValid() ? last : proxyIndex});
-                }
-            }
-
-            m_view->selectionModel()->select(indexesToSelect, QItemSelectionModel::ClearAndSelect);
-            m_updating = false;
-            emit finishedUpdating();
-        },
-        static_cast<Qt::ConnectionType>(Qt::QueuedConnection | Qt::SingleShotConnection));
+    emit searchTextChanged(search);
 }
 
-void FilterWidget::tracksUpdated(const TrackList& tracks)
-{
-    m_model->refreshTracks(tracks);
-}
-
-void FilterWidget::tracksRemoved(const TrackList& tracks)
-{
-    m_model->removeTracks(tracks);
-}
-
-void FilterWidget::addFilterHeaderMenu(QMenu* menu, const QPoint& pos)
+void FilterWidget::addFilterHeaderMenu(QMenu* menu, const QPoint& pos, bool includeWidgetActions)
 {
     auto* columnsMenu = new QMenu(FilterWidget::tr("Columns"), menu);
     auto* columnGroup = new QActionGroup{menu};
@@ -716,8 +598,9 @@ void FilterWidget::addFilterHeaderMenu(QMenu* menu, const QPoint& pos)
         auto* columnAction = new QAction(column.name, menu);
         columnAction->setData(column.id);
         columnAction->setCheckable(true);
-        columnAction->setChecked(hasColumn(column.id));
-        columnAction->setEnabled(!hasColumn(column.id) || m_columns.size() > 1);
+        columnAction->setChecked(
+            std::ranges::any_of(m_columns, [column](const FilterColumn& current) { return current.id == column.id; }));
+        columnAction->setEnabled(columnAction->isChecked() ? m_columns.size() > 1 : true);
         columnsMenu->addAction(columnAction);
         columnGroup->addAction(columnAction);
     }
@@ -726,7 +609,7 @@ void FilterWidget::addFilterHeaderMenu(QMenu* menu, const QPoint& pos)
     QObject::connect(columnGroup, &QActionGroup::triggered, this, [this](QAction* action) {
         const int columnId = action->data().toInt();
         if(action->isChecked()) {
-            if(const auto column = m_columnRegistry->itemById(action->data().toInt())) {
+            if(const auto column = m_columnRegistry->itemById(columnId)) {
                 if(m_multipleColumns) {
                     m_columns.push_back(column.value());
                 }
@@ -736,8 +619,9 @@ void FilterWidget::addFilterHeaderMenu(QMenu* menu, const QPoint& pos)
             }
         }
         else {
-            auto colIt
-                = std::ranges::find_if(m_columns, [columnId](const FilterColumn& col) { return col.id == columnId; });
+            auto colIt = std::ranges::find_if(m_columns,
+                                              [columnId](const FilterColumn& column) { return column.id == columnId; });
+
             if(colIt != m_columns.end()) {
                 const int removedIndex = static_cast<int>(std::distance(m_columns.begin(), colIt));
                 if(m_model->removeColumn(removedIndex)) {
@@ -746,7 +630,6 @@ void FilterWidget::addFilterHeaderMenu(QMenu* menu, const QPoint& pos)
             }
         }
 
-        m_tracks.clear();
         emit filterUpdated();
     });
 
@@ -774,14 +657,16 @@ void FilterWidget::addFilterHeaderMenu(QMenu* menu, const QPoint& pos)
 
     addDisplayMenu(menu);
 
-    menu->addSeparator();
-    auto* manageConnections = new QAction(FilterWidget::tr("Manage groups"), menu);
-    QObject::connect(manageConnections, &QAction::triggered, this, &FilterWidget::requestEditConnections);
-    menu->addAction(manageConnections);
+    if(includeWidgetActions) {
+        menu->addSeparator();
+        auto* manageConnections = new QAction(FilterWidget::tr("Manage groups"), menu);
+        QObject::connect(manageConnections, &QAction::triggered, this, &FilterWidget::requestEditConnections);
+        menu->addAction(manageConnections);
 
-    auto* configure = new QAction(FilterWidget::tr("Configure..."), menu);
-    QObject::connect(configure, &QAction::triggered, this, &FilterWidget::openConfigDialog);
-    menu->addAction(configure);
+        auto* configure = new QAction(FilterWidget::tr("Configure..."), menu);
+        QObject::connect(configure, &QAction::triggered, this, &FilterWidget::openConfigDialog);
+        menu->addAction(configure);
+    }
 }
 
 void FilterWidget::contextMenuEvent(QContextMenuEvent* event)
@@ -807,9 +692,6 @@ void FilterWidget::setupConnections()
         }
     };
 
-    QObject::connect(m_resetThrottler, &SignalThrottler::triggered, this,
-                     [this]() { m_model->reset(m_columns, m_tracks); });
-
     QObject::connect(m_columnRegistry, &FilterColumnRegistry::columnChanged, this, &FilterWidget::columnChanged);
     QObject::connect(m_columnRegistry, &FilterColumnRegistry::itemRemoved, this, &FilterWidget::columnRemoved);
 
@@ -817,7 +699,7 @@ void FilterWidget::setupConnections()
     QObject::connect(m_header, &AutoHeaderView::sectionVisiblityChanged, this, syncIconColumnOrder);
     QObject::connect(m_header, &QHeaderView::sectionMoved, this, syncIconColumnOrder);
     QObject::connect(m_header, &QHeaderView::sortIndicatorChanged, m_sortProxy, &QSortFilterProxyModel::sort);
-    QObject::connect(m_header, &ExpandedTreeView::customContextMenuRequested, this, &FilterWidget::filterHeaderMenu);
+    QObject::connect(m_header, &QWidget::customContextMenuRequested, this, &FilterWidget::filterHeaderMenu);
     QObject::connect(m_view->selectionModel(), &QItemSelectionModel::selectionChanged, this,
                      &FilterWidget::handleSelectionChanged);
     QObject::connect(m_view, &ExpandedTreeView::viewModeChanged, this, [this](ExpandedTreeView::ViewMode mode) {
@@ -833,33 +715,9 @@ void FilterWidget::setupConnections()
     QObject::connect(m_view, &ExpandedTreeView::middleClicked, this, &FilterWidget::middleClicked);
 }
 
-void FilterWidget::refreshFilteredTracks()
-{
-    m_filteredTracks.clear();
-
-    const QModelIndexList selected = m_view->selectionModel()->selectedRows();
-
-    if(selected.empty()) {
-        return;
-    }
-
-    TrackList selectedTracks;
-
-    for(const auto& selectedIndex : selected) {
-        if(selectedIndex.data(FilterItem::IsSummary).toBool()) {
-            selectedTracks = fetchAllTracks(m_view);
-            break;
-        }
-        const auto newTracks = selectedIndex.data(FilterItem::Tracks).value<TrackList>();
-        std::ranges::copy(newTracks, std::back_inserter(selectedTracks));
-    }
-
-    m_filteredTracks = selectedTracks;
-}
-
 void FilterWidget::handleSelectionChanged(const QItemSelection& selected, const QItemSelection& deselected)
 {
-    if(m_searching || m_updating) {
+    if(m_applyingViewState) {
         return;
     }
 
@@ -867,9 +725,7 @@ void FilterWidget::handleSelectionChanged(const QItemSelection& selected, const 
         return;
     }
 
-    refreshFilteredTracks();
-
-    emit selectionChanged();
+    emit selectionKeysChanged(selectedKeys());
 }
 
 void FilterWidget::updateViewMode(ExpandedTreeView::ViewMode mode)
@@ -902,19 +758,27 @@ void FilterWidget::addDisplayMenu(QMenu* menu)
 {
     auto* displayMenu  = new QMenu(FilterWidget::tr("Display"), menu);
     auto* displayGroup = new QActionGroup(displayMenu);
+    auto* coverGroup   = new QActionGroup(displayMenu);
 
     auto* displayList      = new QAction(FilterWidget::tr("Columns"), displayGroup);
     auto* displayArtBottom = new QAction(FilterWidget::tr("Artwork (bottom labels)"), displayGroup);
     auto* displayArtLeft   = new QAction(FilterWidget::tr("Artwork (right labels)"), displayGroup);
     auto* displayArtNone   = new QAction(FilterWidget::tr("Artwork (no labels)"), displayGroup);
+    auto* coverFront       = new QAction(FilterWidget::tr("Front cover"), coverGroup);
+    auto* coverBack        = new QAction(FilterWidget::tr("Back cover"), coverGroup);
+    auto* coverArtist      = new QAction(FilterWidget::tr("Artist"), coverGroup);
 
     displayList->setCheckable(true);
     displayArtBottom->setCheckable(true);
     displayArtLeft->setCheckable(true);
     displayArtNone->setCheckable(true);
+    coverFront->setCheckable(true);
+    coverBack->setCheckable(true);
+    coverArtist->setCheckable(true);
 
     const auto currentMode     = m_view->viewMode();
     const auto currentCaptions = m_view->captionDisplay();
+    const auto currentType     = m_model->coverType();
 
     using ViewMode       = ExpandedTreeView::ViewMode;
     using CaptionDisplay = ExpandedTreeView::CaptionDisplay;
@@ -930,6 +794,16 @@ void FilterWidget::addDisplayMenu(QMenu* menu)
     }
     else {
         displayArtNone->setChecked(true);
+    }
+
+    if(currentType == Track::Cover::Front) {
+        coverFront->setChecked(true);
+    }
+    else if(currentType == Track::Cover::Back) {
+        coverBack->setChecked(true);
+    }
+    else {
+        coverArtist->setChecked(true);
     }
 
     QObject::connect(displayList, &QAction::triggered, this, [this]() {
@@ -948,113 +822,95 @@ void FilterWidget::addDisplayMenu(QMenu* menu)
         updateViewMode(ViewMode::Icon);
         updateCaptions(CaptionDisplay::None);
     });
-
-    auto* displaySummary = new QAction(FilterWidget::tr("Summary item"), displayMenu);
-    displaySummary->setCheckable(true);
-    displaySummary->setChecked(m_model->showSummary());
-    QObject::connect(displaySummary, &QAction::triggered, m_model, &FilterModel::setShowSummary);
-
-    auto* coverGroup = new QActionGroup(displayMenu);
-
-    auto* coverFront  = new QAction(FilterWidget::tr("Front cover"), coverGroup);
-    auto* coverBack   = new QAction(FilterWidget::tr("Back cover"), coverGroup);
-    auto* coverArtist = new QAction(FilterWidget::tr("Artist"), coverGroup);
-
-    coverFront->setCheckable(true);
-    coverBack->setCheckable(true);
-    coverArtist->setCheckable(true);
-
-    const auto currentType = m_model->coverType();
-    if(currentType == Track::Cover::Front) {
-        coverFront->setChecked(true);
-    }
-    else if(currentType == Track::Cover::Back) {
-        coverBack->setChecked(true);
-    }
-    else {
-        coverArtist->setChecked(true);
-    }
-
     QObject::connect(coverFront, &QAction::triggered, this, [this]() { m_model->setCoverType(Track::Cover::Front); });
     QObject::connect(coverBack, &QAction::triggered, this, [this]() { m_model->setCoverType(Track::Cover::Back); });
     QObject::connect(coverArtist, &QAction::triggered, this, [this]() { m_model->setCoverType(Track::Cover::Artist); });
 
-    auto* showHeaders = new QAction(tr("Show header"), menu);
-    showHeaders->setCheckable(true);
-    showHeaders->setChecked(!m_view->isHeaderHidden());
-    QAction::connect(showHeaders, &QAction::triggered, this, [this](bool checked) {
+    auto* displaySummary = new QAction(FilterWidget::tr("Summary item"), displayMenu);
+    displaySummary->setCheckable(true);
+    displaySummary->setChecked(m_model->showSummary());
+    QObject::connect(displaySummary, &QAction::triggered, this,
+                     [this](bool checked) { m_model->setShowSummary(checked); });
+
+    auto* showHeader = new QAction(FilterWidget::tr("Show header"), displayMenu);
+    showHeader->setCheckable(true);
+    showHeader->setChecked(m_showHeader);
+    QObject::connect(showHeader, &QAction::triggered, this, [this](bool checked) {
         m_showHeader = checked;
         updateAppearance();
     });
 
-    auto* showScrollBar = new QAction(tr("Show scrollbar"), menu);
-    showScrollBar->setCheckable(true);
-    showScrollBar->setChecked(m_view->verticalScrollBarPolicy() != Qt::ScrollBarAlwaysOff);
-    QAction::connect(showScrollBar, &QAction::triggered, this, [this](bool checked) {
+    auto* showScrollbar = new QAction(FilterWidget::tr("Show scrollbar"), displayMenu);
+    showScrollbar->setCheckable(true);
+    showScrollbar->setChecked(m_showScrollbar);
+    QObject::connect(showScrollbar, &QAction::triggered, this, [this](bool checked) {
         m_showScrollbar = checked;
         updateAppearance();
     });
 
-    auto* altColours = new QAction(tr("Alternating row colours"), menu);
-    altColours->setCheckable(true);
-    altColours->setChecked(m_view->alternatingRowColors());
-    QAction::connect(altColours, &QAction::triggered, this, [this](bool checked) {
+    auto* alternatingRows = new QAction(FilterWidget::tr("Alternating row colours"), displayMenu);
+    alternatingRows->setCheckable(true);
+    alternatingRows->setChecked(m_alternatingColours);
+    QObject::connect(alternatingRows, &QAction::triggered, this, [this](bool checked) {
         m_alternatingColours = checked;
         updateAppearance();
     });
 
-    displayMenu->addAction(displayList);
-    displayMenu->addAction(displayArtBottom);
-    displayMenu->addAction(displayArtLeft);
-    displayMenu->addAction(displayArtNone);
+    displayMenu->addActions(displayGroup->actions());
     displayMenu->addSeparator();
     displayMenu->addAction(displaySummary);
-    displayMenu->addAction(showHeaders);
-    displayMenu->addAction(showScrollBar);
-    displayMenu->addAction(altColours);
+    displayMenu->addAction(showHeader);
+    displayMenu->addAction(showScrollbar);
+    displayMenu->addAction(alternatingRows);
     displayMenu->addSeparator();
-    displayMenu->addAction(coverFront);
-    displayMenu->addAction(coverBack);
-    displayMenu->addAction(coverArtist);
+    displayMenu->addActions(coverGroup->actions());
 
     menu->addMenu(displayMenu);
 }
 
 void FilterWidget::filterHeaderMenu(const QPoint& pos)
 {
-    auto* menu = new QMenu(this);
-    menu->setAttribute(Qt::WA_DeleteOnClose);
-
-    addFilterHeaderMenu(menu, pos);
-
-    menu->popup(m_header->mapToGlobal(pos));
+    emit requestHeaderMenu(m_header, pos);
 }
 
-[[nodiscard]] bool FilterWidget::hasColumn(int id) const
+bool FilterWidget::hasColumn(int id) const
 {
     return std::ranges::any_of(m_columns, [id](const FilterColumn& column) { return column.id == id; });
 }
 
 void FilterWidget::columnChanged(const FilterColumn& changedColumn)
 {
-    auto existingIt = std::find_if(m_columns.begin(), m_columns.end(), [&changedColumn](const auto& column) {
-        return (column.isDefault && changedColumn.isDefault && column.name == changedColumn.name)
-            || column.id == changedColumn.id;
-    });
+    bool changed{false};
 
-    if(existingIt != m_columns.end()) {
-        *existingIt = changedColumn;
+    for(FilterColumn& column : m_columns) {
+        if(column.id == changedColumn.id) {
+            column  = changedColumn;
+            changed = true;
+        }
+    }
+
+    if(changed) {
         emit filterUpdated();
     }
 }
 
 void FilterWidget::columnRemoved(int id)
 {
-    FilterColumnList columns;
-    std::ranges::copy_if(m_columns, std::back_inserter(columns), [id](const auto& column) { return column.id != id; });
-    if(std::exchange(m_columns, columns) != columns) {
-        emit filterUpdated();
+    auto columnIt = std::ranges::find_if(m_columns, [id](const FilterColumn& column) { return column.id == id; });
+    if(columnIt == m_columns.end()) {
+        return;
     }
+
+    if(m_columns.size() == 1) {
+        if(const auto replacement = m_columnRegistry->itemByIndex(0)) {
+            *columnIt = replacement.value();
+        }
+    }
+    else {
+        m_columns.erase(columnIt);
+    }
+
+    emit filterUpdated();
 }
 } // namespace Fooyin::Filters
 

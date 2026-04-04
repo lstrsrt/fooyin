@@ -79,6 +79,7 @@ public:
 
     void setColumns(const QStringList& columns);
     void setRichColumns(const std::vector<RichText>& columns);
+    void setTrackIds(const TrackIds& trackIds);
     void removeColumn(int column);
 
     [[nodiscard]] bool isSummary() const;

@@ -210,6 +210,11 @@ void FilterItem::setRichColumns(const std::vector<RichText>& columns)
     invalidateIconCaches();
 }
 
+void FilterItem::setTrackIds(const TrackIds& trackIds)
+{
+    m_trackIds = trackIds;
+}
+
 void FilterItem::removeColumn(int column)
 {
     m_columns.remove(column);
