@@ -2935,6 +2935,8 @@ ExpandedTreeView::ExpandedTreeView(QWidget* parent)
 {
     setObjectName(u"ExpandedTreeView"_s);
 
+    viewport()->setAttribute(Qt::WA_Hover, true);
+
     p->setHeader(p->m_header);
     setViewMode(ViewMode::Tree);
 
