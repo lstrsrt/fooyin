@@ -66,6 +66,7 @@ SearchWidget::SearchWidget(SearchController* controller, PlaylistController* pla
     , m_unconnected{true}
     , m_exclusivePlaylist{false}
     , m_autoSearch{!isQuickSearch()}
+    , m_showAll{false}
 {
     setObjectName(SearchWidget::name());
 
@@ -134,6 +135,7 @@ void SearchWidget::layoutEditingMenu(QMenu* menu)
 void SearchWidget::saveLayoutData(QJsonObject& layout)
 {
     layout["AutoSearch"_L1] = m_autoSearch;
+    layout["ShowAll"_L1]    = m_showAll;
     layout["SearchMode"_L1] = static_cast<quint8>(m_mode);
 
     const QString placeholderText = m_searchBox->placeholderText();
@@ -157,6 +159,10 @@ void SearchWidget::loadLayoutData(const QJsonObject& layout)
 {
     if(layout.contains("AutoSearch"_L1)) {
         m_autoSearch = layout.value("AutoSearch"_L1).toBool();
+    }
+
+    if(layout.contains("ShowAll"_L1)) {
+        m_showAll = layout.value("ShowAll"_L1).toBool();
     }
 
     if(layout.contains("SearchMode"_L1)) {
@@ -457,7 +463,10 @@ void SearchWidget::searchChanged(bool enterKey)
 
     const auto mode = m_forceMode ? std::exchange(m_forceMode, {}).value() : m_mode; // NOLINT
 
-    Utils::asyncExec([search = m_searchBox->text(), tracks = getTracksToSearch(mode)]() {
+    Utils::asyncExec([this, search = m_searchBox->text(), tracks = getTracksToSearch(mode)]() {
+        if(m_showAll && search.isEmpty()) {
+            return tracks;
+        }
         ScriptParser parser;
         return parser.filter(search, tracks);
     }).then(this, [this, mode, enterKey](const PlaylistTrackList& filteredTracks) {
@@ -502,6 +511,15 @@ void SearchWidget::showOptionsMenu()
     autoSearch->setChecked(m_autoSearch);
     QObject::connect(autoSearch, &QAction::triggered, this, [this](const bool checked) { m_autoSearch = checked; });
     menu->addAction(autoSearch);
+
+    auto* showAll = new QAction(tr("Show all when search is empty"), this);
+    showAll->setCheckable(true);
+    showAll->setChecked(m_showAll);
+    QObject::connect(showAll, &QAction::triggered, this, [this](const bool checked) {
+        m_showAll = checked;
+        searchChanged();
+    });
+    menu->addAction(showAll);
 
     if(m_unconnected) {
         auto* searchInMenu = menu->addMenu(tr("Search in"));

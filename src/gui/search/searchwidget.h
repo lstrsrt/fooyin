@@ -108,6 +108,7 @@ private:
     bool m_unconnected;
     bool m_exclusivePlaylist;
     bool m_autoSearch;
+    bool m_showAll;
     SearchColours m_colours;
 };
 } // namespace Fooyin
