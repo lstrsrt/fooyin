@@ -32,6 +32,7 @@ public:
     explicit ToolButton(QWidget* parent = nullptr);
 
     void setStretchEnabled(bool enabled);
+    void setMenuIndicatorHidden(bool hidden);
 
     void setIconPadding(int padding);
     void setMinimumIconSize(int size);
@@ -49,5 +50,6 @@ private:
     int m_minimumSize;
     int m_maximumSize;
     bool m_stretchEnabled;
+    bool m_menuIndicatorHidden;
 };
 } // namespace Fooyin

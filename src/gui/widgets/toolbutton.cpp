@@ -29,6 +29,7 @@ ToolButton::ToolButton(QWidget* parent)
     , m_minimumSize{10}
     , m_maximumSize{100}
     , m_stretchEnabled{false}
+    , m_menuIndicatorHidden{true}
 { }
 
 void ToolButton::setStretchEnabled(bool enabled)
@@ -36,6 +37,12 @@ void ToolButton::setStretchEnabled(bool enabled)
     m_stretchEnabled = enabled;
     setSizePolicy(enabled ? QSizePolicy::Preferred : QSizePolicy::Fixed,
                   enabled ? QSizePolicy::Preferred : QSizePolicy::Fixed);
+    update();
+}
+
+void ToolButton::setMenuIndicatorHidden(bool hidden)
+{
+    m_menuIndicatorHidden = hidden;
     update();
 }
 
@@ -66,8 +73,9 @@ void ToolButton::paintEvent(QPaintEvent* /*event*/)
     QStyleOptionToolButton opt;
     initStyleOption(&opt);
 
-    // Remove menu indicator
-    opt.features &= ~QStyleOptionToolButton::HasMenu;
+    if(m_menuIndicatorHidden) {
+        opt.features &= ~QStyleOptionToolButton::HasMenu;
+    }
 
     if(m_stretchEnabled) {
         const auto rect    = style()->subControlRect(QStyle::CC_ToolButton, &opt, QStyle::SC_ToolButton, this);
