@@ -339,9 +339,11 @@ void ApplicationPrivate::exportAllPlaylists()
         playlistPath.mkpath(path);
 
         QFile playlistFile{playlistFilepath};
-        if(forceRemove || playlist->trackCount() == 0) {
-            if(playlistFile.exists() && !playlistFile.remove()) {
-                qCInfo(APP) << "Could not remove empty playlist:" << playlistFile.errorString();
+        if(forceRemove) {
+            const bool emptyPlaylist = playlist->trackCount() == 0;
+            if(playlistFile.exists() && !playlistFile.moveToTrash()) {
+                qCInfo(APP) << "Could not remove" << (emptyPlaylist ? "empty" : "")
+                            << "playlist:" << playlistFile.errorString();
             }
             return;
         }
@@ -365,8 +367,11 @@ void ApplicationPrivate::exportAllPlaylists()
             saveOrDeletePlaylist(playlist);
         }
     }
-    for(const auto& playlist : removedPlaylists) {
-        saveOrDeletePlaylist(playlist, true);
+
+    if(m_settings->fileValue(Settings::Core::Internal::AutoExportPlaylistsRemove, true).toBool()) {
+        for(const auto& playlist : removedPlaylists) {
+            saveOrDeletePlaylist(playlist, true);
+        }
     }
 }
 

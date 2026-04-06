@@ -80,11 +80,13 @@ private:
 
     QCheckBox* m_skipMissing;
 
-    QGroupBox* m_autoExporting;
     QComboBox* m_exportPathType;
     QCheckBox* m_exportMetadata;
+
+    QGroupBox* m_autoExporting;
     QComboBox* m_autoExportType;
     QLineEdit* m_autoExportPath;
+    QCheckBox* m_autoExportRemove;
 };
 
 PlaylistGeneralPageWidget::PlaylistGeneralPageWidget(const QStringList& playlistExtensions, SettingsManager* settings)
@@ -103,11 +105,12 @@ PlaylistGeneralPageWidget::PlaylistGeneralPageWidget(const QStringList& playlist
     , m_imagePadding{new QSpinBox(this)}
     , m_imagePaddingTop{new QSpinBox(this)}
     , m_skipMissing{new QCheckBox(tr("Skip missing tracks"), this)}
-    , m_autoExporting{new QGroupBox(tr("Auto-export"), this)}
     , m_exportPathType{new QComboBox(this)}
     , m_exportMetadata{new QCheckBox(tr("Write metadata"), this)}
+    , m_autoExporting{new QGroupBox(tr("Auto-export"), this)}
     , m_autoExportType{new QComboBox(this)}
     , m_autoExportPath{new QLineEdit(this)}
+    , m_autoExportRemove{new QCheckBox(tr("Move deleted or empty playlists to trash"), this)}
 {
     auto* behaviour       = new QGroupBox(tr("Behaviour"), this);
     auto* behaviourLayout = new QGridLayout(behaviour);
@@ -182,6 +185,7 @@ PlaylistGeneralPageWidget::PlaylistGeneralPageWidget(const QStringList& playlist
     autoExportLayout->addWidget(m_autoExportType, row++, 1);
     autoExportLayout->addWidget(autoPathLabel, row, 0);
     autoExportLayout->addWidget(m_autoExportPath, row++, 1, 1, 2);
+    autoExportLayout->addWidget(m_autoExportRemove, row++, 0, 1, 2);
     autoExportLayout->setColumnStretch(2, 1);
 
     auto* padding       = new QGroupBox(tr("Image Padding"), this);
@@ -227,9 +231,9 @@ PlaylistGeneralPageWidget::PlaylistGeneralPageWidget(const QStringList& playlist
     mainLayout->addWidget(tabsGroup, row++, 0);
     mainLayout->setRowStretch(mainLayout->rowCount(), 1);
 
-    m_exportPathType->addItem(u"Auto"_s);
-    m_exportPathType->addItem(u"Absolute"_s);
-    m_exportPathType->addItem(u"Relative"_s);
+    m_exportPathType->addItem(tr("Auto"));
+    m_exportPathType->addItem(tr("Absolute"));
+    m_exportPathType->addItem(tr("Relative"));
 }
 
 void PlaylistGeneralPageWidget::load()
@@ -270,6 +274,8 @@ void PlaylistGeneralPageWidget::load()
         m_settings->fileValue(Settings::Core::Internal::AutoExportPlaylistsType, u"m3u8"_s).toString());
     m_autoExportPath->setText(
         m_settings->fileValue(Settings::Core::Internal::AutoExportPlaylistsPath, Core::playlistsPath()).toString());
+    m_autoExportRemove->setChecked(
+        m_settings->fileValue(Settings::Core::Internal::AutoExportPlaylistsRemove, true).toBool());
 
     m_scrollBars->setChecked(m_settings->value<Settings::Gui::Internal::PlaylistScrollBar>());
     m_header->setChecked(m_settings->value<Settings::Gui::Internal::PlaylistHeader>());
@@ -299,6 +305,7 @@ void PlaylistGeneralPageWidget::apply()
     m_settings->fileSet(Settings::Core::Internal::AutoExportPlaylists, m_autoExporting->isChecked());
     m_settings->fileSet(Settings::Core::Internal::AutoExportPlaylistsType, m_autoExportType->currentText());
     m_settings->fileSet(Settings::Core::Internal::AutoExportPlaylistsPath, m_autoExportPath->text());
+    m_settings->fileSet(Settings::Core::Internal::AutoExportPlaylistsRemove, m_autoExportRemove->isChecked());
 
     m_settings->set<Settings::Gui::Internal::PlaylistScrollBar>(m_scrollBars->isChecked());
     m_settings->set<Settings::Gui::Internal::PlaylistHeader>(m_header->isChecked());
