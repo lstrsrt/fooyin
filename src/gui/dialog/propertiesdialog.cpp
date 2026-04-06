@@ -205,18 +205,11 @@ bool PropertiesTabWidget::canApply() const
     return true;
 }
 
-bool PropertiesTabWidget::hasTools() const
-{
-    return false;
-}
-
 void PropertiesTabWidget::load() { }
 
 void PropertiesTabWidget::apply() { }
 
 void PropertiesTabWidget::finish() { }
-
-void PropertiesTabWidget::addTools(QMenu* /*menu*/) { }
 
 void PropertiesTabWidget::setSession(PropertiesDialogSession* /*session*/) { }
 
@@ -404,8 +397,6 @@ private:
     ToolButton* m_scopeButton;
     ToolButton* m_previousTrackButton;
     ToolButton* m_nextTrackButton;
-    QToolButton* m_toolsButton;
-    QMenu* m_toolsMenu;
     QHBoxLayout* m_contentLayout{nullptr};
     QGridLayout* m_bottomLayout{nullptr};
     QWidget* m_scopeHost;
@@ -441,8 +432,6 @@ PropertiesDialogWidget::PropertiesDialogWidget(ActionManager* actionManager, con
     , m_scopeButton{new ToolButton(this)}
     , m_previousTrackButton{new ToolButton(this)}
     , m_nextTrackButton{new ToolButton(this)}
-    , m_toolsButton{new QToolButton(this)}
-    , m_toolsMenu{new QMenu(tr("Tools"), this)}
     , m_contentLayout(new QHBoxLayout())
     , m_bottomLayout(new QGridLayout())
     , m_scopeHost{new QWidget(this)}
@@ -502,16 +491,11 @@ PropertiesDialogWidget::PropertiesDialogWidget(ActionManager* actionManager, con
     scopeHostLayout->addWidget(m_scopePanel);
     m_scopeHost->setFixedWidth(0);
 
-    m_toolsButton->setText(tr("Tools"));
-    m_toolsButton->setMenu(m_toolsMenu);
-    m_toolsButton->setPopupMode(QToolButton::InstantPopup);
-
     QTimer::singleShot(0, this, [this]() {
-        const QSize buttonSize = m_toolsButton->sizeHint().expandedTo(m_scopeButton->sizeHint());
+        const QSize buttonSize = m_scopeButton->sizeHint();
         m_scopeButton->setMinimumHeight(buttonSize.height());
         m_previousTrackButton->setMinimumHeight(buttonSize.height());
         m_nextTrackButton->setMinimumHeight(buttonSize.height());
-        m_toolsButton->setMinimumHeight(buttonSize.height());
     });
 
     auto* layout = new QVBoxLayout(this);
@@ -526,7 +510,6 @@ PropertiesDialogWidget::PropertiesDialogWidget(ActionManager* actionManager, con
     m_bottomLayout->addWidget(m_scopeButton, 1, 0);
     m_bottomLayout->addWidget(m_previousTrackButton, 1, 1);
     m_bottomLayout->addWidget(m_nextTrackButton, 1, 2);
-    m_bottomLayout->addWidget(m_toolsButton, 1, 3);
     m_bottomLayout->addWidget(buttonBox, 1, 5);
 
     mainLayout->addWidget(m_tabWidget, 1);
@@ -656,15 +639,7 @@ void PropertiesDialogWidget::currentTabChanged(int index)
         if(m_applyButton) {
             m_applyButton->setHidden(!widget->canApply());
         }
-        if(widget->hasTools()) {
-            m_toolsButton->show();
-            m_toolsMenu->clear();
-            widget->addTools(m_toolsMenu);
-            return;
-        }
     }
-
-    m_toolsButton->hide();
 }
 
 void PropertiesDialogWidget::moveScope(int offset)

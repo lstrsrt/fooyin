@@ -29,6 +29,7 @@
 #include <core/coresettings.h>
 #include <core/library/libraryutils.h>
 #include <gui/widgets/multilinedelegate.h>
+#include <gui/widgets/toolbutton.h>
 #include <utils/actions/actionmanager.h>
 #include <utils/settings/settingsdialogcontroller.h>
 #include <utils/settings/settingsmanager.h>
@@ -64,6 +65,7 @@ TagEditorWidget::TagEditorWidget(ActionManager* actionManager, TagEditorFieldReg
     , m_autocompleteDelegate{new TagEditorAutocompleteDelegate(this)}
     , m_multilineDelegate{nullptr}
     , m_starDelegate{nullptr}
+    , m_toolsButton{new ToolButton(this)}
     , m_autoTrackNum{new QAction(tr("Auto &track number"), this)}
     , m_changeFields{new QAction(tr("&Change default fields…"), this)}
 {
@@ -81,6 +83,15 @@ TagEditorWidget::TagEditorWidget(ActionManager* actionManager, TagEditorFieldReg
     m_view->horizontalHeader()->setSectionResizeMode(1, QHeaderView::Stretch);
     m_view->setItemDelegateForColumn(1, m_autocompleteDelegate);
     m_view->setupActions();
+
+    m_toolsButton->setText(tr("Tools"));
+    m_toolsButton->setMenuIndicatorHidden(false);
+    m_toolsButton->setPopupMode(ToolButton::InstantPopup);
+    auto* toolsMenu = new QMenu(m_toolsButton);
+    toolsMenu->addAction(m_autoTrackNum);
+    toolsMenu->addAction(m_changeFields);
+    m_toolsButton->setMenu(toolsMenu);
+    m_view->addCustomTool(m_toolsButton);
 
     QObject::connect(m_model, &QAbstractItemModel::rowsInserted, m_view, &QTableView::resizeRowsToContents);
     QObject::connect(
@@ -251,17 +262,6 @@ QString TagEditorWidget::name() const
 QString TagEditorWidget::layoutName() const
 {
     return u"TagEditor"_s;
-}
-
-bool TagEditorWidget::hasTools() const
-{
-    return true;
-}
-
-void TagEditorWidget::addTools(QMenu* menu)
-{
-    menu->addAction(m_autoTrackNum);
-    menu->addAction(m_changeFields);
 }
 
 void TagEditorWidget::setSession(PropertiesDialogSession* session)

@@ -32,6 +32,7 @@ class ActionManager;
 class MultiLineEditDelegate;
 class SettingsManager;
 class StarDelegate;
+class ToolButton;
 class WidgetContext;
 
 namespace TagEditor {
@@ -55,8 +56,6 @@ public:
     [[nodiscard]] QString name() const override;
     [[nodiscard]] QString layoutName() const override;
 
-    [[nodiscard]] bool hasTools() const override;
-    void addTools(QMenu* menu) override;
     void setSession(PropertiesDialogSession* session) override;
     void setTrackScope(const TrackList& tracks) override;
     [[nodiscard]] bool hasPendingScopeChanges() const override;
@@ -101,6 +100,7 @@ private:
     MultiLineEditDelegate* m_multilineDelegate;
     StarDelegate* m_starDelegate;
 
+    ToolButton* m_toolsButton;
     QAction* m_autoTrackNum;
     QAction* m_changeFields;
 };

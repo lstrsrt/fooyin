@@ -28,8 +28,6 @@
 
 #include <set>
 
-class QMenu;
-class QAction;
 class QWidget;
 
 namespace Fooyin {
@@ -71,13 +69,10 @@ public:
     { }
 
     [[nodiscard]] virtual bool canApply() const;
-    [[nodiscard]] virtual bool hasTools() const;
 
     virtual void load();
     virtual void apply();
     virtual void finish();
-
-    virtual void addTools(QMenu* menu);
 
     virtual void setSession(PropertiesDialogSession* session);
     virtual void setTrackScope(const TrackList& tracks);
