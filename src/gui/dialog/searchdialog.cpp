@@ -98,6 +98,9 @@ SearchDialog::SearchDialog(ActionManager* actionManager, PlaylistInteractor* pla
 
     updateTitle();
     loadState();
+    if(m_showAll) {
+        search();
+    }
 }
 
 void SearchDialog::done(int value)
@@ -129,7 +132,7 @@ void SearchDialog::updateTitle()
 {
     QString title = (m_target == Target::Library) ? tr("Search Library") : tr("Search Playlist");
 
-    if(m_searchBar->text().isEmpty()) {
+    if(!m_showAll && m_searchBar->text().isEmpty()) {
         m_view->view()->setEmptyText(tr("Start typing to search"));
     }
     else {
@@ -160,6 +163,7 @@ void SearchDialog::showOptionsMenu()
     QObject::connect(showAll, &QAction::triggered, this, [this](const bool checked) {
         m_showAll = checked;
         m_settings->fileSet(ShowAll, checked);
+        search();
     });
     showAll->setCheckable(true);
     showAll->setChecked(m_showAll);
