@@ -50,7 +50,13 @@ using namespace Qt::StringLiterals;
 constexpr int IconSize = 50;
 
 namespace Fooyin {
-using StatusLabel = ElidedLabel;
+class StatusLabel : public ElidedLabel
+{
+    Q_OBJECT
+
+public:
+    using ElidedLabel::ElidedLabel;
+};
 
 class StatusWidgetPrivate : public QObject
 {
@@ -184,8 +190,10 @@ void StatusWidgetPrivate::setupConnections()
         m_scanCancelButton->setIcon(Gui::iconFromTheme(Constants::Icons::Close));
     });
     m_settings->subscribe<Settings::Gui::Internal::StatusShowIcon>(this, [this](bool) { updateActionVisibility(); });
-    m_settings->subscribe<Settings::Gui::Internal::StatusShowSelection>(
-        this, [this](bool show) { m_selectionText->setHidden(!show); });
+    m_settings->subscribe<Settings::Gui::Internal::StatusShowSelection>(this, [this](bool show) {
+        m_selectionText->setHidden(!show);
+        updateSelectionText();
+    });
     m_settings->subscribe<Settings::Gui::Internal::StatusPlayingScript>(this, [this](const QString& script) {
         m_playingScript = script;
         updatePlayingText();
@@ -359,6 +367,10 @@ void StatusWidgetPrivate::updatePlayingText()
 
 void StatusWidgetPrivate::updateSelectionText()
 {
+    if(!m_settings->value<Settings::Gui::Internal::StatusShowSelection>()) {
+        return;
+    }
+
     const QString selectionText
         = m_scriptParser.evaluate(m_selectionScript, m_selectionController->selectedTracks(), m_scriptContext);
     setRichLabelText(m_selectionText, selectionText, m_selectionFormatter);
