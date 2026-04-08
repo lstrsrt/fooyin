@@ -28,6 +28,7 @@
 #include "filtermodel.h"
 
 #include <gui/guiconstants.h>
+#include <gui/guisettings.h>
 #include <gui/trackselectioncontroller.h>
 #include <gui/widgets/autoheaderview.h>
 #include <gui/widgets/expandedtreeview.h>
@@ -37,6 +38,7 @@
 #include <utils/utils.h>
 
 #include <QActionGroup>
+#include <QApplication>
 #include <QContextMenuEvent>
 #include <QHBoxLayout>
 #include <QHeaderView>
@@ -716,6 +718,9 @@ void FilterWidget::setupConnections()
     });
     QObject::connect(m_view, &ExpandedTreeView::doubleClicked, this, &FilterWidget::doubleClicked);
     QObject::connect(m_view, &ExpandedTreeView::middleClicked, this, &FilterWidget::middleClicked);
+
+    m_settings->subscribe<Settings::Gui::Theme>(this, [this] { updateFont(); });
+    m_settings->subscribe<Settings::Gui::Style>(this, [this] { updateFont(); });
 }
 
 void FilterWidget::handleSelectionChanged(const QItemSelection& selected, const QItemSelection& deselected)
@@ -756,6 +761,12 @@ void FilterWidget::updateAppearance()
     m_view->setHeaderHidden(!m_showHeader);
     m_header->setFixedHeight(!m_showHeader ? 0 : QWIDGETSIZE_MAX);
     m_header->adjustSize();
+}
+
+void FilterWidget::updateFont()
+{
+    m_view->setFont(QApplication::font("Fooyin::Filters::FilterView"));
+    emit filterUpdated();
 }
 
 void FilterWidget::addDisplayMenu(QMenu* menu)
@@ -917,6 +928,3 @@ void FilterWidget::columnRemoved(int id)
     emit filterUpdated();
 }
 } // namespace Fooyin::Filters
-
-#include "filterwidget.moc"
-#include "moc_filterwidget.cpp"

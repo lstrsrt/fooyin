@@ -136,6 +136,7 @@ private:
     void updateViewMode(ExpandedTreeView::ViewMode mode);
     void updateCaptions(ExpandedTreeView::CaptionDisplay captions);
     void updateAppearance();
+    void updateFont();
 
     void addDisplayMenu(QMenu* menu);
     void filterHeaderMenu(const QPoint& pos);
