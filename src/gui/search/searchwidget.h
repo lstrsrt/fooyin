@@ -25,6 +25,8 @@
 
 #include <QBasicTimer>
 
+#include <cstdint>
+
 class QLineEdit;
 
 namespace Fooyin {
@@ -105,6 +107,7 @@ private:
     QString m_defaultPlaceholder;
     SearchMode m_mode;
     std::optional<SearchMode> m_forceMode;
+    uint64_t m_searchRequestToken;
     bool m_forceNewPlaylist;
     bool m_unconnected;
     bool m_exclusivePlaylist;

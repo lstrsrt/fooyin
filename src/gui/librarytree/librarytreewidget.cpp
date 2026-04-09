@@ -210,6 +210,7 @@ LibraryTreeWidget::LibraryTreeWidget(ActionManager* actionManager, PlaylistContr
     , m_playAction{new QAction(tr("&Play"), this)}
     , m_doubleClickAction{TrackAction::None}
     , m_middleClickAction{TrackAction::None}
+    , m_currentEmptySearchMode{EmptySearchMode::Clear}
     , m_updating{false}
     , m_playlist{nullptr}
 {
@@ -551,9 +552,12 @@ void LibraryTreeWidget::dequeueSelectedTracks() const
 
 void LibraryTreeWidget::searchChanged(const SearchRequest& request)
 {
-    if(std::exchange(m_currentSearch, request.text) == m_currentSearch) {
+    if(m_currentSearch == request.text && m_currentEmptySearchMode == request.emptyMode) {
         return;
     }
+
+    m_currentSearch          = request.text;
+    m_currentEmptySearchMode = request.emptyMode;
 
     if(m_currentSearch.length() < 1) {
         if(request.emptyMode == EmptySearchMode::ShowAll) {
@@ -570,7 +574,11 @@ void LibraryTreeWidget::searchChanged(const SearchRequest& request)
     Utils::asyncExec([search = m_currentSearch, tracks = m_library->tracks()]() {
         ScriptParser parser;
         return parser.filter(search, tracks);
-    }).then(this, [this](const TrackList& filteredTracks) {
+    }).then(this, [this, search = m_currentSearch](const TrackList& filteredTracks) {
+        if(m_currentSearch != search) {
+            return;
+        }
+
         m_filteredTracks = filteredTracks;
         m_model->reset(m_filteredTracks);
     });
@@ -708,7 +716,13 @@ void LibraryTreeWidget::handleTracksAdded(const TrackList& tracks)
         Utils::asyncExec([search = m_currentSearch, tracks]() {
             ScriptParser parser;
             return parser.filter(search, tracks);
-        }).then(this, [this](const TrackList& filteredTracks) { m_model->addTracks(filteredTracks); });
+        }).then(this, [this, search = m_currentSearch](const TrackList& filteredTracks) {
+            if(m_currentSearch != search) {
+                return;
+            }
+
+            m_model->addTracks(filteredTracks);
+        });
     }
     else {
         m_model->addTracks(tracks);

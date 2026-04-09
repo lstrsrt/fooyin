@@ -62,6 +62,7 @@ SearchWidget::SearchWidget(SearchController* controller, PlaylistController* pla
     , m_searchBox{new QLineEdit(this)}
     , m_defaultPlaceholder{tr("Search library…")}
     , m_mode{SearchMode::Library}
+    , m_searchRequestToken{0}
     , m_forceNewPlaylist{false}
     , m_unconnected{true}
     , m_exclusivePlaylist{false}
@@ -471,16 +472,23 @@ void SearchWidget::searchChanged(bool enterKey)
         return;
     }
 
-    const auto mode    = m_forceMode ? std::exchange(m_forceMode, {}).value() : m_mode; // NOLINT
-    const auto request = currentSearchRequest();
+    const auto mode             = m_forceMode ? std::exchange(m_forceMode, {}).value() : m_mode; // NOLINT
+    const auto request          = currentSearchRequest();
+    const uint64_t requestToken = ++m_searchRequestToken;
 
     Utils::asyncExec([search = request.text, emptyMode = request.emptyMode, tracks = getTracksToSearch(mode)]() {
-        if(emptyMode == EmptySearchMode::ShowAll && search.isEmpty()) {
-            return tracks;
+        if(search.isEmpty()) {
+            return emptyMode == EmptySearchMode::ShowAll ? tracks : PlaylistTrackList{};
         }
         ScriptParser parser;
         return parser.filter(search, tracks);
-    }).then(this, [this, mode, enterKey](const PlaylistTrackList& filteredTracks) {
+    }).then(this, [this, mode, request, requestToken, enterKey](const PlaylistTrackList& filteredTracks) {
+        const SearchRequest currentRequest = currentSearchRequest();
+        if(requestToken != m_searchRequestToken || currentRequest.text != request.text
+           || currentRequest.emptyMode != request.emptyMode) {
+            return;
+        }
+
         if(handleFilteredTracks(mode, filteredTracks) && enterKey) {
             if(isQuickSearch() && m_settings->value<Settings::Gui::SearchSuccessClose>()) {
                 close();

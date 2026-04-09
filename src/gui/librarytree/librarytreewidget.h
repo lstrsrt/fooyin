@@ -172,6 +172,7 @@ private:
     TrackAction m_middleClickAction;
 
     QString m_currentSearch;
+    EmptySearchMode m_currentEmptySearchMode;
     TrackList m_filteredTracks;
 
     bool m_updating;
