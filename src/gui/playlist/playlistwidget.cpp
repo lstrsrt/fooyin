@@ -21,6 +21,7 @@
 
 #include "internalguisettings.h"
 #include "playlist/playlistinteractor.h"
+#include "playlist/presetregistry.h"
 #include "playlistcolumnregistry.h"
 #include "playlistcontroller.h"
 #include "playlistdelegate.h"
@@ -40,6 +41,7 @@
 #include <gui/iconloader.h>
 #include <gui/trackselectioncontroller.h>
 #include <gui/widgets/autoheaderview.h>
+#include <gui/widgets/elapsedprogressdialog.h>
 #include <utils/actions/actioncontainer.h>
 #include <utils/actions/actionmanager.h>
 #include <utils/actions/command.h>
@@ -66,6 +68,7 @@
 
 #include <utility>
 
+using namespace std::chrono_literals;
 using namespace Qt::StringLiterals;
 
 namespace Fooyin {
@@ -227,7 +230,7 @@ PlaylistWidget::PlaylistWidget(ActionManager* actionManager, PlaylistInteractor*
     , m_presetRegistry{m_playlistController->presetRegistry()}
     , m_sortRegistry{core->sortingRegistry()}
     , m_layout{new QHBoxLayout(this)}
-    , m_model{new PlaylistModel(m_playlistInteractor, coverProvider, m_settings, this)}
+    , m_model{new PlaylistModel(m_playlistInteractor, core->audioLoader().get(), coverProvider, m_settings, this)}
     , m_delgate{new PlaylistDelegate(this)}
     , m_starDelegate{nullptr}
     , m_playlistView{new PlaylistView(this)}
@@ -549,8 +552,11 @@ void PlaylistWidget::setupConnections()
     QObject::connect(m_playlistView->selectionModel(), &QItemSelectionModel::selectionChanged, this, [this]() { m_session->selectionChanged(sessionHost()); });
     QObject::connect(m_playlistView, &PlaylistView::tracksRated, m_library, qOverload<const TrackList&>(&MusicLibrary::updateTrackStats));
     QObject::connect(m_playlistView, &QAbstractItemView::doubleClicked, this, &PlaylistWidget::doubleClicked);
+    QObject::connect(m_model, &QAbstractItemModel::modelAboutToBeReset, m_playlistView, &PlaylistView::playlistAboutToBeReset);
     QObject::connect(m_model, &QAbstractItemModel::modelAboutToBeReset, this, [this]() { m_session->handleAboutToBeReset(sessionHost()); });
     QObject::connect(m_model, &PlaylistModel::playlistLoaded, m_playlistView->viewport(), qOverload<>(&QWidget::update));
+    QObject::connect(m_model, &PlaylistModel::metadataWriteRequested, this, &PlaylistWidget::handleMetadataWriteRequested);
+    QObject::connect(m_playlistView, &PlaylistView::bulkWriteRequested, this, &PlaylistWidget::handleBulkWriteRequested);
     QObject::connect(m_playlistController, &PlaylistController::currentPlaylistTracksUpdated, m_model,
                      [this](const std::vector<int>& indexes) { m_model->refreshTracks(indexes); });
     QObject::connect(m_playlistController, &PlaylistController::currentPlaylistUpdated, this, &PlaylistWidget::resetModelThrottled);
@@ -571,6 +577,70 @@ void PlaylistWidget::setupConnections()
 
     m_settings->subscribe<Settings::Core::UseVariousForCompilations>(
         this, [this]() { m_session->changePlaylist(sessionHost(), m_playlistController->currentPlaylist(), nullptr); });
+    m_settings->subscribe<PlaylistInlineTagEditing>(this, [this]() {
+        Playlist* currentPlaylist = m_playlistController->currentPlaylist();
+
+        const bool forceSortedAutoPlaylist
+            = currentPlaylist && currentPlaylist->isAutoPlaylist() && currentPlaylist->forceSorted();
+
+        updateMetadataEditTriggers(m_session->hasSearch() || forceSortedAutoPlaylist);
+    });
+}
+
+void PlaylistWidget::handleMetadataWriteRequested(const TrackList& tracks)
+{
+    if(tracks.empty()) {
+        return;
+    }
+
+    m_playlistView->setSingleWriteInProgress(true);
+
+    WriteRequest request = m_library->writeTrackMetadata(tracks);
+    if(!request.finished.isValid()) {
+        m_playlistView->handleSingleWriteFinished();
+        return;
+    }
+
+    request.finished.then(this, [this](const WriteResult& /*result*/) { m_playlistView->handleSingleWriteFinished(); });
+}
+
+void PlaylistWidget::handleBulkWriteRequested(const TrackList& tracks)
+{
+    if(tracks.empty()) {
+        return;
+    }
+
+    m_playlistView->setBulkWriteInProgress(true);
+
+    WriteRequest request = m_library->writeTrackMetadata(tracks);
+    if(!request.finished.isValid()) {
+        m_playlistView->handleBulkWriteFinished();
+        return;
+    }
+
+    auto* dialog = new ElapsedProgressDialog(tr("Writing metadata…"), tr("Abort"), 0, 1, this);
+    dialog->setAttribute(Qt::WA_DeleteOnClose);
+    dialog->setModal(true);
+    dialog->setMinimumDuration(2000ms);
+    dialog->setBusy(true);
+    dialog->setShowRemaining(false);
+    dialog->setWindowTitle(tr("Writing Metadata"));
+    dialog->setText(tr("Writing metadata to %Ln track(s)…", nullptr, static_cast<int>(tracks.size())));
+    dialog->startTimer();
+
+    request.finished.then(this, [this, dialog](const WriteResult& /*result*/) {
+        if(dialog) {
+            dialog->close();
+        }
+
+        m_playlistView->handleBulkWriteFinished();
+    });
+
+    QObject::connect(dialog, &ElapsedProgressDialog::cancelled, dialog, [cancel = request.cancel]() {
+        if(cancel) {
+            cancel();
+        }
+    });
 }
 
 void PlaylistWidget::setupActions()
@@ -623,6 +693,7 @@ void PlaylistWidget::resetModelThrottled() const
 void PlaylistWidget::setReadOnly(bool readOnly, bool allowSorting)
 {
     m_header->setSectionsClickable(!readOnly || allowSorting);
+    updateMetadataEditTriggers(readOnly);
     m_session->applyReadOnlyState(sessionHost(), readOnly);
 }
 
@@ -819,6 +890,14 @@ void PlaylistWidget::applyInitialViewSettings()
     m_model->setFont(QApplication::font("Fooyin::PlaylistView"));
 }
 
+void PlaylistWidget::updateMetadataEditTriggers(bool readOnly)
+{
+    const bool canEditMetadata
+        = m_session->capabilities().editablePlaylist && !readOnly && m_settings->value<PlaylistInlineTagEditing>();
+    m_playlistView->setEditTriggers(canEditMetadata ? QAbstractItemView::EditKeyPressed
+                                                    : QAbstractItemView::NoEditTriggers);
+}
+
 void PlaylistWidget::showHeaderMenu(const QPoint& pos)
 {
     auto* menu = new QMenu(this);
@@ -948,10 +1027,15 @@ void PlaylistWidget::addColumnsMenu(QMenu* parent)
     };
 
     for(const auto& column : m_columnRegistry->items()) {
+        const bool columnVisible = hasColumn(column.id);
+        if(!column.enabled && !columnVisible) {
+            continue;
+        }
+
         auto* columnAction = new QAction(column.name, columnsMenu);
         columnAction->setData(column.id);
         columnAction->setCheckable(true);
-        columnAction->setChecked(hasColumn(column.id));
+        columnAction->setChecked(columnVisible);
         columnsMenu->addAction(columnAction);
         columnGroup->addAction(columnAction);
     }
