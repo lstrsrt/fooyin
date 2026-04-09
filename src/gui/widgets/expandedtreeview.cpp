@@ -3393,11 +3393,6 @@ void ExpandedTreeView::updateGeometries()
     }
 
     setViewportMargins(0, height, 0, 0);
-    const QRect geometry = viewport()->geometry();
-    const QRect headerGeometry{geometry.left(), geometry.top() - height, geometry.width(), height};
-
-    p->m_header->setGeometry(headerGeometry);
-    QMetaObject::invokeMethod(p->m_header, "updateGeometries");
 
     if(!p->m_layingOutItems && p->m_hidingScrollbar > 0) {
         --p->m_hidingScrollbar;
@@ -3406,9 +3401,19 @@ void ExpandedTreeView::updateGeometries()
         p->m_view->updateScrollBars();
     }
 
-    p->m_updatingGeometry = false;
-
     QAbstractItemView::updateGeometries();
+
+    const QRect geometry = viewport()->geometry();
+    const QRect headerGeometry{geometry.left(), geometry.top() - height, geometry.width(), height};
+
+    p->m_header->setGeometry(headerGeometry);
+    QMetaObject::invokeMethod(p->m_header, "updateGeometries");
+
+    if(p->m_view) {
+        p->m_view->updateScrollBars();
+    }
+
+    p->m_updatingGeometry = false;
 }
 
 void ExpandedTreeView::dataChanged(const QModelIndex& topLeft, const QModelIndex& bottomRight, const QList<int>& roles)
