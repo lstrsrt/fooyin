@@ -58,6 +58,8 @@ TrackKeySet playlistTrackKeySet(const TrackList& tracks)
 }
 } // namespace
 
+using PlaylistPtrList = std::vector<std::unique_ptr<Playlist>>;
+
 class PlaylistHandlerPrivate
 {
 public:
@@ -83,7 +85,7 @@ public:
     void savePlaylists();
 
     [[nodiscard]] QString findUniqueName(const QString& name) const;
-    [[nodiscard]] int indexFromName(const QString& name) const;
+    [[nodiscard]] int indexFromName(const PlaylistPtrList& list, const QString& name) const;
     [[nodiscard]] int nextValidIndex() const;
     [[nodiscard]] bool validId(const UId& id) const;
     [[nodiscard]] bool validName(const QString& name) const;
@@ -101,8 +103,8 @@ public:
     SettingsManager* m_settings;
     PlaylistDatabase m_playlistConnector;
 
-    std::vector<std::unique_ptr<Playlist>> m_playlists;
-    std::vector<std::unique_ptr<Playlist>> m_removedPlaylists;
+    PlaylistPtrList m_playlists;
+    PlaylistPtrList m_removedPlaylists;
 
     Playlist* m_activePlaylist{nullptr};
 };
@@ -346,20 +348,20 @@ QString PlaylistHandlerPrivate::findUniqueName(const QString& name) const
     return Utils::findUniqueString(name, m_playlists, [](const auto& playlist) { return playlist->name(); });
 }
 
-int PlaylistHandlerPrivate::indexFromName(const QString& name) const
+int PlaylistHandlerPrivate::indexFromName(const PlaylistPtrList& list, const QString& name) const
 {
     if(name.isEmpty()) {
         return -1;
     }
 
     auto it = std::ranges::find_if(
-        m_playlists, [name](const auto& playlist) { return playlist->name().compare(name, Qt::CaseInsensitive) == 0; });
+        list, [name](const auto& playlist) { return playlist->name().compare(name, Qt::CaseInsensitive) == 0; });
 
-    if(it == m_playlists.cend()) {
+    if(it == list.cend()) {
         return -1;
     }
 
-    return static_cast<int>(std::ranges::distance(m_playlists.cbegin(), it));
+    return static_cast<int>(std::ranges::distance(list.cbegin(), it));
 }
 
 int PlaylistHandlerPrivate::nextValidIndex() const
@@ -426,7 +428,7 @@ void PlaylistHandlerPrivate::restoreActivePlaylist()
 
 Playlist* PlaylistHandlerPrivate::addNewPlaylist(const QString& name, bool isTemporary)
 {
-    auto existingIndex = indexFromName(name);
+    auto existingIndex = indexFromName(m_playlists, name);
 
     if(existingIndex >= 0) {
         return m_playlists.at(existingIndex).get();
@@ -439,6 +441,13 @@ Playlist* PlaylistHandlerPrivate::addNewPlaylist(const QString& name, bool isTem
     }
 
     const QString playlistName = !name.isEmpty() ? name : findUniqueName(u"Playlist"_s);
+
+    if(!name.isEmpty()) {
+        const auto rmIndex = indexFromName(m_removedPlaylists, name);
+        if(rmIndex >= 0) {
+            m_removedPlaylists.erase(m_removedPlaylists.begin() + rmIndex);
+        }
+    }
 
     const int index = nextValidIndex();
     const int dbId  = m_playlistConnector.insertPlaylist(playlistName, index, false, {});
@@ -454,7 +463,7 @@ Playlist* PlaylistHandlerPrivate::addNewPlaylist(const QString& name, bool isTem
 Playlist* PlaylistHandlerPrivate::addNewAutoPlaylist(const QString& name, const QString& query,
                                                      const QString& sortQuery, bool forceSorted)
 {
-    auto existingIndex = indexFromName(name);
+    auto existingIndex = indexFromName(m_playlists, name);
 
     if(existingIndex >= 0) {
         return m_playlists.at(existingIndex).get();
@@ -599,7 +608,7 @@ Playlist* PlaylistHandler::createTempEmptyPlaylist()
 
 Playlist* PlaylistHandler::createPlaylist(const QString& name)
 {
-    const bool isNew = p->indexFromName(name) < 0;
+    const bool isNew = p->indexFromName(p->m_playlists, name) < 0;
     auto* playlist   = p->addNewPlaylist(name);
 
     if(playlist && isNew) {
@@ -616,7 +625,7 @@ Playlist* PlaylistHandler::createTempPlaylist(const QString& name)
 
 Playlist* PlaylistHandler::createPlaylist(const QString& name, const TrackList& tracks)
 {
-    const bool isNew = p->indexFromName(name) < 0;
+    const bool isNew = p->indexFromName(p->m_playlists, name) < 0;
     auto* playlist   = p->addNewPlaylist(name);
 
     if(playlist) {
@@ -690,7 +699,7 @@ Playlist* PlaylistHandler::createNewTempPlaylist(const QString& name, const Trac
 Playlist* PlaylistHandler::createAutoPlaylist(const QString& name, const QString& query, const QString& sortQuery,
                                               bool forceSorted)
 {
-    const bool isNew = p->indexFromName(name) < 0;
+    const bool isNew = p->indexFromName(p->m_playlists, name) < 0;
     auto* playlist   = p->addNewAutoPlaylist(name, query, sortQuery, forceSorted);
 
     if(playlist) {
@@ -922,7 +931,7 @@ void PlaylistHandler::removePlaylist(const UId& id)
         emit activePlaylistDeleted();
     }
 
-    const int index = p->indexFromName(playlist->name());
+    const int index = p->indexFromName(p->m_playlists, playlist->name());
     p->m_removedPlaylists.emplace_back(std::move(p->m_playlists.at(index)));
     p->m_playlists.erase(p->m_playlists.begin() + index);
 
