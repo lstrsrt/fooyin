@@ -2974,7 +2974,13 @@ bool ExpandedTreeView::isHeaderHidden() const
 
 void ExpandedTreeView::setHeaderHidden(bool hide)
 {
+    if(p->m_header->isHidden() == hide) {
+        return;
+    }
+
     p->m_header->setHidden(hide);
+    updateGeometries();
+    viewport()->update();
 }
 
 void ExpandedTreeView::setModel(QAbstractItemModel* model)
