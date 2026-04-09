@@ -13,7 +13,7 @@ cmake -S "$FOOYIN_DIR" \
   -G Ninja \
   -B build \
   -DCMAKE_BUILD_TYPE=Release \
-  -DCMAKE_OSX_DEPLOYMENT_TARGET=13.0 \
+  -DCMAKE_OSX_DEPLOYMENT_TARGET=14.0 \
   -DICU_ROOT="$(brew --prefix icu4c@78)"
 
 cmake --build build
