@@ -335,6 +335,7 @@ void PlaylistGeneralPageWidget::reset()
     m_settings->fileRemove(Settings::Core::Internal::AutoExportPlaylists);
     m_settings->fileRemove(Settings::Core::Internal::AutoExportPlaylistsType);
     m_settings->fileRemove(Settings::Core::Internal::AutoExportPlaylistsPath);
+    m_settings->fileRemove(Settings::Core::Internal::AutoExportPlaylistsRemove);
 
     m_settings->reset<Settings::Gui::Internal::PlaylistScrollBar>();
     m_settings->reset<Settings::Gui::Internal::PlaylistHeader>();

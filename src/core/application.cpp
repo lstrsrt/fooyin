@@ -334,13 +334,20 @@ void ApplicationPrivate::exportAllPlaylists()
         m_settings->fileValue(Settings::Core::Internal::PlaylistSavePathType, 0).toInt());
     const bool writeMetadata = m_settings->fileValue(Settings::Core::Internal::PlaylistSaveMetadata, false).toBool();
 
-    auto saveOrDeletePlaylist = [&](Playlist* playlist, bool forceRemove = false) {
+    enum ExportType
+    {
+        Save,
+        SaveAndDeleteEmpty,
+        ForceDelete
+    };
+
+    auto saveOrDeletePlaylist = [&](Playlist* playlist, ExportType exportType) {
         const QString playlistFilepath = playlistPath.absoluteFilePath(playlist->name() + u'.' + ext);
         playlistPath.mkpath(path);
 
         QFile playlistFile{playlistFilepath};
-        if(forceRemove) {
-            const bool emptyPlaylist = playlist->trackCount() == 0;
+        const bool emptyPlaylist = playlist->trackCount() == 0;
+        if(exportType == ForceDelete || (exportType == SaveAndDeleteEmpty && emptyPlaylist)) {
             if(playlistFile.exists() && !playlistFile.moveToTrash()) {
                 qCInfo(APP) << "Could not remove" << (emptyPlaylist ? "empty" : "")
                             << "playlist:" << playlistFile.errorString();
@@ -361,17 +368,16 @@ void ApplicationPrivate::exportAllPlaylists()
 
     auto playlists        = m_playlistHandler->playlists();
     auto removedPlaylists = m_playlistHandler->removedPlaylists();
+    const auto canDelete  = m_settings->fileValue(Settings::Core::Internal::AutoExportPlaylistsRemove, true).toBool();
 
     for(const auto& playlist : playlists) {
-        if(playlist->tracksModified()) {
-            saveOrDeletePlaylist(playlist);
+        if(playlist->tracksModified() || (canDelete && playlist->trackCount() == 0)) {
+            saveOrDeletePlaylist(playlist, canDelete ? SaveAndDeleteEmpty : Save);
         }
     }
 
-    if(m_settings->fileValue(Settings::Core::Internal::AutoExportPlaylistsRemove, true).toBool()) {
-        for(const auto& playlist : removedPlaylists) {
-            saveOrDeletePlaylist(playlist, true);
-        }
+    for(const auto& playlist : removedPlaylists) {
+        saveOrDeletePlaylist(playlist, canDelete ? ForceDelete : Save);
     }
 }
 
