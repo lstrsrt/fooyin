@@ -110,7 +110,7 @@ public:
     void loadPlugins();
 
     void startSaveTimer();
-    void exportAllPlaylists();
+    void exportAllPlaylists(bool shutdown);
 
     void saveActivePlaylistState() const;
     uint64_t loadActivePlaylistState() const;
@@ -317,7 +317,7 @@ void ApplicationPrivate::startSaveTimer()
     m_playlistSaveTimer.start(PlaylistSaveInterval, m_self);
 }
 
-void ApplicationPrivate::exportAllPlaylists()
+void ApplicationPrivate::exportAllPlaylists(bool shutdown)
 {
     using namespace Settings::Core::Internal;
 
@@ -334,7 +334,7 @@ void ApplicationPrivate::exportAllPlaylists()
         m_settings->fileValue(Settings::Core::Internal::PlaylistSavePathType, 0).toInt());
     const bool writeMetadata = m_settings->fileValue(Settings::Core::Internal::PlaylistSaveMetadata, false).toBool();
 
-    enum ExportType
+    enum ExportType : uint8_t
     {
         Save,
         SaveAndDeleteEmpty,
@@ -368,7 +368,8 @@ void ApplicationPrivate::exportAllPlaylists()
 
     auto playlists        = m_playlistHandler->playlists();
     auto removedPlaylists = m_playlistHandler->removedPlaylists();
-    const auto canDelete  = m_settings->fileValue(Settings::Core::Internal::AutoExportPlaylistsRemove, true).toBool();
+    const auto canDelete
+        = shutdown && m_settings->fileValue(Settings::Core::Internal::AutoExportPlaylistsRemove, true).toBool();
 
     for(const auto& playlist : playlists) {
         if(playlist->tracksModified() || (canDelete && playlist->trackCount() == 0)) {
@@ -561,7 +562,7 @@ void Application::timerEvent(QTimerEvent* event)
     if(event->timerId() == p->m_playlistSaveTimer.timerId()) {
         p->m_playlistSaveTimer.stop();
         if(p->m_settings->fileValue(Settings::Core::Internal::AutoExportPlaylists).toBool()) {
-            p->exportAllPlaylists();
+            p->exportAllPlaylists(false);
         }
         p->m_playlistHandler->savePlaylists();
     }
@@ -579,7 +580,7 @@ void Application::shutdown()
     p->saveDatabaseSettings();
 
     if(p->m_settings->fileValue(Settings::Core::Internal::AutoExportPlaylists).toBool()) {
-        p->exportAllPlaylists();
+        p->exportAllPlaylists(true);
     }
 
     if(p->m_settings->value<Settings::Core::ClearPlaybackQueueOnExit>()) {
