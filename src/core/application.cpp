@@ -376,8 +376,12 @@ void ApplicationPrivate::exportAllPlaylists()
         }
     }
 
-    for(const auto& playlist : removedPlaylists) {
-        saveOrDeletePlaylist(playlist, canDelete ? ForceDelete : Save);
+    const auto saveRemoved
+        = m_settings->fileValue(Settings::Core::Internal::AutoExportPlaylistsSaveRemoved, false).toBool();
+    if(canDelete || saveRemoved) {
+        for(const auto& playlist : removedPlaylists) {
+            saveOrDeletePlaylist(playlist, canDelete ? ForceDelete : Save);
+        }
     }
 }
 
