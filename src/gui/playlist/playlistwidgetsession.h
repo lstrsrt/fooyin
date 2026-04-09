@@ -42,6 +42,7 @@ public:
         bool sorting{false};
         bool sortingColumn{false};
         QString search;
+        EmptySearchMode emptyMode{EmptySearchMode::Clear};
         PlaylistTrackList filteredTracks;
     };
 
@@ -88,7 +89,7 @@ public:
     virtual void handleAboutToBeReset(PlaylistWidgetSessionHost& host);
     virtual void resetTree(PlaylistWidgetSessionHost& host);
     virtual void handleTracksChanged(PlaylistWidgetSessionHost& host, const std::vector<int>& indexes, bool allNew);
-    virtual void searchEvent(PlaylistWidgetSessionHost& host, const QString& search);
+    virtual void searchEvent(PlaylistWidgetSessionHost& host, const SearchRequest& request);
     virtual void handleSearchChanged(PlaylistWidgetSessionHost& host, const QString& search);
     virtual void finalise(PlaylistWidgetSessionHost& host);
     virtual void applyReadOnlyState(PlaylistWidgetSessionHost& host, bool readOnly);
@@ -128,11 +129,13 @@ public:
     [[nodiscard]] bool isSortingColumn() const;
     [[nodiscard]] bool hasSearch() const;
     [[nodiscard]] const QString& search() const;
+    [[nodiscard]] EmptySearchMode emptyMode() const;
     [[nodiscard]] const PlaylistTrackList& filteredTracks() const;
 
     void setSorting(bool sorting);
     void setSortingColumn(bool sortingColumn);
     void resetSortState(bool force);
+    void setEmptyMode(EmptySearchMode emptyMode);
     void setSearch(QString search);
     void clearSearch();
     void setFilteredTracks(PlaylistTrackList filteredTracks);

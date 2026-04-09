@@ -436,9 +436,9 @@ void PlaylistWidget::finalise()
     m_session->finalise(sessionHost());
 }
 
-void PlaylistWidget::searchEvent(const QString& search)
+void PlaylistWidget::searchEvent(const SearchRequest& request)
 {
-    m_session->searchEvent(sessionHost(), search);
+    m_session->searchEvent(sessionHost(), request);
 }
 
 void PlaylistWidget::contextMenuEvent(QContextMenuEvent* event)

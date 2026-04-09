@@ -62,10 +62,12 @@ SearchWidget::SearchWidget(SearchController* controller, PlaylistController* pla
     , m_searchBox{new QLineEdit(this)}
     , m_defaultPlaceholder{tr("Search library…")}
     , m_mode{SearchMode::Library}
+    , m_searchRequestToken{0}
     , m_forceNewPlaylist{false}
     , m_unconnected{true}
     , m_exclusivePlaylist{false}
     , m_autoSearch{!isQuickSearch()}
+    , m_showAll{false}
 {
     setObjectName(SearchWidget::name());
 
@@ -134,6 +136,7 @@ void SearchWidget::layoutEditingMenu(QMenu* menu)
 void SearchWidget::saveLayoutData(QJsonObject& layout)
 {
     layout["AutoSearch"_L1] = m_autoSearch;
+    layout["ShowAll"_L1]    = m_showAll;
     layout["SearchMode"_L1] = static_cast<quint8>(m_mode);
 
     const QString placeholderText = m_searchBox->placeholderText();
@@ -157,6 +160,10 @@ void SearchWidget::loadLayoutData(const QJsonObject& layout)
 {
     if(layout.contains("AutoSearch"_L1)) {
         m_autoSearch = layout.value("AutoSearch"_L1).toBool();
+    }
+
+    if(layout.contains("ShowAll"_L1)) {
+        m_showAll = layout.value("ShowAll"_L1).toBool();
     }
 
     if(layout.contains("SearchMode"_L1)) {
@@ -206,6 +213,9 @@ void SearchWidget::showEvent(QShowEvent* event)
         const FyStateSettings stateSettings;
         const QJsonObject layoutData = stateSettings.value(QuickSearchState).toJsonObject();
         loadLayoutData(layoutData);
+        if(m_showAll && m_searchBox->text().isEmpty()) {
+            searchChanged();
+        }
     }
 
     FyWidget::showEvent(event);
@@ -276,13 +286,15 @@ bool SearchWidget::isQuickSearch() const
 Playlist* SearchWidget::findOrAddPlaylist(const TrackList& tracks)
 {
     QString searchResultsName = m_settings->value<Settings::Gui::SearchPlaylistName>();
+    const QString searchText  = m_searchBox->text();
+    const bool appendSearch   = m_settings->value<Settings::Gui::SearchPlaylistAppendSearch>() && !searchText.isEmpty();
 
     if(!m_forceNewPlaylist) {
         const auto playlists = m_playlistHandler->playlists();
         for(auto* playlist : playlists) {
             if(playlist->name().startsWith(searchResultsName)) {
-                if(m_settings->value<Settings::Gui::SearchPlaylistAppendSearch>()) {
-                    searchResultsName.append(u" [%1]"_s.arg(m_searchBox->text()));
+                if(appendSearch) {
+                    searchResultsName.append(u" [%1]"_s.arg(searchText));
                 }
                 if(searchResultsName != playlist->name()) {
                     m_playlistHandler->renamePlaylist(playlist->id(), searchResultsName);
@@ -297,8 +309,8 @@ Playlist* SearchWidget::findOrAddPlaylist(const TrackList& tracks)
 
     if(auto* playlist = forceNew ? m_playlistHandler->createNewPlaylist(searchResultsName, tracks)
                                  : m_playlistHandler->createPlaylist(searchResultsName, tracks)) {
-        if(m_settings->value<Settings::Gui::SearchPlaylistAppendSearch>()) {
-            searchResultsName.append(u" (%1)"_s.arg(m_searchBox->text()));
+        if(appendSearch) {
+            searchResultsName.append(u" (%1)"_s.arg(searchText));
             m_playlistHandler->renamePlaylist(playlist->id(), searchResultsName);
         }
         m_playlistController->changeCurrentPlaylist(playlist);
@@ -365,7 +377,7 @@ bool SearchWidget::handleFilteredTracks(SearchMode mode, const PlaylistTrackList
     resetColours();
 
     if(m_exclusivePlaylist || mode == SearchMode::PlaylistFilter) {
-        m_searchController->changeSearch(id(), m_searchBox->text());
+        m_searchController->changeSearch(id(), currentSearchRequest());
     }
     else {
         if(auto* playlist = findOrAddPlaylist(PlaylistTrack::toTracks(tracks))) {
@@ -448,19 +460,35 @@ void SearchWidget::updateConnectedState()
     }
 }
 
+SearchRequest SearchWidget::currentSearchRequest() const
+{
+    return {.text = m_searchBox->text(), .emptyMode = m_showAll ? EmptySearchMode::ShowAll : EmptySearchMode::Clear};
+}
+
 void SearchWidget::searchChanged(bool enterKey)
 {
     if(!m_unconnected) {
-        m_searchController->changeSearch(id(), m_searchBox->text());
+        m_searchController->changeSearch(id(), currentSearchRequest());
         return;
     }
 
-    const auto mode = m_forceMode ? std::exchange(m_forceMode, {}).value() : m_mode; // NOLINT
+    const auto mode             = m_forceMode ? std::exchange(m_forceMode, {}).value() : m_mode; // NOLINT
+    const auto request          = currentSearchRequest();
+    const uint64_t requestToken = ++m_searchRequestToken;
 
-    Utils::asyncExec([search = m_searchBox->text(), tracks = getTracksToSearch(mode)]() {
+    Utils::asyncExec([search = request.text, emptyMode = request.emptyMode, tracks = getTracksToSearch(mode)]() {
+        if(search.isEmpty()) {
+            return emptyMode == EmptySearchMode::ShowAll ? tracks : PlaylistTrackList{};
+        }
         ScriptParser parser;
         return parser.filter(search, tracks);
-    }).then(this, [this, mode, enterKey](const PlaylistTrackList& filteredTracks) {
+    }).then(this, [this, mode, request, requestToken, enterKey](const PlaylistTrackList& filteredTracks) {
+        const SearchRequest currentRequest = currentSearchRequest();
+        if(requestToken != m_searchRequestToken || currentRequest.text != request.text
+           || currentRequest.emptyMode != request.emptyMode) {
+            return;
+        }
+
         if(handleFilteredTracks(mode, filteredTracks) && enterKey) {
             if(isQuickSearch() && m_settings->value<Settings::Gui::SearchSuccessClose>()) {
                 close();
@@ -502,6 +530,15 @@ void SearchWidget::showOptionsMenu()
     autoSearch->setChecked(m_autoSearch);
     QObject::connect(autoSearch, &QAction::triggered, this, [this](const bool checked) { m_autoSearch = checked; });
     menu->addAction(autoSearch);
+
+    auto* showAll = new QAction(tr("Show all when search is empty"), this);
+    showAll->setCheckable(true);
+    showAll->setChecked(m_showAll);
+    QObject::connect(showAll, &QAction::triggered, this, [this](const bool checked) {
+        m_showAll = checked;
+        searchChanged();
+    });
+    menu->addAction(showAll);
 
     if(m_unconnected) {
         auto* searchInMenu = menu->addMenu(tr("Search in"));

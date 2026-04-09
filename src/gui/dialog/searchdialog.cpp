@@ -48,6 +48,7 @@ using namespace std::chrono_literals;
 using namespace Qt::StringLiterals;
 
 constexpr auto AutoSelect    = "Searching/AutoSelect";
+constexpr auto ShowAll       = "Searching/ShowAll";
 constexpr auto PlaylistState = "Searching/PlaylistState";
 constexpr auto LibraryState  = "Searching/LibraryState";
 
@@ -64,6 +65,7 @@ SearchDialog::SearchDialog(ActionManager* actionManager, PlaylistInteractor* pla
                                          : PlaylistWidget::createDetachedPlaylistSearch(
                                                actionManager, playlistInteractor, coverProvider, core, this)}
     , m_autoSelect{m_settings->fileValue(AutoSelect, false).toBool()}
+    , m_showAll{m_settings->fileValue(ShowAll, false).toBool()}
 {
     auto* layout = new QVBoxLayout(this);
     layout->setContentsMargins({});
@@ -96,6 +98,9 @@ SearchDialog::SearchDialog(ActionManager* actionManager, PlaylistInteractor* pla
 
     updateTitle();
     loadState();
+    if(m_showAll) {
+        search();
+    }
 }
 
 void SearchDialog::done(int value)
@@ -120,14 +125,15 @@ void SearchDialog::keyPressEvent(QKeyEvent* event)
 
 void SearchDialog::search()
 {
-    m_view->searchEvent(m_searchBar->text());
+    m_view->searchEvent(
+        {.text = m_searchBar->text(), .emptyMode = m_showAll ? EmptySearchMode::ShowAll : EmptySearchMode::Clear});
 }
 
 void SearchDialog::updateTitle()
 {
     QString title = (m_target == Target::Library) ? tr("Search Library") : tr("Search Playlist");
 
-    if(m_searchBar->text().isEmpty()) {
+    if(!m_showAll && m_searchBar->text().isEmpty()) {
         m_view->view()->setEmptyText(tr("Start typing to search"));
     }
     else {
@@ -153,6 +159,16 @@ void SearchDialog::showOptionsMenu()
         autoSelect->setChecked(m_autoSelect);
         menu->addAction(autoSelect);
     }
+
+    auto* showAll = new QAction(tr("Show all when search is empty"), menu);
+    QObject::connect(showAll, &QAction::triggered, this, [this](const bool checked) {
+        m_showAll = checked;
+        m_settings->fileSet(ShowAll, checked);
+        search();
+    });
+    showAll->setCheckable(true);
+    showAll->setChecked(m_showAll);
+    menu->addAction(showAll);
 
     auto* searching = new QAction(tr("Help"), menu);
     QObject::connect(searching, &QAction::triggered, this,

@@ -25,6 +25,8 @@
 
 #include <QBasicTimer>
 
+#include <cstdint>
+
 class QLineEdit;
 
 namespace Fooyin {
@@ -89,6 +91,7 @@ private:
     void resetColours();
 
     void updateConnectedState();
+    [[nodiscard]] SearchRequest currentSearchRequest() const;
     void searchChanged(bool enterKey = false);
     void changePlaceholderText();
     void showOptionsMenu();
@@ -104,10 +107,12 @@ private:
     QString m_defaultPlaceholder;
     SearchMode m_mode;
     std::optional<SearchMode> m_forceMode;
+    uint64_t m_searchRequestToken;
     bool m_forceNewPlaylist;
     bool m_unconnected;
     bool m_exclusivePlaylist;
     bool m_autoSearch;
+    bool m_showAll;
     SearchColours m_colours;
 };
 } // namespace Fooyin

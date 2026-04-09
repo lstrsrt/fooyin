@@ -71,5 +71,6 @@ private:
     QLineEdit* m_searchBar;
     PlaylistWidget* m_view;
     bool m_autoSelect;
+    bool m_showAll;
 };
 } // namespace Fooyin

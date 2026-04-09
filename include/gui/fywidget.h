@@ -31,6 +31,18 @@ class QDialog;
 class QMenu;
 
 namespace Fooyin {
+enum class EmptySearchMode : uint8_t
+{
+    Clear = 0,
+    ShowAll,
+};
+
+struct SearchRequest
+{
+    QString text;
+    EmptySearchMode emptyMode{EmptySearchMode::Clear};
+};
+
 /*!
  * Base class for all widgets that can participate in fooyin layouts.
  *
@@ -127,7 +139,7 @@ public:
      * In order to receive search events, enable Search or ExclusiveSearch using
      * @fn setFeature() and connect this widget instance to a Search widget.
      */
-    virtual void searchEvent(const QString& search);
+    virtual void searchEvent(const SearchRequest& request);
 
     /*!
      * Invoked when the widget context menu is built in layout editing mode.

@@ -72,7 +72,7 @@ void DetachedSearchSession::handleTracksChanged(PlaylistWidgetSessionHost& host,
         return;
     }
 
-    searchEvent(host, search());
+    searchEvent(host, {search(), emptyMode()});
 }
 
 void DetachedSearchSession::handleSearchChanged(PlaylistWidgetSessionHost& host, const QString& /*search*/)

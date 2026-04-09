@@ -121,7 +121,7 @@ void FyWidget::loadLayout(const QJsonObject& layout)
     loadLayoutData(layout);
 }
 
-void FyWidget::searchEvent(const QString& /*search*/) { }
+void FyWidget::searchEvent(const SearchRequest& /*request*/) { }
 
 void FyWidget::layoutEditingMenu(QMenu* /*menu*/) { }
 

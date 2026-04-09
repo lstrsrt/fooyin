@@ -86,7 +86,7 @@ public:
     void loadLayoutData(const QJsonObject& layout) override;
     void finalise() override;
 
-    void searchEvent(const QString& search) override;
+    void searchEvent(const SearchRequest& request) override;
 
     struct ConfigData
     {
