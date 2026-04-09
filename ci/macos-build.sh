@@ -12,7 +12,8 @@ export PKG_CONFIG_PATH="$(brew --prefix libarchive)/lib/pkgconfig:${PKG_CONFIG_P
 cmake -S "$FOOYIN_DIR" \
   -G Ninja \
   -B build \
-  -DCMAKE_BUILD_TYPE=Release
+  -DCMAKE_BUILD_TYPE=Release \
+  -DICU_ROOT="$(brew --prefix icu4c@78)"
 
 cmake --build build
 cd build
