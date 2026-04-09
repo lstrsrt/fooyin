@@ -22,6 +22,8 @@
 #include <QObject>
 #include <QTreeView>
 
+class QEvent;
+
 namespace Fooyin {
 class LibraryTreeView : public QTreeView
 {
@@ -34,8 +36,10 @@ public:
 
 signals:
     void middleClicked(const QModelIndex& index);
+    void displayChanged();
 
 protected:
+    void changeEvent(QEvent* event) override;
     void mousePressEvent(QMouseEvent* event) override;
     void mouseDoubleClickEvent(QMouseEvent* event) override;
     void wheelEvent(QWheelEvent* event) override;

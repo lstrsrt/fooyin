@@ -50,6 +50,21 @@ void LibraryTreeView::setLoading(bool isLoading)
     viewport()->update();
 }
 
+void LibraryTreeView::changeEvent(QEvent* event)
+{
+    QTreeView::changeEvent(event);
+
+    switch(event->type()) {
+        case QEvent::FontChange:
+        case QEvent::PaletteChange:
+        case QEvent::StyleChange:
+            emit displayChanged();
+            break;
+        default:
+            break;
+    }
+}
+
 void LibraryTreeView::mousePressEvent(QMouseEvent* event)
 {
     if(event->button() > Qt::MiddleButton) {

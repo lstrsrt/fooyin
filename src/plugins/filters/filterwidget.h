@@ -40,6 +40,7 @@ namespace Filters {
 class FilterColumnRegistry;
 class FilterModel;
 class FilterSortModel;
+class FilterView;
 
 class FilterWidget : public FyWidget
 {
@@ -151,7 +152,7 @@ private:
     FilterColumnRegistry* m_columnRegistry;
     SettingsManager* m_settings;
 
-    ExpandedTreeView* m_view;
+    FilterView* m_view;
     AutoHeaderView* m_header;
     FilterModel* m_model;
     FilterSortModel* m_sortProxy;

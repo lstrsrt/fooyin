@@ -221,6 +221,7 @@ LibraryTreeWidget::LibraryTreeWidget(ActionManager* actionManager, PlaylistContr
     m_libraryTree->setModel(m_sortProxy);
     m_libraryTree->setItemDelegate(new LibraryTreeDelegate(this));
     m_libraryTree->viewport()->installEventFilter(new ToolTipFilter(this));
+    QObject::connect(m_libraryTree, &LibraryTreeView::displayChanged, m_model, &LibraryTreeModel::resetPalette);
 
     if(const auto initialGroup = m_groupsRegistry->itemByIndex(0)) {
         changeGrouping(initialGroup.value());

@@ -28,6 +28,7 @@
 class QKeyEvent;
 class QLineEdit;
 class QResizeEvent;
+class QEvent;
 class QTimerEvent;
 class QWidget;
 
@@ -56,6 +57,7 @@ public:
     void handleBulkWriteFinished();
 
 protected:
+    void changeEvent(QEvent* event) override;
     void keyPressEvent(QKeyEvent* event) override;
     void mouseMoveEvent(QMouseEvent* event) override;
     void mousePressEvent(QMouseEvent* event) override;
@@ -72,6 +74,7 @@ protected:
 signals:
     void bulkWriteRequested(const Fooyin::TrackList& tracks);
     void tracksRated(const Fooyin::TrackList& tracks);
+    void displayChanged();
 
 private:
     [[nodiscard]] QModelIndexList selectedTrackRows() const;

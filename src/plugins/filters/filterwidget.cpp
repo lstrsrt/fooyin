@@ -66,8 +66,28 @@ constexpr auto FilterIconVerticalGapKey   = u"Filters/IconVerticalGap";
 namespace Fooyin::Filters {
 class FilterView : public ExpandedTreeView
 {
+    Q_OBJECT
+
 public:
     using ExpandedTreeView::ExpandedTreeView;
+
+signals:
+    void displayChanged();
+
+protected:
+    void changeEvent(QEvent* event) override
+    {
+        ExpandedTreeView::changeEvent(event);
+
+        switch(event->type()) {
+            case QEvent::FontChange:
+            case QEvent::StyleChange:
+                emit displayChanged();
+                break;
+            default:
+                break;
+        }
+    }
 };
 
 FilterWidget::FilterWidget(ActionManager* actionManager, FilterColumnRegistry* columnRegistry,
@@ -103,6 +123,7 @@ FilterWidget::FilterWidget(ActionManager* actionManager, FilterColumnRegistry* c
     m_view->setHeader(m_header);
     m_view->setItemDelegate(new FilterDelegate(this));
     m_view->viewport()->installEventFilter(new ToolTipFilter(this));
+    QObject::connect(m_view, &FilterView::displayChanged, this, &FilterWidget::filterUpdated);
 
     m_view->setSelectionBehavior(QAbstractItemView::SelectRows);
     m_view->setSelectionMode(QAbstractItemView::ExtendedSelection);

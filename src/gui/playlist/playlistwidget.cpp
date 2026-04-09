@@ -267,6 +267,7 @@ PlaylistWidget::PlaylistWidget(ActionManager* actionManager, PlaylistInteractor*
 
     m_model->playingTrackChanged(m_playlistController->currentTrack());
     m_model->playStateChanged(m_playlistController->playState());
+    QObject::connect(m_playlistView, &PlaylistView::displayChanged, this, &PlaylistWidget::refreshViewStyle);
     applySessionTexts();
     setObjectName(PlaylistWidget::name());
     setFeature(ExclusiveSearch);

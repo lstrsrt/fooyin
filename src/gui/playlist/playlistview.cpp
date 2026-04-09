@@ -166,6 +166,20 @@ void PlaylistView::handleBulkWriteFinished()
     m_bulkWriteInProgress = false;
 }
 
+void PlaylistView::changeEvent(QEvent* event)
+{
+    ExpandedTreeView::changeEvent(event);
+
+    switch(event->type()) {
+        case QEvent::FontChange:
+        case QEvent::StyleChange:
+            emit displayChanged();
+            break;
+        default:
+            break;
+    }
+}
+
 void PlaylistView::keyPressEvent(QKeyEvent* event)
 {
     if(m_bulkWriteInProgress) {
