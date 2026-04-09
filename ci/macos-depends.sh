@@ -12,4 +12,11 @@ brew install \
     ffmpeg \
     icu4c@78 \
     sdl2 \
+    libopenmpt \
+    game-music-emu \
+    libarchive \
+    libsndfile \
+    libebur128 \
+    sound-touch \
+    libsoxr \
     llvm

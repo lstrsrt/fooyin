@@ -6,12 +6,13 @@ export FOOYIN_DIR=$PWD
 export CC=$(brew --prefix llvm)/bin/clang
 export CXX=$(brew --prefix llvm)/bin/clang++
 export CXXFLAGS="-fexperimental-library"
+export CMAKE_PREFIX_PATH="$(brew --prefix qt);$(brew --prefix icu4c@78)"
+export PKG_CONFIG_PATH="$(brew --prefix libarchive)/lib/pkgconfig:${PKG_CONFIG_PATH:-}"
 
 cmake -S "$FOOYIN_DIR" \
   -G Ninja \
   -B build \
-  -DCMAKE_BUILD_TYPE=Release \
-  -DCMAKE_PREFIX_PATH="$(brew --prefix icu4c@78)"
+  -DCMAKE_BUILD_TYPE=Release
 
 cmake --build build
 cd build

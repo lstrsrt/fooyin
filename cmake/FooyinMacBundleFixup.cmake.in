@@ -6,18 +6,30 @@ endif()
 
 set(APP_BUNDLE_DIR "${CMAKE_INSTALL_PREFIX}/@FOOYIN_BUNDLE_NAME@")
 set(FRAMEWORKS_DIR "${APP_BUNDLE_DIR}/Contents/Frameworks")
+set(PLUGINS_DIR "${APP_BUNDLE_DIR}/Contents/PlugIns")
 set(ICU_UC_BUNDLE_NAME "@FOOYIN_ICU_UC_LIBRARY_NAME@")
 set(ICU_I18N_BUNDLE_NAME "@FOOYIN_ICU_I18N_LIBRARY_NAME@")
 set(ICU_DATA_BUNDLE_NAME "@FOOYIN_ICU_DATA_LIBRARY_NAME@")
 
 file(MAKE_DIRECTORY "${FRAMEWORKS_DIR}")
 
+set(macdeployqt_args
+    "${APP_BUNDLE_DIR}"
+    -appstore-compliant
+    -always-overwrite
+    -no-codesign
+)
+
+file(GLOB fooyin_plugin_binaries LIST_DIRECTORIES FALSE "${PLUGINS_DIR}/*")
+foreach(plugin_binary IN LISTS fooyin_plugin_binaries)
+    if(IS_SYMLINK "${plugin_binary}" OR IS_DIRECTORY "${plugin_binary}")
+        continue()
+    endif()
+    list(APPEND macdeployqt_args "-executable=${plugin_binary}")
+endforeach()
+
 execute_process(
-    COMMAND "@MACDEPLOYQT_EXECUTABLE@"
-            "${APP_BUNDLE_DIR}"
-            -appstore-compliant
-            -always-overwrite
-            -no-codesign
+    COMMAND "@MACDEPLOYQT_EXECUTABLE@" ${macdeployqt_args}
     RESULT_VARIABLE macdeployqt_result
 )
 if(NOT macdeployqt_result EQUAL 0)
