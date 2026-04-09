@@ -123,17 +123,26 @@ void PlaylistWidgetSession::handleTracksChanged(PlaylistWidgetSessionHost& /*hos
                                                 const std::vector<int>& /*indexes*/, bool /*allNew*/)
 { }
 
-void PlaylistWidgetSession::searchEvent(PlaylistWidgetSessionHost& host, const QString& search)
+void PlaylistWidgetSession::searchEvent(PlaylistWidgetSessionHost& host, const SearchRequest& request)
 {
-    handleSearchChanged(host, search);
+    setEmptyMode(request.emptyMode);
+    handleSearchChanged(host, request.text);
 
-    if(search.isEmpty()) {
-        clearSearch();
+    if(request.text.isEmpty()) {
+        setSearch(request.text);
+
+        if(request.emptyMode == EmptySearchMode::ShowAll) {
+            setFilteredTracks(searchSourceTracks(host.playlistController(), host.musicLibrary()));
+        }
+        else {
+            clearSearch();
+        }
+
         host.resetModelThrottled();
         return;
     }
 
-    setSearch(search);
+    setSearch(request.text);
 
     const PlaylistTrackList sourceTracks = searchSourceTracks(host.playlistController(), host.musicLibrary());
 
@@ -144,10 +153,10 @@ void PlaylistWidgetSession::searchEvent(PlaylistWidgetSessionHost& host, const Q
     }
 
     auto* receiver = host.sessionWidget();
-    Utils::asyncExec([search, sourceTracks]() {
+    Utils::asyncExec([search = request.text, sourceTracks]() {
         ScriptParser parser;
         return parser.filter(search, sourceTracks);
-    }).then(receiver, [this, search, hostPtr = &host](const PlaylistTrackList& filteredTracks) {
+    }).then(receiver, [this, search = request.text, hostPtr = &host](const PlaylistTrackList& filteredTracks) {
         if(this->search() != search) {
             return;
         }
@@ -283,6 +292,11 @@ const QString& PlaylistWidgetSession::search() const
     return m_state.search;
 }
 
+EmptySearchMode PlaylistWidgetSession::emptyMode() const
+{
+    return m_state.emptyMode;
+}
+
 const PlaylistTrackList& PlaylistWidgetSession::filteredTracks() const
 {
     return m_state.filteredTracks;
@@ -305,6 +319,11 @@ void PlaylistWidgetSession::resetSortState(bool force)
     }
 }
 
+void PlaylistWidgetSession::setEmptyMode(EmptySearchMode emptyMode)
+{
+    m_state.emptyMode = emptyMode;
+}
+
 void PlaylistWidgetSession::setSearch(QString search)
 {
     m_state.search = std::move(search);
@@ -313,6 +332,7 @@ void PlaylistWidgetSession::setSearch(QString search)
 void PlaylistWidgetSession::clearSearch()
 {
     m_state.search.clear();
+    m_state.emptyMode = EmptySearchMode::Clear;
     m_state.filteredTracks.clear();
 }
 

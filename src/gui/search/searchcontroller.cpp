@@ -390,7 +390,7 @@ void SearchController::removeConnectedWidgets(const Id& id)
     p->m_connections.erase(id);
 }
 
-void SearchController::changeSearch(const Id& id, const QString& search)
+void SearchController::changeSearch(const Id& id, const SearchRequest& request)
 {
     if(!p->m_connections.contains(id)) {
         return;
@@ -400,7 +400,7 @@ void SearchController::changeSearch(const Id& id, const QString& search)
     for(const auto& widgetId : connections) {
         if(p->m_searchableWidgets.contains(widgetId)) {
             auto* widget = p->m_searchableWidgets.at(widgetId);
-            widget->searchEvent(search);
+            widget->searchEvent(request);
         }
     }
 }

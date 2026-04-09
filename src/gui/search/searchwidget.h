@@ -89,6 +89,7 @@ private:
     void resetColours();
 
     void updateConnectedState();
+    [[nodiscard]] SearchRequest currentSearchRequest() const;
     void searchChanged(bool enterKey = false);
     void changePlaceholderText();
     void showOptionsMenu();

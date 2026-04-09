@@ -125,7 +125,8 @@ void SearchDialog::keyPressEvent(QKeyEvent* event)
 
 void SearchDialog::search()
 {
-    m_view->searchEvent(m_showAll && m_searchBar->text().isEmpty() ? u"ALL"_s : m_searchBar->text());
+    m_view->searchEvent(
+        {.text = m_searchBar->text(), .emptyMode = m_showAll ? EmptySearchMode::ShowAll : EmptySearchMode::Clear});
 }
 
 void SearchDialog::updateTitle()

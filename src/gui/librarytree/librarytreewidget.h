@@ -75,7 +75,8 @@ public:
     void saveLayoutData(QJsonObject& layout) override;
     void loadLayoutData(const QJsonObject& layout) override;
 
-    void searchEvent(const QString& search) override;
+    void searchEvent(const SearchRequest& request) override;
+
     struct ConfigData
     {
         int doubleClickAction{0};
@@ -124,7 +125,7 @@ private:
     void queueSelectedTracks(bool next) const;
     void dequeueSelectedTracks() const;
 
-    void searchChanged(const QString& search);
+    void searchChanged(const SearchRequest& request);
 
     void handlePlayback(const QModelIndexList& indexes, int row = 0);
     void handlePlayTrack(const QModelIndex& index);

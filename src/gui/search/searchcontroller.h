@@ -47,7 +47,7 @@ public:
     void setConnectedWidgets(const Id& id, const IdSet& widgets);
     void removeConnectedWidgets(const Id& id);
 
-    void changeSearch(const Id& id, const QString& search);
+    void changeSearch(const Id& id, const SearchRequest& request);
 
 signals:
     void connectionChanged(const Fooyin::Id& id);

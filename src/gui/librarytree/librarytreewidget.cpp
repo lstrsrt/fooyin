@@ -549,17 +549,25 @@ void LibraryTreeWidget::dequeueSelectedTracks() const
     m_removeFromQueueAction->setVisible(false);
 }
 
-void LibraryTreeWidget::searchChanged(const QString& search)
+void LibraryTreeWidget::searchChanged(const SearchRequest& request)
 {
-    m_currentSearch = search;
-
-    if(search.length() < 1) {
-        m_filteredTracks.clear();
-        m_model->reset(m_library->tracks());
+    if(std::exchange(m_currentSearch, request.text) == m_currentSearch) {
         return;
     }
 
-    Utils::asyncExec([search, tracks = m_library->tracks()]() {
+    if(m_currentSearch.length() < 1) {
+        if(request.emptyMode == EmptySearchMode::ShowAll) {
+            m_filteredTracks = m_library->tracks();
+            m_model->reset(m_filteredTracks);
+        }
+        else {
+            m_filteredTracks.clear();
+            m_model->reset(m_library->tracks());
+        }
+        return;
+    }
+
+    Utils::asyncExec([search = m_currentSearch, tracks = m_library->tracks()]() {
         ScriptParser parser;
         return parser.filter(search, tracks);
     }).then(this, [this](const TrackList& filteredTracks) {
@@ -1112,9 +1120,9 @@ void LibraryTreeWidget::loadLayoutData(const QJsonObject& layout)
     }
 }
 
-void LibraryTreeWidget::searchEvent(const QString& search)
+void LibraryTreeWidget::searchEvent(const SearchRequest& request)
 {
-    searchChanged(search);
+    searchChanged(request);
 }
 
 void LibraryTreeWidget::contextMenuEvent(QContextMenuEvent* event)

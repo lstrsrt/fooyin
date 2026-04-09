@@ -582,13 +582,13 @@ void FilterWidget::finalise()
     updateAppearance();
 }
 
-void FilterWidget::searchEvent(const QString& search)
+void FilterWidget::searchEvent(const SearchRequest& request)
 {
-    if(std::exchange(m_searchStr, search) == search) {
+    if(std::exchange(m_searchStr, request.text) == m_searchStr) {
         return;
     }
 
-    emit searchTextChanged(search);
+    emit searchTextChanged(m_searchStr);
 }
 
 void FilterWidget::addFilterHeaderMenu(QMenu* menu, const QPoint& pos, bool includeWidgetActions)

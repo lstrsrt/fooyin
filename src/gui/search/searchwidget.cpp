@@ -212,6 +212,9 @@ void SearchWidget::showEvent(QShowEvent* event)
         const FyStateSettings stateSettings;
         const QJsonObject layoutData = stateSettings.value(QuickSearchState).toJsonObject();
         loadLayoutData(layoutData);
+        if(m_showAll && m_searchBox->text().isEmpty()) {
+            searchChanged();
+        }
     }
 
     FyWidget::showEvent(event);
@@ -282,13 +285,15 @@ bool SearchWidget::isQuickSearch() const
 Playlist* SearchWidget::findOrAddPlaylist(const TrackList& tracks)
 {
     QString searchResultsName = m_settings->value<Settings::Gui::SearchPlaylistName>();
+    const QString searchText  = m_searchBox->text();
+    const bool appendSearch   = m_settings->value<Settings::Gui::SearchPlaylistAppendSearch>() && !searchText.isEmpty();
 
     if(!m_forceNewPlaylist) {
         const auto playlists = m_playlistHandler->playlists();
         for(auto* playlist : playlists) {
             if(playlist->name().startsWith(searchResultsName)) {
-                if(m_settings->value<Settings::Gui::SearchPlaylistAppendSearch>()) {
-                    searchResultsName.append(u" [%1]"_s.arg(m_searchBox->text()));
+                if(appendSearch) {
+                    searchResultsName.append(u" [%1]"_s.arg(searchText));
                 }
                 if(searchResultsName != playlist->name()) {
                     m_playlistHandler->renamePlaylist(playlist->id(), searchResultsName);
@@ -303,8 +308,8 @@ Playlist* SearchWidget::findOrAddPlaylist(const TrackList& tracks)
 
     if(auto* playlist = forceNew ? m_playlistHandler->createNewPlaylist(searchResultsName, tracks)
                                  : m_playlistHandler->createPlaylist(searchResultsName, tracks)) {
-        if(m_settings->value<Settings::Gui::SearchPlaylistAppendSearch>()) {
-            searchResultsName.append(u" (%1)"_s.arg(m_searchBox->text()));
+        if(appendSearch) {
+            searchResultsName.append(u" (%1)"_s.arg(searchText));
             m_playlistHandler->renamePlaylist(playlist->id(), searchResultsName);
         }
         m_playlistController->changeCurrentPlaylist(playlist);
@@ -371,7 +376,7 @@ bool SearchWidget::handleFilteredTracks(SearchMode mode, const PlaylistTrackList
     resetColours();
 
     if(m_exclusivePlaylist || mode == SearchMode::PlaylistFilter) {
-        m_searchController->changeSearch(id(), m_searchBox->text());
+        m_searchController->changeSearch(id(), currentSearchRequest());
     }
     else {
         if(auto* playlist = findOrAddPlaylist(PlaylistTrack::toTracks(tracks))) {
@@ -454,17 +459,23 @@ void SearchWidget::updateConnectedState()
     }
 }
 
+SearchRequest SearchWidget::currentSearchRequest() const
+{
+    return {.text = m_searchBox->text(), .emptyMode = m_showAll ? EmptySearchMode::ShowAll : EmptySearchMode::Clear};
+}
+
 void SearchWidget::searchChanged(bool enterKey)
 {
     if(!m_unconnected) {
-        m_searchController->changeSearch(id(), m_searchBox->text());
+        m_searchController->changeSearch(id(), currentSearchRequest());
         return;
     }
 
-    const auto mode = m_forceMode ? std::exchange(m_forceMode, {}).value() : m_mode; // NOLINT
+    const auto mode    = m_forceMode ? std::exchange(m_forceMode, {}).value() : m_mode; // NOLINT
+    const auto request = currentSearchRequest();
 
-    Utils::asyncExec([this, search = m_searchBox->text(), tracks = getTracksToSearch(mode)]() {
-        if(m_showAll && search.isEmpty()) {
+    Utils::asyncExec([search = request.text, emptyMode = request.emptyMode, tracks = getTracksToSearch(mode)]() {
+        if(emptyMode == EmptySearchMode::ShowAll && search.isEmpty()) {
             return tracks;
         }
         ScriptParser parser;
