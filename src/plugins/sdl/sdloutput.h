@@ -54,9 +54,11 @@ public:
 
 private:
     void checkEvents();
+    [[nodiscard]] int queuedFrames() const;
 
     AudioFormat m_format;
-    int m_bufferSize;
+    int m_deviceBufferFrames;
+    int m_targetBufferFrames;
     bool m_initialised;
     QString m_device;
 
