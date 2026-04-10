@@ -113,32 +113,6 @@ QModelIndexList filterAncestors(const QModelIndexList& indexes)
     return filteredIndexes;
 }
 
-Fooyin::TrackList getSelectedTracks(const QTreeView* treeView, Fooyin::MusicLibrary* library)
-{
-    const QModelIndexList selectedIndexes = treeView->selectionModel()->selectedRows();
-    if(selectedIndexes.empty()) {
-        return {};
-    }
-
-    const QModelIndexList filteredIndexes = filterAncestors(selectedIndexes);
-
-    Fooyin::TrackList tracks;
-    QModelIndexList trackIndexes;
-
-    for(const QModelIndex& index : filteredIndexes) {
-        const int level = index.data(Fooyin::LibraryTreeItem::Level).toInt();
-        if(level < 0) {
-            trackIndexes.clear();
-            tracks = library->tracks();
-            break;
-        }
-        const auto indexTracks = index.data(Fooyin::LibraryTreeItem::Tracks).value<Fooyin::TrackList>();
-        tracks.insert(tracks.end(), indexTracks.cbegin(), indexTracks.cend());
-    }
-
-    return tracks;
-}
-
 QModelIndexList getAllChildren(QAbstractItemModel* model, const QModelIndex& parent)
 {
     QModelIndexList children;
@@ -180,6 +154,25 @@ QModelIndexList filterLeafNodes(QAbstractItemModel* model, const QModelIndexList
 
     return leafNodes;
 }
+
+Fooyin::TrackList tracksForIndexes(Fooyin::LibraryTreeSortModel* model, const QModelIndexList& indexes)
+{
+    Fooyin::TrackList tracks;
+    int totalTrackCount{0};
+
+    for(const QModelIndex& index : indexes) {
+        totalTrackCount += index.data(Fooyin::LibraryTreeItem::TrackCount).toInt();
+    }
+
+    if(totalTrackCount > 0) {
+        tracks.reserve(static_cast<size_t>(totalTrackCount));
+    }
+
+    model->appendTracksForIndexes(indexes, tracks);
+
+    return tracks;
+}
+
 } // namespace
 
 namespace Fooyin {
@@ -450,6 +443,37 @@ void LibraryTreeWidget::setupHeaderContextMenu(const QPoint& pos)
     menu->popup(this->mapToGlobal(pos));
 }
 
+void LibraryTreeWidget::applySelectedTracks(const TrackList& selectedTracks) const
+{
+    const TrackList tracks = Gui::sortTracksForLibraryViewerPlaylist(m_settings, selectedTracks);
+    m_sortProxy->setDragTracks(tracks);
+
+    TrackSelection selectionState;
+    selectionState.tracks = tracks;
+
+    m_trackSelection->changeSelectedTracks(m_widgetContext, selectionState);
+
+    m_addToQueueAction->setEnabled(true);
+    m_queueNextAction->setEnabled(true);
+
+    const auto queuedTracks = m_playerController->playbackQueue().tracks();
+
+    bool canDeque{false};
+    if(!queuedTracks.empty()) {
+        std::set<int> selectedTrackIds;
+        for(const Track& track : tracks) {
+            selectedTrackIds.insert(track.id());
+        }
+
+        canDeque = std::ranges::any_of(queuedTracks, [&selectedTrackIds](const PlaylistTrack& track) {
+            return selectedTrackIds.contains(track.track.id());
+        });
+    }
+    m_removeFromQueueAction->setVisible(canDeque);
+
+    syncSelectionPlaylist(tracks);
+}
+
 void LibraryTreeWidget::selectionChanged(const QItemSelection& selected, const QItemSelection& deselected) const
 {
     if(m_updating) {
@@ -460,26 +484,9 @@ void LibraryTreeWidget::selectionChanged(const QItemSelection& selected, const Q
         return;
     }
 
-    std::set<Track> trackIndexes;
-    const TrackList tracks
-        = Gui::sortTracksForLibraryViewerPlaylist(m_settings, getSelectedTracks(m_libraryTree, m_library));
-    TrackSelection selectionState;
-    selectionState.tracks = tracks;
-    m_trackSelection->changeSelectedTracks(m_widgetContext, selectionState);
-
-    for(const Track& track : tracks) {
-        trackIndexes.emplace(track);
-    }
-
-    m_addToQueueAction->setEnabled(true);
-    m_queueNextAction->setEnabled(true);
-
-    const auto queuedTracks = m_playerController->playbackQueue().tracks();
-    const bool canDeque     = std::ranges::any_of(
-        queuedTracks, [&trackIndexes](const PlaylistTrack& track) { return trackIndexes.contains(track.track); });
-    m_removeFromQueueAction->setVisible(canDeque);
-
-    syncSelectionPlaylist(tracks);
+    const QModelIndexList filteredIndexes = filterAncestors(m_libraryTree->selectionModel()->selectedRows());
+    const TrackList selectedTracks        = tracksForIndexes(m_sortProxy, filteredIndexes);
+    applySelectedTracks(selectedTracks);
 }
 
 void LibraryTreeWidget::syncSelectionPlaylist(const TrackList& tracks) const
@@ -873,6 +880,7 @@ void LibraryTreeWidget::restoreIndexState(const QByteArray& topKey, const std::v
 
     const auto& key = keys.at(currentIndex);
     if(const auto index = m_model->indexForKey(key); index.isValid()) {
+        m_model->ensureChildrenAvailable(index);
         m_libraryTree->expand(m_sortProxy->mapFromSource(index));
         QMetaObject::invokeMethod(
             m_libraryTree, [this, topKey, keys, currentIndex]() { restoreIndexState(topKey, keys, currentIndex + 1); },

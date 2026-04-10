@@ -38,6 +38,7 @@
 #include <gui/guisettings.h>
 #include <gui/guiutils.h>
 #include <gui/iconloader.h>
+#include <gui/trackmimedata.h>
 #include <gui/widgets/autoheaderview.h>
 #include <utils/datastream.h>
 #include <utils/modelutils.h>
@@ -2198,8 +2199,15 @@ bool PlaylistModel::prepareDrop(const QMimeData* data, Qt::DropAction action, in
         return true;
     }
 
-    const TrackList tracks
-        = Gui::tracksFromMimeData(m_library, data->data(QString::fromLatin1(Constants::Mime::TrackIds)));
+    TrackList tracks;
+
+    if(const auto mimeTracks = TrackMimeData::tracksFrom(data)) {
+        tracks = *mimeTracks;
+    }
+    else {
+        tracks = Gui::tracksFromMimeData(m_library, data->data(QString::fromLatin1(Constants::Mime::TrackIds)));
+    }
+
     if(!tracks.empty()) {
         PlaylistTrackList playlistTracks;
         playlistTracks.reserve(tracks.size());

@@ -121,6 +121,7 @@ private:
     void setScrollbarEnabled(bool enabled) const;
     void setupHeaderContextMenu(const QPoint& pos);
     void selectionChanged(const QItemSelection& selected, const QItemSelection& deselected) const;
+    void applySelectedTracks(const TrackList& selectedTracks) const;
     void syncSelectionPlaylist(const TrackList& tracks) const;
     void queueSelectedTracks(bool next) const;
     void dequeueSelectedTracks() const;
