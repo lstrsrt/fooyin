@@ -55,7 +55,7 @@ public:
     struct ConfigData
     {
         bool showLabels{false};
-        bool elapsedTotal{false};
+        bool showRemainingTime{false};
         bool showCursor{true};
         int cursorWidth{3};
         int mode{3};

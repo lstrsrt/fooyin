@@ -66,7 +66,7 @@ public:
     ClickableLabel* m_elapsed;
     ClickableLabel* m_total;
     uint64_t m_max{0};
-    bool m_elapsedTotal{false};
+    bool m_showRemainingTime{false};
 };
 
 SeekContainerPrivate::SeekContainerPrivate(SeekContainer* self, PlayerController* playerController)
@@ -98,9 +98,9 @@ QString SeekContainerPrivate::elapsedWidthText() const
 
 QString SeekContainerPrivate::totalWidthText() const
 {
-    const QString totalText        = widestDigitsText(Utils::msToString(m_max));
-    const QString elapsedTotalText = u"-"_s + totalText;
-    return m_elapsedTotal ? elapsedTotalText : totalText;
+    const QString totalText         = widestDigitsText(Utils::msToString(m_max));
+    const QString remainingTimeText = u"-"_s + totalText;
+    return m_showRemainingTime ? remainingTimeText : totalText;
 }
 
 void SeekContainerPrivate::updateLabelWidth(ClickableLabel* label, const QString& text) const
@@ -153,7 +153,7 @@ void SeekContainerPrivate::updateLabels(uint64_t time) const
     m_elapsed->setText(elapsed);
 
     QString total;
-    if(m_elapsedTotal) {
+    if(m_showRemainingTime) {
         const int remaining = std::max(0, static_cast<int>(m_max - time));
         total               = u"-"_s + Utils::msToString(remaining);
     }
@@ -177,7 +177,8 @@ SeekContainer::SeekContainer(PlayerController* playerController, QWidget* parent
     QObject::connect(p->m_playerController, &PlayerController::positionChanged, this,
                      [this](uint64_t pos) { p->updateLabels(pos); });
 
-    QObject::connect(this, &SeekContainer::totalClicked, this, [this]() { setElapsedTotal(!elapsedTotal()); });
+    QObject::connect(this, &SeekContainer::totalClicked, this,
+                     [this]() { setShowRemainingTime(!showRemainingTime()); });
 }
 
 SeekContainer::~SeekContainer() = default;
@@ -192,9 +193,9 @@ bool SeekContainer::labelsEnabled() const
     return !p->m_elapsed->isHidden() && !p->m_total->isHidden();
 }
 
-bool SeekContainer::elapsedTotal() const
+bool SeekContainer::showRemainingTime() const
 {
-    return p->m_elapsedTotal;
+    return p->m_showRemainingTime;
 }
 
 void SeekContainer::setLabelsEnabled(bool enabled)
@@ -203,9 +204,9 @@ void SeekContainer::setLabelsEnabled(bool enabled)
     p->m_total->setHidden(!enabled);
 }
 
-void SeekContainer::setElapsedTotal(bool enabled)
+void SeekContainer::setShowRemainingTime(bool enabled)
 {
-    p->m_elapsedTotal = enabled;
+    p->m_showRemainingTime = enabled;
     p->updateLabels(p->m_playerController->currentPosition());
     p->updateLabelWidths();
 }

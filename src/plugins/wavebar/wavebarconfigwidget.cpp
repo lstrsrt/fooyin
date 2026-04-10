@@ -41,7 +41,7 @@ namespace Fooyin::WaveBar {
 WaveBarConfigDialog::WaveBarConfigDialog(WaveBarWidget* waveBar, QWidget* parent)
     : WidgetConfigDialog{waveBar, tr("WaveBar Settings"), parent}
     , m_showLabels{new QCheckBox(tr("Show labels"), this)}
-    , m_elapsedTotal{new QCheckBox(tr("Show remaining time"), this)}
+    , m_showRemainingTime{new QCheckBox(tr("Show remaining time"), this)}
     , m_minMax{new QCheckBox(tr("Min/Max"), this)}
     , m_rms{new QCheckBox(tr("RMS"), this)}
     , m_silence{new QCheckBox(tr("Silence"), this)}
@@ -80,7 +80,7 @@ WaveBarConfigDialog::WaveBarConfigDialog(WaveBarWidget* waveBar, QWidget* parent
     auto* appearanceGroup  = new QGroupBox(tr("Appearance"), this);
     auto* appearanceLayout = new QVBoxLayout(appearanceGroup);
     appearanceLayout->addWidget(m_showLabels);
-    appearanceLayout->addWidget(m_elapsedTotal);
+    appearanceLayout->addWidget(m_showRemainingTime);
 
     auto* modeGroup  = new QGroupBox(tr("Display"), this);
     auto* modeLayout = new QVBoxLayout(modeGroup);
@@ -248,11 +248,11 @@ WaveBarWidget::ConfigData WaveBarConfigDialog::config() const
     }
 
     WaveBarWidget::ConfigData config{
-        .showLabels   = m_showLabels->isChecked(),
-        .elapsedTotal = m_elapsedTotal->isChecked(),
-        .showCursor   = m_showCursor->isChecked(),
-        .cursorWidth  = m_cursorWidth->value(),
-        .mode         = static_cast<int>(mode),
+        .showLabels        = m_showLabels->isChecked(),
+        .showRemainingTime = m_showRemainingTime->isChecked(),
+        .showCursor        = m_showCursor->isChecked(),
+        .cursorWidth       = m_cursorWidth->value(),
+        .mode              = static_cast<int>(mode),
         .downmix  = m_downmixStereo->isChecked() ? static_cast<int>(DownmixOption::Stereo)
                                                  : (m_downmixMono->isChecked() ? static_cast<int>(DownmixOption::Mono)
                                                                                : static_cast<int>(DownmixOption::Off)),
@@ -292,7 +292,7 @@ WaveBarWidget::ConfigData WaveBarConfigDialog::config() const
 void WaveBarConfigDialog::setConfig(const WaveBarWidget::ConfigData& config)
 {
     m_showLabels->setChecked(config.showLabels);
-    m_elapsedTotal->setChecked(config.elapsedTotal);
+    m_showRemainingTime->setChecked(config.showRemainingTime);
     m_showCursor->setChecked(config.showCursor);
     m_cursorWidth->setValue(config.cursorWidth);
     m_channelScale->setValue(config.channelScale);

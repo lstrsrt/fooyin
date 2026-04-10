@@ -60,7 +60,7 @@ private:
     void applyGlobalCacheConfig();
 
     QCheckBox* m_showLabels;
-    QCheckBox* m_elapsedTotal;
+    QCheckBox* m_showRemainingTime;
     QCheckBox* m_minMax;
     QCheckBox* m_rms;
     QCheckBox* m_silence;

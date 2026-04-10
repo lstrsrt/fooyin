@@ -47,19 +47,20 @@ using namespace std::chrono_literals;
 using namespace Qt::StringLiterals;
 
 // Settings
-constexpr auto ShowLabelsKey        = u"WaveBar/ShowLabels";
-constexpr auto ElapsedTotalKey      = u"WaveBar/ElapsedTotal";
-constexpr auto ShowCursorKey        = u"WaveBar/ShowCursor";
-constexpr auto CursorWidthKey       = u"WaveBar/CursorWidth";
-constexpr auto ModeKey              = u"WaveBar/Mode";
-constexpr auto DownmixKey           = u"WaveBar/Downmix";
-constexpr auto BarWidthKey          = u"WaveBar/BarWidth";
-constexpr auto BarGapKey            = u"WaveBar/BarGap";
-constexpr auto SupersampleFactorKey = u"WaveBar/SupersampleFactor";
-constexpr auto MaxScaleKey          = u"WaveBar/MaxScale";
-constexpr auto CentreGapKey         = u"WaveBar/CentreGap";
-constexpr auto ChannelScaleKey      = u"WaveBar/ChannelScale";
-constexpr auto ColoursKey           = u"WaveBar/Colours";
+constexpr auto ShowLabelsKey         = u"WaveBar/ShowLabels";
+constexpr auto ShowRemainingTimeKey  = u"WaveBar/ShowRemainingTime";
+constexpr auto LegacyElapsedTotalKey = u"WaveBar/ElapsedTotal";
+constexpr auto ShowCursorKey         = u"WaveBar/ShowCursor";
+constexpr auto CursorWidthKey        = u"WaveBar/CursorWidth";
+constexpr auto ModeKey               = u"WaveBar/Mode";
+constexpr auto DownmixKey            = u"WaveBar/Downmix";
+constexpr auto BarWidthKey           = u"WaveBar/BarWidth";
+constexpr auto BarGapKey             = u"WaveBar/BarGap";
+constexpr auto SupersampleFactorKey  = u"WaveBar/SupersampleFactor";
+constexpr auto MaxScaleKey           = u"WaveBar/MaxScale";
+constexpr auto CentreGapKey          = u"WaveBar/CentreGap";
+constexpr auto ChannelScaleKey       = u"WaveBar/ChannelScale";
+constexpr auto ColoursKey            = u"WaveBar/Colours";
 
 namespace Fooyin::WaveBar {
 namespace {
@@ -105,8 +106,8 @@ WaveBarWidget::WaveBarWidget(std::shared_ptr<AudioLoader> audioLoader, DbConnect
                      [this]() { m_playerController->seekBackward(m_settings->value<Settings::Gui::SeekStepSmall>()); });
 
     QObject::connect(m_container, &SeekContainer::totalClicked, this, [this]() {
-        auto config         = m_config;
-        config.elapsedTotal = m_container->elapsedTotal();
+        auto config              = m_config;
+        config.showRemainingTime = m_container->showRemainingTime();
         applyConfig(config);
     });
 
@@ -152,8 +153,12 @@ WaveBarWidget::ConfigData WaveBarWidget::defaultConfig() const
 {
     auto config{factoryConfig()};
 
-    config.showLabels        = m_settings->fileValue(ShowLabelsKey, config.showLabels).toBool();
-    config.elapsedTotal      = m_settings->fileValue(ElapsedTotalKey, config.elapsedTotal).toBool();
+    config.showLabels = m_settings->fileValue(ShowLabelsKey, config.showLabels).toBool();
+    config.showRemainingTime
+        = m_settings
+              ->fileValue(m_settings->fileContains(ShowRemainingTimeKey) ? ShowRemainingTimeKey : LegacyElapsedTotalKey,
+                          config.showRemainingTime)
+              .toBool();
     config.showCursor        = m_settings->fileValue(ShowCursorKey, config.showCursor).toBool();
     config.cursorWidth       = m_settings->fileValue(CursorWidthKey, config.cursorWidth).toInt();
     config.mode              = m_settings->fileValue(ModeKey, config.mode).toInt();
@@ -173,7 +178,7 @@ WaveBarWidget::ConfigData WaveBarWidget::factoryConfig() const
 {
     return {
         .showLabels        = false,
-        .elapsedTotal      = false,
+        .showRemainingTime = false,
         .showCursor        = true,
         .cursorWidth       = 3,
         .mode              = static_cast<int>(Default),
@@ -235,7 +240,8 @@ void WaveBarWidget::saveDefaults(const ConfigData& config) const
     }
 
     m_settings->fileSet(ShowLabelsKey, validated.showLabels);
-    m_settings->fileSet(ElapsedTotalKey, validated.elapsedTotal);
+    m_settings->fileSet(ShowRemainingTimeKey, validated.showRemainingTime);
+    m_settings->fileRemove(LegacyElapsedTotalKey);
     m_settings->fileSet(ShowCursorKey, validated.showCursor);
     m_settings->fileSet(CursorWidthKey, validated.cursorWidth);
     m_settings->fileSet(ModeKey, validated.mode);
@@ -252,7 +258,8 @@ void WaveBarWidget::saveDefaults(const ConfigData& config) const
 void WaveBarWidget::clearSavedDefaults() const
 {
     m_settings->fileRemove(ShowLabelsKey);
-    m_settings->fileRemove(ElapsedTotalKey);
+    m_settings->fileRemove(ShowRemainingTimeKey);
+    m_settings->fileRemove(LegacyElapsedTotalKey);
     m_settings->fileRemove(ShowCursorKey);
     m_settings->fileRemove(CursorWidthKey);
     m_settings->fileRemove(ModeKey);
@@ -290,7 +297,7 @@ void WaveBarWidget::applyConfig(const ConfigData& config)
     m_config = validated;
 
     m_container->setLabelsEnabled(m_config.showLabels);
-    m_container->setElapsedTotal(m_config.elapsedTotal);
+    m_container->setShowRemainingTime(m_config.showRemainingTime);
 
     m_seekbar->setShowCursor(m_config.showCursor);
     m_seekbar->setCursorWidth(m_config.cursorWidth);
@@ -317,8 +324,9 @@ WaveBarWidget::ConfigData WaveBarWidget::configFromLayout(const QJsonObject& lay
     if(layout.contains("ShowLabels"_L1)) {
         config.showLabels = layout.value("ShowLabels"_L1).toBool();
     }
-    if(layout.contains("ElapsedTotal"_L1)) {
-        config.elapsedTotal = layout.value("ElapsedTotal"_L1).toBool();
+    if(layout.contains("ShowRemainingTime"_L1) || layout.contains("ElapsedTotal"_L1)) {
+        const auto key           = layout.contains("ShowRemainingTime"_L1) ? "ShowRemainingTime"_L1 : "ElapsedTotal"_L1;
+        config.showRemainingTime = layout.value(key).toBool();
     }
     if(layout.contains("ShowCursor"_L1)) {
         config.showCursor = layout.value("ShowCursor"_L1).toBool();
@@ -398,7 +406,8 @@ WaveBarWidget::ConfigData WaveBarWidget::configFromLayout(const QJsonObject& lay
 void WaveBarWidget::saveConfigToLayout(const ConfigData& config, QJsonObject& layout) const
 {
     layout["ShowLabels"_L1]        = config.showLabels;
-    layout["ElapsedTotal"_L1]      = config.elapsedTotal;
+    layout["ShowRemainingTime"_L1] = config.showRemainingTime;
+    layout.remove("ElapsedTotal"_L1);
     layout["ShowCursor"_L1]        = config.showCursor;
     layout["CursorWidth"_L1]       = config.cursorWidth;
     layout["Mode"_L1]              = config.mode;
@@ -514,12 +523,12 @@ void WaveBarWidget::contextMenuEvent(QContextMenuEvent* event)
         applyConfig(config);
     });
 
-    auto* showElapsed = new QAction(tr("Show remaining time"), menu);
-    showElapsed->setCheckable(true);
-    showElapsed->setChecked(m_config.elapsedTotal);
-    QObject::connect(showElapsed, &QAction::triggered, this, [this](bool checked) {
-        auto config         = m_config;
-        config.elapsedTotal = checked;
+    auto* showRemainingTime = new QAction(tr("Show remaining time"), menu);
+    showRemainingTime->setCheckable(true);
+    showRemainingTime->setChecked(m_config.showRemainingTime);
+    QObject::connect(showRemainingTime, &QAction::triggered, this, [this](bool checked) {
+        auto config              = m_config;
+        config.showRemainingTime = checked;
         applyConfig(config);
     });
 
@@ -606,7 +615,7 @@ void WaveBarWidget::contextMenuEvent(QContextMenuEvent* event)
 
     menu->addAction(showCursor);
     menu->addAction(showLabels);
-    menu->addAction(showElapsed);
+    menu->addAction(showRemainingTime);
     menu->addSeparator();
     menu->addMenu(modeMenu);
     menu->addMenu(downmixMenu);

@@ -321,8 +321,8 @@ QString SeekBar::layoutName() const
 
 void SeekBar::saveLayoutData(QJsonObject& layout)
 {
-    layout["ShowLabels"_L1]   = m_container->labelsEnabled();
-    layout["ElapsedTotal"_L1] = m_container->elapsedTotal();
+    layout["ShowLabels"_L1]        = m_container->labelsEnabled();
+    layout["ShowRemainingTime"_L1] = m_container->showRemainingTime();
 }
 
 void SeekBar::loadLayoutData(const QJsonObject& layout)
@@ -331,9 +331,10 @@ void SeekBar::loadLayoutData(const QJsonObject& layout)
         const bool showLabels = layout.value("ShowLabels"_L1).toBool();
         m_container->setLabelsEnabled(showLabels);
     }
-    if(layout.contains("ElapsedTotal"_L1)) {
-        const bool elapsedTotal = layout.value("ElapsedTotal"_L1).toBool();
-        m_container->setElapsedTotal(elapsedTotal);
+    if(layout.contains("ShowRemainingTime"_L1) || layout.contains("ElapsedTotal"_L1)) {
+        const auto key = layout.contains("ShowRemainingTime"_L1) ? "ShowRemainingTime"_L1 : "ElapsedTotal"_L1;
+        const bool showRemainingTime = layout.value(key).toBool();
+        m_container->setShowRemainingTime(showRemainingTime);
     }
 }
 
@@ -354,12 +355,12 @@ void SeekBar::contextMenuEvent(QContextMenuEvent* event)
                      [this](bool checked) { m_container->setLabelsEnabled(checked); });
     menu->addAction(showLabels);
 
-    auto* showElapsed = new QAction(tr("Show remaining time"), menu);
-    showElapsed->setCheckable(true);
-    showElapsed->setChecked(m_container->elapsedTotal());
-    QObject::connect(showElapsed, &QAction::triggered, this,
-                     [this](bool checked) { m_container->setElapsedTotal(checked); });
-    menu->addAction(showElapsed);
+    auto* showRemainingTime = new QAction(tr("Show remaining time"), menu);
+    showRemainingTime->setCheckable(true);
+    showRemainingTime->setChecked(m_container->showRemainingTime());
+    QObject::connect(showRemainingTime, &QAction::triggered, this,
+                     [this](bool checked) { m_container->setShowRemainingTime(checked); });
+    menu->addAction(showRemainingTime);
 
     menu->popup(event->globalPos());
 }

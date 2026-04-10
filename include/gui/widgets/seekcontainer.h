@@ -38,10 +38,10 @@ public:
     void insertWidget(int index, QWidget* widget);
 
     [[nodiscard]] bool labelsEnabled() const;
-    [[nodiscard]] bool elapsedTotal() const;
+    [[nodiscard]] bool showRemainingTime() const;
 
     void setLabelsEnabled(bool enabled);
-    void setElapsedTotal(bool enabled);
+    void setShowRemainingTime(bool enabled);
 
 protected:
     void changeEvent(QEvent* event) override;
