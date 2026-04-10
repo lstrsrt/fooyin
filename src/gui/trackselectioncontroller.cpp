@@ -99,7 +99,6 @@ public:
     [[nodiscard]] bool canDequeue(const TrackSelection& selection) const;
     [[nodiscard]] bool allTracksInSameFolder(const TrackSelection& selection) const;
     [[nodiscard]] bool canWrite(const TrackSelection& selection) const;
-    [[nodiscard]] bool canWriteCover(const TrackSelection& selection) const;
 
     const TrackSelection* currentSelection() const;
     TrackSelection* currentSelection();
@@ -706,14 +705,19 @@ bool TrackSelectionControllerPrivate::canDequeue(const TrackSelection& selection
         return false;
     }
 
-    std::set<Track> selectedTracks;
-    for(const Track& track : selection.tracks) {
-        selectedTracks.emplace(track);
+    const auto queuedTracks = m_playlistController->playerController()->playbackQueue().tracks();
+    if(queuedTracks.empty()) {
+        return false;
     }
 
-    const auto queuedTracks = m_playlistController->playerController()->playbackQueue().tracks();
-    return std::ranges::any_of(
-        queuedTracks, [&selectedTracks](const PlaylistTrack& track) { return selectedTracks.contains(track.track); });
+    std::set<int> selectedTrackIds;
+    for(const Track& track : selection.tracks) {
+        selectedTrackIds.insert(track.id());
+    }
+
+    return std::ranges::any_of(queuedTracks, [&selectedTrackIds](const PlaylistTrack& track) {
+        return selectedTrackIds.contains(track.track.id());
+    });
 }
 
 bool TrackSelectionControllerPrivate::allTracksInSameFolder(const TrackSelection& selection) const
@@ -737,16 +741,6 @@ bool TrackSelectionControllerPrivate::canWrite(const TrackSelection& selection) 
     });
 }
 
-bool TrackSelectionControllerPrivate::canWriteCover(const TrackSelection& selection) const
-{
-    return canWrite(selection)
-        || m_settings->value<Settings::Gui::Internal::ArtworkSaveMethods>()
-                   .value<ArtworkSaveMethods>()
-                   .value(Track::Cover::Front)
-                   .method
-               == ArtworkSaveMethod::Directory;
-}
-
 const TrackSelection* TrackSelectionControllerPrivate::currentSelection() const
 {
     if(!m_tracks.tracks.empty()) {
@@ -767,24 +761,34 @@ TrackSelection* TrackSelectionControllerPrivate::currentSelection()
 
 void TrackSelectionControllerPrivate::updateActionState()
 {
-    const auto* selection = currentSelection();
-    const bool haveTracks = selection && !selection->tracks.empty();
+    const auto* selection         = currentSelection();
+    const bool haveTracks         = selection && !selection->tracks.empty();
+    const bool sameFolder         = haveTracks && allTracksInSameFolder(*selection);
+    const bool writable           = haveTracks && canWrite(*selection);
+    const bool writableCover      = haveTracks
+                                 && (writable
+                                     || m_settings->value<Settings::Gui::Internal::ArtworkSaveMethods>()
+                                                .value<ArtworkSaveMethods>()
+                                                .value(Track::Cover::Front)
+                                                .method
+                                            == ArtworkSaveMethod::Directory);
+    const bool canRemoveFromQueue = haveTracks && canDequeue(*selection);
 
     m_addCurrent->setEnabled(haveTracks);
     m_addActive->setEnabled(haveTracks && m_playlistHandler->activePlaylist());
     m_sendCurrent->setEnabled(haveTracks);
     m_sendNew->setEnabled(haveTracks);
-    m_openFolder->setEnabled(haveTracks && allTracksInSameFolder(*selection));
-    m_searchArtwork->setEnabled(haveTracks && canWriteCover(*selection));
-    m_searchArtworkQuick->setEnabled(haveTracks && canWriteCover(*selection));
+    m_openFolder->setEnabled(sameFolder);
+    m_searchArtwork->setEnabled(writableCover);
+    m_searchArtworkQuick->setEnabled(writableCover);
     m_extractArtwork->setEnabled(haveTracks);
-    m_attachFrontArtwork->setEnabled(haveTracks && canWrite(*selection));
-    m_attachBackArtwork->setEnabled(haveTracks && canWrite(*selection));
-    m_attachArtistArtwork->setEnabled(haveTracks && canWrite(*selection));
+    m_attachFrontArtwork->setEnabled(writable);
+    m_attachBackArtwork->setEnabled(writable);
+    m_attachArtistArtwork->setEnabled(writable);
     m_openProperties->setEnabled(haveTracks);
     m_addToQueue->setEnabled(haveTracks);
     m_queueNext->setEnabled(haveTracks);
-    m_removeFromQueue->setVisible(haveTracks && canDequeue(*selection));
+    m_removeFromQueue->setVisible(canRemoveFromQueue);
 }
 
 TrackSelectionController::TrackSelectionController(ActionManager* actionManager, AudioLoader* audioLoader,
