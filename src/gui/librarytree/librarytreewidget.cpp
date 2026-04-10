@@ -485,7 +485,16 @@ void LibraryTreeWidget::selectionChanged(const QItemSelection& selected, const Q
     }
 
     const QModelIndexList filteredIndexes = filterAncestors(m_libraryTree->selectionModel()->selectedRows());
-    const TrackList selectedTracks        = tracksForIndexes(m_sortProxy, filteredIndexes);
+
+    const auto summaryNodeIt = std::ranges::find_if(filteredIndexes, [](const QModelIndex& index) {
+        return index.isValid() && index.data(LibraryTreeItem::Level).toInt() == -1;
+    });
+    if(summaryNodeIt != filteredIndexes.cend()) {
+        applySelectedTracks(m_library->tracks());
+        return;
+    }
+
+    const TrackList selectedTracks = tracksForIndexes(m_sortProxy, filteredIndexes);
     applySelectedTracks(selectedTracks);
 }
 
