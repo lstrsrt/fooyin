@@ -514,7 +514,7 @@ void WaveBarWidget::contextMenuEvent(QContextMenuEvent* event)
         applyConfig(config);
     });
 
-    auto* showElapsed = new QAction(tr("Show elapsed total"), menu);
+    auto* showElapsed = new QAction(tr("Show remaining time"), menu);
     showElapsed->setCheckable(true);
     showElapsed->setChecked(m_config.elapsedTotal);
     QObject::connect(showElapsed, &QAction::triggered, this, [this](bool checked) {

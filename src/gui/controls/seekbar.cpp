@@ -354,7 +354,7 @@ void SeekBar::contextMenuEvent(QContextMenuEvent* event)
                      [this](bool checked) { m_container->setLabelsEnabled(checked); });
     menu->addAction(showLabels);
 
-    auto* showElapsed = new QAction(tr("Show elapsed total"), menu);
+    auto* showElapsed = new QAction(tr("Show remaining time"), menu);
     showElapsed->setCheckable(true);
     showElapsed->setChecked(m_container->elapsedTotal());
     QObject::connect(showElapsed, &QAction::triggered, this,

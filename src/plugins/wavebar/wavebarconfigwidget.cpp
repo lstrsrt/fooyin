@@ -41,7 +41,7 @@ namespace Fooyin::WaveBar {
 WaveBarConfigDialog::WaveBarConfigDialog(WaveBarWidget* waveBar, QWidget* parent)
     : WidgetConfigDialog{waveBar, tr("WaveBar Settings"), parent}
     , m_showLabels{new QCheckBox(tr("Show labels"), this)}
-    , m_elapsedTotal{new QCheckBox(tr("Show elapsed total"), this)}
+    , m_elapsedTotal{new QCheckBox(tr("Show remaining time"), this)}
     , m_minMax{new QCheckBox(tr("Min/Max"), this)}
     , m_rms{new QCheckBox(tr("RMS"), this)}
     , m_silence{new QCheckBox(tr("Silence"), this)}
