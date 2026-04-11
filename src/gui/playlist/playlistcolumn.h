@@ -26,7 +26,7 @@ namespace Fooyin {
 struct PlaylistColumn
 {
     static constexpr qint32 Magic   = -0x50434F4C;
-    static constexpr qint32 Version = 1;
+    static constexpr qint32 Version = 2;
 
     int id{-1};
     bool enabled{true};
@@ -34,13 +34,15 @@ struct PlaylistColumn
     bool isDefault{false};
     QString name;
     QString field;
+    QString sortField;
     QString writeField;
     bool isPixmap{false};
 
     bool operator==(const PlaylistColumn& other) const
     {
-        return std::tie(id, enabled, index, name, field, writeField)
-            == std::tie(other.id, other.enabled, other.index, other.name, other.field, other.writeField);
+        return std::tie(id, enabled, index, name, field, sortField, writeField)
+            == std::tie(other.id, other.enabled, other.index, other.name, other.field, other.sortField,
+                        other.writeField);
     }
 
     [[nodiscard]] bool isValid() const
@@ -57,6 +59,7 @@ struct PlaylistColumn
         stream << column.index;
         stream << column.name;
         stream << column.field;
+        stream << column.sortField;
         stream << column.writeField;
         return stream;
     }
@@ -75,6 +78,9 @@ struct PlaylistColumn
             stream >> column.index;
             stream >> column.name;
             stream >> column.field;
+            if(version >= 2) {
+                stream >> column.sortField;
+            }
             stream >> column.writeField;
         }
         else {

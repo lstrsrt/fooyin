@@ -40,30 +40,29 @@ PlaylistColumnRegistry::PlaylistColumnRegistry(SettingsManager* settings, QObjec
 
 void PlaylistColumnRegistry::loadDefaults()
 {
-    addDefaultItem({.id = 0, .name = tr("Track"), .field = u"[%disc%.]$num(%track%,2)"_s, .writeField = u"track"_s});
-    addDefaultItem({.id = 1, .name = tr("Title"), .field = u"%title%"_s, .writeField = u"title"_s});
-    addDefaultItem({.id = 2, .name = tr("Artist"), .field = u"%artist%"_s, .writeField = u"artist"_s});
-    addDefaultItem({.id = 3, .name = tr("Artist/Album"), .field = u"[%albumartist% - ]%album%"_s, .writeField = {}});
-    addDefaultItem({.id = 4, .name = tr("Album Artist"), .field = u"%albumartist%"_s, .writeField = u"albumartist"_s});
-    addDefaultItem({.id = 5, .name = tr("Album"), .field = u"%album%"_s, .writeField = u"album"_s});
-    addDefaultItem({.id = 7, .name = tr("Duration"), .field = u"%duration%"_s, .writeField = {}});
-    addDefaultItem({.id = 8, .name = tr("Playing"), .field = QString::fromLatin1(PlayingIcon), .writeField = {}});
-    addDefaultItem({.id = 9, .name = tr("Codec"), .field = u"%codec%[ / %codec_profile%]"_s, .writeField = {}});
-    addDefaultItem({.id = 10, .name = tr("Extension"), .field = u"%extension%"_s, .writeField = {}});
-    addDefaultItem({.id = 11, .name = tr("Bitrate"), .field = u"%bitrate% kbps"_s, .writeField = {}});
-    addDefaultItem({.id = 12, .name = tr("Sample Rate"), .field = u"%samplerate% Hz"_s, .writeField = {}});
-    addDefaultItem({.id = 16, .name = tr("Channels"), .field = u"%channels%"_s, .writeField = {}});
-    addDefaultItem({.id = 18, .name = tr("Bit Depth"), .field = u"%bitdepth%"_s, .writeField = {}});
-    addDefaultItem({.id = 17, .name = tr("Last Modified"), .field = u"%lastmodified%"_s, .writeField = {}});
-    addDefaultItem(
-        {.id = 6, .name = tr("Playcount"), .field = u"$ifgreater(%playcount%,0,%playcount%)"_s, .writeField = {}});
-    addDefaultItem({.id = 21, .name = tr("Rating"), .field = u"%rating_editor%"_s, .writeField = u"rating_editor"_s});
-    addDefaultItem({.id = 19, .name = tr("First Played"), .field = u"%firstplayed%"_s, .writeField = {}});
-    addDefaultItem({.id = 20, .name = tr("Last Played"), .field = u"%lastplayed%"_s, .writeField = {}});
-    addDefaultItem(
-        {.id = 13, .name = tr("Front Cover"), .field = u"%frontcover%"_s, .writeField = {}, .isPixmap = true});
-    addDefaultItem({.id = 14, .name = tr("Back Cover"), .field = u"%backcover%"_s, .writeField = {}, .isPixmap = true});
-    addDefaultItem(
-        {.id = 15, .name = tr("Artist Picture"), .field = u"%artistpicture%"_s, .writeField = {}, .isPixmap = true});
+    // clang-format off
+    addDefaultItem({.id = 0, .name = tr("Track"), .field = u"[%disc%.]$num(%track%,2)"_s, .sortField = {}, .writeField = u"track"_s});
+    addDefaultItem({.id = 1, .name = tr("Title"), .field = u"%title%"_s, .sortField = {}, .writeField = u"title"_s});
+    addDefaultItem({.id = 2, .name = tr("Artist"), .field = u"%artist%"_s, .sortField = {}, .writeField = u"artist"_s});
+    addDefaultItem({.id = 3, .name = tr("Artist/Album"), .field = u"[%albumartist% - ]%album%"_s, .sortField = {}, .writeField = {}});
+    addDefaultItem({.id = 4, .name = tr("Album Artist"), .field = u"%albumartist%"_s, .sortField = {}, .writeField = u"albumartist"_s});
+    addDefaultItem({.id = 5, .name = tr("Album"), .field = u"%album%"_s, .sortField = {}, .writeField = u"album"_s});
+    addDefaultItem({.id = 7, .name = tr("Duration"), .field = u"%duration%"_s, .sortField = u"%duration_ms%"_s, .writeField = {}});
+    addDefaultItem({.id = 8, .name = tr("Playing"), .field = QString::fromLatin1(PlayingIcon), .sortField = {}, .writeField = {}});
+    addDefaultItem({.id = 9, .name = tr("Codec"), .field = u"%codec%[ / %codec_profile%]"_s, .sortField = {}, .writeField = {}});
+    addDefaultItem({.id = 10, .name = tr("Extension"), .field = u"%extension%"_s, .sortField = {}, .writeField = {}});
+    addDefaultItem({.id = 11, .name = tr("Bitrate"), .field = u"%bitrate% kbps"_s, .sortField = {}, .writeField = {}});
+    addDefaultItem({.id = 12, .name = tr("Sample Rate"), .field = u"%samplerate% Hz"_s, .sortField = {}, .writeField = {}});
+    addDefaultItem({.id = 16, .name = tr("Channels"), .field = u"%channels%"_s, .sortField = u"$info(channels)"_s, .writeField = {}});
+    addDefaultItem({.id = 18, .name = tr("Bit Depth"), .field = u"%bitdepth%"_s, .sortField = {}, .writeField = {}});
+    addDefaultItem({.id = 17, .name = tr("Last Modified"), .field = u"%lastmodified%"_s, .sortField = {}, .writeField = {}});
+    addDefaultItem({.id = 6, .name = tr("Playcount"), .field = u"$ifgreater(%playcount%,0,%playcount%)"_s, .sortField = u"%playcount%"_s, .writeField = {}});
+    addDefaultItem({.id = 21, .name = tr("Rating"), .field = u"%rating_editor%"_s, .sortField = {}, .writeField = u"rating_editor"_s});
+    addDefaultItem({.id = 19, .name = tr("First Played"), .field = u"%firstplayed%"_s, .sortField = {}, .writeField = {}});
+    addDefaultItem({.id = 20, .name = tr("Last Played"), .field = u"%lastplayed%"_s, .sortField = {}, .writeField = {}});
+    addDefaultItem({.id = 13, .name = tr("Front Cover"), .field = u"%frontcover%"_s, .sortField = {}, .writeField = {}, .isPixmap = true});
+    addDefaultItem({.id = 14, .name = tr("Back Cover"), .field = u"%backcover%"_s, .sortField = {}, .writeField = {}, .isPixmap = true});
+    addDefaultItem({.id = 15, .name = tr("Artist Picture"), .field = u"%artistpicture%"_s, .sortField = {}, .writeField = {}, .isPixmap = true});
+    // clang-format on
 }
 } // namespace Fooyin

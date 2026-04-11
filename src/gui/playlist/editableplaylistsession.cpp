@@ -1175,11 +1175,12 @@ void EditablePlaylistSession::sortColumn(PlaylistWidgetSessionHost& sessionHost,
     setSorting(true);
     setSortingColumn(true);
 
-    auto* currentPlaylist    = host.playlistController()->currentPlaylist();
-    const auto currentTracks = currentPlaylist->playlistTracks();
-    const auto playlistId    = currentPlaylist->id();
-    const QString sortField  = host.layoutState().columns.at(column).field;
-    const auto sortToken     = beginSortRequest();
+    auto* currentPlaylist            = host.playlistController()->currentPlaylist();
+    const auto currentTracks         = currentPlaylist->playlistTracks();
+    const auto playlistId            = currentPlaylist->id();
+    const PlaylistColumn& sortColumn = host.layoutState().columns.at(column);
+    const QString sortField          = !sortColumn.sortField.isEmpty() ? sortColumn.sortField : sortColumn.field;
+    const auto sortToken             = beginSortRequest();
 
     Utils::asyncExec([libraryManager = host.libraryManager(), sortField, currentTracks, order]() {
         TrackSorter sorter{libraryManager};

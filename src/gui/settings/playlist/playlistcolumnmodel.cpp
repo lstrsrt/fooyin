@@ -167,6 +167,7 @@ Qt::ItemFlags PlaylistColumnModel::flags(const QModelIndex& index) const
         case 2:
         case 3:
         case 4:
+        case 5:
             flags |= Qt::ItemIsEditable;
             break;
         default:
@@ -196,6 +197,8 @@ QVariant PlaylistColumnModel::headerData(int section, Qt::Orientation orientatio
         case 3:
             return tr("Display Script");
         case 4:
+            return tr("Sort Script");
+        case 5:
             return tr("Write Field");
         default:
             break;
@@ -226,17 +229,36 @@ QVariant PlaylistColumnModel::data(const QModelIndex& index, int role) const
 
     const PlaylistColumn& columnData = item->column();
     const int column                 = index.column();
+    const QString& sortField         = columnData.sortField;
     const QString& writeField        = columnData.writeField;
 
     if(column == 0 && role == Qt::CheckStateRole) {
         return columnData.enabled ? Qt::Checked : Qt::Unchecked;
     }
 
-    if(column == 4 && role == Qt::ForegroundRole && writeField.isEmpty()) {
+    if((column == 4 && role == Qt::ForegroundRole && sortField.isEmpty())
+       || (column == 5 && role == Qt::ForegroundRole && writeField.isEmpty())) {
         return QApplication::palette().color(QPalette::PlaceholderText);
     }
 
-    if(role == Qt::DisplayRole || role == Qt::EditRole) {
+    if(role == Qt::EditRole) {
+        switch(column) {
+            case 1:
+                return columnData.index;
+            case 2:
+                return columnData.name;
+            case 3:
+                return columnData.field;
+            case 4:
+                return sortField;
+            case 5:
+                return writeField;
+            default:
+                break;
+        }
+    }
+
+    if(role == Qt::DisplayRole) {
         switch(column) {
             case 1: {
                 return columnData.index;
@@ -250,6 +272,9 @@ QVariant PlaylistColumnModel::data(const QModelIndex& index, int role) const
                 return !field.isEmpty() ? field : u"<enter field here>"_s;
             }
             case 4: {
+                return !sortField.isEmpty() ? sortField : tr("Use display script");
+            }
+            case 5: {
                 return !writeField.isEmpty() ? writeField : tr("No write field");
             }
             default:
@@ -296,6 +321,14 @@ bool PlaylistColumnModel::setData(const QModelIndex& index, const QVariant& valu
                 break;
             }
             case 4: {
+                const QString sortField = value.toString();
+                if(column.sortField == sortField || sortField == tr("Use display script")) {
+                    return false;
+                }
+                column.sortField = sortField;
+                break;
+            }
+            case 5: {
                 const QString writeField = normaliseWriteField(value.toString());
                 if(column.writeField == writeField || writeField == tr("No write field")) {
                     return false;
@@ -338,7 +371,7 @@ int PlaylistColumnModel::rowCount(const QModelIndex& /*parent*/) const
 
 int PlaylistColumnModel::columnCount(const QModelIndex& /*parent*/) const
 {
-    return 5;
+    return 6;
 }
 
 bool PlaylistColumnModel::removeRows(int row, int count, const QModelIndex& /*parent*/)

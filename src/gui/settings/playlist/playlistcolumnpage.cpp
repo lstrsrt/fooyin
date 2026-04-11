@@ -72,6 +72,7 @@ PlaylistColumnPageWidget::PlaylistColumnPageWidget(PlaylistColumnRegistry* colum
     m_columnList->horizontalHeader()->setStretchLastSection(false);
     m_columnList->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
     m_columnList->horizontalHeader()->setSectionResizeMode(3, QHeaderView::Stretch);
+    m_columnList->horizontalHeader()->setSectionResizeMode(4, QHeaderView::Stretch);
 
     m_openEditor->setText(tr("Script Editor"));
     m_columnList->addCustomTool(m_openEditor);
@@ -85,7 +86,7 @@ PlaylistColumnPageWidget::PlaylistColumnPageWidget(PlaylistColumnRegistry* colum
     QObject::connect(m_openEditor, &QToolButton::clicked, this, [this]() {
         const auto selection    = m_columnList->selectionModel()->selectedIndexes();
         const QModelIndex index = selection.front();
-        ScriptEditor::openEditor(index.data().toString(), [this, index](const QString& script) {
+        ScriptEditor::openEditor(index.data(Qt::EditRole).toString(), [this, index](const QString& script) {
             m_model->setData(index, script, Qt::EditRole);
         });
     });
@@ -121,7 +122,8 @@ void PlaylistColumnPageWidget::updateButtonState()
     });
 
     m_columnList->removeRowAction()->setEnabled(hasCustom);
-    m_openEditor->setEnabled(selection.size() == 1 && selection.front().column() == 3);
+    m_openEditor->setEnabled(selection.size() == 1
+                             && (selection.front().column() == 3 || selection.front().column() == 4));
 }
 
 PlaylistColumnPage::PlaylistColumnPage(PlaylistColumnRegistry* columnRegistry, SettingsManager* settings,
