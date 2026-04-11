@@ -38,6 +38,12 @@ jobs:
         run: |
           ./ci/tests.sh
 
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v6
+        with:
+          name: archlinux-x86_64
+          path: arch/*.tar.zst
+
   fedora:
     name: Fedora (${{matrix.fedora_version}}, ${{ matrix.runner.arch }})
     runs-on: ${{ matrix.runner.os }}
