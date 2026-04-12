@@ -45,7 +45,7 @@ public:
 
     [[nodiscard]] bool multilineEnabled() const;
     void setMultilineEnabled(bool enabled);
-    
+
     void clear();
 
     [[nodiscard]] QSize sizeHint() const override;
