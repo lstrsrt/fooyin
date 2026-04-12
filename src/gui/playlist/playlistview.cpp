@@ -82,7 +82,7 @@ PlaylistView::PlaylistView(QWidget* parent)
     setDropIndicatorShown(true);
     setTextElideMode(Qt::ElideRight);
     setSelectBeforeDrag(true);
-    setUniformHeightRole(PlaylistItem::Type);
+    setUniformHeightRole(PlaylistItem::UniformHeightKey);
     viewport()->setAcceptDrops(true);
     setSelectIgnoreParents(true);
 }

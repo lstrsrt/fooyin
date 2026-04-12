@@ -1,6 +1,6 @@
 /*
  * Fooyin
- * Copyright © 2026, Luke Taylor <LukeT1@proton.me>
+ * Copyright © 2026, Luke Taylor <luket@pm.me>
  *
  * Fooyin is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,6 +18,8 @@
  */
 
 #include <gui/scripting/richtextutils.h>
+
+#include <QFontMetrics>
 
 using namespace Qt::StringLiterals;
 
@@ -127,5 +129,67 @@ QString richTextToHtml(const RichText& richText, const QColor& linkColour)
     }
 
     return html;
+}
+
+std::vector<RichText> splitRichTextLines(const RichText& richText)
+{
+    if(richText.empty()) {
+        return {};
+    }
+
+    std::vector<RichText> lines(1);
+
+    for(const auto& block : richText.blocks) {
+        const QStringView text{block.text};
+        if(text.isEmpty()) {
+            continue;
+        }
+
+        qsizetype start{0};
+        while(true) {
+            const qsizetype newlinePos = text.indexOf('\n'_L1, start);
+            const bool hasNewline      = newlinePos >= 0;
+            const QStringView segment  = hasNewline ? text.sliced(start, newlinePos - start) : text.sliced(start);
+
+            if(!segment.isEmpty()) {
+                auto lineBlock = block;
+                lineBlock.text = segment.toString();
+                lines.back().blocks.push_back(std::move(lineBlock));
+            }
+
+            if(!hasNewline) {
+                break;
+            }
+
+            lines.emplace_back();
+            start = newlinePos + 1;
+        }
+    }
+
+    return lines;
+}
+
+RichTextMetrics measureRichText(const RichText& richText, const QFont& baseFont)
+{
+    RichTextMetrics metrics;
+    const int defaultHeight = QFontMetrics{baseFont}.height();
+
+    for(const auto& line : splitRichTextLines(richText)) {
+        int lineWidth{0};
+        int lineHeight{0};
+
+        for(const auto& block : line.blocks) {
+            const QFont font = resolvedRichTextFont(block.format, baseFont);
+            const QFontMetrics fm{font};
+
+            lineWidth += fm.horizontalAdvance(block.text);
+            lineHeight = std::max(lineHeight, fm.height());
+        }
+
+        metrics.width = std::max(metrics.width, lineWidth);
+        metrics.height += std::max(lineHeight, defaultHeight);
+    }
+
+    return metrics;
 }
 } // namespace Fooyin

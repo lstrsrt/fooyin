@@ -47,7 +47,6 @@ struct PreparedTextLine
     int height{0};
 };
 
-using RichTextLines     = std::vector<std::vector<RichTextBlock>>;
 using PreparedTextLines = std::vector<PreparedTextLine>;
 
 int alignedLineX(const QRect& rect, int lineWidth, Qt::Alignment alignment)
@@ -57,41 +56,6 @@ int alignedLineX(const QRect& rect, int lineWidth, Qt::Alignment alignment)
     }
 
     return rect.x();
-}
-
-RichTextLines splitRichTextLines(const RichText& richText)
-{
-    RichTextLines lines(1);
-
-    const auto appendLine = [&lines](const RichTextBlock& block, qsizetype start, qsizetype length) {
-        if(length <= 0) {
-            return;
-        }
-
-        RichTextBlock splitBlock{block};
-        splitBlock.text = block.text.mid(start, length);
-        lines.back().push_back(std::move(splitBlock));
-    };
-
-    for(const auto& block : richText.blocks) {
-        qsizetype lineStart{0};
-
-        for(qsizetype index{0}; index < block.text.size(); ++index) {
-            const QChar character = block.text.at(index);
-
-            if(character != u'\n' && character != QChar::LineSeparator) {
-                continue;
-            }
-
-            appendLine(block, lineStart, index - lineStart);
-            lines.emplace_back();
-            lineStart = index + 1;
-        }
-
-        appendLine(block, lineStart, block.text.size() - lineStart);
-    }
-
-    return lines;
 }
 
 PreparedTextLines prepareTextLines(const QStyleOptionViewItem& option, int maxWidth, const RichText& richText)
@@ -106,14 +70,14 @@ PreparedTextLines prepareTextLines(const QStyleOptionViewItem& option, int maxWi
     const QColor linkColour    = option.palette.color(QPalette::Link);
     const int defaultHeight    = QFontMetrics{option.font}.height();
 
-    const auto lineBlocks = splitRichTextLines(richText);
-    result.reserve(lineBlocks.size());
+    const auto richLines = splitRichTextLines(richText);
+    result.reserve(richLines.size());
 
-    for(const auto& blocks : lineBlocks) {
+    for(const auto& richLine : richLines) {
         PreparedTextLine line;
         int remainingWidth{maxWidth};
 
-        for(const auto& block : blocks) {
+        for(const auto& block : richLine.blocks) {
             if(block.text.isEmpty() || remainingWidth <= 0) {
                 continue;
             }
@@ -165,11 +129,11 @@ QSize richTextNaturalSize(const QStyleOptionViewItem& option, const RichText& ri
     QSize size;
     const auto lines = splitRichTextLines(richText);
 
-    for(const auto& blocks : lines) {
+    for(const auto& line : lines) {
         int lineWidth{0};
         int lineHeight{0};
 
-        for(const auto& block : blocks) {
+        for(const auto& block : line.blocks) {
             if(block.text.isEmpty()) {
                 continue;
             }

@@ -2046,6 +2046,8 @@ QVariant PlaylistModel::trackData(PlaylistItem* item, const QModelIndex& index, 
             return trackItem.right();
         case PlaylistItem::Role::ItemData:
             return trackItem.track();
+        case PlaylistItem::Role::UniformHeightKey:
+            return (PlaylistItem::Track << 16) | std::min(trackItem.size().height(), 0xFFFF);
         case Qt::BackgroundRole: {
             if(!track.isEnabled()) {
                 return m_disabledColour;
@@ -2104,6 +2106,8 @@ QVariant PlaylistModel::headerData(PlaylistItem* item, int column, int role) con
     }
 
     switch(role) {
+        case PlaylistItem::Role::UniformHeightKey:
+            return (PlaylistItem::Header << 16) | std::min(header.size().height(), 0xFFFF);
         case PlaylistItem::Role::Title:
             return header.title();
         case PlaylistItem::Role::Simple:
@@ -2135,7 +2139,7 @@ QVariant PlaylistModel::subheaderData(PlaylistItem* item, int column, int role) 
     const auto& header = std::get<PlaylistContainerItem>(item->data());
 
     if(role == Qt::SizeHintRole) {
-        return {};
+        return header.size();
     }
 
     if(column != 0) {
@@ -2143,6 +2147,8 @@ QVariant PlaylistModel::subheaderData(PlaylistItem* item, int column, int role) 
     }
 
     switch(role) {
+        case PlaylistItem::Role::UniformHeightKey:
+            return (PlaylistItem::Subheader << 16) | std::min(header.size().height(), 0xFFFF);
         case PlaylistItem::Role::Title:
             return header.title();
         case PlaylistItem::Role::Subtitle:

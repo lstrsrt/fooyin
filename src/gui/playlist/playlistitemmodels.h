@@ -94,7 +94,7 @@ public:
     void setDepth(int depth);
     void removeColumn(int column);
 
-    void calculateSize();
+    void calculateSize() const;
 
 private:
     std::vector<RichText> m_columns;

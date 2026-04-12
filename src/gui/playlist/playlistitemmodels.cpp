@@ -19,6 +19,8 @@
 
 #include "playlistitemmodels.h"
 
+#include <gui/scripting/richtextutils.h>
+
 #include <QFontMetrics>
 
 namespace Fooyin {
@@ -117,13 +119,8 @@ void PlaylistContainerItem::calculateSize()
     QSize totalSize;
 
     auto addSize = [&totalSize](const RichText& text, bool addToTotal = true) {
-        QSize blockSize;
-        for(const auto& title : text.blocks) {
-            const QFontMetrics fm{title.format.font};
-            const QRect br = fm.boundingRect(title.text);
-            blockSize.setWidth(blockSize.width() + br.width());
-            blockSize.setHeight(std::max(blockSize.height(), br.height()));
-        }
+        const auto metrics = measureRichText(text);
+        const QSize blockSize{metrics.width, metrics.height};
         if(addToTotal) {
             totalSize.setWidth(totalSize.width() + blockSize.width());
             totalSize.setHeight(totalSize.height() + blockSize.height() + 4);
@@ -225,65 +222,26 @@ int PlaylistTrackItem::depth() const
 
 QSize PlaylistTrackItem::size(int column) const
 {
-    auto calculateScriptWidth = [](const RichText& richText) {
-        QSize blockSize;
-        for(const auto& [blockText, format] : richText.blocks) {
-            const QFontMetrics fm{format.font};
-            const QRect br = fm.boundingRect(blockText);
-            blockSize.setWidth(blockSize.width() + br.width());
-        }
-
-        return blockSize;
-    };
-
     if(column < 0) {
         return {};
+    }
+
+    if(m_sizes.empty()) {
+        calculateSize();
     }
 
     if(!m_columns.empty()) {
         if(std::cmp_greater_equal(column, m_columns.size())) {
             return {};
         }
-
-        if(std::cmp_less(m_sizes.size(), m_columns.size())) {
-            m_sizes.resize(m_columns.size());
-        }
-
-        QSize& cachedSize = m_sizes[column];
-        if(!cachedSize.isValid()) {
-            cachedSize = calculateScriptWidth(m_columns.at(column));
-            if(m_rowHeight > 0) {
-                cachedSize.setHeight(m_rowHeight);
-            }
-        }
-        return cachedSize;
+        return m_sizes.at(column);
     }
 
     if(column > 0) {
         return {};
     }
 
-    if(m_sizes.empty()) {
-        m_sizes.resize(1);
-    }
-
-    QSize& cachedSize = m_sizes.front();
-    if(!cachedSize.isValid()) {
-        if(!m_left.empty()) {
-            cachedSize = calculateScriptWidth(m_left);
-        }
-
-        if(!m_right.empty()) {
-            const QSize rightSize = calculateScriptWidth(m_right);
-            cachedSize.setWidth(cachedSize.width() + rightSize.width());
-        }
-
-        if(m_rowHeight > 0) {
-            cachedSize.setHeight(m_rowHeight);
-        }
-    }
-
-    return cachedSize;
+    return m_sizes.front();
 }
 
 void PlaylistTrackItem::setColumns(const std::vector<RichText>& columns)
@@ -330,8 +288,40 @@ void PlaylistTrackItem::removeColumn(int column)
     m_sizes.clear();
 }
 
-void PlaylistTrackItem::calculateSize()
+void PlaylistTrackItem::calculateSize() const
 {
     m_sizes.clear();
+
+    if(!m_columns.empty()) {
+        int calculatedHeight{0};
+
+        std::vector<RichTextMetrics> metrics;
+        metrics.reserve(m_columns.size());
+
+        for(const auto& column : m_columns) {
+            auto columnMetrics = measureRichText(column);
+            calculatedHeight   = std::max(calculatedHeight, columnMetrics.height);
+            metrics.emplace_back(columnMetrics);
+        }
+
+        if(m_rowHeight > 0) {
+            calculatedHeight = m_rowHeight;
+        }
+
+        m_sizes.reserve(metrics.size());
+
+        for(const auto& columnMetrics : metrics) {
+            m_sizes.emplace_back(columnMetrics.width, calculatedHeight);
+        }
+
+        return;
+    }
+
+    const auto leftMetrics  = measureRichText(m_left);
+    const auto rightMetrics = measureRichText(m_right);
+
+    const int calculatedHeight = (m_rowHeight > 0 ? m_rowHeight : std::max(leftMetrics.height, rightMetrics.height));
+
+    m_sizes.emplace_back(leftMetrics.width + rightMetrics.width, calculatedHeight);
 }
 } // namespace Fooyin

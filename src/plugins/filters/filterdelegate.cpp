@@ -48,6 +48,8 @@ struct PreparedTextLine
     int maxHeight{0};
 };
 
+using RichTextLineList = std::vector<Fooyin::RichText>;
+
 int alignedLineX(const QRect& rect, int lineWidth, Qt::Alignment alignment)
 {
     if(lineWidth < rect.width()) {
@@ -104,6 +106,10 @@ PreparedTextLine prepareTextBlocks(const QStyleOptionViewItem& option, int maxWi
         if(text != block.text) {
             break;
         }
+    }
+
+    if(result.maxHeight <= 0) {
+        result.maxHeight = option.fontMetrics.height();
     }
 
     return result;
@@ -337,23 +343,22 @@ IconCaptionLineList FilterDelegate::iconRichLines(const QModelIndex& index, cons
 
 QSize FilterDelegate::richLineSize(const QStyleOptionViewItem& option, int maxWidth, const RichText& richText) const
 {
-    const PreparedTextLine line = prepareTextBlocks(option, maxWidth, richText.blocks);
-    return {line.totalWidth, line.maxHeight};
+    QSize size{0, 0};
+    const auto lines = splitRichTextLines(richText);
+
+    for(const auto& line : lines) {
+        const PreparedTextLine preparedLine = prepareTextBlocks(option, maxWidth, line.blocks);
+        size.setWidth(std::max(size.width(), preparedLine.totalWidth));
+        size.rheight() += preparedLine.maxHeight;
+    }
+
+    return size;
 }
 
 QSize richTextNaturalSize(const QStyleOptionViewItem& option, const RichText& richText)
 {
-    QSize size{0, 0};
-
-    for(const auto& block : richText.blocks) {
-        const QFont font = resolvedRichTextFont(block.format, option.font);
-        const QFontMetrics metrics{font};
-
-        size.rwidth() += metrics.horizontalAdvance(block.text);
-        size.setHeight(std::max(size.height(), metrics.height()));
-    }
-
-    return size;
+    const auto metrics = measureRichText(richText, option.font);
+    return {metrics.width, metrics.height};
 }
 
 RichText FilterDelegate::fallbackRichText(const QStyleOptionViewItem& option, const QModelIndex& index)
@@ -414,16 +419,7 @@ QSize FilterDelegate::richTextSize(const QStyleOptionViewItem& option, const QMo
 
     QSize size{0, 0};
 
-    for(const auto& block : richText.blocks) {
-        const QFont font = resolvedRichTextFont(block.format, option.font);
-        const QFontMetrics metrics{font};
-        const QRect bound = metrics.boundingRect(block.text);
-
-        size.setWidth(size.width() + bound.width());
-        size.setHeight(std::max(size.height(), bound.height()));
-    }
-
-    return size;
+    return richTextNaturalSize(option, richText);
 }
 
 QSize FilterDelegate::iconItemSize(const QStyleOptionViewItem& option, const QModelIndex& index) const
@@ -539,13 +535,23 @@ void FilterDelegate::drawRichTextLines(QPainter* painter, const QStyleOptionView
     const int maxWidth = rect.width();
 
     int totalHeight{0};
-    std::vector<PreparedTextLine> preparedLines;
-    preparedLines.reserve(lines.size());
+    std::vector<std::pair<PreparedTextLine, Qt::Alignment>> preparedLines;
 
     for(const auto& line : lines) {
-        auto prepared = prepareTextBlocks(option, maxWidth, line.text.blocks);
-        totalHeight += prepared.maxHeight;
-        preparedLines.push_back(std::move(prepared));
+        const auto logicalLines = splitRichTextLines(line.text);
+        if(logicalLines.empty()) {
+            PreparedTextLine prepared;
+            prepared.maxHeight = option.fontMetrics.height();
+            totalHeight += prepared.maxHeight;
+            preparedLines.emplace_back(std::move(prepared), line.alignment);
+            continue;
+        }
+
+        for(const auto& logicalLine : logicalLines) {
+            auto prepared = prepareTextBlocks(option, maxWidth, logicalLine.blocks);
+            totalHeight += prepared.maxHeight;
+            preparedLines.emplace_back(std::move(prepared), line.alignment);
+        }
     }
 
     int y = rect.y();
@@ -553,42 +559,51 @@ void FilterDelegate::drawRichTextLines(QPainter* painter, const QStyleOptionView
         y += (rect.height() - totalHeight) / 2;
     }
 
-    for(size_t i{0}; i < lines.size(); ++i) {
-        const auto& prepared = preparedLines.at(i);
-
-        const QRect lineRect{rect.x(), y, rect.width(), prepared.maxHeight};
-        drawPreparedTextLine(painter, option, lineRect, lines.at(i).alignment, prepared);
-        y += prepared.maxHeight;
-
-        if(y >= rect.bottom()) {
+    for(const auto& [prepared, alignment] : preparedLines) {
+        if(y > rect.bottom()) {
             break;
         }
+
+        const QRect lineRect{rect.x(), y, rect.width(), prepared.maxHeight};
+        drawPreparedTextLine(painter, option, lineRect, alignment, prepared);
+        y += prepared.maxHeight;
     }
 }
 
 void FilterDelegate::drawTextBlocks(QPainter* painter, const QStyleOptionViewItem& option, QRect rect,
                                     const std::vector<RichTextBlock>& blocks)
 {
-    const QStyle* style = option.widget ? option.widget->style() : QApplication::style();
+    RichText richText;
+    richText.blocks = blocks;
 
-    const auto colourRole = option.state & QStyle::State_Selected ? QPalette::HighlightedText : QPalette::NoRole;
-    const PreparedTextLine preparedLine = prepareTextBlocks(option, rect.width(), blocks);
-
-    if(preparedLine.blocks.empty()) {
+    const auto logicalLines = splitRichTextLines(richText);
+    if(logicalLines.empty()) {
         return;
     }
 
-    int x = alignedLineX(rect, preparedLine.totalWidth, option.displayAlignment);
+    std::vector<PreparedTextLine> preparedLines;
+    preparedLines.reserve(logicalLines.size());
 
-    for(const auto& block : preparedLine.blocks) {
-        painter->setFont(block.font);
-        painter->setPen(block.colour);
+    int totalHeight{0};
+    for(const auto& logicalLine : logicalLines) {
+        auto preparedLine = prepareTextBlocks(option, rect.width(), logicalLine.blocks);
+        totalHeight += preparedLine.maxHeight;
+        preparedLines.push_back(std::move(preparedLine));
+    }
 
-        const QRect blockRect{x, rect.y(), std::max(0, rect.right() - x + 1), rect.height()};
-        style->drawItemText(painter, blockRect, Qt::AlignLeft | Qt::AlignVCenter | Qt::TextSingleLine, option.palette,
-                            true, block.text, colourRole);
+    int y = rect.y();
+    if(totalHeight < rect.height()) {
+        y += (rect.height() - totalHeight) / 2;
+    }
 
-        x += block.width;
+    for(const auto& preparedLine : preparedLines) {
+        if(y > rect.bottom()) {
+            break;
+        }
+
+        drawPreparedTextLine(painter, option, {rect.x(), y, rect.width(), preparedLine.maxHeight},
+                             option.displayAlignment, preparedLine);
+        y += preparedLine.maxHeight;
     }
 }
 } // namespace Fooyin::Filters

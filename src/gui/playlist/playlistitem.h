@@ -59,7 +59,8 @@ public:
         ImagePadding,
         ImagePaddingTop,
         DecorationPosition,
-        InsetSubheadersToImageColumns
+        InsetSubheadersToImageColumns,
+        UniformHeightKey
     };
 
     enum class State
