@@ -42,6 +42,10 @@ public:
     void setText(const QString& text);
     [[nodiscard]] const RichText& richText() const;
     void setRichText(const RichText& text);
+
+    [[nodiscard]] bool multilineEnabled() const;
+    void setMultilineEnabled(bool enabled);
+    
     void clear();
 
     [[nodiscard]] QSize sizeHint() const override;
@@ -58,5 +62,6 @@ private:
     QString m_text;
     RichText m_richText;
     bool m_isElided;
+    bool m_multilineEnabled;
 };
 } // namespace Fooyin

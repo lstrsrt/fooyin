@@ -32,9 +32,18 @@ namespace Fooyin {
 namespace {
 QString singleLineText(QString text)
 {
-    text.replace(u'\n', u' ');
-    text.replace(QChar::LineSeparator, u' ');
+    text.replace('\n'_L1, ' '_L1);
+    text.replace(QChar::LineSeparator, ' '_L1);
+    text.replace(QChar::ParagraphSeparator, ' '_L1);
     return text;
+}
+
+RichText singleLineRichText(RichText richText)
+{
+    for(auto& block : richText.blocks) {
+        block.text = singleLineText(std::move(block.text));
+    }
+    return richText;
 }
 
 QString elidedSingleLineText(const QString& text, const QFontMetrics& fm, Qt::TextElideMode elideMode, int width)
@@ -62,26 +71,23 @@ struct PreparedTextLine
     int height{0};
 };
 
-PreparedTextLine prepareRichTextLine(const RichText& richText, const QFont& baseFont, const QColor& baseColour,
-                                     const QColor& linkColour, Qt::TextElideMode elideMode, int maxWidth)
+PreparedTextLine prepareRichTextLine(const std::vector<RichTextBlock>& blocks, const QFont& baseFont,
+                                     const QColor& baseColour, const QColor& linkColour, Qt::TextElideMode elideMode,
+                                     int maxWidth)
 {
     PreparedTextLine line;
-    if(maxWidth <= 0) {
-        return line;
-    }
+    line.height = QFontMetrics{baseFont}.height();
 
     int remainingWidth{maxWidth};
 
-    for(const auto& block : richText.blocks) {
-        const QString plainText = singleLineText(block.text);
-
-        if(plainText.isEmpty() || remainingWidth <= 0) {
+    for(const auto& block : blocks) {
+        if(block.text.isEmpty() || remainingWidth <= 0) {
             continue;
         }
 
         const QFont font = resolvedRichTextFont(block.format, baseFont);
         const QFontMetrics fm{font};
-        const QString text = elidedSingleLineText(plainText, fm, elideMode, remainingWidth);
+        const QString text = elidedSingleLineText(block.text, fm, elideMode, remainingWidth);
 
         if(text.isEmpty()) {
             continue;
@@ -100,12 +106,10 @@ PreparedTextLine prepareRichTextLine(const RichText& richText, const QFont& base
 
         line.blocks.push_back(std::move(prepared));
 
-        if(text != plainText) {
+        if(text != block.text) {
             break;
         }
     }
-
-    line.height = std::max(line.height, QFontMetrics{baseFont}.height());
 
     return line;
 }
@@ -117,24 +121,8 @@ QSize richTextNaturalSize(const RichText& richText, const QFont& baseFont)
         return fm.size(Qt::TextSingleLine, {});
     }
 
-    int width{0};
-    int height{0};
-
-    for(const auto& block : richText.blocks) {
-        const QString text = singleLineText(block.text);
-
-        if(text.isEmpty()) {
-            continue;
-        }
-
-        const QFont font = resolvedRichTextFont(block.format, baseFont);
-        const QFontMetrics fm{font};
-
-        width += fm.size(Qt::TextSingleLine, text).width();
-        height = std::max(height, fm.height());
-    }
-
-    return {width, std::max(height, QFontMetrics{baseFont}.height())};
+    const auto metrics = measureRichText(richText, baseFont);
+    return {metrics.width, std::max(metrics.height, QFontMetrics{baseFont}.height())};
 }
 } // namespace
 
@@ -151,6 +139,7 @@ ElidedLabel::ElidedLabel(QString text, Qt::TextElideMode elideMode, QWidget* par
     , m_elideMode{elideMode}
     , m_text{std::move(text)}
     , m_isElided{false}
+    , m_multilineEnabled{true}
 { }
 
 Qt::TextElideMode ElidedLabel::elideMode() const
@@ -182,6 +171,25 @@ const RichText& ElidedLabel::richText() const
     return m_richText;
 }
 
+bool ElidedLabel::multilineEnabled() const
+{
+    return m_multilineEnabled;
+}
+
+void ElidedLabel::setMultilineEnabled(bool enabled)
+{
+    if(m_multilineEnabled == enabled) {
+        return;
+    }
+
+    m_multilineEnabled = enabled;
+
+    if(!m_richText.empty()) {
+        updateGeometry();
+        update();
+    }
+}
+
 void ElidedLabel::setRichText(const RichText& text)
 {
     m_richText = text;
@@ -202,7 +210,8 @@ void ElidedLabel::clear()
 QSize ElidedLabel::sizeHint() const
 {
     if(!m_richText.empty()) {
-        const QSize richSize = richTextNaturalSize(m_richText, font());
+        const RichText richText = m_multilineEnabled ? m_richText : singleLineRichText(m_richText);
+        const QSize richSize    = richTextNaturalSize(richText, font());
         return {richSize.width(), std::max(richSize.height(), QLabel::sizeHint().height())};
     }
 
@@ -235,33 +244,51 @@ void ElidedLabel::paintEvent(QPaintEvent* event)
     const QPalette::ColorGroup group = isEnabled() ? QPalette::Normal : QPalette::Disabled;
     const QColor baseColour          = palette().color(group, foregroundRole());
     const QColor linkColour          = palette().color(group, QPalette::Link);
-    const auto line = prepareRichTextLine(m_richText, font(), baseColour, linkColour, m_elideMode, rect.width());
-    if(line.blocks.empty()) {
+    const RichText richText          = m_multilineEnabled ? m_richText : singleLineRichText(m_richText);
+    const auto logicalLines          = splitRichTextLines(richText);
+    if(logicalLines.empty()) {
         return;
     }
 
-    int x = rect.x();
-    if(alignment().testFlag(Qt::AlignHCenter)) {
-        x += std::max(0, (rect.width() - line.totalWidth) / 2);
-    }
-    else if(alignment().testFlag(Qt::AlignRight)) {
-        x = rect.right() - line.totalWidth + 1;
+    std::vector<PreparedTextLine> lines;
+    lines.reserve(logicalLines.size());
+
+    int totalHeight{0};
+    for(const auto& logicalLine : logicalLines) {
+        auto line = prepareRichTextLine(logicalLine.blocks, font(), baseColour, linkColour, m_elideMode, rect.width());
+        totalHeight += line.height;
+        lines.push_back(std::move(line));
     }
 
     int y = rect.y();
     if(alignment().testFlag(Qt::AlignBottom)) {
-        y = rect.bottom() - line.height + 1;
+        y = rect.bottom() - totalHeight + 1;
     }
     else if(!alignment().testFlag(Qt::AlignTop)) {
-        y += std::max(0, (rect.height() - line.height) / 2);
+        y += std::max(0, (rect.height() - totalHeight) / 2);
     }
 
-    for(const auto& block : line.blocks) {
-        painter.setFont(block.font);
-        painter.setPen(block.colour);
-        painter.drawText(QRect{x, y, std::max(0, rect.right() - x + 1), line.height},
-                         Qt::AlignLeft | Qt::AlignVCenter | Qt::TextSingleLine, block.text);
-        x += block.width;
+    for(const auto& line : lines) {
+        int x = rect.x();
+        if(alignment().testFlag(Qt::AlignHCenter)) {
+            x += std::max(0, (rect.width() - line.totalWidth) / 2);
+        }
+        else if(alignment().testFlag(Qt::AlignRight)) {
+            x = rect.right() - line.totalWidth + 1;
+        }
+
+        for(const auto& block : line.blocks) {
+            painter.setFont(block.font);
+            painter.setPen(block.colour);
+            painter.drawText(QRect{x, y, std::max(0, rect.right() - x + 1), line.height},
+                             Qt::AlignLeft | Qt::AlignVCenter | Qt::TextSingleLine, block.text);
+            x += block.width;
+        }
+
+        y += line.height;
+        if(y > rect.bottom()) {
+            break;
+        }
     }
 }
 
