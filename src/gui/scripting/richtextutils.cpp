@@ -24,6 +24,25 @@
 using namespace Qt::StringLiterals;
 
 namespace Fooyin {
+namespace {
+RichTextMetrics measureRichTextLine(const RichText& richText, const QFont& baseFont)
+{
+    RichTextMetrics metrics;
+    const int defaultHeight = QFontMetrics{baseFont}.height();
+
+    for(const auto& block : richText.blocks) {
+        const QFont font = resolvedRichTextFont(block.format, baseFont);
+        const QFontMetrics fm{font};
+
+        metrics.width += fm.horizontalAdvance(block.text);
+        metrics.height = std::max(metrics.height, fm.height());
+    }
+
+    metrics.height = std::max(metrics.height, defaultHeight);
+    return metrics;
+}
+} // namespace
+
 QColor resolvedRichTextColour(const RichFormatting& formatting, const QColor& baseColour, const QColor& linkColour)
 {
     if(formatting.colour.isValid()) {
@@ -131,6 +150,19 @@ QString richTextToHtml(const RichText& richText, const QColor& linkColour)
     return html;
 }
 
+bool richTextHasLineBreaks(const RichText& richText)
+{
+    for(const auto& block : richText.blocks) {
+        for(const QChar character : block.text) {
+            if(character == '\n'_L1 || character == QChar::LineSeparator || character == QChar::ParagraphSeparator) {
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
 std::vector<RichText> splitRichTextLines(const RichText& richText)
 {
     if(richText.empty()) {
@@ -145,49 +177,58 @@ std::vector<RichText> splitRichTextLines(const RichText& richText)
             continue;
         }
 
-        qsizetype start{0};
-        while(true) {
-            const qsizetype newlinePos = text.indexOf('\n'_L1, start);
-            const bool hasNewline      = newlinePos >= 0;
-            const QStringView segment  = hasNewline ? text.sliced(start, newlinePos - start) : text.sliced(start);
+        qsizetype lineStart{0};
+        for(qsizetype index{0}; index < text.size(); ++index) {
+            const QChar character = text.at(index);
+            if(character != '\n'_L1 && character != QChar::LineSeparator && character != QChar::ParagraphSeparator) {
+                continue;
+            }
 
+            const QStringView segment = text.sliced(lineStart, index - lineStart);
             if(!segment.isEmpty()) {
                 auto lineBlock = block;
                 lineBlock.text = segment.toString();
                 lines.back().blocks.push_back(std::move(lineBlock));
             }
 
-            if(!hasNewline) {
-                break;
-            }
-
             lines.emplace_back();
-            start = newlinePos + 1;
+            lineStart = index + 1;
+        }
+
+        const QStringView trailingSegment = text.sliced(lineStart);
+        if(!trailingSegment.isEmpty()) {
+            auto lineBlock = block;
+            lineBlock.text = trailingSegment.toString();
+            lines.back().blocks.push_back(std::move(lineBlock));
         }
     }
 
     return lines;
 }
 
+int richTextExtraLineHeight(const RichText& richText, const QFont& baseFont)
+{
+    return measureRichText(richText, baseFont).extraLineHeight;
+}
+
 RichTextMetrics measureRichText(const RichText& richText, const QFont& baseFont)
 {
     RichTextMetrics metrics;
-    const int defaultHeight = QFontMetrics{baseFont}.height();
+    bool isFirstLine{true};
 
     for(const auto& line : splitRichTextLines(richText)) {
-        int lineWidth{0};
-        int lineHeight{0};
+        const auto lineMetrics = measureRichTextLine(line, baseFont);
 
-        for(const auto& block : line.blocks) {
-            const QFont font = resolvedRichTextFont(block.format, baseFont);
-            const QFontMetrics fm{font};
-
-            lineWidth += fm.horizontalAdvance(block.text);
-            lineHeight = std::max(lineHeight, fm.height());
+        metrics.width = std::max(metrics.width, lineMetrics.width);
+        metrics.height += lineMetrics.height;
+        if(isFirstLine) {
+            metrics.firstLineWidth  = lineMetrics.width;
+            metrics.firstLineHeight = lineMetrics.height;
+            isFirstLine             = false;
         }
-
-        metrics.width = std::max(metrics.width, lineWidth);
-        metrics.height += std::max(lineHeight, defaultHeight);
+        else {
+            metrics.extraLineHeight += lineMetrics.height;
+        }
     }
 
     return metrics;

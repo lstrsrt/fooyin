@@ -149,8 +149,8 @@ QSize richTextSize(const QStyleOptionViewItem& option, const QModelIndex& index)
         return metrics.size(Qt::TextSingleLine, index.data(Qt::DisplayRole).toString());
     }
 
-    const auto [width, height] = measureRichText(richText, option.font);
-    return {width, height};
+    const auto metrics = measureRichText(richText, option.font);
+    return {metrics.width, metrics.firstLineHeight + metrics.extraLineHeight};
 }
 } // namespace
 

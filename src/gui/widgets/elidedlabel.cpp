@@ -122,7 +122,8 @@ QSize richTextNaturalSize(const RichText& richText, const QFont& baseFont)
     }
 
     const auto metrics = measureRichText(richText, baseFont);
-    return {metrics.width, std::max(metrics.height, QFontMetrics{baseFont}.height())};
+    return {metrics.width,
+            std::max(metrics.firstLineHeight + metrics.extraLineHeight, QFontMetrics{baseFont}.height())};
 }
 } // namespace
 

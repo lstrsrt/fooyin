@@ -460,16 +460,27 @@ QSize PlaylistDelegate::sizeHint(const QStyleOptionViewItem& option, const QMode
 
     const QWidget* widget = opt.widget;
     const QStyle* style   = widget ? widget->style() : QApplication::style();
+    const int type        = index.data(PlaylistItem::Type).toInt();
 
     QSize size = index.data(Qt::SizeHintRole).toSize();
+    const bool usesStyleBaseHeight
+        = (type == PlaylistItem::Track && index.data(PlaylistItem::Role::UsesStyleBaseHeight).toBool());
+
+    QSize hintSize{size};
+    if(usesStyleBaseHeight) {
+        hintSize.setHeight(0);
+    }
 
     const int margin = style->pixelMetric(QStyle::PM_FocusFrameHMargin, &opt, opt.widget) * 5;
-    const QSize hint = style->sizeFromContents(QStyle::CT_ItemViewItem, &opt, size, widget);
+    const QSize hint = style->sizeFromContents(QStyle::CT_ItemViewItem, &opt, hintSize, widget);
 
     if(size.width() <= 0) {
         size.setWidth(hint.width());
     }
-    if(size.height() < 1) {
+    if(usesStyleBaseHeight) {
+        size.setHeight(hint.height() + size.height());
+    }
+    else if(size.height() < 1) {
         size.setHeight(hint.height());
     }
 

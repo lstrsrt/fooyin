@@ -358,7 +358,7 @@ QSize FilterDelegate::richLineSize(const QStyleOptionViewItem& option, int maxWi
 QSize richTextNaturalSize(const QStyleOptionViewItem& option, const RichText& richText)
 {
     const auto metrics = measureRichText(richText, option.font);
-    return {metrics.width, metrics.height};
+    return {metrics.width, metrics.firstLineHeight + metrics.extraLineHeight};
 }
 
 RichText FilterDelegate::fallbackRichText(const QStyleOptionViewItem& option, const QModelIndex& index)

@@ -60,10 +60,16 @@
 
 using namespace Qt::StringLiterals;
 
-constexpr auto MimeModelId       = "application/x-playlistmodel-id";
-constexpr auto MaxPlaylistTracks = 250;
+constexpr auto MimeModelId           = "application/x-playlistmodel-id";
+constexpr auto MaxPlaylistTracks     = 250;
+constexpr int UniformHeightValueMask = 0xFFFF;
 
 namespace {
+int uniformHeightKey(int type, int height, bool usesStyleBase = false)
+{
+    return (type << 17) | (usesStyleBase ? (1 << 16) : 0) | std::min(height, UniformHeightValueMask);
+}
+
 QString normaliseWriteField(QString field)
 {
     field = field.trimmed();
@@ -2047,7 +2053,9 @@ QVariant PlaylistModel::trackData(PlaylistItem* item, const QModelIndex& index, 
         case PlaylistItem::Role::ItemData:
             return trackItem.track();
         case PlaylistItem::Role::UniformHeightKey:
-            return (PlaylistItem::Track << 16) | std::min(trackItem.size().height(), 0xFFFF);
+            return uniformHeightKey(PlaylistItem::Track, trackItem.size().height(), trackItem.rowHeight() <= 0);
+        case PlaylistItem::Role::UsesStyleBaseHeight:
+            return trackItem.rowHeight() <= 0;
         case Qt::BackgroundRole: {
             if(!track.isEnabled()) {
                 return m_disabledColour;
@@ -2107,7 +2115,7 @@ QVariant PlaylistModel::headerData(PlaylistItem* item, int column, int role) con
 
     switch(role) {
         case PlaylistItem::Role::UniformHeightKey:
-            return (PlaylistItem::Header << 16) | std::min(header.size().height(), 0xFFFF);
+            return uniformHeightKey(PlaylistItem::Header, header.size().height());
         case PlaylistItem::Role::Title:
             return header.title();
         case PlaylistItem::Role::Simple:
@@ -2148,7 +2156,7 @@ QVariant PlaylistModel::subheaderData(PlaylistItem* item, int column, int role) 
 
     switch(role) {
         case PlaylistItem::Role::UniformHeightKey:
-            return (PlaylistItem::Subheader << 16) | std::min(header.size().height(), 0xFFFF);
+            return uniformHeightKey(PlaylistItem::Subheader, header.size().height());
         case PlaylistItem::Role::Title:
             return header.title();
         case PlaylistItem::Role::Subtitle:
