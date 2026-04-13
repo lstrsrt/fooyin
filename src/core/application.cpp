@@ -110,7 +110,7 @@ public:
     void loadPlugins();
 
     void startSaveTimer();
-    void exportAllPlaylists();
+    void exportAllPlaylists(bool shutdown);
 
     void saveActivePlaylistState() const;
     uint64_t loadActivePlaylistState() const;
@@ -317,7 +317,7 @@ void ApplicationPrivate::startSaveTimer()
     m_playlistSaveTimer.start(PlaylistSaveInterval, m_self);
 }
 
-void ApplicationPrivate::exportAllPlaylists()
+void ApplicationPrivate::exportAllPlaylists(bool shutdown)
 {
     using namespace Settings::Core::Internal;
 
@@ -334,14 +334,23 @@ void ApplicationPrivate::exportAllPlaylists()
         m_settings->fileValue(Settings::Core::Internal::PlaylistSavePathType, 0).toInt());
     const bool writeMetadata = m_settings->fileValue(Settings::Core::Internal::PlaylistSaveMetadata, false).toBool();
 
-    auto saveOrDeletePlaylist = [&](Playlist* playlist, bool forceRemove = false) {
+    enum ExportType : uint8_t
+    {
+        Save,
+        SaveAndDeleteEmpty,
+        ForceDelete
+    };
+
+    auto saveOrDeletePlaylist = [&](Playlist* playlist, ExportType exportType) {
         const QString playlistFilepath = playlistPath.absoluteFilePath(playlist->name() + u'.' + ext);
         playlistPath.mkpath(path);
 
         QFile playlistFile{playlistFilepath};
-        if(forceRemove || playlist->trackCount() == 0) {
-            if(playlistFile.exists() && !playlistFile.remove()) {
-                qCInfo(APP) << "Could not remove empty playlist:" << playlistFile.errorString();
+        const bool emptyPlaylist = playlist->trackCount() == 0;
+        if(exportType == ForceDelete || (exportType == SaveAndDeleteEmpty && emptyPlaylist)) {
+            if(playlistFile.exists() && !playlistFile.moveToTrash()) {
+                qCInfo(APP) << "Could not remove" << (emptyPlaylist ? "empty" : "")
+                            << "playlist:" << playlistFile.errorString();
             }
             return;
         }
@@ -359,14 +368,21 @@ void ApplicationPrivate::exportAllPlaylists()
 
     auto playlists        = m_playlistHandler->playlists();
     auto removedPlaylists = m_playlistHandler->removedPlaylists();
+    const auto canDelete
+        = shutdown && m_settings->fileValue(Settings::Core::Internal::AutoExportPlaylistsRemove, true).toBool();
 
     for(const auto& playlist : playlists) {
-        if(playlist->tracksModified()) {
-            saveOrDeletePlaylist(playlist);
+        if(playlist->tracksModified() || (canDelete && playlist->trackCount() == 0)) {
+            saveOrDeletePlaylist(playlist, canDelete ? SaveAndDeleteEmpty : Save);
         }
     }
-    for(const auto& playlist : removedPlaylists) {
-        saveOrDeletePlaylist(playlist, true);
+
+    const auto saveRemoved
+        = m_settings->fileValue(Settings::Core::Internal::AutoExportPlaylistsSaveRemoved, false).toBool();
+    if(canDelete || saveRemoved) {
+        for(const auto& playlist : removedPlaylists) {
+            saveOrDeletePlaylist(playlist, canDelete ? ForceDelete : Save);
+        }
     }
 }
 
@@ -546,7 +562,7 @@ void Application::timerEvent(QTimerEvent* event)
     if(event->timerId() == p->m_playlistSaveTimer.timerId()) {
         p->m_playlistSaveTimer.stop();
         if(p->m_settings->fileValue(Settings::Core::Internal::AutoExportPlaylists).toBool()) {
-            p->exportAllPlaylists();
+            p->exportAllPlaylists(false);
         }
         p->m_playlistHandler->savePlaylists();
     }
@@ -564,7 +580,7 @@ void Application::shutdown()
     p->saveDatabaseSettings();
 
     if(p->m_settings->fileValue(Settings::Core::Internal::AutoExportPlaylists).toBool()) {
-        p->exportAllPlaylists();
+        p->exportAllPlaylists(true);
     }
 
     if(p->m_settings->value<Settings::Core::ClearPlaybackQueueOnExit>()) {
