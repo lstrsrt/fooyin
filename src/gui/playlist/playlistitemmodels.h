@@ -33,12 +33,20 @@ class ScriptParser;
 class PlaylistContainerItem
 {
 public:
-    explicit PlaylistContainerItem(bool isSimple);
+    enum class LayoutKind : uint8_t
+    {
+        Header = 0,
+        SimpleHeader,
+        Subheader,
+    };
+
+    explicit PlaylistContainerItem(LayoutKind layoutKind);
 
     [[nodiscard]] const RichText& title() const;
     [[nodiscard]] const RichText& subtitle() const;
     [[nodiscard]] const RichText& sideText() const;
     [[nodiscard]] const RichText& info() const;
+    [[nodiscard]] LayoutKind layoutKind() const;
     [[nodiscard]] int rowHeight() const;
     [[nodiscard]] QSize size() const;
     [[nodiscard]] int scriptIndex() const;
@@ -61,7 +69,7 @@ private:
     RichText m_sideText;
     RichText m_info;
 
-    bool m_simple;
+    LayoutKind m_layoutKind;
     QSize m_size;
     int m_rowHeight;
     int m_scriptIndex{-1};
@@ -72,8 +80,8 @@ class PlaylistTrackItem
 {
 public:
     PlaylistTrackItem() = default;
-    PlaylistTrackItem(std::vector<RichText> columns, const PlaylistTrack& track);
-    PlaylistTrackItem(RichText left, RichText right, const PlaylistTrack& track);
+    PlaylistTrackItem(std::vector<RichText> columns, PlaylistTrack track);
+    PlaylistTrackItem(RichText left, RichText right, PlaylistTrack track);
 
     [[nodiscard]] const std::vector<RichText>& columns() const;
     [[nodiscard]] const RichText& column(int column) const;

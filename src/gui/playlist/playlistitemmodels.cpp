@@ -23,22 +23,10 @@
 
 #include <QFontMetrics>
 
+constexpr auto ContainerVerticalPadding = 8;
+
 namespace Fooyin {
 namespace {
-QSize singleLineRichTextSize(const RichText& richText)
-{
-    QSize blockSize;
-
-    for(const auto& [blockText, format] : richText.blocks) {
-        const QFontMetrics fm{format.font};
-        const QRect br = fm.boundingRect(blockText);
-        blockSize.setWidth(blockSize.width() + br.width());
-        blockSize.setHeight(std::max(blockSize.height(), br.height()));
-    }
-
-    return blockSize;
-}
-
 QSize singleLineTrackSize(const RichText& richText)
 {
     QSize blockSize;
@@ -53,8 +41,8 @@ QSize singleLineTrackSize(const RichText& richText)
 }
 } // namespace
 
-PlaylistContainerItem::PlaylistContainerItem(bool isSimple)
-    : m_simple{isSimple}
+PlaylistContainerItem::PlaylistContainerItem(LayoutKind layoutKind)
+    : m_layoutKind{layoutKind}
     , m_rowHeight{0}
 { }
 
@@ -76,6 +64,11 @@ const RichText& PlaylistContainerItem::sideText() const
 const RichText& PlaylistContainerItem::info() const
 {
     return m_info;
+}
+
+PlaylistContainerItem::LayoutKind PlaylistContainerItem::layoutKind() const
+{
+    return m_layoutKind;
 }
 
 int PlaylistContainerItem::rowHeight() const
@@ -149,9 +142,7 @@ void PlaylistContainerItem::calculateSize()
 
     auto addSize = [&totalSize](const RichText& text, bool addToTotal = true) {
         const auto metrics = measureRichText(text);
-        QSize blockSize    = singleLineRichTextSize(text);
-        blockSize.setWidth(metrics.width);
-        blockSize.setHeight(blockSize.height() + richTextExtraLineHeight(text));
+        const QSize blockSize{metrics.width, metrics.height};
 
         if(addToTotal) {
             totalSize.setWidth(totalSize.width() + blockSize.width());
@@ -176,32 +167,46 @@ void PlaylistContainerItem::calculateSize()
         subtitleSize.setHeight(std::max(subtitleSize.height(), sideSize.height()));
     }
 
-    if(m_simple) {
-        totalSize.setWidth(totalSize.width() + subtitleSize.width());
-        totalSize.setHeight(std::max(totalSize.height(), subtitleSize.height()));
-    }
-    else {
-        totalSize.setWidth(totalSize.width() + subtitleSize.width());
-        totalSize.setHeight(totalSize.height() + subtitleSize.height() + 4);
+    switch(m_layoutKind) {
+        case LayoutKind::SimpleHeader: {
+            totalSize.setWidth(totalSize.width() + subtitleSize.width());
+            totalSize.setHeight(std::max(totalSize.height(), subtitleSize.height()));
+            const bool hasMultiline = richTextHasLineBreaks(m_title) || richTextHasLineBreaks(m_subtitle)
+                                   || richTextHasLineBreaks(m_sideText) || richTextHasLineBreaks(m_info);
+            if(hasMultiline) {
+                totalSize.rheight() += ContainerVerticalPadding;
+            }
+            break;
+        }
+        case LayoutKind::Subheader: {
+            totalSize.setWidth(totalSize.width() + subtitleSize.width());
+            totalSize.setHeight(std::max(totalSize.height(), subtitleSize.height()) + ContainerVerticalPadding);
+            break;
+        }
+        case LayoutKind::Header: {
+            totalSize.setWidth(totalSize.width() + subtitleSize.width());
+            totalSize.setHeight(totalSize.height() + subtitleSize.height() + 4);
 
-        if(!m_info.empty()) {
-            addSize(m_info);
+            if(!m_info.empty()) {
+                addSize(m_info);
+            }
+            break;
         }
     }
 
     m_size = totalSize;
 }
 
-PlaylistTrackItem::PlaylistTrackItem(std::vector<RichText> columns, const PlaylistTrack& track)
+PlaylistTrackItem::PlaylistTrackItem(std::vector<RichText> columns, PlaylistTrack track)
     : m_columns{std::move(columns)}
-    , m_track{track}
+    , m_track{std::move(track)}
     , m_rowHeight{0}
 { }
 
-PlaylistTrackItem::PlaylistTrackItem(RichText left, RichText right, const PlaylistTrack& track)
+PlaylistTrackItem::PlaylistTrackItem(RichText left, RichText right, PlaylistTrack track)
     : m_left{std::move(left)}
     , m_right{std::move(right)}
-    , m_track{track}
+    , m_track{std::move(track)}
     , m_rowHeight{0}
     , m_depth{0}
 { }

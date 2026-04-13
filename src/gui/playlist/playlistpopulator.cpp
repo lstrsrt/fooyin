@@ -365,7 +365,9 @@ void PlaylistPopulatorPrivate::iterateHeader(const Track& track, PlaylistItem*& 
         const auto [sideScript, sideText]         = evaluateBlocks(m_parsedHeader.sideText);
         const auto [infoScript, infoText]         = evaluateBlocks(m_parsedHeader.info);
 
-        PlaylistContainerItem header{m_currentPreset.header.simple};
+        const auto layoutKind = m_currentPreset.header.simple ? PlaylistContainerItem::LayoutKind::SimpleHeader
+                                                              : PlaylistContainerItem::LayoutKind::Header;
+        PlaylistContainerItem header{layoutKind};
         header.setTitle(titleText);
         header.setSubtitle(subtitleText);
         header.setSideText(sideText);
@@ -410,7 +412,7 @@ void PlaylistPopulatorPrivate::iterateSubheaders(const Track& track, PlaylistIte
         const auto leftText         = evaluateTrackScript(parsedSubheader.leftText, track, context);
         const auto rightText        = evaluateTrackScript(parsedSubheader.rightText, track, context);
 
-        PlaylistContainerItem currentContainer{false};
+        PlaylistContainerItem currentContainer{PlaylistContainerItem::LayoutKind::Subheader};
         currentContainer.setTitle(leftText);
         currentContainer.setSubtitle(rightText);
         currentContainer.setRowHeight(subheader.rowHeight);
