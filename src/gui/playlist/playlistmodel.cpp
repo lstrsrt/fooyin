@@ -1946,6 +1946,10 @@ QModelIndex PlaylistModel::firstImageColumnTrackIndex(const QModelIndex& index) 
         return {};
     }
 
+    if(m_currentPreset.showCoverBelowEverySubheader) {
+        return index.siblingAtRow(0);
+    }
+
     const QModelIndex topLevelContainer = topLevelContainerIndex(index);
     if(!topLevelContainer.isValid()) {
         return firstLeafIndex(index.siblingAtRow(0));

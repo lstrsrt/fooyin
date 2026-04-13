@@ -115,12 +115,14 @@ struct PlaylistPreset
     SubheaderRows subHeaders;
     TrackRow track;
     bool insetSubheadersToImageColumns{false};
+    bool showCoverBelowEverySubheader{false};
 
     bool operator==(const PlaylistPreset& other) const
     {
-        return std::tie(id, index, name, header, subHeaders, track, insetSubheadersToImageColumns)
+        return std::tie(id, index, name, header, subHeaders, track, insetSubheadersToImageColumns,
+                        showCoverBelowEverySubheader)
             == std::tie(other.id, other.index, other.name, other.header, other.subHeaders, other.track,
-                        other.insetSubheadersToImageColumns);
+                        other.insetSubheadersToImageColumns, other.showCoverBelowEverySubheader);
     };
 
     [[nodiscard]] bool isValid() const

@@ -194,6 +194,7 @@ private:
 
     ExpandableInputBox* m_subHeaders;
     QCheckBox* m_alignSubheadersToImageColumns;
+    QCheckBox* m_showCoverBelowEverySubheader;
 
     ScriptTextEdit* m_trackLeftText;
     ScriptTextEdit* m_trackRightText;
@@ -221,9 +222,10 @@ PlaylistPresetsPageWidget::PlaylistPresetsPageWidget(PresetRegistry* presetRegis
     , m_overrideHeaderHeight{new QCheckBox(tr("Override height") + u":"_s, this)}
     , m_headerRowHeight{new QSpinBox(this)}
     , m_alignSubheadersToImageColumns{new QCheckBox(tr("Align subheaders to edge of image columns"), this)}
+    , m_showCoverBelowEverySubheader{new QCheckBox(tr("Display covers below every subheader"), this)}
     , m_trackLeftText{new ScriptTextEdit(this)}
     , m_trackRightText{new ScriptTextEdit(this)}
-    , m_overrideTrackHeight{new QCheckBox(this)}
+    , m_overrideTrackHeight{new QCheckBox(tr("Override height") + u":"_s, this)}
     , m_trackRowHeight{new QSpinBox(this)}
     , m_showCover{new QCheckBox(tr("Show cover"), this)}
     , m_simpleHeader{new QCheckBox(tr("Simple header"), this)}
@@ -280,7 +282,8 @@ PlaylistPresetsPageWidget::PlaylistPresetsPageWidget(PresetRegistry* presetRegis
     });
 
     subheaderLayout->addWidget(m_alignSubheadersToImageColumns, 0, 0, 1, 3);
-    subheaderLayout->addWidget(m_subHeaders, 1, 0, 1, 3);
+    subheaderLayout->addWidget(m_showCoverBelowEverySubheader, 1, 0, 1, 3);
+    subheaderLayout->addWidget(m_subHeaders, 2, 0, 1, 3);
 
     m_presetTabs->addTab(subheaderWidget, tr("Subheaders"));
 
@@ -415,6 +418,7 @@ void PlaylistPresetsPageWidget::updatePreset()
 
     updateGroupTextBlocks(m_subHeaders->blocks(), preset.subHeaders);
     preset.insetSubheadersToImageColumns = m_alignSubheadersToImageColumns->isChecked();
+    preset.showCoverBelowEverySubheader  = m_showCoverBelowEverySubheader->isChecked();
 
     preset.track.leftText.script  = m_trackLeftText->text();
     preset.track.rightText.script = m_trackRightText->text();
@@ -472,6 +476,7 @@ void PlaylistPresetsPageWidget::setupPreset(const PlaylistPreset& preset)
     m_headerRowHeight->setEnabled(m_overrideHeaderHeight->isChecked());
 
     m_alignSubheadersToImageColumns->setChecked(preset.insetSubheadersToImageColumns);
+    m_showCoverBelowEverySubheader->setChecked(preset.showCoverBelowEverySubheader);
 
     for(const auto& subheader : preset.subHeaders) {
         createGroupPresetInputs(subheader, m_subHeaders, this);
