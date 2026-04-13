@@ -20,6 +20,7 @@
 #include <gui/trackselectioncontroller.h>
 
 #include "artwork/artworkexporter.h"
+#include "core/constants.h"
 #include "internalguisettings.h"
 #include "playlist/playlistcontroller.h"
 #include "statusevent.h"
@@ -39,6 +40,7 @@
 
 #include <QAction>
 #include <QApplication>
+#include <QClipboard>
 #include <QFileDialog>
 #include <QFileInfo>
 #include <QMenuBar>
@@ -89,6 +91,7 @@ public:
     void addToQueue() const;
     void queueNext() const;
     void openFolder(const TrackSelection& selection) const;
+    void copyLocation(const TrackSelection& selection) const;
     void searchArtwork(const TrackSelection& selection, bool quick) const;
     void extractArtwork(const TrackSelection& selection) const;
     void attachArtwork(const TrackSelection& selection, Track::Cover coverType, QWidget* parent) const;
@@ -131,6 +134,7 @@ public:
     QAction* m_queueNext;
     QAction* m_removeFromQueue;
     QAction* m_openFolder;
+    QAction* m_copyLocation;
     QAction* m_searchArtwork;
     QAction* m_searchArtworkQuick;
     QAction* m_extractArtwork;
@@ -163,6 +167,7 @@ TrackSelectionControllerPrivate::TrackSelectionControllerPrivate(TrackSelectionC
     , m_queueNext{new QAction(tr("Queue to play next"), m_tracksMenu)}
     , m_removeFromQueue{new QAction(tr("Remove from playback queue"), m_tracksMenu)}
     , m_openFolder{new QAction(tr("Open containing folder"), m_tracksMenu)}
+    , m_copyLocation{new QAction(tr("Copy file location"), m_tracksMenu)}
     , m_searchArtwork{new QAction(tr("Search for artwork…"), m_tracksMenu)}
     , m_searchArtworkQuick{new QAction(tr("Quicksearch for artwork"), m_tracksMenu)}
     , m_extractArtwork{new QAction(tr("Auto-extract artwork to files"), m_tracksMenu)}
@@ -270,6 +275,16 @@ void TrackSelectionControllerPrivate::setupMenu()
         }
     });
     m_tracksMenu->addAction(openFolderCmd);
+
+    m_copyLocation->setStatusTip(tr("Copy the location of the selected tracks"));
+    auto* copyLocationCmd = m_actionManager->registerAction(m_copyLocation, Constants::Actions::CopyLocation);
+    copyLocationCmd->setCategories(tracksCategory);
+    QObject::connect(m_copyLocation, &QAction::triggered, m_tracksMenu, [this]() {
+        if(hasTracks()) {
+            copyLocation(m_self->selectedSelection());
+        }
+    });
+    m_tracksMenu->addAction(copyLocationCmd);
 
     auto* artworkMenu = m_actionManager->createMenu(Constants::Menus::Context::Artwork);
     artworkMenu->menu()->setTitle(TrackSelectionController::tr("Artwork"));
@@ -607,6 +622,19 @@ void TrackSelectionControllerPrivate::openFolder(const TrackSelection& selection
     else {
         Utils::File::openDirectory(track.path());
     }
+}
+
+void TrackSelectionControllerPrivate::copyLocation(const TrackSelection& selection) const
+{
+    if(selection.tracks.empty()) {
+        return;
+    }
+
+    QStringList paths;
+    for(const auto& track : selection.tracks) {
+        paths.append(track.prettyFilepath());
+    }
+    QApplication::clipboard()->setText(paths.join("\n"_L1));
 }
 
 void TrackSelectionControllerPrivate::searchArtwork(const TrackSelection& selection, bool quick) const
