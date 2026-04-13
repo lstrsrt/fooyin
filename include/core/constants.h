@@ -22,11 +22,6 @@
 namespace Fooyin::Constants {
 constexpr auto RecordSeparator = "\036";
 constexpr auto UnitSeparator   = "\037";
-#ifdef Q_OS_WIN32
-constexpr auto NewLine = "\r\n";
-#else
-constexpr auto NewLine = "\n";
-#endif
 
 constexpr auto InvalidGain = -1000;
 constexpr auto InvalidPeak = -1;

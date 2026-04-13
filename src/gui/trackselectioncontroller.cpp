@@ -635,7 +635,7 @@ void TrackSelectionControllerPrivate::copyLocation(const TrackSelection& selecti
     for(const auto& track : selection.tracks) {
         paths.append(track.prettyFilepath());
     }
-    QApplication::clipboard()->setText(paths.join(QLatin1String{Constants::NewLine}));
+    QApplication::clipboard()->setText(paths.join("\n"_L1));
 }
 
 void TrackSelectionControllerPrivate::searchArtwork(const TrackSelection& selection, bool quick) const
