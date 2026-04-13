@@ -157,5 +157,9 @@ GuiSettings::GuiSettings(SettingsManager* settingsManager)
                                                               u"Interface/ImageAllocationLimit"_s);
     m_settings->createSetting<Internal::PlaylistTrackPreloadCount>(2000, u"Playlist/TrackPreloadCount"_s);
     m_settings->createSetting<Internal::PlaylistInlineTagEditing>(false, u"PlaylistWidget/InlineTagEditing"_s);
+    m_settings->createSetting<Internal::TrackContextMenuDisabledSections>(
+        QStringList{}, u"Interface/TrackContextMenuDisabledSections"_s);
+    m_settings->createSetting<Internal::PlaylistContextMenuDisabledSections>(
+        QStringList{}, u"Interface/PlaylistContextMenuDisabledSections"_s);
 }
 } // namespace Fooyin

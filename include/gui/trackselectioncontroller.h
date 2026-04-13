@@ -26,6 +26,7 @@
 
 #include <QObject>
 
+#include <functional>
 #include <optional>
 #include <vector>
 
@@ -53,7 +54,7 @@ struct FYGUI_EXPORT TrackSelection
 
 enum class TrackAction
 {
-    None,
+    None = 0,
     AddCurrentPlaylist,
     AddActivePlaylist,
     SendCurrentPlaylist,
@@ -62,6 +63,22 @@ enum class TrackAction
     AddToQueue,
     SendToQueue,
     QueueNext
+};
+
+enum class TrackContextMenuArea : uint8_t
+{
+    Track = 0,
+    Queue,
+    Playlist
+};
+
+struct FYGUI_EXPORT TrackContextMenuNodeInfo
+{
+    Id id;
+    std::optional<Id> parentId;
+    QString title;
+    TrackContextMenuArea area{TrackContextMenuArea::Track};
+    bool isSubmenu{false};
 };
 
 namespace PlaylistAction {
@@ -81,6 +98,8 @@ class FYGUI_EXPORT TrackSelectionController : public QObject
     Q_OBJECT
 
 public:
+    using TrackContextMenuRenderer = std::function<void(QMenu* menu, const TrackSelection& selection)>;
+
     TrackSelectionController(ActionManager* actionManager, AudioLoader* audioLoader, SettingsManager* settings,
                              PlaylistController* playlistController, QObject* parent = nullptr);
     ~TrackSelectionController() override;
@@ -99,11 +118,22 @@ public:
     void addTrackContextMenu(QMenu* menu, const TrackSelection& selection) const;
     void addTrackQueueContextMenu(QMenu* menu) const;
     void addTrackPlaylistContextMenu(QMenu* menu) const;
+
+    bool registerTrackContextSubmenu(QObject* owner, TrackContextMenuArea area, const Id& parentId, const Id& id,
+                                     const QString& title, const Id& beforeId = {});
+    bool registerTrackContextAction(QObject* owner, TrackContextMenuArea area, const Id& parentId, const Id& id,
+                                    const QString& title, const TrackContextMenuRenderer& renderer,
+                                    const Id& beforeId = {});
+    bool registerTrackContextDynamicSubmenu(QObject* owner, TrackContextMenuArea area, const Id& parentId, const Id& id,
+                                            const QString& title, const TrackContextMenuRenderer& renderer,
+                                            const Id& beforeId = {});
+    [[nodiscard]] std::vector<TrackContextMenuNodeInfo> trackContextMenuNodes() const;
+
     void executeAction(TrackAction action, PlaylistAction::ActionOptions options = {},
                        const QString& playlistName = {});
 
 signals:
-    void actionExecuted(TrackAction action);
+    void actionExecuted(Fooyin::TrackAction action);
     void selectionChanged();
     void requestPropertiesDialog(const Fooyin::TrackList& tracks);
     void requestArtworkSearch(const Fooyin::TrackList& tracks, bool quick);

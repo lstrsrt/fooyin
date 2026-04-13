@@ -20,7 +20,6 @@
 #include <gui/trackselectioncontroller.h>
 
 #include "artwork/artworkexporter.h"
-#include "core/constants.h"
 #include "internalguisettings.h"
 #include "playlist/playlistcontroller.h"
 #include "statusevent.h"
@@ -31,7 +30,6 @@
 #include <core/track.h>
 #include <gui/guiconstants.h>
 #include <gui/iconloader.h>
-#include <utils/actions/actioncontainer.h>
 #include <utils/actions/actionmanager.h>
 #include <utils/actions/command.h>
 #include <utils/fileutils.h>
@@ -43,7 +41,9 @@
 #include <QClipboard>
 #include <QFileDialog>
 #include <QFileInfo>
+#include <QMainWindow>
 #include <QMenuBar>
+#include <QPointer>
 
 #include <functional>
 #include <ranges>
@@ -63,6 +63,28 @@ QString promptForArtworkPath(QWidget* parent)
 } // namespace
 
 namespace Fooyin {
+namespace {
+enum class MenuNodeType : uint8_t
+{
+    Root = 0,
+    Action,
+    Submenu,
+    Separator
+};
+
+struct MenuNode
+{
+    MenuNodeType type{MenuNodeType::Root};
+    QPointer<QObject> owner;
+    Id id;
+    QString title;
+    TrackContextMenuArea area{TrackContextMenuArea::Track};
+    TrackSelectionController::TrackContextMenuRenderer renderer;
+    std::vector<std::unique_ptr<MenuNode>> children;
+    MenuNode* parent{nullptr};
+};
+} // namespace
+
 class TrackSelectionControllerPrivate : public QObject
 {
     Q_OBJECT
@@ -72,7 +94,25 @@ public:
                                     AudioLoader* audioLoader, SettingsManager* settings,
                                     PlaylistController* playlistController);
 
-    void setupMenu();
+    void setupBuiltInMenus();
+
+    [[nodiscard]] MenuNode* rootForArea(TrackContextMenuArea area);
+
+    bool registerSubmenu(QObject* owner, TrackContextMenuArea area, const Id& parentId, const Id& id,
+                         const QString& title, const Id& beforeId = {});
+    bool registerAction(QObject* owner, TrackContextMenuArea area, const Id& parentId, const Id& id,
+                        const QString& title, const TrackSelectionController::TrackContextMenuRenderer& renderer,
+                        const Id& beforeId = {});
+    bool registerSeparator(TrackContextMenuArea area, const Id& parentId, const Id& id = {}, const Id& beforeId = {});
+
+    void renderArea(QMenu* menu, TrackContextMenuArea area, const TrackSelection& selection);
+    void renderNode(QMenu* menu, const MenuNode& node, const TrackSelection& selection) const;
+    void appendNodeInfo(const MenuNode& node, std::vector<TrackContextMenuNodeInfo>& nodes) const;
+
+    void refreshDisabledNodes();
+    [[nodiscard]] bool isNodeDisabled(const Id& id) const;
+    static void trimSeparators(QMenu* menu);
+    [[nodiscard]] static bool hasVisibleActions(const QMenu* menu);
 
     bool hasTracks() const;
     bool hasContextTracks() const;
@@ -104,7 +144,6 @@ public:
     [[nodiscard]] bool canWrite(const TrackSelection& selection) const;
 
     const TrackSelection* currentSelection() const;
-    TrackSelection* currentSelection();
 
     void updateActionState();
 
@@ -122,9 +161,11 @@ public:
     TrackSelection m_tracks;
     Playlist* m_tempPlaylist{nullptr};
 
-    ActionContainer* m_tracksMenu{nullptr};
-    ActionContainer* m_tracksQueueMenu{nullptr};
-    ActionContainer* m_tracksPlaylistMenu{nullptr};
+    MenuNode m_trackRoot;
+    MenuNode m_queueRoot;
+    MenuNode m_playlistRoot;
+    std::unordered_map<Id, MenuNode*, Id::IdHash> m_menuNodes;
+    IdSet m_disabledNodeIds;
 
     QAction* m_addCurrent;
     QAction* m_addActive;
@@ -136,7 +177,6 @@ public:
     QAction* m_openFolder;
     QAction* m_copyLocation;
     QAction* m_searchArtwork;
-    QAction* m_searchArtworkQuick;
     QAction* m_extractArtwork;
     QAction* m_attachFrontArtwork;
     QAction* m_attachBackArtwork;
@@ -156,35 +196,60 @@ TrackSelectionControllerPrivate::TrackSelectionControllerPrivate(TrackSelectionC
     , m_settings{settings}
     , m_playlistController{playlistController}
     , m_playlistHandler{m_playlistController->playlistHandler()}
-    , m_tracksMenu{m_actionManager->createMenu(Constants::Menus::Context::TrackSelection)}
-    , m_tracksQueueMenu{m_actionManager->createMenu(Constants::Menus::Context::TrackQueue)}
-    , m_tracksPlaylistMenu{m_actionManager->createMenu(Constants::Menus::Context::TracksPlaylist)}
-    , m_addCurrent{new QAction(tr("Add to current playlist"), m_tracksPlaylistMenu)}
-    , m_addActive{new QAction(tr("Add to active playlist"), m_tracksPlaylistMenu)}
-    , m_sendCurrent{new QAction(tr("Replace current playlist"), m_tracksPlaylistMenu)}
-    , m_sendNew{new QAction(tr("Create new playlist"), m_tracksPlaylistMenu)}
-    , m_addToQueue{new QAction(tr("Add to playback queue"), m_tracksMenu)}
-    , m_queueNext{new QAction(tr("Queue to play next"), m_tracksMenu)}
-    , m_removeFromQueue{new QAction(tr("Remove from playback queue"), m_tracksMenu)}
-    , m_openFolder{new QAction(tr("Open containing folder"), m_tracksMenu)}
-    , m_copyLocation{new QAction(tr("Copy file location"), m_tracksMenu)}
-    , m_searchArtwork{new QAction(tr("Search for artwork…"), m_tracksMenu)}
-    , m_searchArtworkQuick{new QAction(tr("Quicksearch for artwork"), m_tracksMenu)}
-    , m_extractArtwork{new QAction(tr("Auto-extract artwork to files"), m_tracksMenu)}
-    , m_attachFrontArtwork{new QAction(tr("Front cover…"), m_tracksMenu)}
-    , m_attachBackArtwork{new QAction(tr("Back cover…"), m_tracksMenu)}
-    , m_attachArtistArtwork{new QAction(tr("Artist picture…"), m_tracksMenu)}
-    , m_removeArtwork{new QAction(tr("Remove all artwork"), m_tracksMenu)}
-    , m_openProperties{new QAction(tr("Properties"), m_tracksMenu)}
+    , m_trackRoot{.type     = MenuNodeType::Root,
+                  .owner    = m_self,
+                  .id       = Constants::Menus::Context::TrackSelection,
+                  .title    = tr("Track actions"),
+                  .area     = TrackContextMenuArea::Track,
+                  .renderer = {},
+                  .children = {},
+                  .parent   = nullptr}
+    , m_queueRoot{.type     = MenuNodeType::Root,
+                  .owner    = m_self,
+                  .id       = Constants::Menus::Context::TrackQueue,
+                  .title    = tr("Playback queue"),
+                  .area     = TrackContextMenuArea::Queue,
+                  .renderer = {},
+                  .children = {},
+                  .parent   = nullptr}
+    , m_playlistRoot{.type     = MenuNodeType::Root,
+                     .owner    = m_self,
+                     .id       = Constants::Menus::Context::TracksPlaylist,
+                     .title    = tr("Playlist actions"),
+                     .area     = TrackContextMenuArea::Playlist,
+                     .renderer = {},
+                     .children = {},
+                     .parent   = nullptr}
+    , m_addCurrent{new QAction(tr("Add to current playlist"), self)}
+    , m_addActive{new QAction(tr("Add to active playlist"), self)}
+    , m_sendCurrent{new QAction(tr("Replace current playlist"), self)}
+    , m_sendNew{new QAction(tr("Create new playlist"), self)}
+    , m_addToQueue{new QAction(tr("Add to playback queue"), self)}
+    , m_queueNext{new QAction(tr("Queue to play next"), self)}
+    , m_removeFromQueue{new QAction(tr("Remove from playback queue"), self)}
+    , m_openFolder{new QAction(tr("Open containing folder"), self)}
+    , m_copyLocation{new QAction(tr("Copy file location"), self)}
+    , m_searchArtwork{new QAction(tr("Search for artwork…"), self)}
+    , m_extractArtwork{new QAction(tr("Auto-extract artwork to files"), self)}
+    , m_attachFrontArtwork{new QAction(tr("Front cover…"), self)}
+    , m_attachBackArtwork{new QAction(tr("Back cover…"), self)}
+    , m_attachArtistArtwork{new QAction(tr("Artist picture…"), self)}
+    , m_removeArtwork{new QAction(tr("Remove all artwork"), self)}
+    , m_openProperties{new QAction(tr("Properties"), self)}
 {
-    setupMenu();
+    m_menuNodes.emplace(m_trackRoot.id, &m_trackRoot);
+    m_menuNodes.emplace(m_queueRoot.id, &m_queueRoot);
+    m_menuNodes.emplace(m_playlistRoot.id, &m_playlistRoot);
+
+    setupBuiltInMenus();
+    refreshDisabledNodes();
+    m_settings->subscribe<Settings::Gui::Internal::TrackContextMenuDisabledSections>(
+        this, &TrackSelectionControllerPrivate::refreshDisabledNodes);
     updateActionState();
 }
 
-void TrackSelectionControllerPrivate::setupMenu()
+void TrackSelectionControllerPrivate::setupBuiltInMenus()
 {
-    m_tracksPlaylistMenu->addSeparator();
-
     Gui::setThemeIcon(m_addToQueue, Constants::Icons::Add);
     Gui::setThemeIcon(m_removeFromQueue, Constants::Icons::Remove);
 
@@ -193,30 +258,34 @@ void TrackSelectionControllerPrivate::setupMenu()
     m_addCurrent->setStatusTip(tr("Append selected tracks to the current playlist"));
     auto* addCurrentCmd = m_actionManager->registerAction(m_addCurrent, Constants::Actions::AddToCurrent);
     addCurrentCmd->setCategories(tracksCategory);
-    QObject::connect(m_addCurrent, &QAction::triggered, m_tracksPlaylistMenu, [this]() { addToCurrentPlaylist(); });
-    m_tracksPlaylistMenu->addAction(addCurrentCmd);
+    QObject::connect(m_addCurrent, &QAction::triggered, m_self, [this]() { addToCurrentPlaylist(); });
+    registerAction(m_self, TrackContextMenuArea::Playlist, m_playlistRoot.id, Constants::Actions::AddToCurrent,
+                   m_addCurrent->text(), [this](QMenu* menu, const TrackSelection&) { menu->addAction(m_addCurrent); });
 
     m_addActive->setStatusTip(tr("Append selected tracks to the active playlist"));
     auto* addActiveCmd = m_actionManager->registerAction(m_addActive, Constants::Actions::AddToActive);
     addActiveCmd->setCategories(tracksCategory);
-    QObject::connect(m_addActive, &QAction::triggered, m_tracksPlaylistMenu, [this]() { addToActivePlaylist(); });
-    m_tracksPlaylistMenu->addAction(addActiveCmd);
+    QObject::connect(m_addActive, &QAction::triggered, m_self, [this]() { addToActivePlaylist(); });
+    registerAction(m_self, TrackContextMenuArea::Playlist, m_playlistRoot.id, Constants::Actions::AddToActive,
+                   m_addActive->text(), [this](QMenu* menu, const TrackSelection&) { menu->addAction(m_addActive); });
 
     m_sendCurrent->setStatusTip(tr("Replace contents of the current playlist with the selected tracks"));
     auto* sendCurrentCmd = m_actionManager->registerAction(m_sendCurrent, Constants::Actions::SendToCurrent);
     sendCurrentCmd->setCategories(tracksCategory);
-    QObject::connect(m_sendCurrent, &QAction::triggered, m_tracksPlaylistMenu, [this]() {
+    QObject::connect(m_sendCurrent, &QAction::triggered, m_self, [this]() {
         if(hasContextTracks()) {
             const auto& selection = m_contextSelection.at(m_activeContext);
             sendToCurrentPlaylist(selection.playbackOnSend ? PlaylistAction::StartPlayback : PlaylistAction::Switch);
         }
     });
-    m_tracksPlaylistMenu->addAction(sendCurrentCmd);
+    registerAction(m_self, TrackContextMenuArea::Playlist, m_playlistRoot.id, Constants::Actions::SendToCurrent,
+                   m_sendCurrent->text(),
+                   [this](QMenu* menu, const TrackSelection&) { menu->addAction(m_sendCurrent); });
 
     m_sendNew->setStatusTip(tr("Create a new playlist containing the selected tracks"));
     auto* sendNewCmd = m_actionManager->registerAction(m_sendNew, Constants::Actions::SendToNew);
     sendNewCmd->setCategories(tracksCategory);
-    QObject::connect(m_sendNew, &QAction::triggered, m_tracksPlaylistMenu, [this]() {
+    QObject::connect(m_sendNew, &QAction::triggered, m_self, [this]() {
         if(hasContextTracks()) {
             const auto& selection = m_contextSelection.at(m_activeContext);
             const auto options    = PlaylistAction::Switch
@@ -224,159 +293,423 @@ void TrackSelectionControllerPrivate::setupMenu()
             sendToNewPlaylist(static_cast<PlaylistAction::ActionOptions>(options), {});
         }
     });
-    m_tracksPlaylistMenu->addAction(sendNewCmd);
-
-    m_tracksPlaylistMenu->addSeparator();
-
-    // Tracks menu
+    registerAction(m_self, TrackContextMenuArea::Playlist, m_playlistRoot.id, Constants::Actions::SendToNew,
+                   m_sendNew->text(), [this](QMenu* menu, const TrackSelection&) { menu->addAction(m_sendNew); });
 
     m_addToQueue->setStatusTip(tr("Add the selected tracks to the playback queue"));
     auto* addQueueCmd = m_actionManager->registerAction(m_addToQueue, Constants::Actions::AddToQueue);
     addQueueCmd->setCategories(tracksCategory);
-    QObject::connect(m_addToQueue, &QAction::triggered, m_tracksQueueMenu, [this]() {
+    QObject::connect(m_addToQueue, &QAction::triggered, m_self, [this]() {
         if(hasTracks()) {
             const auto selection = m_self->selectedSelection();
             m_playlistController->playerController()->queueTracks(queueTracksForSelection(selection));
             updateActionState();
         }
     });
-    m_tracksQueueMenu->addAction(addQueueCmd);
+    registerAction(m_self, TrackContextMenuArea::Queue, m_queueRoot.id, Constants::Actions::AddToQueue,
+                   m_addToQueue->text(), [this](QMenu* menu, const TrackSelection&) { menu->addAction(m_addToQueue); });
 
     m_queueNext->setStatusTip(tr("Add the selected tracks to the front of the playback queue"));
     auto* queueNextCmd = m_actionManager->registerAction(m_queueNext, Constants::Actions::QueueNext);
     queueNextCmd->setCategories(tracksCategory);
-    QObject::connect(m_queueNext, &QAction::triggered, m_tracksQueueMenu, [this]() {
+    QObject::connect(m_queueNext, &QAction::triggered, m_self, [this]() {
         if(hasTracks()) {
             const auto selection = m_self->selectedSelection();
             m_playlistController->playerController()->queueTracksNext(queueTracksForSelection(selection));
             updateActionState();
         }
     });
-    m_tracksQueueMenu->addAction(queueNextCmd);
+    registerAction(m_self, TrackContextMenuArea::Queue, m_queueRoot.id, Constants::Actions::QueueNext,
+                   m_queueNext->text(), [this](QMenu* menu, const TrackSelection&) { menu->addAction(m_queueNext); });
 
     m_removeFromQueue->setStatusTip(tr("Remove the selected tracks from the playback queue"));
     auto* removeQueueCmd = m_actionManager->registerAction(m_removeFromQueue, Constants::Actions::RemoveFromQueue);
     removeQueueCmd->setCategories(tracksCategory);
-    QObject::connect(m_removeFromQueue, &QAction::triggered, m_tracksQueueMenu, [this]() {
+    QObject::connect(m_removeFromQueue, &QAction::triggered, m_self, [this]() {
         if(hasTracks()) {
             const auto selection = m_self->selectedSelection();
             m_playlistController->playerController()->dequeueTracks(queueTracksForSelection(selection));
             updateActionState();
         }
     });
-    m_tracksQueueMenu->addAction(removeQueueCmd);
+    registerAction(m_self, TrackContextMenuArea::Queue, m_queueRoot.id, Constants::Actions::RemoveFromQueue,
+                   m_removeFromQueue->text(), [this](QMenu* menu, const TrackSelection& selection) {
+                       if(canDequeue(selection)) {
+                           menu->addAction(m_removeFromQueue);
+                       }
+                   });
 
     m_openFolder->setStatusTip(tr("Open the directory containing the selected tracks"));
     auto* openFolderCmd = m_actionManager->registerAction(m_openFolder, Constants::Actions::OpenFolder);
     openFolderCmd->setCategories(tracksCategory);
-    QObject::connect(m_openFolder, &QAction::triggered, m_tracksMenu, [this]() {
+    QObject::connect(m_openFolder, &QAction::triggered, m_self, [this]() {
         if(hasTracks()) {
             openFolder(m_self->selectedSelection());
         }
     });
-    m_tracksMenu->addAction(openFolderCmd);
+    registerAction(m_self, TrackContextMenuArea::Track, m_trackRoot.id, Constants::Actions::OpenFolder,
+                   m_openFolder->text(), [this](QMenu* menu, const TrackSelection&) { menu->addAction(m_openFolder); });
 
     m_copyLocation->setStatusTip(tr("Copy the location of the selected tracks"));
     auto* copyLocationCmd = m_actionManager->registerAction(m_copyLocation, Constants::Actions::CopyLocation);
     copyLocationCmd->setCategories(tracksCategory);
-    QObject::connect(m_copyLocation, &QAction::triggered, m_tracksMenu, [this]() {
+    QObject::connect(m_copyLocation, &QAction::triggered, m_self, [this]() {
         if(hasTracks()) {
             copyLocation(m_self->selectedSelection());
         }
     });
-    m_tracksMenu->addAction(copyLocationCmd);
+    registerAction(m_self, TrackContextMenuArea::Track, m_trackRoot.id, Constants::Actions::CopyLocation,
+                   m_copyLocation->text(),
+                   [this](QMenu* menu, const TrackSelection&) { menu->addAction(m_copyLocation); });
 
-    auto* artworkMenu = m_actionManager->createMenu(Constants::Menus::Context::Artwork);
-    artworkMenu->menu()->setTitle(TrackSelectionController::tr("Artwork"));
-    m_tracksMenu->addMenu(artworkMenu);
+    registerSubmenu(m_self, TrackContextMenuArea::Track, m_trackRoot.id, Constants::Menus::Context::Artwork,
+                    TrackSelectionController::tr("Artwork"));
 
     m_searchArtwork->setStatusTip(tr("Search for artwork for the selected tracks"));
     auto* searchArtworkCmd = m_actionManager->registerAction(m_searchArtwork, Constants::Actions::SearchArtwork);
     searchArtworkCmd->setCategories(tracksCategory);
-    QObject::connect(m_searchArtwork, &QAction::triggered, m_tracksMenu, [this]() {
+    QObject::connect(m_searchArtwork, &QAction::triggered, m_self, [this]() {
         if(hasTracks()) {
             searchArtwork(m_self->selectedSelection(), false);
         }
     });
-    artworkMenu->addAction(searchArtworkCmd);
+    registerAction(m_self, TrackContextMenuArea::Track, Constants::Menus::Context::Artwork,
+                   Constants::Actions::SearchArtwork, m_searchArtwork->text(),
+                   [this](QMenu* menu, const TrackSelection&) { menu->addAction(m_searchArtwork); });
 
-    artworkMenu->addSeparator();
-
-    // m_searchArtworkQuick->setStatusTip(tr("Search for artwork for the selected files, automatically choosing the best
-    // "
-    //                                       "artwork based on the current settings"));
-    // auto* searchArtworkQuickCmd
-    //     = m_actionManager->registerAction(m_searchArtworkQuick, Constants::Actions::SearchArtworkQuick);
-    // searchArtworkQuickCmd->setCategories(tracksCategory);
-    // QObject::connect(m_searchArtworkQuick, &QAction::triggered, m_tracksMenu, [this]() {
-    //     if(hasTracks()) {
-    //         emit m_self->requestArtworkSearch(m_self->selectedTracks(), true);
-    //     }
-    // });
-    // artworkMenu->addAction(searchArtworkQuickCmd);
+    registerSeparator(TrackContextMenuArea::Track, Constants::Menus::Context::Artwork);
 
     m_extractArtwork->setStatusTip(
         tr("Extract embedded artwork for the selected tracks to files in their directories without prompting"));
     auto* extractArtworkCmd = m_actionManager->registerAction(m_extractArtwork, Constants::Actions::ExportArtwork);
     extractArtworkCmd->setCategories(tracksCategory);
-    QObject::connect(m_extractArtwork, &QAction::triggered, m_tracksMenu, [this]() {
+    QObject::connect(m_extractArtwork, &QAction::triggered, m_self, [this]() {
         if(hasTracks()) {
             extractArtwork(m_self->selectedSelection());
         }
     });
-    artworkMenu->addAction(extractArtworkCmd);
+    registerAction(m_self, TrackContextMenuArea::Track, Constants::Menus::Context::Artwork,
+                   Constants::Actions::ExportArtwork, m_extractArtwork->text(),
+                   [this](QMenu* menu, const TrackSelection&) { menu->addAction(m_extractArtwork); });
 
-    auto* attachPictureMenu = new QMenu(tr("Attach image"), artworkMenu->menu());
+    registerSubmenu(m_self, TrackContextMenuArea::Track, Constants::Menus::Context::Artwork,
+                    Constants::Menus::Context::ArtworkAttach, tr("Attach image"));
 
     m_attachFrontArtwork->setStatusTip(tr("Attach an image file as the front cover for the selected tracks"));
-    QObject::connect(m_attachFrontArtwork, &QAction::triggered, m_tracksMenu, [this]() {
+    QObject::connect(m_attachFrontArtwork, &QAction::triggered, m_self, [this]() {
         if(!hasTracks()) {
             return;
         }
-        attachArtwork(m_self->selectedSelection(), Track::Cover::Front, m_tracksMenu->menu());
+        attachArtwork(m_self->selectedSelection(), Track::Cover::Front, static_cast<QWidget*>(Utils::getMainWindow()));
     });
-    attachPictureMenu->addAction(m_attachFrontArtwork);
+    registerAction(m_self, TrackContextMenuArea::Track, Constants::Menus::Context::ArtworkAttach,
+                   Id{u"%1.Front"_s.arg(Constants::Menus::Context::ArtworkAttach)}, m_attachFrontArtwork->text(),
+                   [this](QMenu* menu, const TrackSelection&) { menu->addAction(m_attachFrontArtwork); });
 
     m_attachBackArtwork->setStatusTip(tr("Attach an image file as the back cover for the selected tracks"));
-    QObject::connect(m_attachBackArtwork, &QAction::triggered, m_tracksMenu, [this]() {
+    QObject::connect(m_attachBackArtwork, &QAction::triggered, m_self, [this]() {
         if(!hasTracks()) {
             return;
         }
-        attachArtwork(m_self->selectedSelection(), Track::Cover::Back, m_tracksMenu->menu());
+        attachArtwork(m_self->selectedSelection(), Track::Cover::Back, static_cast<QWidget*>(Utils::getMainWindow()));
     });
-    attachPictureMenu->addAction(m_attachBackArtwork);
+    registerAction(m_self, TrackContextMenuArea::Track, Constants::Menus::Context::ArtworkAttach,
+                   Id{u"%1.Back"_s.arg(Constants::Menus::Context::ArtworkAttach)}, m_attachBackArtwork->text(),
+                   [this](QMenu* menu, const TrackSelection&) { menu->addAction(m_attachBackArtwork); });
 
     m_attachArtistArtwork->setStatusTip(tr("Attach an image file as the artist picture for the selected tracks"));
-    QObject::connect(m_attachArtistArtwork, &QAction::triggered, m_tracksMenu, [this]() {
+    QObject::connect(m_attachArtistArtwork, &QAction::triggered, m_self, [this]() {
         if(!hasTracks()) {
             return;
         }
-        attachArtwork(m_self->selectedSelection(), Track::Cover::Artist, m_tracksMenu->menu());
+        attachArtwork(m_self->selectedSelection(), Track::Cover::Artist, static_cast<QWidget*>(Utils::getMainWindow()));
     });
-    attachPictureMenu->addAction(m_attachArtistArtwork);
+    registerAction(m_self, TrackContextMenuArea::Track, Constants::Menus::Context::ArtworkAttach,
+                   Id{u"%1.Artist"_s.arg(Constants::Menus::Context::ArtworkAttach)}, m_attachArtistArtwork->text(),
+                   [this](QMenu* menu, const TrackSelection&) { menu->addAction(m_attachArtistArtwork); });
 
-    artworkMenu->menu()->addMenu(attachPictureMenu);
-
-    artworkMenu->addSeparator();
+    registerSeparator(TrackContextMenuArea::Track, Constants::Menus::Context::Artwork);
 
     m_removeArtwork->setStatusTip(tr("Remove all artwork associated with the selected tracks (embedded, directory)"));
     auto* removeArtworkCmd = m_actionManager->registerAction(m_removeArtwork, Constants::Actions::RemoveArtwork);
     removeArtworkCmd->setCategories(tracksCategory);
-    QObject::connect(m_removeArtwork, &QAction::triggered, m_tracksMenu, [this]() {
+    QObject::connect(m_removeArtwork, &QAction::triggered, m_self, [this]() {
         if(hasTracks()) {
             removeArtwork(m_self->selectedSelection());
         }
     });
-    artworkMenu->addAction(removeArtworkCmd);
+    registerAction(m_self, TrackContextMenuArea::Track, Constants::Menus::Context::Artwork,
+                   Constants::Actions::RemoveArtwork, m_removeArtwork->text(),
+                   [this](QMenu* menu, const TrackSelection&) { menu->addAction(m_removeArtwork); });
 
-    m_tracksMenu->addSeparator(Actions::Groups::Three);
+    registerSeparator(TrackContextMenuArea::Track, m_trackRoot.id, Constants::Menus::Context::TrackFinalSeparator);
 
     m_openProperties->setStatusTip(tr("Open the properties dialog"));
     auto* openPropsCmd = m_actionManager->registerAction(m_openProperties, Constants::Actions::OpenProperties);
     openPropsCmd->setCategories(tracksCategory);
     QObject::connect(m_openProperties, &QAction::triggered, m_self,
                      [this]() { openProperties(m_self->selectedSelection()); });
-    m_tracksMenu->addAction(openPropsCmd, Actions::Groups::Three);
+    registerAction(m_self, TrackContextMenuArea::Track, m_trackRoot.id, Constants::Actions::OpenProperties,
+                   m_openProperties->text(),
+                   [this](QMenu* menu, const TrackSelection&) { menu->addAction(m_openProperties); });
+}
+
+MenuNode* TrackSelectionControllerPrivate::rootForArea(TrackContextMenuArea area)
+{
+    switch(area) {
+        case TrackContextMenuArea::Track:
+            return &m_trackRoot;
+        case TrackContextMenuArea::Queue:
+            return &m_queueRoot;
+        case TrackContextMenuArea::Playlist:
+            return &m_playlistRoot;
+    }
+
+    return &m_trackRoot;
+}
+
+bool TrackSelectionControllerPrivate::registerSubmenu(QObject* owner, TrackContextMenuArea area, const Id& parentId,
+                                                      const Id& id, const QString& title, const Id& beforeId)
+{
+    if(!owner || !id.isValid() || !parentId.isValid() || m_menuNodes.contains(id)) {
+        return false;
+    }
+
+    if(!m_menuNodes.contains(parentId)) {
+        return false;
+    }
+
+    MenuNode* parent = m_menuNodes.at(parentId);
+
+    auto node    = std::make_unique<MenuNode>();
+    node->type   = MenuNodeType::Submenu;
+    node->owner  = owner;
+    node->id     = id;
+    node->title  = title;
+    node->area   = area;
+    node->parent = parent;
+
+    auto* nodePtr = node.get();
+
+    if(beforeId.isValid()) {
+        const auto beforeIt = std::ranges::find_if(
+            parent->children, [&beforeId](const auto& child) { return child && child->id == beforeId; });
+        if(beforeIt == parent->children.cend()) {
+            return false;
+        }
+        parent->children.insert(beforeIt, std::move(node));
+    }
+    else {
+        parent->children.emplace_back(std::move(node));
+    }
+
+    m_menuNodes.emplace(id, nodePtr);
+    return true;
+}
+
+bool TrackSelectionControllerPrivate::registerAction(QObject* owner, TrackContextMenuArea area, const Id& parentId,
+                                                     const Id& id, const QString& title,
+                                                     const TrackSelectionController::TrackContextMenuRenderer& renderer,
+                                                     const Id& beforeId)
+{
+    if(!owner || !id.isValid() || !parentId.isValid() || !renderer || m_menuNodes.contains(id)) {
+        return false;
+    }
+
+    if(!m_menuNodes.contains(parentId)) {
+        return false;
+    }
+
+    MenuNode* parent = m_menuNodes.at(parentId);
+
+    auto node      = std::make_unique<MenuNode>();
+    node->type     = MenuNodeType::Action;
+    node->owner    = owner;
+    node->id       = id;
+    node->title    = title;
+    node->area     = area;
+    node->renderer = renderer;
+    node->parent   = parent;
+
+    auto* nodePtr = node.get();
+
+    if(beforeId.isValid()) {
+        const auto beforeIt = std::ranges::find_if(
+            parent->children, [&beforeId](const auto& child) { return child && child->id == beforeId; });
+        if(beforeIt == parent->children.cend()) {
+            return false;
+        }
+        parent->children.insert(beforeIt, std::move(node));
+    }
+    else {
+        parent->children.emplace_back(std::move(node));
+    }
+
+    m_menuNodes.emplace(id, nodePtr);
+    return true;
+}
+
+bool TrackSelectionControllerPrivate::registerSeparator(TrackContextMenuArea area, const Id& parentId, const Id& id,
+                                                        const Id& beforeId)
+{
+    if(!parentId.isValid() || !m_menuNodes.contains(parentId) || (id.isValid() && m_menuNodes.contains(id))) {
+        return false;
+    }
+    MenuNode* parent = m_menuNodes.at(parentId);
+
+    auto node    = std::make_unique<MenuNode>();
+    node->type   = MenuNodeType::Separator;
+    node->owner  = m_self;
+    node->id     = id;
+    node->area   = area;
+    node->parent = parent;
+
+    auto* nodePtr = node.get();
+
+    if(beforeId.isValid()) {
+        const auto beforeIt = std::ranges::find_if(
+            parent->children, [&beforeId](const auto& child) { return child && child->id == beforeId; });
+        if(beforeIt == parent->children.cend()) {
+            return false;
+        }
+        parent->children.insert(beforeIt, std::move(node));
+    }
+    else {
+        parent->children.emplace_back(std::move(node));
+    }
+
+    if(id.isValid()) {
+        m_menuNodes.emplace(id, nodePtr);
+    }
+    return true;
+}
+
+void TrackSelectionControllerPrivate::renderArea(QMenu* menu, TrackContextMenuArea area,
+                                                 const TrackSelection& selection)
+{
+    if(!menu) {
+        return;
+    }
+
+    if(const auto* root = rootForArea(area)) {
+        for(const auto& child : root->children) {
+            if(child) {
+                renderNode(menu, *child, selection);
+            }
+        }
+    }
+
+    trimSeparators(menu);
+}
+
+void TrackSelectionControllerPrivate::renderNode(QMenu* menu, const MenuNode& node,
+                                                 const TrackSelection& selection) const
+{
+    if(!menu || !node.owner || (node.id.isValid() && isNodeDisabled(node.id))) {
+        return;
+    }
+
+    switch(node.type) {
+        case MenuNodeType::Separator: {
+            menu->addSeparator();
+            return;
+        }
+        case MenuNodeType::Action: {
+            node.renderer(menu, selection);
+            return;
+        }
+        case MenuNodeType::Submenu: {
+            auto submenu = std::make_unique<QMenu>(node.title, menu);
+            if(node.renderer) {
+                node.renderer(submenu.get(), selection);
+            }
+            for(const auto& child : node.children) {
+                if(child) {
+                    renderNode(submenu.get(), *child, selection);
+                }
+            }
+            trimSeparators(submenu.get());
+            if(hasVisibleActions(submenu.get())) {
+                menu->addMenu(submenu.release());
+            }
+        }
+        case MenuNodeType::Root:
+            return;
+    }
+}
+
+void TrackSelectionControllerPrivate::appendNodeInfo(const MenuNode& node,
+                                                     std::vector<TrackContextMenuNodeInfo>& nodes) const
+{
+    if(node.type != MenuNodeType::Separator && node.id.isValid() && node.owner) {
+        nodes.push_back(
+            {.id        = node.id,
+             .parentId  = node.parent && node.parent->id.isValid() ? std::optional<Id>{node.parent->id} : std::nullopt,
+             .title     = node.title,
+             .area      = node.area,
+             .isSubmenu = node.type == MenuNodeType::Submenu});
+    }
+
+    for(const auto& child : node.children) {
+        if(child) {
+            appendNodeInfo(*child, nodes);
+        }
+    }
+}
+
+void TrackSelectionControllerPrivate::refreshDisabledNodes()
+{
+    m_disabledNodeIds.clear();
+
+    const auto disabledIds = m_settings->value<Settings::Gui::Internal::TrackContextMenuDisabledSections>();
+    for(const QString& idName : disabledIds) {
+        const Id id{idName};
+        if(id.isValid()) {
+            m_disabledNodeIds.insert(id);
+        }
+    }
+}
+
+bool TrackSelectionControllerPrivate::isNodeDisabled(const Id& id) const
+{
+    return m_disabledNodeIds.contains(id);
+}
+
+void TrackSelectionControllerPrivate::trimSeparators(QMenu* menu)
+{
+    if(!menu) {
+        return;
+    }
+
+    bool previousWasSeparator{true};
+    QList<QAction*> actions = menu->actions();
+
+    for(QAction* action : std::as_const(actions)) {
+        const bool separator = action->isSeparator();
+        if(separator && previousWasSeparator) {
+            menu->removeAction(action);
+            delete action;
+            continue;
+        }
+
+        previousWasSeparator = separator;
+    }
+
+    actions = menu->actions();
+
+    while(!actions.empty() && actions.back() && actions.back()->isSeparator()) {
+        QAction* action = actions.back();
+        menu->removeAction(action);
+        delete action;
+        actions.removeLast();
+    }
+}
+
+bool TrackSelectionControllerPrivate::hasVisibleActions(const QMenu* menu)
+{
+    return menu && std::ranges::any_of(menu->actions(), [](const QAction* action) {
+               return action && action->isVisible() && !action->isSeparator();
+           });
 }
 
 bool TrackSelectionControllerPrivate::hasTracks() const
@@ -782,11 +1115,6 @@ const TrackSelection* TrackSelectionControllerPrivate::currentSelection() const
     return nullptr;
 }
 
-TrackSelection* TrackSelectionControllerPrivate::currentSelection()
-{
-    return const_cast<TrackSelection*>(std::as_const(*this).currentSelection());
-}
-
 void TrackSelectionControllerPrivate::updateActionState()
 {
     const auto* selection         = currentSelection();
@@ -807,8 +1135,8 @@ void TrackSelectionControllerPrivate::updateActionState()
     m_sendCurrent->setEnabled(haveTracks);
     m_sendNew->setEnabled(haveTracks);
     m_openFolder->setEnabled(sameFolder);
+    m_copyLocation->setEnabled(haveTracks);
     m_searchArtwork->setEnabled(writableCover);
-    m_searchArtworkQuick->setEnabled(writableCover);
     m_extractArtwork->setEnabled(haveTracks);
     m_attachFrontArtwork->setEnabled(writable);
     m_attachBackArtwork->setEnabled(writable);
@@ -816,7 +1144,7 @@ void TrackSelectionControllerPrivate::updateActionState()
     m_openProperties->setEnabled(haveTracks);
     m_addToQueue->setEnabled(haveTracks);
     m_queueNext->setEnabled(haveTracks);
-    m_removeFromQueue->setVisible(canRemoveFromQueue);
+    m_removeFromQueue->setEnabled(canRemoveFromQueue);
 }
 
 TrackSelectionController::TrackSelectionController(ActionManager* actionManager, AudioLoader* audioLoader,
@@ -913,31 +1241,101 @@ void TrackSelectionController::changePlaybackOnSend(WidgetContext* context, bool
 
 void TrackSelectionController::addTrackContextMenu(QMenu* menu) const
 {
-    Utils::appendMenuActions(p->m_tracksMenu->menu(), menu);
+    p->renderArea(menu, TrackContextMenuArea::Track, selectedSelection());
 }
 
 void TrackSelectionController::addTrackContextMenu(QMenu* menu, const TrackSelection& selection) const
 {
     const bool haveTracks = !selection.tracks.empty();
 
-    auto* openFolder = Utils::cloneMenuAction(menu, p->m_openFolder, [this, selection]() { p->openFolder(selection); });
-    openFolder->setEnabled(haveTracks && p->allTracksInSameFolder(selection));
-    menu->addAction(openFolder);
+    if(!p->isNodeDisabled(Constants::Actions::OpenFolder)) {
+        auto* openFolder
+            = Utils::cloneMenuAction(menu, p->m_openFolder, [this, selection]() { p->openFolder(selection); });
+        openFolder->setEnabled(haveTracks && p->allTracksInSameFolder(selection));
+        menu->addAction(openFolder);
+    }
 
-    auto* properties
-        = Utils::cloneMenuAction(menu, p->m_openProperties, [this, selection]() { p->openProperties(selection); });
-    properties->setEnabled(haveTracks);
-    menu->addAction(properties);
+    if(!p->isNodeDisabled(Constants::Actions::OpenProperties)) {
+        auto* properties
+            = Utils::cloneMenuAction(menu, p->m_openProperties, [this, selection]() { p->openProperties(selection); });
+        properties->setEnabled(haveTracks);
+        menu->addAction(properties);
+    }
 }
 
 void TrackSelectionController::addTrackQueueContextMenu(QMenu* menu) const
 {
-    Utils::appendMenuActions(p->m_tracksQueueMenu->menu(), menu);
+    p->renderArea(menu, TrackContextMenuArea::Queue, selectedSelection());
 }
 
 void TrackSelectionController::addTrackPlaylistContextMenu(QMenu* menu) const
 {
-    Utils::appendMenuActions(p->m_tracksPlaylistMenu->menu(), menu);
+    if(!menu) {
+        return;
+    }
+
+    const auto beforeCount    = static_cast<int>(menu->actions().size());
+    const bool hadItemsBefore = beforeCount > 0;
+
+    if(hadItemsBefore) {
+        menu->addSeparator();
+    }
+
+    const auto beforeRenderCount = static_cast<int>(menu->actions().size());
+
+    p->renderArea(menu, TrackContextMenuArea::Playlist, selectedSelection());
+
+    const auto actions = menu->actions();
+
+    if(actions.size() > beforeRenderCount) {
+        menu->addSeparator();
+    }
+    else if(hadItemsBefore && actions.size() == beforeCount + 1) {
+        if(auto* separator = actions.back(); separator && separator->isSeparator()) {
+            menu->removeAction(separator);
+            separator->deleteLater();
+        }
+    }
+}
+
+bool TrackSelectionController::registerTrackContextSubmenu(QObject* owner, TrackContextMenuArea area,
+                                                           const Id& parentId, const Id& id, const QString& title,
+                                                           const Id& beforeId)
+{
+    return p->registerSubmenu(owner, area, parentId, id, title, beforeId);
+}
+
+bool TrackSelectionController::registerTrackContextAction(QObject* owner, TrackContextMenuArea area, const Id& parentId,
+                                                          const Id& id, const QString& title,
+                                                          const TrackContextMenuRenderer& renderer, const Id& beforeId)
+{
+    return p->registerAction(owner, area, parentId, id, title, renderer, beforeId);
+}
+
+bool TrackSelectionController::registerTrackContextDynamicSubmenu(QObject* owner, TrackContextMenuArea area,
+                                                                  const Id& parentId, const Id& id,
+                                                                  const QString& title,
+                                                                  const TrackContextMenuRenderer& renderer,
+                                                                  const Id& beforeId)
+{
+    if(!p->registerSubmenu(owner, area, parentId, id, title, beforeId)) {
+        return false;
+    }
+    if(!p->m_menuNodes.contains(id)) {
+        return false;
+    }
+
+    p->m_menuNodes.at(id)->renderer = renderer;
+    return true;
+}
+
+std::vector<TrackContextMenuNodeInfo> TrackSelectionController::trackContextMenuNodes() const
+{
+    std::vector<TrackContextMenuNodeInfo> nodes;
+    p->appendNodeInfo(p->m_playlistRoot, nodes);
+    p->appendNodeInfo(p->m_queueRoot, nodes);
+    p->appendNodeInfo(p->m_trackRoot, nodes);
+    return nodes;
 }
 
 void TrackSelectionController::executeAction(TrackAction action, PlaylistAction::ActionOptions options,

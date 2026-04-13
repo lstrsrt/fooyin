@@ -54,6 +54,8 @@
 #include "settings/artwork/artworkgeneralpage.h"
 #include "settings/artwork/artworksearchingpage.h"
 #include "settings/artwork/artworksourcespage.h"
+#include "settings/context/playlistcontextmenupage.h"
+#include "settings/context/trackcontextmenupage.h"
 #include "settings/generalpage.h"
 #include "settings/guidisplaypage.h"
 #include "settings/guigeneralpage.h"
@@ -283,6 +285,9 @@ void Widgets::registerPages()
     new GuiDisplayPage(m_settings, this);
     new GuiTrackDisplayPage(m_settings, this);
     new GuiThemesPage(m_gui->themeRegistry(), m_settings, this);
+    new TrackContextMenuPage(m_gui->trackSelection(), m_settings, TrackContextMenuPageMode::Track, this);
+    new TrackContextMenuPage(m_gui->trackSelection(), m_settings, TrackContextMenuPageMode::PlaylistQueue, this);
+    new PlaylistContextMenuPage(m_settings, this);
     new ArtworkGeneralPage(m_settings, this);
     new ArtworkSearchingPage(m_settings, this);
     new ArtworkSourcesPage(m_artworkFinder, m_settings, this);

@@ -82,17 +82,34 @@ constexpr auto SwitchLibrary = "Fooyin.Menu.Library.Switch";
 constexpr auto Help          = "Fooyin.Menu.Help";
 
 namespace Context {
-constexpr auto Layout         = "Fooyin.Menu.Layout";
-constexpr auto AddWidget      = "Fooyin.Menu.Widget.Add";
-constexpr auto TrackSelection = "Fooyin.Menu.Tracks";
-constexpr auto TrackQueue     = "Fooyin.Menu.Queue";
-constexpr auto TracksPlaylist = "Fooyin.Menu.Tracks.Playlist";
-constexpr auto Playlist       = "Fooyin.Menu.Playlist";
-constexpr auto PlaylistAddTo  = "Fooyin.Menu.Playlist.AddTo";
-constexpr auto ReplayGain     = "Fooyin.Menu.ReplayGain";
-constexpr auto Artwork        = "Fooyin.Menu.Artwork";
-constexpr auto Tagging        = "Fooyin.Menu.Tagging";
-constexpr auto Utilities      = "Fooyin.Menu.Utilities";
+constexpr auto Layout              = "Fooyin.Menu.Layout";
+constexpr auto AddWidget           = "Fooyin.Menu.Widget.Add";
+constexpr auto TrackSelection      = "Fooyin.Menu.Tracks";
+constexpr auto TrackQueue          = "Fooyin.Menu.Queue";
+constexpr auto TracksPlaylist      = "Fooyin.Menu.Tracks.Playlist";
+constexpr auto Playlist            = "Fooyin.Menu.Playlist";
+constexpr auto PlaylistAddTo       = "Fooyin.Menu.Playlist.AddTo";
+constexpr auto ReplayGain          = "Fooyin.Menu.ReplayGain";
+constexpr auto Artwork             = "Fooyin.Menu.Artwork";
+constexpr auto ArtworkAttach       = "Fooyin.Menu.Artwork.Attach";
+constexpr auto Tagging             = "Fooyin.Menu.Tagging";
+constexpr auto TaggingRating       = "Fooyin.Menu.Tagging.Rating";
+constexpr auto TrackFinalSeparator = "Fooyin.Menu.Track.FinalSeparator";
+constexpr auto Utilities           = "Fooyin.Menu.Utilities";
+
+namespace PlaylistWidget {
+constexpr auto Playback      = "Fooyin.Context.PlaylistWidget.Playback";
+constexpr auto Play          = "Fooyin.Context.PlaylistWidget.Play";
+constexpr auto StopAfterThis = "Fooyin.Context.PlaylistWidget.StopAfterThis";
+constexpr auto Edit          = "Fooyin.Context.PlaylistWidget.Edit";
+constexpr auto Remove        = "Fooyin.Context.PlaylistWidget.Remove";
+constexpr auto Crop          = "Fooyin.Context.PlaylistWidget.Crop";
+constexpr auto Sort          = "Fooyin.Context.PlaylistWidget.Sort";
+constexpr auto Clipboard     = "Fooyin.Context.PlaylistWidget.Clipboard";
+constexpr auto Presets       = "Fooyin.Context.PlaylistWidget.Presets";
+constexpr auto Queue         = "Fooyin.Context.PlaylistWidget.Queue";
+constexpr auto TrackActions  = "Fooyin.Context.PlaylistWidget.TrackActions";
+} // namespace PlaylistWidget
 } // namespace Context
 } // namespace Menus
 
@@ -209,37 +226,42 @@ constexpr auto QueueTracks   = "application/x-fooyin-queuetracks";
 } // namespace Mime
 
 namespace Page {
-constexpr auto GeneralCore           = "Fooyin.Page.General.Core";
-constexpr auto Playback              = "Fooyin.Page.Playback";
-constexpr auto Fading                = "Fooyin.Page.Playback.Fading";
-constexpr auto Output                = "Fooyin.Page.Playback.Output";
-constexpr auto OutputDevices         = "Fooyin.Page.Playback.Output.Devices";
-constexpr auto Decoding              = "Fooyin.Page.Playback.Decoding";
-constexpr auto ReplayGain            = "Fooyin.Page.Playback.ReplayGain";
-constexpr auto DspManager            = "Fooyin.Page.Playback.DspManager";
-constexpr auto InterfaceGeneral      = "Fooyin.Page.Interface.General";
-constexpr auto InterfaceDisplay      = "Fooyin.Page.Interface.Display";
-constexpr auto InterfaceTrackDisplay = "Fooyin.Page.Interface.TrackDisplay";
-constexpr auto InterfaceTheme        = "Fooyin.Page.Interface.Theme";
-constexpr auto ArtworkGeneral        = "Fooyin.Page.Interface.Artwork.General";
-constexpr auto ArtworkDownload       = "Fooyin.Page.Interface.Artwork.Download";
-constexpr auto ArtworkSearching      = "Fooyin.Page.Interface.Artwork.Searching";
-constexpr auto ArtworkSources        = "Fooyin.Page.Interface.Artwork.Sources";
-constexpr auto LibraryGeneral        = "Fooyin.Page.Library.General";
-constexpr auto LibrarySearching      = "Fooyin.Page.Library.Searching";
-constexpr auto LibrarySorting        = "Fooyin.Page.Library.Sorting";
-constexpr auto PlaylistGeneral       = "Fooyin.Page.Playlist.General";
-constexpr auto PlaylistInterface     = "Fooyin.Page.Playlist.Interface";
-constexpr auto PlaylistPresets       = "Fooyin.Page.Playlist.Presets";
-constexpr auto PlaylistColumns       = "Fooyin.Page.Playlist.Columns";
-constexpr auto LibraryTreeGeneral    = "Fooyin.Page.Widgets.LibraryTree.General";
-constexpr auto LibraryTreeGroups     = "Fooyin.Page.Widgets.LibraryTree.Groups";
-constexpr auto StatusWidget          = "Fooyin.Page.Widgets.Status";
-constexpr auto PlaybackQueue         = "Fooyin.Page.Widgets.PlaybackQueue";
-constexpr auto Plugins               = "Fooyin.Page.Plugins";
-constexpr auto ShellIntegration      = "Fooyin.Page.ShellIntegration";
-constexpr auto Shortcuts             = "Fooyin.Page.Shortcuts";
-constexpr auto DirBrowser            = "Fooyin.Page.Widgets.DirBrowser";
-constexpr auto Network               = "Fooyin.Page.Network";
+constexpr auto GeneralCore                        = "Fooyin.Page.General.Core";
+constexpr auto Playback                           = "Fooyin.Page.Playback";
+constexpr auto Fading                             = "Fooyin.Page.Playback.Fading";
+constexpr auto Output                             = "Fooyin.Page.Playback.Output";
+constexpr auto OutputDevices                      = "Fooyin.Page.Playback.Output.Devices";
+constexpr auto Decoding                           = "Fooyin.Page.Playback.Decoding";
+constexpr auto ReplayGain                         = "Fooyin.Page.Playback.ReplayGain";
+constexpr auto DspManager                         = "Fooyin.Page.Playback.DspManager";
+constexpr auto InterfaceGeneral                   = "Fooyin.Page.Interface.General";
+constexpr auto InterfaceDisplay                   = "Fooyin.Page.Interface.Display";
+constexpr auto InterfaceTrackDisplay              = "Fooyin.Page.Interface.TrackDisplay";
+constexpr auto InterfaceContextMenu               = "Fooyin.Page.Interface.ContextMenu";
+constexpr auto InterfaceContextMenuPlaylist       = "Fooyin.Page.Interface.ContextMenu.Playlist";
+constexpr auto InterfaceContextMenuQueue          = "Fooyin.Page.Interface.ContextMenu.Queue";
+constexpr auto InterfaceContextMenuTrack          = "Fooyin.Page.Interface.ContextMenu.Track";
+constexpr auto InterfaceContextMenuPlaylistWidget = "Fooyin.Page.Interface.ContextMenu.PlaylistWidget";
+constexpr auto InterfaceTheme                     = "Fooyin.Page.Interface.Theme";
+constexpr auto ArtworkGeneral                     = "Fooyin.Page.Interface.Artwork.General";
+constexpr auto ArtworkDownload                    = "Fooyin.Page.Interface.Artwork.Download";
+constexpr auto ArtworkSearching                   = "Fooyin.Page.Interface.Artwork.Searching";
+constexpr auto ArtworkSources                     = "Fooyin.Page.Interface.Artwork.Sources";
+constexpr auto LibraryGeneral                     = "Fooyin.Page.Library.General";
+constexpr auto LibrarySearching                   = "Fooyin.Page.Library.Searching";
+constexpr auto LibrarySorting                     = "Fooyin.Page.Library.Sorting";
+constexpr auto PlaylistGeneral                    = "Fooyin.Page.Playlist.General";
+constexpr auto PlaylistInterface                  = "Fooyin.Page.Playlist.Interface";
+constexpr auto PlaylistPresets                    = "Fooyin.Page.Playlist.Presets";
+constexpr auto PlaylistColumns                    = "Fooyin.Page.Playlist.Columns";
+constexpr auto LibraryTreeGeneral                 = "Fooyin.Page.Widgets.LibraryTree.General";
+constexpr auto LibraryTreeGroups                  = "Fooyin.Page.Widgets.LibraryTree.Groups";
+constexpr auto StatusWidget                       = "Fooyin.Page.Widgets.Status";
+constexpr auto PlaybackQueue                      = "Fooyin.Page.Widgets.PlaybackQueue";
+constexpr auto Plugins                            = "Fooyin.Page.Plugins";
+constexpr auto ShellIntegration                   = "Fooyin.Page.ShellIntegration";
+constexpr auto Shortcuts                          = "Fooyin.Page.Shortcuts";
+constexpr auto DirBrowser                         = "Fooyin.Page.Widgets.DirBrowser";
+constexpr auto Network                            = "Fooyin.Page.Network";
 } // namespace Page
 } // namespace Fooyin::Constants

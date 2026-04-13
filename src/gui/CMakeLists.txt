@@ -26,7 +26,7 @@ set(SOURCES
     ${CMAKE_SOURCE_DIR}/include/gui/scripting/scriptformatterregistry.h
     ${CMAKE_SOURCE_DIR}/include/gui/theme/fytheme.h
     ${CMAKE_SOURCE_DIR}/include/gui/theme/themeregistry.h
-        ${CMAKE_SOURCE_DIR}/include/gui/trackmimedata.h
+    ${CMAKE_SOURCE_DIR}/include/gui/trackmimedata.h
     ${CMAKE_SOURCE_DIR}/include/gui/trackselectioncontroller.h
     ${CMAKE_SOURCE_DIR}/include/gui/widgetcontainer.h
     ${CMAKE_SOURCE_DIR}/include/gui/widgetfilter.h
@@ -320,6 +320,14 @@ set(SOURCES
     settings/artwork/artworksourcesmodel.h
     settings/artwork/artworksourcespage.cpp
     settings/artwork/artworksourcespage.h
+    settings/context/configurablecontextmenumodel.cpp
+    settings/context/configurablecontextmenumodel.h
+    settings/context/configurablecontextmenupage.cpp
+    settings/context/configurablecontextmenupage.h
+    settings/context/trackcontextmenupage.cpp
+    settings/context/trackcontextmenupage.h
+    settings/context/playlistcontextmenupage.cpp
+    settings/context/playlistcontextmenupage.h
     settings/generalpage.cpp
     settings/generalpage.h
     settings/guidisplaypage.cpp
@@ -403,7 +411,7 @@ set(SOURCES
     systemtrayicon.h
     theme/fytheme.cpp
     theme/themeregistry.cpp
-        trackmimedata.cpp
+    trackmimedata.cpp
     trackselectioncontroller.cpp
     widgetfilter.cpp
     widgetprovider.cpp
@@ -461,7 +469,7 @@ set(SOURCES
 
 create_fooyin_library(
     fooyin_gui
-        ADD_PRIVATE_TARGET
+    ADD_PRIVATE_TARGET
     EXPORT_NAME Gui
     SOURCES ${SOURCES}
 )

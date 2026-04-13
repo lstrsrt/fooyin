@@ -24,11 +24,7 @@
 #include <gui/plugins/guiplugin.h>
 #include <gui/plugins/pluginconfigguiplugin.h>
 
-class QMenu;
-
 namespace Fooyin {
-class ActionContainer;
-
 namespace FileOps {
 class FileOpsPlugin : public QObject,
                       public Plugin,
@@ -48,15 +44,12 @@ public:
     [[nodiscard]] std::unique_ptr<PluginSettingsProvider> settingsProvider() const override;
 
 private:
-    void recreateMenu();
+    void setupMenu();
 
     ActionManager* m_actionManager;
     MusicLibrary* m_library;
     TrackSelectionController* m_trackSelectionController;
     SettingsManager* m_settings;
-
-    ActionContainer* m_fileOpsMenu;
-    std::vector<QObject*> m_opActions;
 };
 } // namespace FileOps
 } // namespace Fooyin

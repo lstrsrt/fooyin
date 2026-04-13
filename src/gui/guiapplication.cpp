@@ -184,7 +184,7 @@ public:
 
     void setupScanMenu();
     void setupRatingMenu();
-    void setupUtilitiesMenu() const;
+    void setupUtilitiesMenu();
 
     void close();
     void changeVolume(double delta) const;
@@ -457,13 +457,15 @@ void GuiApplicationPrivate::setupConnections()
                      [this](const Engine::TrackStatusContext& context) { handleTrackStatus(context); });
 
     m_settings->subscribe<Settings::Gui::LayoutEditing>(m_self, [this]() { updateWindowTitle(); });
+
     const auto refreshThemedActions = [this]() {
         Gui::refreshThemeIcons(m_actionManager);
-        for(Command* command : m_actionManager->commands()) {
+        for(const Command* command : m_actionManager->commands()) {
             Gui::refreshThemeIcon(command ? command->action() : nullptr);
         }
         Gui::refreshThemeIcons(m_self);
-        for(QWidget* widget : QApplication::topLevelWidgets()) {
+        const auto widgets = QApplication::topLevelWidgets();
+        for(QWidget* widget : widgets) {
             Gui::refreshThemeIcons(widget);
         }
     };
@@ -569,11 +571,11 @@ void GuiApplicationPrivate::updateWindowTitle()
         return;
     }
 
-    auto contextData     = makePlaybackScriptContext(m_playerController, m_playlistHandler->activePlaylist(),
-                                                     TrackListContextPolicy::Fallback, {}, false, false,
-                                                     {m_settings->value<Settings::Gui::RatingFullStarSymbol>(),
-                                                      m_settings->value<Settings::Gui::RatingHalfStarSymbol>(),
-                                                      m_settings->value<Settings::Gui::RatingEmptyStarSymbol>()});
+    auto contextData = makePlaybackScriptContext(
+        m_playerController, m_playlistHandler->activePlaylist(), TrackListContextPolicy::Fallback, {}, false, false,
+        {.fullStarSymbol  = m_settings->value<Settings::Gui::RatingFullStarSymbol>(),
+         .halfStarSymbol  = m_settings->value<Settings::Gui::RatingHalfStarSymbol>(),
+         .emptyStarSymbol = m_settings->value<Settings::Gui::RatingEmptyStarSymbol>()});
     const QString script = m_settings->value<Settings::Gui::Internal::WindowTitleTrackScript>();
     const QString title  = m_scriptParser.evaluate(script, currentTrack, contextData.context);
     m_mainWindow->setTitle(title);
@@ -780,10 +782,10 @@ void GuiApplicationPrivate::rescanTracks(const TrackList& tracks, bool onlyModif
 
 void GuiApplicationPrivate::setupScanMenu()
 {
-    auto* selectionMenu = m_actionManager->actionContainer(Constants::Menus::Context::TrackSelection);
-    auto* taggingMenu   = m_actionManager->createMenu(Constants::Menus::Context::Tagging);
-    taggingMenu->menu()->setTitle(GuiApplication::tr("Tagging"));
-    selectionMenu->addMenu(taggingMenu);
+    m_selectionController.registerTrackContextSubmenu(m_self, TrackContextMenuArea::Track,
+                                                      Constants::Menus::Context::TrackSelection,
+                                                      Constants::Menus::Context::Tagging, GuiApplication::tr("Tagging"),
+                                                      Constants::Menus::Context::TrackFinalSeparator);
 
     auto* rescanAction        = new QAction(GuiApplication::tr("Reload tags from files"), m_mainWindow.get());
     auto* rescanChangedAction = new QAction(GuiApplication::tr("Reload tags from modified files"), m_mainWindow.get());
@@ -801,19 +803,30 @@ void GuiApplicationPrivate::setupScanMenu()
 
     QObject::connect(rescanAction, &QAction::triggered, m_mainWindow.get(), [rescan]() { rescan(false); });
     QObject::connect(rescanChangedAction, &QAction::triggered, m_mainWindow.get(), [rescan]() { rescan(true); });
-    taggingMenu->menu()->addAction(rescanAction);
-    taggingMenu->menu()->addAction(rescanChangedAction);
 
-    QObject::connect(&m_selectionController, &TrackSelectionController::selectionChanged, m_mainWindow.get(),
-                     [this, rescanAction]() { rescanAction->setEnabled(m_selectionController.hasTracks()); });
+    m_selectionController.registerTrackContextAction(
+        m_self, TrackContextMenuArea::Track, Constants::Menus::Context::Tagging, "Tracks.ReloadTags",
+        rescanAction->text(), [this, rescanAction](QMenu* menu, const TrackSelection&) {
+            rescanAction->setEnabled(m_selectionController.hasTracks());
+            menu->addAction(rescanAction);
+        });
+    m_selectionController.registerTrackContextAction(
+        m_self, TrackContextMenuArea::Track, Constants::Menus::Context::Tagging, "Tracks.ReloadModifiedTags",
+        rescanChangedAction->text(), [this, rescanChangedAction](QMenu* menu, const TrackSelection&) {
+            rescanChangedAction->setEnabled(m_selectionController.hasTracks());
+            menu->addAction(rescanChangedAction);
+        });
 }
 
 void GuiApplicationPrivate::setupRatingMenu()
 {
-    auto* selectionMenu = m_actionManager->actionContainer(Constants::Menus::Context::TrackSelection);
-    auto* taggingMenu   = m_actionManager->createMenu(Constants::Menus::Context::Tagging);
-    taggingMenu->menu()->setTitle(GuiApplication::tr("Tagging"));
-    selectionMenu->addMenu(taggingMenu);
+    m_selectionController.registerTrackContextSubmenu(m_self, TrackContextMenuArea::Track,
+                                                      Constants::Menus::Context::TrackSelection,
+                                                      Constants::Menus::Context::Tagging, GuiApplication::tr("Tagging"),
+                                                      Constants::Menus::Context::TrackFinalSeparator);
+    m_selectionController.registerTrackContextSubmenu(
+        m_self, TrackContextMenuArea::Track, Constants::Menus::Context::Tagging,
+        Constants::Menus::Context::TaggingRating, GuiApplication::tr("Rating"));
 
     auto* rate0 = new QAction(GuiApplication::tr("Rate 0"), m_mainWindow.get());
     auto* rate1 = new QAction(GuiApplication::tr("Rate 1"), m_mainWindow.get());
@@ -850,25 +863,29 @@ void GuiApplicationPrivate::setupRatingMenu()
     QObject::connect(rate4, &QAction::triggered, m_mainWindow.get(), [setRating]() { setRating(4); });
     QObject::connect(rate5, &QAction::triggered, m_mainWindow.get(), [setRating]() { setRating(5); });
 
-    auto* ratingMenu = new QMenu(GuiApplication::tr("Rating"), taggingMenu->menu());
-    ratingMenu->addAction(rate0);
-    ratingMenu->addAction(rate1);
-    ratingMenu->addAction(rate2);
-    ratingMenu->addAction(rate3);
-    ratingMenu->addAction(rate4);
-    ratingMenu->addAction(rate5);
-    taggingMenu->menu()->addMenu(ratingMenu);
+    const auto addRateAction = [this](QAction* action, const Id& id) {
+        m_selectionController.registerTrackContextAction(
+            m_self, TrackContextMenuArea::Track, Constants::Menus::Context::TaggingRating, id, action->text(),
+            [this, action](QMenu* menu, const TrackSelection&) {
+                action->setEnabled(m_selectionController.selectedTrackCount() == 1);
+                menu->addAction(action);
+            });
+    };
 
-    QObject::connect(&m_selectionController, &TrackSelectionController::selectionChanged, m_mainWindow.get(),
-                     [this, ratingMenu]() { ratingMenu->setEnabled(m_selectionController.selectedTrackCount() == 1); });
+    addRateAction(rate0, Constants::Actions::Rate0);
+    addRateAction(rate1, Constants::Actions::Rate1);
+    addRateAction(rate2, Constants::Actions::Rate2);
+    addRateAction(rate3, Constants::Actions::Rate3);
+    addRateAction(rate4, Constants::Actions::Rate4);
+    addRateAction(rate5, Constants::Actions::Rate5);
 }
 
-void GuiApplicationPrivate::setupUtilitiesMenu() const
+void GuiApplicationPrivate::setupUtilitiesMenu()
 {
-    auto* selectionMenu = m_actionManager->actionContainer(::Fooyin::Constants::Menus::Context::TrackSelection);
-    auto* utilitiesMenu = m_actionManager->createMenu(::Fooyin::Constants::Menus::Context::Utilities);
-    utilitiesMenu->menu()->setTitle(GuiApplication::tr("Utilities"));
-    selectionMenu->addMenu(utilitiesMenu);
+    m_selectionController.registerTrackContextSubmenu(
+        m_self, TrackContextMenuArea::Track, Constants::Menus::Context::TrackSelection,
+        Constants::Menus::Context::Utilities, GuiApplication::tr("Utilities"),
+        Constants::Menus::Context::TrackFinalSeparator);
 }
 
 void GuiApplicationPrivate::close()

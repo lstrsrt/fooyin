@@ -29,7 +29,6 @@
 #include <gui/guiconstants.h>
 #include <gui/trackselectioncontroller.h>
 #include <gui/widgets/elapsedprogressdialog.h>
-#include <utils/actions/actioncontainer.h>
 #include <utils/actions/actionmanager.h>
 #include <utils/utils.h>
 
@@ -114,10 +113,9 @@ void RGScannerPlugin::calculateReplayGain(RGScanType type)
 
 void RGScannerPlugin::setupReplayGainMenu()
 {
-    auto* selectionMenu  = m_actionManager->actionContainer(Constants::Menus::Context::TrackSelection);
-    auto* replayGainMenu = m_actionManager->createMenu(Constants::Menus::Context::ReplayGain);
-    replayGainMenu->menu()->setTitle(tr("ReplayGain"));
-    selectionMenu->addMenu(replayGainMenu);
+    m_selectionController->registerTrackContextSubmenu(
+        this, TrackContextMenuArea::Track, Constants::Menus::Context::TrackSelection,
+        Constants::Menus::Context::ReplayGain, tr("ReplayGain"), Constants::Menus::Context::TrackFinalSeparator);
 
     auto* window = Utils::getMainWindow();
 
@@ -159,12 +157,11 @@ void RGScannerPlugin::setupReplayGainMenu()
         removeDialog->show();
     };
 
-    const auto canWriteInfo = [this]() -> bool {
-        return std::ranges::any_of(m_selectionController->selectedTracks(),
-                                   [](const Track& track) { return !track.isInArchive(); });
+    const auto canWriteInfo = [](const TrackSelection& selection) -> bool {
+        return std::ranges::any_of(selection.tracks, [](const Track& track) { return !track.isInArchive(); });
     };
-    const auto hasWritableOpus = [this]() -> bool {
-        return std::ranges::any_of(m_selectionController->selectedTracks(), isWritableOpusTrack);
+    const auto hasWritableOpus = [](const TrackSelection& selection) -> bool {
+        return std::ranges::any_of(selection.tracks, isWritableOpusTrack);
     };
 
     QObject::connect(rgTrackAction, &QAction::triggered, this, [this] { calculateReplayGain(RGScanType::Track); });
@@ -189,26 +186,29 @@ void RGScannerPlugin::setupReplayGainMenu()
     });
     QObject::connect(rgRemoveAction, &QAction::triggered, this, removeInfo);
 
-    QObject::connect(m_selectionController, &TrackSelectionController::selectionChanged, this,
-                     [this, replayGainMenu, rgSingleAlbumAction, rgAlbumAction, opusHeaderGainAction, rgRemoveAction,
-                      canWriteInfo, hasWritableOpus] {
-                         const bool tracksWritable = canWriteInfo();
-                         replayGainMenu->menu()->setEnabled(tracksWritable);
-                         rgAlbumAction->setEnabled(tracksWritable && m_selectionController->selectedTrackCount() > 1);
-                         rgSingleAlbumAction->setEnabled(tracksWritable);
-                         opusHeaderGainAction->setEnabled(hasWritableOpus());
-                         rgRemoveAction->setEnabled(
-                             tracksWritable
-                             && std::ranges::any_of(m_selectionController->selectedTracks(), [](const Track& track) {
-                                    return track.hasRGInfo() || track.hasOpusHeaderGain();
-                                }));
-                     });
+    const auto registerReplayGainAction = [this](QAction* action, const Id& id, const auto& updateState) {
+        m_selectionController->registerTrackContextAction(
+            this, TrackContextMenuArea::Track, Constants::Menus::Context::ReplayGain, id, action->text(),
+            [action, updateState](QMenu* menu, const TrackSelection& selection) {
+                action->setEnabled(updateState(selection));
+                menu->addAction(action);
+            });
+    };
 
-    replayGainMenu->menu()->addAction(rgTrackAction);
-    replayGainMenu->menu()->addAction(rgSingleAlbumAction);
-    replayGainMenu->menu()->addAction(rgAlbumAction);
-    replayGainMenu->menu()->addAction(opusHeaderGainAction);
-    replayGainMenu->menu()->addAction(rgRemoveAction);
+    registerReplayGainAction(rgTrackAction, "ReplayGain.Scan.Track",
+                             [canWriteInfo](const TrackSelection& selection) { return canWriteInfo(selection); });
+    registerReplayGainAction(rgSingleAlbumAction, "ReplayGain.Scan.SingleAlbum",
+                             [canWriteInfo](const TrackSelection& selection) { return canWriteInfo(selection); });
+    registerReplayGainAction(rgAlbumAction, "ReplayGain.Scan.Album", [canWriteInfo](const TrackSelection& selection) {
+        return canWriteInfo(selection) && selection.tracks.size() > 1;
+    });
+    registerReplayGainAction(opusHeaderGainAction, "ReplayGain.OpusHeaderGain",
+                             [hasWritableOpus](const TrackSelection& selection) { return hasWritableOpus(selection); });
+    registerReplayGainAction(rgRemoveAction, "ReplayGain.RemoveInfo", [canWriteInfo](const TrackSelection& selection) {
+        return canWriteInfo(selection) && std::ranges::any_of(selection.tracks, [](const Track& track) {
+                   return track.hasRGInfo() || track.hasOpusHeaderGain();
+               });
+    });
 }
 
 QDialog* RGScannerPlugin::createRemoveDialog()

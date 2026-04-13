@@ -84,6 +84,28 @@ QModelIndexList selectedRows(const QAbstractItemView* view)
     return view->selectionModel()->selectedRows();
 }
 
+template <typename Callback>
+bool appendMenuSection(QMenu* menu, Callback&& callback)
+{
+    QAction* separator{nullptr};
+    if(!menu->actions().isEmpty()) {
+        separator = menu->addSeparator();
+    }
+
+    const auto countBefore = static_cast<int>(menu->actions().size());
+    callback();
+
+    if(menu->actions().size() != countBefore) {
+        return true;
+    }
+
+    if(separator) {
+        separator->deleteLater();
+    }
+
+    return false;
+}
+
 class PlaylistWidgetHost : public EditablePlaylistSessionHost
 {
 public:
@@ -466,67 +488,79 @@ void PlaylistWidget::populateTrackContextMenu(QMenu* menu, const QModelIndexList
     state.hasSelection = !selected.empty();
     m_session->updateContextMenuState(sessionHost(), selected, state);
 
+    const QStringList disabledSections = m_settings->value<PlaylistContextMenuDisabledSections>();
+    const auto sectionEnabled          = [&](const char* sectionId) {
+        return !disabledSections.contains(QString::fromUtf8(sectionId));
+    };
+
     if(state.hasSelection) {
-        menu->addAction(m_playAction);
-
-        if(state.showStopAfter && m_session->stopAfterAction()) {
-            menu->addAction(m_session->stopAfterAction());
-        }
-
-        menu->addSeparator();
-
-        if(state.showEditablePlaylistActions) {
-            if(auto* removeCmd = m_actionManager->command(Constants::Actions::Remove)) {
-                menu->addAction(removeCmd->action());
+        appendMenuSection(menu, [&] {
+            if(sectionEnabled(Fooyin::Constants::Menus::Context::PlaylistWidget::Play)) {
+                menu->addAction(m_playAction);
             }
 
-            if(auto* cropAction = m_session->cropAction()) {
-                menu->addAction(cropAction);
+            if(sectionEnabled(Constants::Menus::Context::PlaylistWidget::StopAfterThis) && state.showStopAfter
+               && m_session->stopAfterAction()) {
+                menu->addAction(m_session->stopAfterAction());
             }
-        }
+        });
 
-        if(state.showEditablePlaylistActions || state.showSortMenu) {
-            if(state.showSortMenu) {
+        appendMenuSection(menu, [&] {
+            if(state.showEditablePlaylistActions) {
+                if(sectionEnabled(Constants::Menus::Context::PlaylistWidget::Remove)) {
+                    if(auto* removeCmd = m_actionManager->command(Constants::Actions::Remove)) {
+                        menu->addAction(removeCmd->action());
+                    }
+                }
+
+                if(sectionEnabled(Constants::Menus::Context::PlaylistWidget::Crop)) {
+                    if(auto* cropAction = m_session->cropAction()) {
+                        menu->addAction(cropAction);
+                    }
+                }
+            }
+
+            if(sectionEnabled(Constants::Menus::Context::PlaylistWidget::Sort) && state.showSortMenu) {
                 addSortMenu(menu, state.disableSortMenu);
             }
-            menu->addSeparator();
-        }
+        });
     }
 
-    if(state.showClipboard) {
-        addClipboardMenu(menu, state.hasSelection);
-        menu->addSeparator();
+    if(sectionEnabled(Constants::Menus::Context::PlaylistWidget::Clipboard) && state.showClipboard) {
+        appendMenuSection(menu, [&] { addClipboardMenu(menu, state.hasSelection); });
+    }
+
+    if(sectionEnabled(Constants::Menus::Context::PlaylistWidget::Presets)) {
+        appendMenuSection(menu, [&] { addPresetMenu(menu); });
     }
 
     if(!state.hasSelection) {
-        addSingleModeAction(menu);
-        menu->addSeparator();
-        addPresetMenu(menu);
         return;
     }
 
-    addPresetMenu(menu);
-    menu->addSeparator();
+    if(sectionEnabled(Constants::Menus::Context::PlaylistWidget::Queue)) {
+        appendMenuSection(menu, [&] {
+            if(state.usePlaylistQueueCommands) {
+                if(auto* addQueueCmd = m_actionManager->command(Constants::Actions::AddToQueue)) {
+                    menu->addAction(addQueueCmd->action());
+                }
+                if(auto* addQueueNextCmd = m_actionManager->command(Constants::Actions::QueueNext)) {
+                    menu->addAction(addQueueNextCmd->action());
+                }
+                if(auto* removeQueueCmd = m_actionManager->command(Constants::Actions::RemoveFromQueue)) {
+                    menu->addAction(removeQueueCmd->action());
+                }
 
-    if(state.usePlaylistQueueCommands) {
-        if(auto* addQueueCmd = m_actionManager->command(Constants::Actions::AddToQueue)) {
-            menu->addAction(addQueueCmd->action());
-        }
-        if(auto* addQueueNextCmd = m_actionManager->command(Constants::Actions::QueueNext)) {
-            menu->addAction(addQueueNextCmd->action());
-        }
-        if(auto* removeQueueCmd = m_actionManager->command(Constants::Actions::RemoveFromQueue)) {
-            menu->addAction(removeQueueCmd->action());
-        }
+                return;
+            }
 
-        menu->addSeparator();
+            m_selectionController->addTrackQueueContextMenu(menu);
+        });
     }
-    else {
-        m_selectionController->addTrackQueueContextMenu(menu);
-        menu->addSeparator();
-    }
 
-    m_selectionController->addTrackContextMenu(menu);
+    if(sectionEnabled(Constants::Menus::Context::PlaylistWidget::TrackActions)) {
+        appendMenuSection(menu, [&] { m_selectionController->addTrackContextMenu(menu); });
+    }
 }
 
 void PlaylistWidget::keyPressEvent(QKeyEvent* event)

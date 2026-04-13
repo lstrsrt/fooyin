@@ -30,7 +30,6 @@
 #include <gui/trackselectioncontroller.h>
 #include <gui/widgetprovider.h>
 #include <gui/widgets/elapsedprogressdialog.h>
-#include <utils/actions/actioncontainer.h>
 #include <utils/actions/actionmanager.h>
 #include <utils/async.h>
 #include <utils/utils.h>
@@ -87,27 +86,33 @@ void WaveBarPlugin::initialise(const GuiPluginContext& context)
     m_widgetProvider->registerWidget(u"WaveBar"_s, [this]() { return createWavebar(); }, tr("Waveform Seekbar"));
     m_widgetProvider->setSubMenus(u"WaveBar"_s, {tr("Visualisations")});
 
-    auto* selectionMenu = m_actionManager->actionContainer(::Fooyin::Constants::Menus::Context::TrackSelection);
-    auto* utilitiesMenu = m_actionManager->createMenu(::Fooyin::Constants::Menus::Context::Utilities);
-    utilitiesMenu->menu()->setTitle(tr("Utilities"));
-    selectionMenu->addMenu(utilitiesMenu);
+    m_trackSelection->registerTrackContextSubmenu(this, TrackContextMenuArea::Track,
+                                                  ::Fooyin::Constants::Menus::Context::TrackSelection,
+                                                  ::Fooyin::Constants::Menus::Context::Utilities, tr("Utilities"));
 
     auto* window = Utils::getMainWindow();
 
     auto* regenerate = new QAction(tr("Regenerate waveform data"), window);
     regenerate->setStatusTip(tr("Regenerate waveform data for the selected tracks"));
     QObject::connect(regenerate, &QAction::triggered, this, [this]() { regenerateSelection(); });
-    utilitiesMenu->addAction(regenerate);
+    m_trackSelection->registerTrackContextAction(
+        this, TrackContextMenuArea::Track, ::Fooyin::Constants::Menus::Context::Utilities, "WaveBar.Regenerate",
+        regenerate->text(), [regenerate](QMenu* menu, const TrackSelection&) { menu->addAction(regenerate); });
 
     auto* regenerateMissing = new QAction(tr("Generate missing waveform data"), window);
     regenerateMissing->setStatusTip(tr("Generate waveform data for the selected tracks if missing"));
     QObject::connect(regenerateMissing, &QAction::triggered, this, [this]() { regenerateSelection(true); });
-    utilitiesMenu->addAction(regenerateMissing);
+    m_trackSelection->registerTrackContextAction(
+        this, TrackContextMenuArea::Track, ::Fooyin::Constants::Menus::Context::Utilities, "WaveBar.RegenerateMissing",
+        regenerateMissing->text(),
+        [regenerateMissing](QMenu* menu, const TrackSelection&) { menu->addAction(regenerateMissing); });
 
     auto* removeData = new QAction(tr("Remove waveform data"), window);
     removeData->setStatusTip(tr("Remove any existing waveform data for the selected tracks"));
     QObject::connect(removeData, &QAction::triggered, this, &WaveBarPlugin::removeSelection);
-    utilitiesMenu->addAction(removeData);
+    m_trackSelection->registerTrackContextAction(
+        this, TrackContextMenuArea::Track, ::Fooyin::Constants::Menus::Context::Utilities, "WaveBar.RemoveData",
+        removeData->text(), [removeData](QMenu* menu, const TrackSelection&) { menu->addAction(removeData); });
 }
 
 FyWidget* WaveBarPlugin::createWavebar()

@@ -28,7 +28,6 @@
 #include <gui/guiconstants.h>
 #include <gui/statusevent.h>
 #include <gui/trackselectioncontroller.h>
-#include <utils/actions/actioncontainer.h>
 #include <utils/actions/actionmanager.h>
 #include <utils/actions/command.h>
 #include <utils/utils.h>
@@ -75,7 +74,6 @@ FileOpsPlugin::FileOpsPlugin()
     , m_library{nullptr}
     , m_trackSelectionController{nullptr}
     , m_settings{nullptr}
-    , m_fileOpsMenu{nullptr}
 { }
 
 void FileOpsPlugin::initialise(const CorePluginContext& context)
@@ -89,7 +87,7 @@ void FileOpsPlugin::initialise(const GuiPluginContext& context)
     m_actionManager            = context.actionManager;
     m_trackSelectionController = context.trackSelection;
 
-    recreateMenu();
+    setupMenu();
 }
 
 std::unique_ptr<PluginSettingsProvider> FileOpsPlugin::settingsProvider() const
@@ -97,86 +95,60 @@ std::unique_ptr<PluginSettingsProvider> FileOpsPlugin::settingsProvider() const
     return std::make_unique<FileOpsPluginSettingsProvider>(m_settings);
 }
 
-void FileOpsPlugin::recreateMenu()
+void FileOpsPlugin::setupMenu()
 {
-    auto* selectionMenu = m_actionManager->actionContainer(Constants::Menus::Context::TrackSelection);
+    m_trackSelectionController->registerTrackContextSubmenu(
+        this, TrackContextMenuArea::Track, Constants::Menus::Context::TrackSelection, "FileOperations",
+        tr("File operations"), Constants::Menus::Context::Utilities);
 
-    if(!m_fileOpsMenu) {
-        m_fileOpsMenu = m_actionManager->createMenu("FileOperations");
-        m_fileOpsMenu->menu()->setTitle(tr("&File operations"));
-        selectionMenu->addMenu(Constants::Menus::Context::Utilities, m_fileOpsMenu);
-
-        QObject::connect(
-            m_trackSelectionController, &TrackSelectionController::selectionChanged, m_fileOpsMenu, [this]() {
-                m_fileOpsMenu->menu()->setEnabled(canOperateOnTracks(m_trackSelectionController->selectedTracks()));
-            });
-    }
-    else {
-        for(auto* menu : m_opActions) {
-            menu->deleteLater();
-        }
-        m_opActions.clear();
-    }
-    m_fileOpsMenu->menu()->setEnabled(canOperateOnTracks(m_trackSelectionController->selectedTracks()));
-
-    auto openDialog = [this](Operation op, const QString& presetName = {}) {
-        auto* dialog = new FileOpsDialog(m_library, m_trackSelectionController->selectedTracks(), op, m_settings,
-                                         Utils::getMainWindow());
+    const auto openDialog = [this](const TrackSelection& selection, Operation op, const QString& presetName = {}) {
+        auto* dialog = new FileOpsDialog(m_library, selection.tracks, op, m_settings, Utils::getMainWindow());
         dialog->setAttribute(Qt::WA_DeleteOnClose);
-        QObject::connect(dialog, &FileOpsDialog::presetsChanged, this, &FileOpsPlugin::recreateMenu);
-
         dialog->loadPreset(presetName);
         dialog->open();
     };
 
-    const auto presets = FileOps::getMappedPresets();
+    const auto registerOpSubmenu = [this, openDialog](Operation op, const Id& id, const QString& title) {
+        m_trackSelectionController->registerTrackContextDynamicSubmenu(
+            this, TrackContextMenuArea::Track, "FileOperations", id, title,
+            [openDialog, op, title](QMenu* menu, const TrackSelection& selection) {
+                if(!canOperateOnTracks(selection.tracks)) {
+                    return;
+                }
 
-    const auto addSubmenuOrAction = [this, &presets, openDialog](Operation op, const QString& title) {
-        if(presets.contains(op) && !presets.at(op).empty()) {
-            auto* submenu = new QMenu(title, m_fileOpsMenu->menu());
-            m_opActions.emplace_back(submenu);
+                const auto presets = getMappedPresets();
+                if(!presets.contains(op) || presets.at(op).empty()) {
+                    auto* action = new QAction(title, menu);
+                    QObject::connect(action, &QAction::triggered, action,
+                                     [openDialog, op, selection]() { openDialog(selection, op); });
+                    menu->addAction(action);
+                    return;
+                }
 
-            for(const auto& preset : presets.at(op)) {
-                auto* presetAction = new QAction(preset.name, submenu);
-                QObject::connect(presetAction, &QAction::triggered, presetAction,
-                                 [openDialog, op, preset]() { openDialog(op, preset.name); });
-                submenu->addAction(presetAction);
-            }
+                for(const auto& preset : presets.at(op)) {
+                    auto* presetAction = new QAction(preset.name, menu);
+                    QObject::connect(presetAction, &QAction::triggered, presetAction,
+                                     [openDialog, op, preset, selection]() { openDialog(selection, op, preset.name); });
+                    menu->addAction(presetAction);
+                }
 
-            submenu->addSeparator();
+                menu->addSeparator();
 
-            auto* action = new QAction(u"…"_s, submenu);
-            QObject::connect(action, &QAction::triggered, action, [openDialog, op]() { openDialog(op); });
-            submenu->addAction(action);
-            m_fileOpsMenu->menu()->addMenu(submenu);
-        }
-        else {
-            auto* action = new QAction(title, m_fileOpsMenu);
-            m_opActions.emplace_back(action);
-
-            QObject::connect(action, &QAction::triggered, action, [openDialog, op]() { openDialog(op); });
-            m_fileOpsMenu->addAction(action);
-        }
+                auto* action = new QAction(u"…"_s, menu);
+                QObject::connect(action, &QAction::triggered, action,
+                                 [openDialog, op, selection]() { openDialog(selection, op); });
+                menu->addAction(action);
+            });
     };
 
-    addSubmenuOrAction(Operation::Copy, tr("&Copy to…"));
-    addSubmenuOrAction(Operation::Move, tr("&Move to…"));
-    addSubmenuOrAction(Operation::Rename, tr("&Rename to…"));
+    registerOpSubmenu(Operation::Copy, "FileOps.Copy", tr("&Copy to…"));
+    registerOpSubmenu(Operation::Move, "FileOps.Move", tr("&Move to…"));
+    registerOpSubmenu(Operation::Rename, "FileOps.Rename", tr("&Rename to…"));
 
-    auto* deleteAction = new QAction(tr("&Delete"), m_fileOpsMenu);
-    m_opActions.emplace_back(deleteAction);
-
+    auto* deleteAction = new QAction(tr("&Delete"), this);
     auto* deleteCmd
         = m_actionManager->registerAction(deleteAction, "FileOps.Delete", Context{Constants::Context::TrackSelection});
     deleteCmd->setCategories({tr("Edit")});
-
-    const auto updateDeleteAction = [this, deleteAction]() {
-        deleteAction->setEnabled(canOperateOnTracks(m_trackSelectionController->selectedTracks()));
-    };
-
-    QObject::connect(m_trackSelectionController, &TrackSelectionController::selectionChanged, deleteAction,
-                     updateDeleteAction);
-    updateDeleteAction();
 
     QObject::connect(deleteAction, &QAction::triggered, deleteAction, [this]() {
         const auto selection = m_trackSelectionController->selectedSelection();
@@ -214,6 +186,16 @@ void FileOpsPlugin::recreateMenu()
             runDelete();
         }
     });
-    m_fileOpsMenu->addAction(deleteAction);
+
+    m_trackSelectionController->registerTrackContextAction(
+        this, TrackContextMenuArea::Track, "FileOperations", "FileOps.Delete", deleteAction->text(),
+        [deleteAction](QMenu* menu, const TrackSelection& selection) {
+            if(!canOperateOnTracks(selection.tracks)) {
+                return;
+            }
+
+            deleteAction->setEnabled(true);
+            menu->addAction(deleteAction);
+        });
 }
 } // namespace Fooyin::FileOps
