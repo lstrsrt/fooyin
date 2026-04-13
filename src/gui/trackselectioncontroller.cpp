@@ -400,10 +400,11 @@ void TrackSelectionControllerPrivate::setupBuiltInMenus()
         if(!hasTracks()) {
             return;
         }
-        attachArtwork(m_self->selectedSelection(), Track::Cover::Front, static_cast<QWidget*>(Utils::getMainWindow()));
+        attachArtwork(m_self->selectedSelection(), Track::Cover::Front, Utils::getMainWindow());
     });
     registerAction(m_self, TrackContextMenuArea::Track, Constants::Menus::Context::ArtworkAttach,
-                   Id{u"%1.Front"_s.arg(Constants::Menus::Context::ArtworkAttach)}, m_attachFrontArtwork->text(),
+                   Id{u"%1.Front"_s.arg(QString::fromLatin1(Constants::Menus::Context::ArtworkAttach))},
+                   m_attachFrontArtwork->text(),
                    [this](QMenu* menu, const TrackSelection&) { menu->addAction(m_attachFrontArtwork); });
 
     m_attachBackArtwork->setStatusTip(tr("Attach an image file as the back cover for the selected tracks"));
@@ -411,10 +412,11 @@ void TrackSelectionControllerPrivate::setupBuiltInMenus()
         if(!hasTracks()) {
             return;
         }
-        attachArtwork(m_self->selectedSelection(), Track::Cover::Back, static_cast<QWidget*>(Utils::getMainWindow()));
+        attachArtwork(m_self->selectedSelection(), Track::Cover::Back, Utils::getMainWindow());
     });
     registerAction(m_self, TrackContextMenuArea::Track, Constants::Menus::Context::ArtworkAttach,
-                   Id{u"%1.Back"_s.arg(Constants::Menus::Context::ArtworkAttach)}, m_attachBackArtwork->text(),
+                   Id{u"%1.Back"_s.arg(QString::fromLatin1(Constants::Menus::Context::ArtworkAttach))},
+                   m_attachBackArtwork->text(),
                    [this](QMenu* menu, const TrackSelection&) { menu->addAction(m_attachBackArtwork); });
 
     m_attachArtistArtwork->setStatusTip(tr("Attach an image file as the artist picture for the selected tracks"));
@@ -422,10 +424,11 @@ void TrackSelectionControllerPrivate::setupBuiltInMenus()
         if(!hasTracks()) {
             return;
         }
-        attachArtwork(m_self->selectedSelection(), Track::Cover::Artist, static_cast<QWidget*>(Utils::getMainWindow()));
+        attachArtwork(m_self->selectedSelection(), Track::Cover::Artist, Utils::getMainWindow());
     });
     registerAction(m_self, TrackContextMenuArea::Track, Constants::Menus::Context::ArtworkAttach,
-                   Id{u"%1.Artist"_s.arg(Constants::Menus::Context::ArtworkAttach)}, m_attachArtistArtwork->text(),
+                   Id{u"%1.Artist"_s.arg(QString::fromLatin1(Constants::Menus::Context::ArtworkAttach))},
+                   m_attachArtistArtwork->text(),
                    [this](QMenu* menu, const TrackSelection&) { menu->addAction(m_attachArtistArtwork); });
 
     registerSeparator(TrackContextMenuArea::Track, Constants::Menus::Context::Artwork);
