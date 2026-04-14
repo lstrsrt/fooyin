@@ -24,6 +24,7 @@
 #include "widgets/statuswidget.h"
 
 #include <core/ratingsymbols.h>
+#include <gui/guiconstants.h>
 #include <gui/guisettings.h>
 #include <utils/settings/settingsmanager.h>
 
@@ -158,7 +159,9 @@ GuiSettings::GuiSettings(SettingsManager* settingsManager)
     m_settings->createSetting<Internal::PlaylistTrackPreloadCount>(2000, u"Playlist/TrackPreloadCount"_s);
     m_settings->createSetting<Internal::PlaylistInlineTagEditing>(false, u"PlaylistWidget/InlineTagEditing"_s);
     m_settings->createSetting<Internal::ContextMenuTrackDisabledSections>(
-        QStringList{}, u"Interface/ContextMenuTrackDisabledSections"_s);
+        QStringList{QString::fromLatin1(Constants::Actions::CopyLocation),
+                    QString::fromLatin1(Constants::Actions::CopyDirectoryPath)},
+        u"Interface/ContextMenuTrackDisabledSections"_s);
     m_settings->createSetting<Internal::ContextMenuPlaylistDisabledSections>(
         QStringList{}, u"Interface/ContextMenuPlaylistDisabledSections"_s);
     m_settings->createSetting<Internal::ContextMenuTrackLayout>(QStringList{}, u"Interface/ContextMenuTrackLayout"_s);

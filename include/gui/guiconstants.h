@@ -193,6 +193,7 @@ constexpr auto SendToQueue               = "Tracks.SendToQueue";
 constexpr auto RemoveFromQueue           = "Tracks.RemoveFromQueue";
 constexpr auto OpenFolder                = "Tracks.OpenFolder";
 constexpr auto CopyLocation              = "Tracks.CopyLocation";
+constexpr auto CopyDirectoryPath         = "Tracks.CopyDirectoryPath";
 constexpr auto SearchArtwork             = "Tracks.SearchArtwork";
 constexpr auto SearchArtworkQuick        = "Tracks.SearchArtworkQuick";
 constexpr auto ExportArtwork             = "Tracks.ExportArtwork";

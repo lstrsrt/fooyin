@@ -144,6 +144,7 @@ public:
     void queueNext() const;
     void openFolder(const TrackSelection& selection) const;
     void copyLocation(const TrackSelection& selection) const;
+    void copyDirectoryPath(const TrackSelection& selection) const;
     void searchArtwork(const TrackSelection& selection, bool quick) const;
     void extractArtwork(const TrackSelection& selection) const;
     void attachArtwork(const TrackSelection& selection, Track::Cover coverType, QWidget* parent) const;
@@ -188,6 +189,7 @@ public:
     QAction* m_removeFromQueue;
     QAction* m_openFolder;
     QAction* m_copyLocation;
+    QAction* m_copyDirectoryPath;
     QAction* m_searchArtwork;
     QAction* m_extractArtwork;
     QAction* m_attachFrontArtwork;
@@ -240,7 +242,8 @@ TrackSelectionControllerPrivate::TrackSelectionControllerPrivate(TrackSelectionC
     , m_queueNext{new QAction(tr("Queue to play next"), self)}
     , m_removeFromQueue{new QAction(tr("Remove from playback queue"), self)}
     , m_openFolder{new QAction(tr("Open containing folder"), self)}
-    , m_copyLocation{new QAction(tr("Copy file location"), self)}
+    , m_copyLocation{new QAction(tr("Copy file path"), self)}
+    , m_copyDirectoryPath{new QAction(tr("Copy directory path"), self)}
     , m_searchArtwork{new QAction(tr("Search for artwork…"), self)}
     , m_extractArtwork{new QAction(tr("Auto-extract artwork to files"), self)}
     , m_attachFrontArtwork{new QAction(tr("Front cover…"), self)}
@@ -362,7 +365,7 @@ void TrackSelectionControllerPrivate::setupBuiltInMenus()
     registerAction(m_self, TrackContextMenuArea::Track, m_trackRoot.id, Constants::Actions::OpenFolder,
                    m_openFolder->text(), [this](QMenu* menu, const TrackSelection&) { menu->addAction(m_openFolder); });
 
-    m_copyLocation->setStatusTip(tr("Copy the location of the selected tracks"));
+    m_copyLocation->setStatusTip(tr("Copy the file paths of the selected tracks"));
     auto* copyLocationCmd = m_actionManager->registerAction(m_copyLocation, Constants::Actions::CopyLocation);
     copyLocationCmd->setCategories(tracksCategory);
     QObject::connect(m_copyLocation, &QAction::triggered, m_self, [this]() {
@@ -373,6 +376,19 @@ void TrackSelectionControllerPrivate::setupBuiltInMenus()
     registerAction(m_self, TrackContextMenuArea::Track, m_trackRoot.id, Constants::Actions::CopyLocation,
                    m_copyLocation->text(),
                    [this](QMenu* menu, const TrackSelection&) { menu->addAction(m_copyLocation); });
+
+    m_copyDirectoryPath->setStatusTip(tr("Copy the containing directories of the selected tracks"));
+    auto* copyDirectoryPathCmd
+        = m_actionManager->registerAction(m_copyDirectoryPath, Constants::Actions::CopyDirectoryPath);
+    copyDirectoryPathCmd->setCategories(tracksCategory);
+    QObject::connect(m_copyDirectoryPath, &QAction::triggered, m_self, [this]() {
+        if(hasTracks()) {
+            copyDirectoryPath(m_self->selectedSelection());
+        }
+    });
+    registerAction(m_self, TrackContextMenuArea::Track, m_trackRoot.id, Constants::Actions::CopyDirectoryPath,
+                   m_copyDirectoryPath->text(),
+                   [this](QMenu* menu, const TrackSelection&) { menu->addAction(m_copyDirectoryPath); });
 
     registerSubmenu(m_self, TrackContextMenuArea::Track, m_trackRoot.id, Constants::Menus::Context::Artwork,
                     TrackSelectionController::tr("Artwork"));
@@ -731,36 +747,19 @@ std::vector<TopLevelRenderEntry> TrackSelectionControllerPrivate::orderedRootEnt
     }
 
     QStringList effectiveLayout;
+    const QStringList defaultLayout = [&rootEntries] {
+        QStringList ids;
+        ids.reserve(static_cast<qsizetype>(rootEntries.size()));
 
+        for(const auto& entry : rootEntries) {
+            ids.emplace_back(entry.id);
+        }
+
+        return ids;
+    }();
     const QStringList savedLayout = topLevelLayout(root.area);
-    for(const auto& id : savedLayout) {
-        const bool isSeparator = id.startsWith(SeparatorIdPrefix);
-
-        if(std::ranges::any_of(rootEntries, [&id](const auto& entry) { return entry.id == id; }) || isSeparator) {
-            if(!effectiveLayout.contains(id)) {
-                effectiveLayout.emplace_back(id);
-            }
-        }
-    }
-
-    if(savedLayout.isEmpty()) {
-        for(const auto& entry : rootEntries) {
-            if(!effectiveLayout.contains(entry.id)) {
-                effectiveLayout.emplace_back(entry.id);
-            }
-        }
-    }
-    else {
-        for(const auto& entry : rootEntries) {
-            if(entry.isSeparator) {
-                continue;
-            }
-
-            if(!effectiveLayout.contains(entry.id)) {
-                effectiveLayout.emplace_back(entry.id);
-            }
-        }
-    }
+    effectiveLayout = savedLayout.isEmpty() ? defaultLayout
+                                            : ContextMenuUtils::effectiveContextMenuLayout(defaultLayout, savedLayout);
 
     std::vector<TopLevelRenderEntry> orderedEntries;
     orderedEntries.reserve(rootEntries.size()
@@ -1067,6 +1066,23 @@ void TrackSelectionControllerPrivate::copyLocation(const TrackSelection& selecti
     QApplication::clipboard()->setText(paths.join("\n"_L1));
 }
 
+void TrackSelectionControllerPrivate::copyDirectoryPath(const TrackSelection& selection) const
+{
+    if(selection.tracks.empty()) {
+        return;
+    }
+
+    QStringList paths;
+    for(const auto& track : selection.tracks) {
+        const QString path = track.isInArchive() ? QFileInfo{track.archivePath()}.absolutePath() : track.path();
+        if(!path.isEmpty() && !paths.contains(path)) {
+            paths.emplace_back(path);
+        }
+    }
+
+    QApplication::clipboard()->setText(paths.join("\n"_L1));
+}
+
 void TrackSelectionControllerPrivate::searchArtwork(const TrackSelection& selection, bool quick) const
 {
     if(selection.tracks.empty()) {
@@ -1233,6 +1249,7 @@ void TrackSelectionControllerPrivate::updateActionState()
     m_sendNew->setEnabled(haveTracks);
     m_openFolder->setEnabled(sameFolder);
     m_copyLocation->setEnabled(haveTracks);
+    m_copyDirectoryPath->setEnabled(haveTracks);
     m_searchArtwork->setEnabled(writableCover);
     m_extractArtwork->setEnabled(haveTracks);
     m_attachFrontArtwork->setEnabled(writable);
@@ -1343,21 +1360,7 @@ void TrackSelectionController::addTrackContextMenu(QMenu* menu) const
 
 void TrackSelectionController::addTrackContextMenu(QMenu* menu, const TrackSelection& selection) const
 {
-    const bool haveTracks = !selection.tracks.empty();
-
-    if(!p->isNodeDisabled(Constants::Actions::OpenFolder)) {
-        auto* openFolder
-            = Utils::cloneMenuAction(menu, p->m_openFolder, [this, selection]() { p->openFolder(selection); });
-        openFolder->setEnabled(haveTracks && p->allTracksInSameFolder(selection));
-        menu->addAction(openFolder);
-    }
-
-    if(!p->isNodeDisabled(Constants::Actions::OpenProperties)) {
-        auto* properties
-            = Utils::cloneMenuAction(menu, p->m_openProperties, [this, selection]() { p->openProperties(selection); });
-        properties->setEnabled(haveTracks);
-        menu->addAction(properties);
-    }
+    p->renderArea(menu, TrackContextMenuArea::Track, selection);
 }
 
 void TrackSelectionController::addTrackQueueContextMenu(QMenu* menu) const
