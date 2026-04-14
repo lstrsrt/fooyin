@@ -42,6 +42,8 @@ class ScaleLabelsWidget;
 
 class EqualiserSettingsWidget : public DspSettingsDialog
 {
+    Q_OBJECT
+
 public:
     explicit EqualiserSettingsWidget(QWidget* parent = nullptr);
 

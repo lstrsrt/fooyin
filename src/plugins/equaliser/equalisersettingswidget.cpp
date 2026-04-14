@@ -155,8 +155,8 @@ public:
         setFixedHeight(m_slider->height() + scaleHandleHalfOffset(m_slider));
 
         const QFontMetrics metrics{font()};
-        const int width = std::max({metrics.horizontalAdvance(tr("+20 dB")), metrics.horizontalAdvance(tr("+0 dB")),
-                                    metrics.horizontalAdvance(tr("-20 dB"))});
+        const int width = std::max({metrics.horizontalAdvance(u"+20 dB"_s), metrics.horizontalAdvance(u"+0 dB"_s),
+                                    metrics.horizontalAdvance(u"-20 dB"_s)});
         setFixedWidth(width);
     }
 
