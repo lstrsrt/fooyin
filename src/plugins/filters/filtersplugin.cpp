@@ -19,6 +19,7 @@
 
 #include "filtersplugin.h"
 
+#include "filtercontextmenu.h"
 #include "filtercontroller.h"
 #include "filterwidget.h"
 
@@ -26,6 +27,7 @@
 #include <gui/editablelayout.h>
 #include <gui/layoutprovider.h>
 #include <gui/plugins/guiplugincontext.h>
+#include <gui/settings/context/staticcontextmenupage.h>
 #include <gui/theme/themeregistry.h>
 #include <gui/widgetprovider.h>
 #include <utils/actions/actioncontainer.h>
@@ -44,6 +46,23 @@ void FiltersPlugin::initialise(const GuiPluginContext& context)
 
     m_filterController = new FilterController(context.actionManager, *m_core, context.trackSelection,
                                               context.editableLayout, m_core->settingsManager, this);
+
+    new StaticContextMenuPage(
+        m_core->settingsManager,
+        makeStaticContextMenuDescriptor(
+            FilterContextMenu::PageId,
+            {.context = "FilterWidget", .sourceText = QT_TRANSLATE_NOOP("FilterWidget", "Library Filter")},
+            {.context    = "FilterWidget",
+             .sourceText = QT_TRANSLATE_NOOP("FilterWidget",
+                                             "Unchecked items will be hidden from the library filter context menu.")},
+            FilterContextMenu::DefaultItems,
+            ContextMenuSettings::makeFileStringListReader(m_core->settingsManager,
+                                                          FilterContextMenu::DisabledSectionsKey),
+            ContextMenuSettings::makeFileStringListWriter(m_core->settingsManager,
+                                                          FilterContextMenu::DisabledSectionsKey),
+            ContextMenuSettings::makeFileStringListReader(m_core->settingsManager, FilterContextMenu::LayoutKey),
+            ContextMenuSettings::makeFileStringListWriter(m_core->settingsManager, FilterContextMenu::LayoutKey)),
+        this);
 
     context.widgetProvider->registerWidget(
         u"LibraryFilter"_s, [this]() { return m_filterController->createFilter(); }, tr("Library Filter"));

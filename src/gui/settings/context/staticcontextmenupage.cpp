@@ -17,7 +17,24 @@
  *
  */
 
-#include "staticcontextmenupage.h"
+#include <gui/settings/context/staticcontextmenupage.h>
+
+#include "configurablecontextmenupage.h"
+
+namespace {
+Fooyin::ContextMenuNodeList contextMenuNodes(std::span<const Fooyin::StaticContextMenu::Item> items)
+{
+    Fooyin::ContextMenuNodeList nodes;
+    nodes.reserve(items.size());
+
+    for(const auto& item : items) {
+        nodes.emplace_back(QString::fromUtf8(item.id), item.isSeparator ? QString{} : Fooyin::translate(item.title),
+                           QString{}, item.isSeparator);
+    }
+
+    return nodes;
+}
+} // namespace
 
 namespace Fooyin {
 StaticContextMenuPage::StaticContextMenuPage(SettingsManager* settings, StaticContextMenuDescriptor descriptor,
@@ -31,25 +48,12 @@ StaticContextMenuPage::StaticContextMenuPage(SettingsManager* settings, StaticCo
     const QString description = translate(descriptor.description);
     setWidgetCreator([description, descriptor = std::move(descriptor)] {
         return new ConfigurableContextMenuWidget(
-            description, {.nodeFactory        = [items = descriptor.items] { return contextMenuNodes(items); },
+            description, {.nodeFactory        = [items = descriptor.items] { return ::contextMenuNodes(items); },
                           .readDisabledIds    = descriptor.readDisabledIds,
                           .writeDisabledIds   = descriptor.writeDisabledIds,
                           .readTopLevelOrder  = descriptor.readTopLevelOrder,
                           .writeTopLevelOrder = descriptor.writeTopLevelOrder,
                           .allowReordering    = descriptor.allowReordering});
     });
-}
-
-ContextMenuNodeList StaticContextMenuPage::contextMenuNodes(std::span<const ContextMenuIds::Item> items)
-{
-    ContextMenuNodeList nodes;
-    nodes.reserve(items.size());
-
-    for(const auto& item : items) {
-        nodes.emplace_back(QString::fromUtf8(item.id), item.isSeparator ? QString{} : translate(item.title), QString{},
-                           item.isSeparator);
-    }
-
-    return nodes;
 }
 } // namespace Fooyin

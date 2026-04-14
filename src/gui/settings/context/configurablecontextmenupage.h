@@ -21,7 +21,7 @@
 
 #include "configurablecontextmenumodel.h"
 
-#include <utils/settings/settingsmanager.h>
+#include <gui/settings/context/staticcontextmenupage.h>
 #include <utils/settings/settingspage.h>
 
 #include <functional>
@@ -29,26 +29,6 @@
 class QTreeView;
 
 namespace Fooyin {
-class ConfigurableContextMenuWidget;
-
-namespace ContextMenuSettings {
-template <auto Key>
-auto makeStringListReader(SettingsManager* settings)
-{
-    return [settings] {
-        return settings->value<Key>();
-    };
-}
-
-template <auto Key>
-auto makeStringListWriter(SettingsManager* settings)
-{
-    return [settings](const QStringList& values) {
-        settings->set<Key>(values);
-    };
-}
-} // namespace ContextMenuSettings
-
 struct ConfigurableContextMenuDefinition
 {
     using StringListReader = std::function<QStringList()>;

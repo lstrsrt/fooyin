@@ -20,7 +20,6 @@
 #include "librarytreewidget.h"
 
 #include "contextmenuids.h"
-#include "contextmenuutils.h"
 #include "internalguisettings.h"
 #include "librarytree/librarytreecontroller.h"
 #include "librarytreeconfigwidget.h"
@@ -39,6 +38,7 @@
 #include <core/player/playerdefs.h>
 #include <core/playlist/playlisthandler.h>
 #include <gui/configdialog.h>
+#include <gui/contextmenuutils.h>
 #include <gui/guiconstants.h>
 #include <gui/guisettings.h>
 #include <gui/guiutils.h>

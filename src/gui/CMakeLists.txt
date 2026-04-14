@@ -1,6 +1,7 @@
 set(SOURCES
     ${CMAKE_SOURCE_DIR}/include/gui/coverprovider.h
     ${CMAKE_SOURCE_DIR}/include/gui/configdialog.h
+    ${CMAKE_SOURCE_DIR}/include/gui/contextmenuutils.h
     ${CMAKE_SOURCE_DIR}/include/gui/dsp/dspsettingsdialog.h
     ${CMAKE_SOURCE_DIR}/include/gui/dsp/dspsettingsprovider.h
     ${CMAKE_SOURCE_DIR}/include/gui/editablelayout.h
@@ -19,6 +20,8 @@ set(SOURCES
     ${CMAKE_SOURCE_DIR}/include/gui/plugins/pluginconfigguiplugin.h
     ${CMAKE_SOURCE_DIR}/include/gui/plugins/pluginsettingsprovider.h
     ${CMAKE_SOURCE_DIR}/include/gui/propertiesdialog.h
+    ${CMAKE_SOURCE_DIR}/include/gui/settings/context/staticcontextmenu.h
+    ${CMAKE_SOURCE_DIR}/include/gui/settings/context/staticcontextmenupage.h
     ${CMAKE_SOURCE_DIR}/include/gui/scripting/richtext.h
     ${CMAKE_SOURCE_DIR}/include/gui/scripting/richtextutils.h
     ${CMAKE_SOURCE_DIR}/include/gui/scripting/scripteditor.h
@@ -90,7 +93,6 @@ set(SOURCES
     artwork/sources/musicbrainzartwork.cpp
     artwork/sources/musicbrainzartwork.h
     contextmenuids.h
-    contextmenuutils.h
     controls/playercontrol.cpp
     controls/playercontrol.h
     controls/commandbutton.cpp
@@ -327,7 +329,6 @@ set(SOURCES
     settings/context/configurablecontextmenupage.cpp
     settings/context/configurablecontextmenupage.h
     settings/context/staticcontextmenupage.cpp
-    settings/context/staticcontextmenupage.h
     settings/context/trackcontextmenupage.cpp
     settings/context/trackcontextmenupage.h
     settings/generalpage.cpp

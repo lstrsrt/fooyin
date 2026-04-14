@@ -20,6 +20,7 @@
 #include "filtercontroller.h"
 
 #include "filtercolumnregistry.h"
+#include "filtercontextmenu.h"
 #include "filtermanager.h"
 #include "filterpipeline.h"
 #include "filterrows.h"
@@ -28,12 +29,16 @@
 #include <core/coresettings.h>
 #include <core/library/musiclibrary.h>
 #include <core/plugins/coreplugincontext.h>
+#include <gui/contextmenuutils.h>
 #include <gui/coverprovider.h>
 #include <gui/editablelayout.h>
+#include <gui/guiconstants.h>
 #include <gui/guisettings.h>
 #include <gui/guiutils.h>
 #include <gui/trackselectioncontroller.h>
 #include <gui/widgets/autoheaderview.h>
+#include <utils/actions/actionmanager.h>
+#include <utils/actions/command.h>
 #include <utils/async.h>
 #include <utils/settings/settingsmanager.h>
 
@@ -232,24 +237,70 @@ void FilterControllerPrivate::filterContextMenu(FilterWidget* widget, const QPoi
     menu->setAttribute(Qt::WA_DeleteOnClose);
 
     const bool hasSelection = widget->hasSelection();
-    if(hasSelection && m_trackSelection) {
-        m_trackSelection->addTrackPlaylistContextMenu(menu);
-        m_trackSelection->addTrackQueueContextMenu(menu);
-        menu->addSeparator();
-    }
 
-    auto* headerMenu = new QMenu(FilterWidget::tr("Filter options"), menu);
-    menu->addMenu(headerMenu);
-    widget->addFilterHeaderMenu(headerMenu, pos, false);
+    ContextMenuUtils::renderStaticContextMenu(
+        menu, FilterContextMenu::DefaultItems,
+        m_settings->fileValue(FilterContextMenu::LayoutKey, QStringList{}).toStringList(),
+        m_settings->fileValue(FilterContextMenu::DisabledSectionsKey, QStringList{}).toStringList(),
+        [&](const auto& id, QMenu* targetMenu, const auto& sectionEnabled) {
+            if(id == QLatin1StringView{FilterContextMenu::Playlist}) {
+                if(!hasSelection || !m_trackSelection || !sectionEnabled(FilterContextMenu::Playlist)) {
+                    return;
+                }
 
-    auto* configure = new QAction(FilterWidget::tr("Configure..."), menu);
-    QObject::connect(configure, &QAction::triggered, widget, [widget]() { widget->openConfigDialog(); });
-    menu->addAction(configure);
+                if(auto* addCurrentCmd = m_actionManager->command(Constants::Actions::AddToCurrent)) {
+                    targetMenu->addAction(addCurrentCmd->action());
+                }
+                if(auto* addActiveCmd = m_actionManager->command(Constants::Actions::AddToActive)) {
+                    targetMenu->addAction(addActiveCmd->action());
+                }
+                if(auto* sendCurrentCmd = m_actionManager->command(Constants::Actions::SendToCurrent)) {
+                    targetMenu->addAction(sendCurrentCmd->action());
+                }
+                if(auto* sendNewCmd = m_actionManager->command(Constants::Actions::SendToNew)) {
+                    targetMenu->addAction(sendNewCmd->action());
+                }
+                return;
+            }
+            if(id == QLatin1StringView{FilterContextMenu::Queue}) {
+                if(!hasSelection || !m_trackSelection || !sectionEnabled(FilterContextMenu::Queue)) {
+                    return;
+                }
 
-    if(hasSelection && m_trackSelection) {
-        menu->addSeparator();
-        m_trackSelection->addTrackContextMenu(menu);
-    }
+                if(auto* addQueueCmd = m_actionManager->command(Constants::Actions::AddToQueue)) {
+                    targetMenu->addAction(addQueueCmd->action());
+                }
+                if(auto* queueNextCmd = m_actionManager->command(Constants::Actions::QueueNext)) {
+                    targetMenu->addAction(queueNextCmd->action());
+                }
+                if(auto* removeQueueCmd = m_actionManager->command(Constants::Actions::RemoveFromQueue)) {
+                    targetMenu->addAction(removeQueueCmd->action());
+                }
+                return;
+            }
+            if(id == QLatin1StringView{FilterContextMenu::FilterOptions}) {
+                if(sectionEnabled(FilterContextMenu::FilterOptions)) {
+                    auto* headerMenu = new QMenu(FilterWidget::tr("Filter options"), targetMenu);
+                    targetMenu->addMenu(headerMenu);
+                    widget->addFilterHeaderMenu(headerMenu, pos, false);
+                }
+                return;
+            }
+            if(id == QLatin1StringView{FilterContextMenu::Configure}) {
+                if(sectionEnabled(FilterContextMenu::Configure)) {
+                    auto* configure = new QAction(FilterWidget::tr("Configure..."), targetMenu);
+                    QObject::connect(configure, &QAction::triggered, widget,
+                                     [widget]() { widget->openConfigDialog(); });
+                    targetMenu->addAction(configure);
+                }
+                return;
+            }
+            if(id == QLatin1StringView{FilterContextMenu::TrackActions}) {
+                if(hasSelection && m_trackSelection && sectionEnabled(FilterContextMenu::TrackActions)) {
+                    m_trackSelection->addTrackContextMenu(targetMenu);
+                }
+            }
+        });
 
     menu->popup(pos);
 }

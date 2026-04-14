@@ -19,10 +19,12 @@
 
 #pragma once
 
-#include "contextmenuids.h"
+#include <gui/settings/context/staticcontextmenu.h>
 
 #include <QMenu>
 #include <QStringList>
+
+#include <utility>
 
 namespace Fooyin::ContextMenuUtils {
 template <typename Callback>
@@ -63,7 +65,7 @@ inline QStringList effectiveContextMenuLayout(const QStringList& defaultLayout, 
 }
 
 template <size_t N, typename RenderSection>
-void renderStaticContextMenu(QMenu* menu, const std::array<ContextMenuIds::Item, N>& items,
+void renderStaticContextMenu(QMenu* menu, const std::array<StaticContextMenu::Item, N>& items,
                              const QStringList& savedLayout, const QStringList& disabledSections,
                              RenderSection&& renderSection)
 {
@@ -75,11 +77,13 @@ void renderStaticContextMenu(QMenu* menu, const std::array<ContextMenuIds::Item,
         return !disabledSections.contains(QString::fromUtf8(sectionId));
     };
 
-    const QStringList orderedIds = effectiveContextMenuLayout(ContextMenuIds::defaultLayoutIds(items), savedLayout);
+    const QStringList orderedIds = effectiveContextMenuLayout(StaticContextMenu::defaultLayoutIds(items), savedLayout);
 
     renderGroupedMenu(
         menu, orderedIds,
-        [&items](const auto& id) { return isSeparatorLayoutId(id) || ContextMenuIds::isBuiltInSeparatorId(items, id); },
+        [&items](const auto& id) {
+            return isSeparatorLayoutId(id) || StaticContextMenu::isBuiltInSeparatorId(items, id);
+        },
         [&](const auto& id, QMenu* targetMenu) {
             return appendMenuSection(targetMenu, [&] { renderSection(id, targetMenu, sectionEnabled); });
         });

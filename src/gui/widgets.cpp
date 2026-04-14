@@ -56,7 +56,6 @@
 #include "settings/artwork/artworkgeneralpage.h"
 #include "settings/artwork/artworksearchingpage.h"
 #include "settings/artwork/artworksourcespage.h"
-#include "settings/context/staticcontextmenupage.h"
 #include "settings/context/trackcontextmenupage.h"
 #include "settings/generalpage.h"
 #include "settings/guidisplaypage.h"
@@ -94,6 +93,7 @@
 #include <core/playlist/playlisthandler.h>
 #include <gui/coverprovider.h>
 #include <gui/guiconstants.h>
+#include <gui/settings/context/staticcontextmenupage.h>
 #include <gui/theme/themeregistry.h>
 #include <gui/widgetprovider.h>
 

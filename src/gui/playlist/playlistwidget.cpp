@@ -20,7 +20,6 @@
 #include "playlistwidget.h"
 
 #include "contextmenuids.h"
-#include "contextmenuutils.h"
 #include "internalguisettings.h"
 #include "playlist/playlistinteractor.h"
 #include "playlist/presetregistry.h"
@@ -38,6 +37,7 @@
 #include <core/player/playercontroller.h>
 #include <core/playlist/playlisthandler.h>
 #include <core/track.h>
+#include <gui/contextmenuutils.h>
 #include <gui/guiconstants.h>
 #include <gui/guisettings.h>
 #include <gui/iconloader.h>

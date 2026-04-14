@@ -19,53 +19,15 @@
 
 #pragma once
 
+#include <gui/settings/context/staticcontextmenu.h>
+
 #include <algorithm>
 #include <array>
 
-#include <QCoreApplication>
-#include <QString>
-#include <QStringList>
-
-namespace Fooyin {
-struct TranslatableText
-{
-    const char* context{nullptr};
-    const char* sourceText{nullptr};
-};
-
-[[nodiscard]] inline QString translate(TranslatableText text)
-{
-    return (text.context && text.sourceText) ? QCoreApplication::translate(text.context, text.sourceText) : QString{};
-}
-} // namespace Fooyin
-
 namespace Fooyin::ContextMenuIds {
-struct Item
-{
-    const char* id;
-    TranslatableText title;
-    bool isSeparator;
-};
-
-template <size_t N>
-QStringList defaultLayoutIds(const std::array<Item, N>& items)
-{
-    QStringList ids;
-    ids.reserve(static_cast<qsizetype>(items.size()));
-
-    for(const auto& item : items) {
-        ids.emplace_back(QString::fromUtf8(item.id));
-    }
-
-    return ids;
-}
-
-template <size_t N>
-bool isBuiltInSeparatorId(const std::array<Item, N>& items, const QString& id)
-{
-    return std::ranges::any_of(
-        items, [&id](const auto& item) { return item.isSeparator && id == QString::fromUtf8(item.id); });
-}
+using Item = StaticContextMenu::Item;
+using StaticContextMenu::defaultLayoutIds;
+using StaticContextMenu::isBuiltInSeparatorId;
 
 namespace TrackSelection {
 constexpr auto ArtworkSearchSeparator = "Fooyin.Menu.Artwork.SearchSeparator";
