@@ -164,5 +164,9 @@ GuiSettings::GuiSettings(SettingsManager* settingsManager)
     m_settings->createSetting<Internal::ContextMenuTrackLayout>(QStringList{}, u"Interface/ContextMenuTrackLayout"_s);
     m_settings->createSetting<Internal::ContextMenuPlaylistLayout>(QStringList{},
                                                                    u"Interface/ContextMenuPlaylistLayout"_s);
+    m_settings->createSetting<Internal::ContextMenuLibraryTreeDisabledSections>(
+        QStringList{}, u"Interface/ContextMenuLibraryTreeDisabledSections"_s);
+    m_settings->createSetting<Internal::ContextMenuLibraryTreeLayout>(QStringList{},
+                                                                      u"Interface/ContextMenuLibraryTreeLayout"_s);
 }
 } // namespace Fooyin

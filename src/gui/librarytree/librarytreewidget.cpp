@@ -19,6 +19,8 @@
 
 #include "librarytreewidget.h"
 
+#include "contextmenuids.h"
+#include "contextmenuutils.h"
 #include "internalguisettings.h"
 #include "librarytree/librarytreecontroller.h"
 #include "librarytreeconfigwidget.h"
@@ -441,6 +443,81 @@ void LibraryTreeWidget::setupHeaderContextMenu(const QPoint& pos)
 
     addGroupMenu(menu);
     menu->popup(this->mapToGlobal(pos));
+}
+
+void LibraryTreeWidget::populateContextMenu(QMenu* menu)
+{
+    const bool hasSelection = m_libraryTree->selectionModel()->hasSelection();
+
+    ContextMenuUtils::renderStaticContextMenu(
+        menu, ContextMenuIds::LibraryTree::DefaultItems, m_settings->value<ContextMenuLibraryTreeLayout>(),
+        m_settings->value<ContextMenuLibraryTreeDisabledSections>(),
+        [&](const auto& id, QMenu* targetMenu, const auto& sectionEnabled) {
+            if(id == QLatin1StringView{ContextMenuIds::LibraryTree::Play}) {
+                if(hasSelection && sectionEnabled(ContextMenuIds::LibraryTree::Play)) {
+                    targetMenu->addAction(m_playAction);
+                }
+                return;
+            }
+            if(id == QLatin1StringView{ContextMenuIds::LibraryTree::Playlist}) {
+                if(!hasSelection || !sectionEnabled(ContextMenuIds::LibraryTree::Playlist)) {
+                    return;
+                }
+
+                if(auto* addCurrentCmd = m_actionManager->command(Constants::Actions::AddToCurrent)) {
+                    targetMenu->addAction(addCurrentCmd->action());
+                }
+                if(auto* addActiveCmd = m_actionManager->command(Constants::Actions::AddToActive)) {
+                    targetMenu->addAction(addActiveCmd->action());
+                }
+                if(auto* sendCurrentCmd = m_actionManager->command(Constants::Actions::SendToCurrent)) {
+                    targetMenu->addAction(sendCurrentCmd->action());
+                }
+                if(auto* sendNewCmd = m_actionManager->command(Constants::Actions::SendToNew)) {
+                    targetMenu->addAction(sendNewCmd->action());
+                }
+                return;
+            }
+            if(id == QLatin1StringView{ContextMenuIds::LibraryTree::Queue}) {
+                if(!hasSelection || !sectionEnabled(ContextMenuIds::LibraryTree::Queue)) {
+                    return;
+                }
+
+                if(auto* addQueueCmd = m_actionManager->command(Constants::Actions::AddToQueue)) {
+                    targetMenu->addAction(addQueueCmd->action());
+                }
+                if(auto* queueNextCmd = m_actionManager->command(Constants::Actions::QueueNext)) {
+                    targetMenu->addAction(queueNextCmd->action());
+                }
+                if(auto* removeQueueCmd = m_actionManager->command(Constants::Actions::RemoveFromQueue)) {
+                    targetMenu->addAction(removeQueueCmd->action());
+                }
+                return;
+            }
+            if(id == QLatin1StringView{ContextMenuIds::LibraryTree::Grouping}) {
+                if(sectionEnabled(ContextMenuIds::LibraryTree::Grouping)) {
+                    addGroupMenu(targetMenu);
+                }
+                return;
+            }
+            if(id == QLatin1StringView{ContextMenuIds::LibraryTree::Configure}) {
+                if(sectionEnabled(ContextMenuIds::LibraryTree::Configure)) {
+                    addConfigureAction(targetMenu, false);
+                }
+            }
+            if(id == QLatin1StringView{ContextMenuIds::LibraryTree::OpenFolder}) {
+                if(hasSelection && sectionEnabled(ContextMenuIds::LibraryTree::OpenFolder)) {
+                    addOpenMenu(targetMenu);
+                }
+                return;
+            }
+            if(id == QLatin1StringView{ContextMenuIds::LibraryTree::TrackActions}) {
+                if(hasSelection && sectionEnabled(ContextMenuIds::LibraryTree::TrackActions)) {
+                    m_trackSelection->addTrackContextMenu(targetMenu);
+                }
+                return;
+            }
+        });
 }
 
 void LibraryTreeWidget::applySelectedTracks(const TrackList& selectedTracks) const
@@ -1163,34 +1240,7 @@ void LibraryTreeWidget::contextMenuEvent(QContextMenuEvent* event)
     auto* menu = new QMenu(this);
     menu->setAttribute(Qt::WA_DeleteOnClose);
 
-    const bool hasSelection = m_libraryTree->selectionModel()->hasSelection();
-
-    if(hasSelection) {
-        menu->addAction(m_playAction);
-        m_trackSelection->addTrackPlaylistContextMenu(menu);
-    }
-
-    addGroupMenu(menu);
-    addConfigureAction(menu, false);
-
-    menu->addSeparator();
-
-    if(hasSelection) {
-        if(auto* addQueueCmd = m_actionManager->command(Constants::Actions::AddToQueue)) {
-            menu->addAction(addQueueCmd->action());
-        }
-        if(auto* queueNextCmd = m_actionManager->command(Constants::Actions::QueueNext)) {
-            menu->addAction(queueNextCmd->action());
-        }
-        if(auto* removeQueueCmd = m_actionManager->command(Constants::Actions::RemoveFromQueue)) {
-            menu->addAction(removeQueueCmd->action());
-        }
-
-        menu->addSeparator();
-        addOpenMenu(menu);
-        m_trackSelection->addTrackContextMenu(menu);
-    }
-
+    populateContextMenu(menu);
     menu->popup(event->globalPos());
 }
 

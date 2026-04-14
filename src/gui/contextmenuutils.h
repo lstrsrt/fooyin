@@ -19,9 +19,72 @@
 
 #pragma once
 
+#include "contextmenuids.h"
+
 #include <QMenu>
+#include <QStringList>
 
 namespace Fooyin::ContextMenuUtils {
+template <typename Callback>
+bool appendMenuSection(QMenu* menu, Callback&& callback)
+{
+    if(!menu) {
+        return false;
+    }
+
+    const auto countBefore = static_cast<int>(menu->actions().size());
+    callback();
+    return menu->actions().size() != countBefore;
+}
+
+inline bool isSeparatorLayoutId(const QString& id)
+{
+    return id.startsWith(QStringLiteral("separator:"));
+}
+
+inline QStringList effectiveContextMenuLayout(const QStringList& defaultLayout, const QStringList& savedLayout)
+{
+    QStringList layout;
+    layout.reserve(defaultLayout.size() + savedLayout.size());
+
+    for(const auto& id : savedLayout) {
+        if((defaultLayout.contains(id) || isSeparatorLayoutId(id)) && !layout.contains(id)) {
+            layout.emplace_back(id);
+        }
+    }
+
+    for(const auto& id : defaultLayout) {
+        if(!layout.contains(id)) {
+            layout.emplace_back(id);
+        }
+    }
+
+    return layout;
+}
+
+template <size_t N, typename RenderSection>
+void renderStaticContextMenu(QMenu* menu, const std::array<ContextMenuIds::Item, N>& items,
+                             const QStringList& savedLayout, const QStringList& disabledSections,
+                             RenderSection&& renderSection)
+{
+    if(!menu) {
+        return;
+    }
+
+    const auto sectionEnabled = [&disabledSections](const char* sectionId) {
+        return !disabledSections.contains(QString::fromUtf8(sectionId));
+    };
+
+    const QStringList orderedIds = effectiveContextMenuLayout(ContextMenuIds::defaultLayoutIds(items), savedLayout);
+
+    renderGroupedMenu(
+        menu, orderedIds,
+        [&items](const auto& id) { return isSeparatorLayoutId(id) || ContextMenuIds::isBuiltInSeparatorId(items, id); },
+        [&](const auto& id, QMenu* targetMenu) {
+            return appendMenuSection(targetMenu, [&] { renderSection(id, targetMenu, sectionEnabled); });
+        });
+}
+
 template <typename Range, typename IsBoundary, typename RenderItem>
 void renderGroupedMenu(QMenu* menu, const Range& items, IsBoundary&& isBoundary, RenderItem&& renderItem)
 {

@@ -326,10 +326,10 @@ set(SOURCES
     settings/context/configurablecontextmenumodel.h
     settings/context/configurablecontextmenupage.cpp
     settings/context/configurablecontextmenupage.h
+    settings/context/staticcontextmenupage.cpp
+    settings/context/staticcontextmenupage.h
     settings/context/trackcontextmenupage.cpp
     settings/context/trackcontextmenupage.h
-    settings/context/playlistcontextmenupage.cpp
-    settings/context/playlistcontextmenupage.h
     settings/generalpage.cpp
     settings/generalpage.h
     settings/guidisplaypage.cpp

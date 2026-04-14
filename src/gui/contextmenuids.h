@@ -19,11 +19,54 @@
 
 #pragma once
 
+#include <algorithm>
 #include <array>
 
+#include <QCoreApplication>
 #include <QString>
+#include <QStringList>
+
+namespace Fooyin {
+struct TranslatableText
+{
+    const char* context{nullptr};
+    const char* sourceText{nullptr};
+};
+
+[[nodiscard]] inline QString translate(TranslatableText text)
+{
+    return (text.context && text.sourceText) ? QCoreApplication::translate(text.context, text.sourceText) : QString{};
+}
+} // namespace Fooyin
 
 namespace Fooyin::ContextMenuIds {
+struct Item
+{
+    const char* id;
+    TranslatableText title;
+    bool isSeparator;
+};
+
+template <size_t N>
+QStringList defaultLayoutIds(const std::array<Item, N>& items)
+{
+    QStringList ids;
+    ids.reserve(static_cast<qsizetype>(items.size()));
+
+    for(const auto& item : items) {
+        ids.emplace_back(QString::fromUtf8(item.id));
+    }
+
+    return ids;
+}
+
+template <size_t N>
+bool isBuiltInSeparatorId(const std::array<Item, N>& items, const QString& id)
+{
+    return std::ranges::any_of(
+        items, [&id](const auto& item) { return item.isSeparator && id == QString::fromUtf8(item.id); });
+}
+
 namespace TrackSelection {
 constexpr auto ArtworkSearchSeparator = "Fooyin.Menu.Artwork.SearchSeparator";
 constexpr auto ArtworkAttachSeparator = "Fooyin.Menu.Artwork.AttachSeparator";
@@ -44,33 +87,80 @@ constexpr auto PresetsSeparator   = "Fooyin.Context.Playlist.Presets.Separator";
 constexpr auto Queue              = "Fooyin.Context.Playlist.Queue";
 constexpr auto TrackActions       = "Fooyin.Context.Playlist.TrackActions";
 
-struct Item
-{
-    const char* id;
-    const char* title;
-    bool isSeparator;
-};
+constexpr auto DefaultItems = std::to_array<Item>({
+    {.id          = Play,
+     .title       = {.context = "PlaylistWidget", .sourceText = QT_TRANSLATE_NOOP("PlaylistWidget", "Play")},
+     .isSeparator = false},
+    {.id          = StopAfterThis,
+     .title       = {.context = "PlaylistWidget", .sourceText = QT_TRANSLATE_NOOP("PlaylistWidget", "Stop after this")},
+     .isSeparator = false},
+    {.id = PlaybackSeparator, .title = {}, .isSeparator = true},
+    {.id          = Remove,
+     .title       = {.context = "PlaylistWidget", .sourceText = QT_TRANSLATE_NOOP("PlaylistWidget", "Remove")},
+     .isSeparator = false},
+    {.id          = Crop,
+     .title       = {.context = "PlaylistWidget", .sourceText = QT_TRANSLATE_NOOP("PlaylistWidget", "Crop")},
+     .isSeparator = false},
+    {.id          = Sort,
+     .title       = {.context = "PlaylistWidget", .sourceText = QT_TRANSLATE_NOOP("PlaylistWidget", "Sort")},
+     .isSeparator = false},
+    {.id = MutateSeparator, .title = {}, .isSeparator = true},
+    {.id          = Clipboard,
+     .title       = {.context = "PlaylistWidget", .sourceText = QT_TRANSLATE_NOOP("PlaylistWidget", "Clipboard")},
+     .isSeparator = false},
+    {.id = ClipboardSeparator, .title = {}, .isSeparator = true},
+    {.id          = Presets,
+     .title       = {.context = "PlaylistWidget", .sourceText = QT_TRANSLATE_NOOP("PlaylistWidget", "Presets")},
+     .isSeparator = false},
+    {.id = PresetsSeparator, .title = {}, .isSeparator = true},
+    {.id          = Queue,
+     .title       = {.context = "PlaylistWidget", .sourceText = QT_TRANSLATE_NOOP("PlaylistWidget", "Queue")},
+     .isSeparator = false},
+    {.id          = TrackActions,
+     .title       = {.context = "PlaylistWidget", .sourceText = QT_TRANSLATE_NOOP("PlaylistWidget", "Track actions")},
+     .isSeparator = false},
+});
+} // namespace Playlist
+
+namespace LibraryTree {
+constexpr auto Play              = "Fooyin.Context.LibraryTree.Play";
+constexpr auto PlaybackSeparator = "Fooyin.Context.LibraryTree.Playback.Separator";
+constexpr auto Playlist          = "Fooyin.Context.LibraryTree.Playlist";
+constexpr auto PlaylistSeparator = "Fooyin.Context.LibraryTree.Playlist.Separator";
+constexpr auto Queue             = "Fooyin.Context.LibraryTree.Queue";
+constexpr auto QueueSeparator    = "Fooyin.Context.LibraryTree.Queue.Separator";
+constexpr auto OpenFolder        = "Fooyin.Context.LibraryTree.OpenFolder";
+constexpr auto TrackActions      = "Fooyin.Context.LibraryTree.TrackActions";
+constexpr auto WidgetSeparator   = "Fooyin.Context.LibraryTree.Widget.Separator";
+constexpr auto Grouping          = "Fooyin.Context.LibraryTree.Grouping";
+constexpr auto Configure         = "Fooyin.Context.LibraryTree.Configure";
 
 constexpr auto DefaultItems = std::to_array<Item>({
-    {.id = Play, .title = "Play", .isSeparator = false},
-    {.id = StopAfterThis, .title = "Stop after this", .isSeparator = false},
-    {.id = PlaybackSeparator, .title = nullptr, .isSeparator = true},
-    {.id = Remove, .title = "Remove", .isSeparator = false},
-    {.id = Crop, .title = "Crop", .isSeparator = false},
-    {.id = Sort, .title = "Sort", .isSeparator = false},
-    {.id = MutateSeparator, .title = nullptr, .isSeparator = true},
-    {.id = Clipboard, .title = "Clipboard", .isSeparator = false},
-    {.id = ClipboardSeparator, .title = nullptr, .isSeparator = true},
-    {.id = Presets, .title = "Presets", .isSeparator = false},
-    {.id = PresetsSeparator, .title = nullptr, .isSeparator = true},
-    {.id = Queue, .title = "Queue", .isSeparator = false},
-    {.id = TrackActions, .title = "Track actions", .isSeparator = false},
+    {.id          = Play,
+     .title       = {.context = "LibraryTreeWidget", .sourceText = QT_TRANSLATE_NOOP("LibraryTreeWidget", "Play")},
+     .isSeparator = false},
+    {.id = PlaybackSeparator, .title = {}, .isSeparator = true},
+    {.id          = Playlist,
+     .title       = {.context = "LibraryTreeWidget", .sourceText = QT_TRANSLATE_NOOP("LibraryTreeWidget", "Playlist")},
+     .isSeparator = false},
+    {.id = PlaylistSeparator, .title = {}, .isSeparator = true},
+    {.id          = Queue,
+     .title       = {.context = "LibraryTreeWidget", .sourceText = QT_TRANSLATE_NOOP("LibraryTreeWidget", "Queue")},
+     .isSeparator = false},
+    {.id = QueueSeparator, .title = {}, .isSeparator = true},
+    {.id          = Grouping,
+     .title       = {.context = "LibraryTreeWidget", .sourceText = QT_TRANSLATE_NOOP("LibraryTreeWidget", "Grouping")},
+     .isSeparator = false},
+    {.id          = Configure,
+     .title       = {.context = "LibraryTreeWidget", .sourceText = QT_TRANSLATE_NOOP("LibraryTreeWidget", "Configure")},
+     .isSeparator = false},
+    {.id = WidgetSeparator, .title = {}, .isSeparator = true},
+    {.id    = OpenFolder,
+     .title = {.context = "LibraryTreeWidget", .sourceText = QT_TRANSLATE_NOOP("LibraryTreeWidget", "Open folder")},
+     .isSeparator = false},
+    {.id    = TrackActions,
+     .title = {.context = "LibraryTreeWidget", .sourceText = QT_TRANSLATE_NOOP("LibraryTreeWidget", "Track actions")},
+     .isSeparator = false},
 });
-
-inline bool isBuiltInSeparatorId(const QString& id)
-{
-    return std::ranges::any_of(
-        DefaultItems, [&id](const auto& item) { return item.isSeparator && id == QString::fromUtf8(item.id); });
-}
-} // namespace Playlist
+} // namespace LibraryTree
 } // namespace Fooyin::ContextMenuIds

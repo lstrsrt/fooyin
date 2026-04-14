@@ -109,6 +109,7 @@ protected:
 private:
     void setupConnections();
     void reset() const;
+    void populateContextMenu(QMenu* menu);
 
     void changeGrouping(const LibraryTreeGrouping& newGrouping);
 

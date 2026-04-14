@@ -22,6 +22,7 @@
 #include "artwork/artworkdialog.h"
 #include "artwork/artworkfinder.h"
 #include "artwork/artworkproperties.h"
+#include "contextmenuids.h"
 #include "controls/commandbutton.h"
 #include "controls/outputselector.h"
 #include "controls/playercontrol.h"
@@ -35,6 +36,7 @@
 #include "dsp/skipsilencesettingswidget.h"
 #include "gui/editablelayout.h"
 #include "guiapplication.h"
+#include "internalguisettings.h"
 #include "librarytree/librarytreecontroller.h"
 #include "librarytree/librarytreewidget.h"
 #include "mainwindow.h"
@@ -54,7 +56,7 @@
 #include "settings/artwork/artworkgeneralpage.h"
 #include "settings/artwork/artworksearchingpage.h"
 #include "settings/artwork/artworksourcespage.h"
-#include "settings/context/playlistcontextmenupage.h"
+#include "settings/context/staticcontextmenupage.h"
 #include "settings/context/trackcontextmenupage.h"
 #include "settings/generalpage.h"
 #include "settings/guidisplaypage.h"
@@ -91,6 +93,7 @@
 #include <core/player/playercontroller.h>
 #include <core/playlist/playlisthandler.h>
 #include <gui/coverprovider.h>
+#include <gui/guiconstants.h>
 #include <gui/theme/themeregistry.h>
 #include <gui/widgetprovider.h>
 
@@ -286,7 +289,30 @@ void Widgets::registerPages()
     new GuiTrackDisplayPage(m_settings, this);
     new GuiThemesPage(m_gui->themeRegistry(), m_settings, this);
     new TrackContextMenuPage(m_gui->trackSelection(), m_settings, this);
-    new PlaylistContextMenuPage(m_settings, this);
+
+    new StaticContextMenuPage(
+        m_settings,
+        makeStaticContextMenuDescriptor<Settings::Gui::Internal::ContextMenuLibraryTreeDisabledSections,
+                                        Settings::Gui::Internal::ContextMenuLibraryTreeLayout>(
+            Constants::Page::InterfaceContextMenuLibraryTree,
+            {.context = "LibraryTreeWidget", .sourceText = QT_TRANSLATE_NOOP("LibraryTreeWidget", "Library Tree")},
+            {.context    = "LibraryTreeWidget",
+             .sourceText = QT_TRANSLATE_NOOP("LibraryTreeWidget",
+                                             "Unchecked items will be hidden from the library tree context menu.")},
+            ContextMenuIds::LibraryTree::DefaultItems, m_settings),
+        this);
+    new StaticContextMenuPage(
+        m_settings,
+        makeStaticContextMenuDescriptor<Settings::Gui::Internal::ContextMenuPlaylistDisabledSections,
+                                        Settings::Gui::Internal::ContextMenuPlaylistLayout>(
+            Constants::Page::InterfaceContextMenuPlaylistWidget,
+            {.context = "PlaylistWidget", .sourceText = QT_TRANSLATE_NOOP("PlaylistWidget", "Playlist")},
+            {.context = "PlaylistWidget",
+             .sourceText
+             = QT_TRANSLATE_NOOP("PlaylistWidget", "Unchecked items will be hidden from the playlist context menu.")},
+            ContextMenuIds::Playlist::DefaultItems, m_settings),
+        this);
+
     new ArtworkGeneralPage(m_settings, this);
     new ArtworkSearchingPage(m_settings, this);
     new ArtworkSourcesPage(m_artworkFinder, m_settings, this);

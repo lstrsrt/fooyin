@@ -225,6 +225,7 @@ constexpr auto InterfaceDisplay                   = "Fooyin.Page.Interface.Displ
 constexpr auto InterfaceTrackDisplay              = "Fooyin.Page.Interface.TrackDisplay";
 constexpr auto InterfaceContextMenuTrack          = "Fooyin.Page.Interface.ContextMenu.Track";
 constexpr auto InterfaceContextMenuPlaylistWidget = "Fooyin.Page.Interface.ContextMenu.PlaylistWidget";
+constexpr auto InterfaceContextMenuLibraryTree    = "Fooyin.Page.Interface.ContextMenu.LibraryTree";
 constexpr auto InterfaceTheme                     = "Fooyin.Page.Interface.Theme";
 constexpr auto ArtworkGeneral                     = "Fooyin.Page.Interface.Artwork.General";
 constexpr auto ArtworkDownload                    = "Fooyin.Page.Interface.Artwork.Download";
