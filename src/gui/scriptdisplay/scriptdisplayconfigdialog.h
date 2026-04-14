@@ -34,6 +34,8 @@ class ScriptTextEdit;
 
 class ScriptDisplayConfigDialog : public WidgetConfigDialog<ScriptDisplay, ScriptDisplay::ConfigData>
 {
+    Q_OBJECT
+
 public:
     explicit ScriptDisplayConfigDialog(ScriptDisplay* widget, QWidget* parent = nullptr);
 
