@@ -143,7 +143,7 @@ QAction* FyWidget::addConfigureAction(QMenu* menu, bool addSeparator)
         menu->addSeparator();
     }
 
-    auto* configure = new QAction(tr("Configure..."), menu);
+    auto* configure = new QAction(tr("Configure…"), menu);
     QObject::connect(configure, &QAction::triggered, this, &FyWidget::openConfigDialog);
     menu->addAction(configure);
 

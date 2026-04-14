@@ -288,7 +288,7 @@ void FilterControllerPrivate::filterContextMenu(FilterWidget* widget, const QPoi
             }
             if(id == QLatin1StringView{FilterContextMenu::Configure}) {
                 if(sectionEnabled(FilterContextMenu::Configure)) {
-                    auto* configure = new QAction(FilterWidget::tr("Configure..."), targetMenu);
+                    auto* configure = new QAction(FilterWidget::tr("Configure…"), targetMenu);
                     QObject::connect(configure, &QAction::triggered, widget,
                                      [widget]() { widget->openConfigDialog(); });
                     targetMenu->addAction(configure);

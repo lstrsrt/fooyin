@@ -178,7 +178,7 @@ protected:
      */
     virtual void openConfigDialog();
     /*!
-     * Adds a standard `Configure...` action to @p menu and connects it to
+     * Adds a standard `Configure…` action to @p menu and connects it to
      * @fn openConfigDialog().
      */
     QAction* addConfigureAction(QMenu* menu, bool addSeparator = true);

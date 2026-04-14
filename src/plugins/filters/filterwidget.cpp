@@ -687,7 +687,7 @@ void FilterWidget::addFilterHeaderMenu(QMenu* menu, const QPoint& pos, bool incl
         QObject::connect(manageConnections, &QAction::triggered, this, &FilterWidget::requestEditConnections);
         menu->addAction(manageConnections);
 
-        auto* configure = new QAction(FilterWidget::tr("Configure..."), menu);
+        auto* configure = new QAction(FilterWidget::tr("Configure…"), menu);
         QObject::connect(configure, &QAction::triggered, this, &FilterWidget::openConfigDialog);
         menu->addAction(configure);
     }
