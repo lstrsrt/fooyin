@@ -30,6 +30,8 @@ class QSlider;
 namespace Fooyin::Soxr {
 class SoxResamplerSettingsWidget : public DspSettingsDialog
 {
+    Q_OBJECT
+
 public:
     explicit SoxResamplerSettingsWidget(QWidget* parent = nullptr);
 

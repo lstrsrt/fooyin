@@ -29,6 +29,8 @@ class QLineEdit;
 namespace Fooyin {
 class ResamplerSettingsWidget : public DspSettingsDialog
 {
+    Q_OBJECT
+
 public:
     explicit ResamplerSettingsWidget(QWidget* parent = nullptr);
 
