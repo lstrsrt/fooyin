@@ -285,8 +285,7 @@ void Widgets::registerPages()
     new GuiDisplayPage(m_settings, this);
     new GuiTrackDisplayPage(m_settings, this);
     new GuiThemesPage(m_gui->themeRegistry(), m_settings, this);
-    new TrackContextMenuPage(m_gui->trackSelection(), m_settings, TrackContextMenuPageMode::Track, this);
-    new TrackContextMenuPage(m_gui->trackSelection(), m_settings, TrackContextMenuPageMode::PlaylistQueue, this);
+    new TrackContextMenuPage(m_gui->trackSelection(), m_settings, this);
     new PlaylistContextMenuPage(m_settings, this);
     new ArtworkGeneralPage(m_settings, this);
     new ArtworkSearchingPage(m_settings, this);

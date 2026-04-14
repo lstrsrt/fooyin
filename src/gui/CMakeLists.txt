@@ -89,6 +89,8 @@ set(SOURCES
     artwork/sources/lastfmartwork.h
     artwork/sources/musicbrainzartwork.cpp
     artwork/sources/musicbrainzartwork.h
+    contextmenuids.h
+    contextmenuutils.h
     controls/playercontrol.cpp
     controls/playercontrol.h
     controls/commandbutton.cpp

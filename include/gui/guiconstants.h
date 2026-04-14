@@ -96,20 +96,6 @@ constexpr auto Tagging             = "Fooyin.Menu.Tagging";
 constexpr auto TaggingRating       = "Fooyin.Menu.Tagging.Rating";
 constexpr auto TrackFinalSeparator = "Fooyin.Menu.Track.FinalSeparator";
 constexpr auto Utilities           = "Fooyin.Menu.Utilities";
-
-namespace PlaylistWidget {
-constexpr auto Playback      = "Fooyin.Context.PlaylistWidget.Playback";
-constexpr auto Play          = "Fooyin.Context.PlaylistWidget.Play";
-constexpr auto StopAfterThis = "Fooyin.Context.PlaylistWidget.StopAfterThis";
-constexpr auto Edit          = "Fooyin.Context.PlaylistWidget.Edit";
-constexpr auto Remove        = "Fooyin.Context.PlaylistWidget.Remove";
-constexpr auto Crop          = "Fooyin.Context.PlaylistWidget.Crop";
-constexpr auto Sort          = "Fooyin.Context.PlaylistWidget.Sort";
-constexpr auto Clipboard     = "Fooyin.Context.PlaylistWidget.Clipboard";
-constexpr auto Presets       = "Fooyin.Context.PlaylistWidget.Presets";
-constexpr auto Queue         = "Fooyin.Context.PlaylistWidget.Queue";
-constexpr auto TrackActions  = "Fooyin.Context.PlaylistWidget.TrackActions";
-} // namespace PlaylistWidget
 } // namespace Context
 } // namespace Menus
 
@@ -237,9 +223,6 @@ constexpr auto DspManager                         = "Fooyin.Page.Playback.DspMan
 constexpr auto InterfaceGeneral                   = "Fooyin.Page.Interface.General";
 constexpr auto InterfaceDisplay                   = "Fooyin.Page.Interface.Display";
 constexpr auto InterfaceTrackDisplay              = "Fooyin.Page.Interface.TrackDisplay";
-constexpr auto InterfaceContextMenu               = "Fooyin.Page.Interface.ContextMenu";
-constexpr auto InterfaceContextMenuPlaylist       = "Fooyin.Page.Interface.ContextMenu.Playlist";
-constexpr auto InterfaceContextMenuQueue          = "Fooyin.Page.Interface.ContextMenu.Queue";
 constexpr auto InterfaceContextMenuTrack          = "Fooyin.Page.Interface.ContextMenu.Track";
 constexpr auto InterfaceContextMenuPlaylistWidget = "Fooyin.Page.Interface.ContextMenu.PlaylistWidget";
 constexpr auto InterfaceTheme                     = "Fooyin.Page.Interface.Theme";

@@ -78,6 +78,7 @@ struct FYGUI_EXPORT TrackContextMenuNodeInfo
     std::optional<Id> parentId;
     QString title;
     TrackContextMenuArea area{TrackContextMenuArea::Track};
+    bool isSeparator{false};
     bool isSubmenu{false};
 };
 

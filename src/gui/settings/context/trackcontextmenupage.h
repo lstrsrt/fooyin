@@ -27,22 +27,15 @@
 namespace Fooyin {
 class SettingsManager;
 
-enum class TrackContextMenuPageMode : uint8_t
-{
-    PlaylistQueue = 0,
-    Track
-};
-
 class TrackContextMenuPage : public SettingsPage
 {
     Q_OBJECT
 
 public:
     explicit TrackContextMenuPage(TrackSelectionController* trackSelection, SettingsManager* settings,
-                                  TrackContextMenuPageMode mode, QObject* parent = nullptr);
+                                  QObject* parent = nullptr);
 
 private:
-    static ContextMenuNodeList trackContextMenuNodes(TrackSelectionController* trackSelection,
-                                                     TrackContextMenuArea area);
+    static ContextMenuNodeList trackContextMenuNodes(TrackSelectionController* trackSelection);
 };
 } // namespace Fooyin

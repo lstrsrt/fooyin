@@ -24,18 +24,20 @@
 #include <QGridLayout>
 #include <QHeaderView>
 #include <QLabel>
+#include <QMenu>
 #include <QTreeView>
 
 using namespace Qt::StringLiterals;
 
 namespace Fooyin {
-ConfigurableContextMenuWidget::ConfigurableContextMenuWidget(QString description, DisabledIdsReader readDisabledIds,
-                                                             DisabledIdsWriter writeDisabledIds,
-                                                             ContextMenuSectionList sections, QWidget* parent)
+ConfigurableContextMenuWidget::ConfigurableContextMenuWidget(QString description,
+                                                             ConfigurableContextMenuDefinition definition,
+                                                             QWidget* parent)
     : SettingsPageWidget{}
     , m_description{std::move(description)}
-    , m_readDisabledIds{std::move(readDisabledIds)}
-    , m_writeDisabledIds{std::move(writeDisabledIds)}
+    , m_definition{std::move(definition)}
+    , m_model{new ConfigurableContextMenuModel(this)}
+    , m_tree{new QTreeView(this)}
 {
     if(parent) {
         setParent(parent);
@@ -43,87 +45,87 @@ ConfigurableContextMenuWidget::ConfigurableContextMenuWidget(QString description
 
     auto* layout = new QGridLayout(this);
 
-    int descriptionRow{0};
-    int descriptionColumnSpan{1};
+    m_model->setReorderingEnabled(m_definition.allowReordering);
+    m_tree->setModel(m_model);
+    m_tree->setHeaderHidden(true);
+    m_tree->setRootIsDecorated(true);
+    m_tree->setUniformRowHeights(true);
+    m_tree->header()->setStretchLastSection(true);
+    m_tree->setDragEnabled(m_definition.allowReordering);
+    m_tree->setAcceptDrops(m_definition.allowReordering);
+    m_tree->setDropIndicatorShown(m_definition.allowReordering);
+    m_tree->setDefaultDropAction(Qt::MoveAction);
+    m_tree->setDragDropMode(m_definition.allowReordering ? QAbstractItemView::InternalMove
+                                                         : QAbstractItemView::NoDragDrop);
+    m_tree->setSelectionMode(m_definition.allowReordering ? QAbstractItemView::SingleSelection
+                                                          : QAbstractItemView::ExtendedSelection);
+    m_tree->setContextMenuPolicy(Qt::CustomContextMenu);
 
-    for(auto& section : sections) {
-        auto* model = new ConfigurableContextMenuModel(this);
-        auto* tree  = new QTreeView(this);
+    if(m_definition.allowReordering) {
+        QObject::connect(m_tree, &QWidget::customContextMenuRequested, this, [this](const QPoint& pos) {
+            auto* menu = new QMenu(m_tree);
 
-        tree->setModel(model);
-        tree->setHeaderHidden(true);
-        tree->setRootIsDecorated(true);
-        tree->setUniformRowHeights(true);
-        tree->header()->setStretchLastSection(true);
+            const QModelIndex index = m_tree->indexAt(pos);
+            const bool isTopLevel   = index.isValid() && !index.parent().isValid();
+            const bool isSeparator  = m_model->isSeparator(index);
 
-        int treeRow = section.row;
-        if(!section.title.isEmpty()) {
-            auto* label = new QLabel(section.title, this);
-            layout->addWidget(label, section.row, section.column, 1, section.columnSpan);
-            ++treeRow;
-        }
+            if(isTopLevel && !isSeparator) {
+                menu->addAction(tr("Insert separator before"), menu,
+                                [this, row = index.row()] { m_model->insertSeparator(row); });
+                menu->addAction(tr("Insert separator after"), menu,
+                                [this, row = index.row() + 1] { m_model->insertSeparator(row); });
+            }
 
-        layout->addWidget(tree, treeRow, section.column, section.rowSpan, section.columnSpan);
-        layout->setRowStretch(treeRow, 1);
-        layout->setColumnStretch(section.column, 1);
+            if(!index.isValid() || isTopLevel) {
+                menu->addAction(tr("Add separator"), menu, [this] { m_model->insertSeparator(m_model->rowCount({})); });
+            }
 
-        descriptionRow        = std::max(descriptionRow, treeRow + section.rowSpan);
-        descriptionColumnSpan = std::max(descriptionColumnSpan, section.column + section.columnSpan);
+            if(isTopLevel && isSeparator) {
+                menu->addSeparator();
+                menu->addAction(tr("Remove separator"), menu, [this, index] { m_model->removeSeparator(index); });
+            }
 
-        m_sections.push_back({.definition = std::move(section), .model = model, .tree = tree});
+            if(!menu->isEmpty()) {
+                menu->popup(m_tree->viewport()->mapToGlobal(pos));
+            }
+        });
     }
+
+    layout->addWidget(m_tree, 0, 0);
+    layout->setRowStretch(0, 1);
+    layout->setColumnStretch(0, 1);
 
     auto* descriptionLabel = new QLabel(u"🛈 "_s + m_description, this);
     descriptionLabel->setWordWrap(true);
-    layout->addWidget(descriptionLabel, descriptionRow, 0, 1, descriptionColumnSpan);
-}
-
-QStringList ConfigurableContextMenuWidget::sectionNodeIds() const
-{
-    QStringList ids;
-
-    for(const auto& section : m_sections) {
-        ids.append(section.model->allNodeIds());
-    }
-
-    ids.removeDuplicates();
-    return ids;
-}
-
-QStringList ConfigurableContextMenuWidget::sectionDisabledIds() const
-{
-    QStringList ids;
-
-    for(const auto& section : m_sections) {
-        ids.append(section.model->disabledIds());
-    }
-
-    ids.removeDuplicates();
-    return ids;
+    layout->addWidget(descriptionLabel, 1, 0);
 }
 
 void ConfigurableContextMenuWidget::load()
 {
-    const QStringList disabledIds = m_readDisabledIds ? m_readDisabledIds() : QStringList{};
+    const QStringList disabledIds   = m_definition.readDisabledIds ? m_definition.readDisabledIds() : QStringList{};
+    const QStringList topLevelOrder = m_definition.readTopLevelOrder ? m_definition.readTopLevelOrder() : QStringList{};
 
-    for(auto& section : m_sections) {
-        section.model->rebuild(section.definition.nodeFactory ? section.definition.nodeFactory()
-                                                              : ContextMenuNodeList{});
-        section.model->applyDisabledIds(disabledIds);
-    }
+    m_model->rebuild(m_definition.nodeFactory ? m_definition.nodeFactory() : ContextMenuNodeList{}, topLevelOrder);
+    m_model->applyDisabledIds(disabledIds);
 }
 
 void ConfigurableContextMenuWidget::apply()
 {
-    if(m_writeDisabledIds) {
-        m_writeDisabledIds(sectionNodeIds(), sectionDisabledIds());
+    if(m_definition.writeTopLevelOrder) {
+        m_definition.writeTopLevelOrder(m_model->topLevelLayoutIds());
+    }
+    if(m_definition.writeDisabledIds) {
+        m_definition.writeDisabledIds(m_model->disabledIds());
     }
 }
 
 void ConfigurableContextMenuWidget::reset()
 {
-    if(m_writeDisabledIds) {
-        m_writeDisabledIds(sectionNodeIds(), {});
+    if(m_definition.writeTopLevelOrder) {
+        m_definition.writeTopLevelOrder({});
+    }
+    if(m_definition.writeDisabledIds) {
+        m_definition.writeDisabledIds({});
     }
 }
 } // namespace Fooyin

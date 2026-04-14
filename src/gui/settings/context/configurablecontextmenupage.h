@@ -21,6 +21,7 @@
 
 #include "configurablecontextmenumodel.h"
 
+#include <utils/settings/settingsmanager.h>
 #include <utils/settings/settingspage.h>
 
 #include <functional>
@@ -28,27 +29,45 @@
 class QTreeView;
 
 namespace Fooyin {
-struct ConfigurableContextMenuSection
+class ConfigurableContextMenuWidget;
+
+namespace ContextMenuSettings {
+template <auto Key>
+auto makeStringListReader(SettingsManager* settings)
 {
-    QString title;
+    return [settings] {
+        return settings->value<Key>();
+    };
+}
+
+template <auto Key>
+auto makeStringListWriter(SettingsManager* settings)
+{
+    return [settings](const QStringList& values) {
+        settings->set<Key>(values);
+    };
+}
+} // namespace ContextMenuSettings
+
+struct ConfigurableContextMenuDefinition
+{
+    using StringListReader = std::function<QStringList()>;
+    using StringListWriter = std::function<void(const QStringList&)>;
+
     std::function<std::vector<ConfigurableContextMenuNode>()> nodeFactory;
-    int row{0};
-    int column{0};
-    int rowSpan{1};
-    int columnSpan{1};
+    StringListReader readDisabledIds;
+    StringListWriter writeDisabledIds;
+    StringListReader readTopLevelOrder;
+    StringListWriter writeTopLevelOrder;
+    bool allowReordering{false};
 };
-using ContextMenuSectionList = std::vector<ConfigurableContextMenuSection>;
 
 class ConfigurableContextMenuWidget : public SettingsPageWidget
 {
     Q_OBJECT
 
 public:
-    using DisabledIdsReader = std::function<QStringList()>;
-    using DisabledIdsWriter = std::function<void(const QStringList&, const QStringList&)>;
-
-    ConfigurableContextMenuWidget(QString description, DisabledIdsReader readDisabledIds,
-                                  DisabledIdsWriter writeDisabledIds, ContextMenuSectionList sections,
+    ConfigurableContextMenuWidget(QString description, ConfigurableContextMenuDefinition definition,
                                   QWidget* parent = nullptr);
 
     void load() override;
@@ -56,19 +75,9 @@ public:
     void reset() override;
 
 private:
-    struct SectionView
-    {
-        ConfigurableContextMenuSection definition;
-        ConfigurableContextMenuModel* model;
-        QTreeView* tree;
-    };
-
-    [[nodiscard]] QStringList sectionNodeIds() const;
-    [[nodiscard]] QStringList sectionDisabledIds() const;
-
     QString m_description;
-    DisabledIdsReader m_readDisabledIds;
-    DisabledIdsWriter m_writeDisabledIds;
-    QList<SectionView> m_sections;
+    ConfigurableContextMenuDefinition m_definition;
+    ConfigurableContextMenuModel* m_model;
+    QTreeView* m_tree;
 };
 } // namespace Fooyin

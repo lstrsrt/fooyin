@@ -19,6 +19,8 @@
 
 #include "playlistwidget.h"
 
+#include "contextmenuids.h"
+#include "contextmenuutils.h"
 #include "internalguisettings.h"
 #include "playlist/playlistinteractor.h"
 #include "playlist/presetregistry.h"
@@ -87,23 +89,34 @@ QModelIndexList selectedRows(const QAbstractItemView* view)
 template <typename Callback>
 bool appendMenuSection(QMenu* menu, Callback&& callback)
 {
-    QAction* separator{nullptr};
-    if(!menu->actions().isEmpty()) {
-        separator = menu->addSeparator();
-    }
-
     const auto countBefore = static_cast<int>(menu->actions().size());
     callback();
+    return menu->actions().size() != countBefore;
+}
 
-    if(menu->actions().size() != countBefore) {
-        return true;
+bool isSeparatorLayoutId(const QString& id)
+{
+    return id.startsWith(u"separator:"_s);
+}
+
+QStringList effectiveContextMenuLayout(const QStringList& defaultLayout, const QStringList& savedLayout)
+{
+    QStringList layout;
+    layout.reserve(defaultLayout.size() + savedLayout.size());
+
+    for(const auto& id : savedLayout) {
+        if((defaultLayout.contains(id) || isSeparatorLayoutId(id)) && !layout.contains(id)) {
+            layout.emplace_back(id);
+        }
     }
 
-    if(separator) {
-        separator->deleteLater();
+    for(const auto& id : defaultLayout) {
+        if(!layout.contains(id)) {
+            layout.emplace_back(id);
+        }
     }
 
-    return false;
+    return layout;
 }
 
 class PlaylistWidgetHost : public EditablePlaylistSessionHost
@@ -488,79 +501,114 @@ void PlaylistWidget::populateTrackContextMenu(QMenu* menu, const QModelIndexList
     state.hasSelection = !selected.empty();
     m_session->updateContextMenuState(sessionHost(), selected, state);
 
-    const QStringList disabledSections = m_settings->value<PlaylistContextMenuDisabledSections>();
+    const QStringList disabledSections = m_settings->value<ContextMenuPlaylistDisabledSections>();
     const auto sectionEnabled          = [&](const char* sectionId) {
         return !disabledSections.contains(QString::fromUtf8(sectionId));
     };
 
-    if(state.hasSelection) {
-        appendMenuSection(menu, [&] {
-            if(sectionEnabled(Fooyin::Constants::Menus::Context::PlaylistWidget::Play)) {
-                menu->addAction(m_playAction);
-            }
+    QStringList defaultLayout;
+    defaultLayout.reserve(ContextMenuIds::Playlist::DefaultItems.size());
 
-            if(sectionEnabled(Constants::Menus::Context::PlaylistWidget::StopAfterThis) && state.showStopAfter
-               && m_session->stopAfterAction()) {
-                menu->addAction(m_session->stopAfterAction());
-            }
-        });
+    for(const auto& item : ContextMenuIds::Playlist::DefaultItems) {
+        defaultLayout.emplace_back(QString::fromUtf8(item.id));
+    }
 
-        appendMenuSection(menu, [&] {
-            if(state.showEditablePlaylistActions) {
-                if(sectionEnabled(Constants::Menus::Context::PlaylistWidget::Remove)) {
-                    if(auto* removeCmd = m_actionManager->command(Constants::Actions::Remove)) {
-                        menu->addAction(removeCmd->action());
+    const QStringList orderedIds
+        = effectiveContextMenuLayout(defaultLayout, m_settings->value<ContextMenuPlaylistLayout>());
+
+    ContextMenuUtils::renderGroupedMenu(
+        menu, orderedIds,
+        [](const auto& id) { return isSeparatorLayoutId(id) || ContextMenuIds::Playlist::isBuiltInSeparatorId(id); },
+        [&](const auto& id, QMenu* targetMenu) {
+            if(id == QLatin1StringView{ContextMenuIds::Playlist::Play}) {
+                return appendMenuSection(targetMenu, [&] {
+                    if(state.hasSelection && sectionEnabled(ContextMenuIds::Playlist::Play)) {
+                        targetMenu->addAction(m_playAction);
                     }
-                }
-
-                if(sectionEnabled(Constants::Menus::Context::PlaylistWidget::Crop)) {
-                    if(auto* cropAction = m_session->cropAction()) {
-                        menu->addAction(cropAction);
+                });
+            }
+            if(id == QLatin1StringView{ContextMenuIds::Playlist::StopAfterThis}) {
+                return appendMenuSection(targetMenu, [&] {
+                    if(state.hasSelection && sectionEnabled(ContextMenuIds::Playlist::StopAfterThis)
+                       && state.showStopAfter && m_session->stopAfterAction()) {
+                        targetMenu->addAction(m_session->stopAfterAction());
                     }
-                }
+                });
+            }
+            if(id == QLatin1StringView{ContextMenuIds::Playlist::Remove}) {
+                return appendMenuSection(targetMenu, [&] {
+                    if(state.hasSelection && state.showEditablePlaylistActions
+                       && sectionEnabled(ContextMenuIds::Playlist::Remove)) {
+                        if(auto* removeCmd = m_actionManager->command(Constants::Actions::Remove)) {
+                            targetMenu->addAction(removeCmd->action());
+                        }
+                    }
+                });
+            }
+            if(id == QLatin1StringView{ContextMenuIds::Playlist::Crop}) {
+                return appendMenuSection(targetMenu, [&] {
+                    if(state.hasSelection && state.showEditablePlaylistActions
+                       && sectionEnabled(ContextMenuIds::Playlist::Crop)) {
+                        if(auto* cropAction = m_session->cropAction()) {
+                            targetMenu->addAction(cropAction);
+                        }
+                    }
+                });
+            }
+            if(id == QLatin1StringView{ContextMenuIds::Playlist::Sort}) {
+                return appendMenuSection(targetMenu, [&] {
+                    if(state.hasSelection && sectionEnabled(ContextMenuIds::Playlist::Sort) && state.showSortMenu) {
+                        addSortMenu(targetMenu, state.disableSortMenu);
+                    }
+                });
+            }
+            if(id == QLatin1StringView{ContextMenuIds::Playlist::Clipboard}) {
+                return appendMenuSection(targetMenu, [&] {
+                    if(sectionEnabled(ContextMenuIds::Playlist::Clipboard) && state.showClipboard) {
+                        addClipboardMenu(targetMenu, state.hasSelection);
+                    }
+                });
+            }
+            if(id == QLatin1StringView{ContextMenuIds::Playlist::Presets}) {
+                return appendMenuSection(targetMenu, [&] {
+                    if(sectionEnabled(ContextMenuIds::Playlist::Presets)) {
+                        addPresetMenu(targetMenu);
+                    }
+                });
+            }
+            if(id == QLatin1StringView{ContextMenuIds::Playlist::Queue}) {
+                return appendMenuSection(targetMenu, [&] {
+                    if(!state.hasSelection || !sectionEnabled(ContextMenuIds::Playlist::Queue)) {
+                        return;
+                    }
+
+                    if(state.usePlaylistQueueCommands) {
+                        if(auto* addQueueCmd = m_actionManager->command(Constants::Actions::AddToQueue)) {
+                            targetMenu->addAction(addQueueCmd->action());
+                        }
+                        if(auto* addQueueNextCmd = m_actionManager->command(Constants::Actions::QueueNext)) {
+                            targetMenu->addAction(addQueueNextCmd->action());
+                        }
+                        if(auto* removeQueueCmd = m_actionManager->command(Constants::Actions::RemoveFromQueue)) {
+                            targetMenu->addAction(removeQueueCmd->action());
+                        }
+
+                        return;
+                    }
+
+                    m_selectionController->addTrackQueueContextMenu(targetMenu);
+                });
+            }
+            if(id == QLatin1StringView{ContextMenuIds::Playlist::TrackActions}) {
+                return appendMenuSection(targetMenu, [&] {
+                    if(state.hasSelection && sectionEnabled(ContextMenuIds::Playlist::TrackActions)) {
+                        m_selectionController->addTrackContextMenu(targetMenu);
+                    }
+                });
             }
 
-            if(sectionEnabled(Constants::Menus::Context::PlaylistWidget::Sort) && state.showSortMenu) {
-                addSortMenu(menu, state.disableSortMenu);
-            }
+            return false;
         });
-    }
-
-    if(sectionEnabled(Constants::Menus::Context::PlaylistWidget::Clipboard) && state.showClipboard) {
-        appendMenuSection(menu, [&] { addClipboardMenu(menu, state.hasSelection); });
-    }
-
-    if(sectionEnabled(Constants::Menus::Context::PlaylistWidget::Presets)) {
-        appendMenuSection(menu, [&] { addPresetMenu(menu); });
-    }
-
-    if(!state.hasSelection) {
-        return;
-    }
-
-    if(sectionEnabled(Constants::Menus::Context::PlaylistWidget::Queue)) {
-        appendMenuSection(menu, [&] {
-            if(state.usePlaylistQueueCommands) {
-                if(auto* addQueueCmd = m_actionManager->command(Constants::Actions::AddToQueue)) {
-                    menu->addAction(addQueueCmd->action());
-                }
-                if(auto* addQueueNextCmd = m_actionManager->command(Constants::Actions::QueueNext)) {
-                    menu->addAction(addQueueNextCmd->action());
-                }
-                if(auto* removeQueueCmd = m_actionManager->command(Constants::Actions::RemoveFromQueue)) {
-                    menu->addAction(removeQueueCmd->action());
-                }
-
-                return;
-            }
-
-            m_selectionController->addTrackQueueContextMenu(menu);
-        });
-    }
-
-    if(sectionEnabled(Constants::Menus::Context::PlaylistWidget::TrackActions)) {
-        appendMenuSection(menu, [&] { m_selectionController->addTrackContextMenu(menu); });
-    }
 }
 
 void PlaylistWidget::keyPressEvent(QKeyEvent* event)
@@ -592,8 +640,7 @@ void PlaylistWidget::setupConnections()
     QObject::connect(m_model, &PlaylistModel::playlistLoaded, m_playlistView->viewport(), qOverload<>(&QWidget::update));
     QObject::connect(m_model, &PlaylistModel::metadataWriteRequested, this, &PlaylistWidget::handleMetadataWriteRequested);
     QObject::connect(m_playlistView, &PlaylistView::bulkWriteRequested, this, &PlaylistWidget::handleBulkWriteRequested);
-    QObject::connect(m_playlistController, &PlaylistController::currentPlaylistTracksUpdated, m_model,
-                     [this](const std::vector<int>& indexes) { m_model->refreshTracks(indexes); });
+    QObject::connect(m_playlistController, &PlaylistController::currentPlaylistTracksUpdated, m_model, [this](const std::vector<int>& indexes) { m_model->refreshTracks(indexes); });
     QObject::connect(m_playlistController, &PlaylistController::currentPlaylistUpdated, this, &PlaylistWidget::resetModelThrottled);
 
     QObject::connect(m_columnRegistry, &PlaylistColumnRegistry::itemRemoved, this, &PlaylistWidget::handleColumnRemoved);

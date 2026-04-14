@@ -20,6 +20,8 @@
 #include <gui/trackselectioncontroller.h>
 
 #include "artwork/artworkexporter.h"
+#include "contextmenuids.h"
+#include "contextmenuutils.h"
 #include "internalguisettings.h"
 #include "playlist/playlistcontroller.h"
 #include "statusevent.h"
@@ -51,6 +53,7 @@
 using namespace Qt::StringLiterals;
 
 constexpr auto TempSelectionPlaylist = "␟TempSelectionPlaylist␟";
+constexpr auto SeparatorIdPrefix     = "separator:"_L1;
 
 namespace {
 QString promptForArtworkPath(QWidget* parent)
@@ -83,6 +86,12 @@ struct MenuNode
     std::vector<std::unique_ptr<MenuNode>> children;
     MenuNode* parent{nullptr};
 };
+
+struct TopLevelRenderEntry
+{
+    const MenuNode* node{nullptr};
+    bool isBoundary{false};
+};
 } // namespace
 
 class TrackSelectionControllerPrivate : public QObject
@@ -107,11 +116,14 @@ public:
 
     void renderArea(QMenu* menu, TrackContextMenuArea area, const TrackSelection& selection);
     void renderNode(QMenu* menu, const MenuNode& node, const TrackSelection& selection) const;
+    void renderChildNodes(QMenu* menu, const std::vector<std::unique_ptr<MenuNode>>& nodes,
+                          const TrackSelection& selection) const;
     void appendNodeInfo(const MenuNode& node, std::vector<TrackContextMenuNodeInfo>& nodes) const;
+    [[nodiscard]] QStringList topLevelLayout(TrackContextMenuArea area) const;
+    [[nodiscard]] std::vector<TopLevelRenderEntry> orderedRootEntries(const MenuNode& root) const;
 
     void refreshDisabledNodes();
     [[nodiscard]] bool isNodeDisabled(const Id& id) const;
-    static void trimSeparators(QMenu* menu);
     [[nodiscard]] static bool hasVisibleActions(const QMenu* menu);
 
     bool hasTracks() const;
@@ -243,7 +255,7 @@ TrackSelectionControllerPrivate::TrackSelectionControllerPrivate(TrackSelectionC
 
     setupBuiltInMenus();
     refreshDisabledNodes();
-    m_settings->subscribe<Settings::Gui::Internal::TrackContextMenuDisabledSections>(
+    m_settings->subscribe<Settings::Gui::Internal::ContextMenuTrackDisabledSections>(
         this, &TrackSelectionControllerPrivate::refreshDisabledNodes);
     updateActionState();
 }
@@ -377,7 +389,8 @@ void TrackSelectionControllerPrivate::setupBuiltInMenus()
                    Constants::Actions::SearchArtwork, m_searchArtwork->text(),
                    [this](QMenu* menu, const TrackSelection&) { menu->addAction(m_searchArtwork); });
 
-    registerSeparator(TrackContextMenuArea::Track, Constants::Menus::Context::Artwork);
+    registerSeparator(TrackContextMenuArea::Track, Constants::Menus::Context::Artwork,
+                      ContextMenuIds::TrackSelection::ArtworkSearchSeparator);
 
     m_extractArtwork->setStatusTip(
         tr("Extract embedded artwork for the selected tracks to files in their directories without prompting"));
@@ -431,7 +444,8 @@ void TrackSelectionControllerPrivate::setupBuiltInMenus()
                    m_attachArtistArtwork->text(),
                    [this](QMenu* menu, const TrackSelection&) { menu->addAction(m_attachArtistArtwork); });
 
-    registerSeparator(TrackContextMenuArea::Track, Constants::Menus::Context::Artwork);
+    registerSeparator(TrackContextMenuArea::Track, Constants::Menus::Context::Artwork,
+                      ContextMenuIds::TrackSelection::ArtworkAttachSeparator);
 
     m_removeArtwork->setStatusTip(tr("Remove all artwork associated with the selected tracks (embedded, directory)"));
     auto* removeArtworkCmd = m_actionManager->registerAction(m_removeArtwork, Constants::Actions::RemoveArtwork);
@@ -595,14 +609,20 @@ void TrackSelectionControllerPrivate::renderArea(QMenu* menu, TrackContextMenuAr
     }
 
     if(const auto* root = rootForArea(area)) {
-        for(const auto& child : root->children) {
-            if(child) {
-                renderNode(menu, *child, selection);
-            }
-        }
-    }
+        const auto entries = orderedRootEntries(*root);
 
-    trimSeparators(menu);
+        ContextMenuUtils::renderGroupedMenu(
+            menu, entries, [](const auto& entry) { return entry.isBoundary; },
+            [this, &selection](const auto& entry, QMenu* targetMenu) {
+                if(!entry.node) {
+                    return false;
+                }
+
+                const int actionCount = static_cast<int>(targetMenu->actions().size());
+                renderNode(targetMenu, *entry.node, selection);
+                return static_cast<int>(targetMenu->actions().size()) > actionCount;
+            });
+    }
 }
 
 void TrackSelectionControllerPrivate::renderNode(QMenu* menu, const MenuNode& node,
@@ -626,31 +646,48 @@ void TrackSelectionControllerPrivate::renderNode(QMenu* menu, const MenuNode& no
             if(node.renderer) {
                 node.renderer(submenu.get(), selection);
             }
-            for(const auto& child : node.children) {
-                if(child) {
-                    renderNode(submenu.get(), *child, selection);
-                }
-            }
-            trimSeparators(submenu.get());
+            renderChildNodes(submenu.get(), node.children, selection);
             if(hasVisibleActions(submenu.get())) {
                 menu->addMenu(submenu.release());
             }
+            return;
         }
         case MenuNodeType::Root:
             return;
     }
 }
 
+void TrackSelectionControllerPrivate::renderChildNodes(QMenu* menu, const std::vector<std::unique_ptr<MenuNode>>& nodes,
+                                                       const TrackSelection& selection) const
+{
+    if(!menu) {
+        return;
+    }
+
+    ContextMenuUtils::renderGroupedMenu(
+        menu, nodes, [](const auto& node) { return node && node->type == MenuNodeType::Separator; },
+        [this, &selection](const auto& node, QMenu* targetMenu) {
+            if(!node) {
+                return false;
+            }
+
+            const auto actionCount = targetMenu->actions().size();
+            renderNode(targetMenu, *node, selection);
+            return targetMenu->actions().size() > actionCount;
+        });
+}
+
 void TrackSelectionControllerPrivate::appendNodeInfo(const MenuNode& node,
                                                      std::vector<TrackContextMenuNodeInfo>& nodes) const
 {
-    if(node.type != MenuNodeType::Separator && node.id.isValid() && node.owner) {
+    if(node.type != MenuNodeType::Root && node.id.isValid() && node.owner) {
         nodes.push_back(
-            {.id        = node.id,
-             .parentId  = node.parent && node.parent->id.isValid() ? std::optional<Id>{node.parent->id} : std::nullopt,
-             .title     = node.title,
-             .area      = node.area,
-             .isSubmenu = node.type == MenuNodeType::Submenu});
+            {.id       = node.id,
+             .parentId = node.parent && node.parent->id.isValid() ? std::optional<Id>{node.parent->id} : std::nullopt,
+             .title    = node.title,
+             .area     = node.area,
+             .isSeparator = node.type == MenuNodeType::Separator,
+             .isSubmenu   = node.type == MenuNodeType::Submenu});
     }
 
     for(const auto& child : node.children) {
@@ -660,11 +697,98 @@ void TrackSelectionControllerPrivate::appendNodeInfo(const MenuNode& node,
     }
 }
 
+QStringList TrackSelectionControllerPrivate::topLevelLayout(TrackContextMenuArea area) const
+{
+    switch(area) {
+        case TrackContextMenuArea::Track:
+            return m_settings->value<Settings::Gui::Internal::ContextMenuTrackLayout>();
+        case TrackContextMenuArea::Queue:
+        case TrackContextMenuArea::Playlist:
+            return {};
+    }
+
+    return {};
+}
+
+std::vector<TopLevelRenderEntry> TrackSelectionControllerPrivate::orderedRootEntries(const MenuNode& root) const
+{
+    struct RootEntry
+    {
+        QString id;
+        TopLevelRenderEntry entry;
+        bool isSeparator{false};
+    };
+
+    std::vector<RootEntry> rootEntries;
+
+    for(const auto& child : root.children) {
+        if(!child || !child->id.isValid()) {
+            continue;
+        }
+
+        rootEntries.emplace_back(child->id.name(), TopLevelRenderEntry{.node = child.get()},
+                                 child->type == MenuNodeType::Separator);
+    }
+
+    QStringList effectiveLayout;
+
+    const QStringList savedLayout = topLevelLayout(root.area);
+    for(const auto& id : savedLayout) {
+        const bool isSeparator = id.startsWith(SeparatorIdPrefix);
+
+        if(std::ranges::any_of(rootEntries, [&id](const auto& entry) { return entry.id == id; }) || isSeparator) {
+            if(!effectiveLayout.contains(id)) {
+                effectiveLayout.emplace_back(id);
+            }
+        }
+    }
+
+    if(savedLayout.isEmpty()) {
+        for(const auto& entry : rootEntries) {
+            if(!effectiveLayout.contains(entry.id)) {
+                effectiveLayout.emplace_back(entry.id);
+            }
+        }
+    }
+    else {
+        for(const auto& entry : rootEntries) {
+            if(entry.isSeparator) {
+                continue;
+            }
+
+            if(!effectiveLayout.contains(entry.id)) {
+                effectiveLayout.emplace_back(entry.id);
+            }
+        }
+    }
+
+    std::vector<TopLevelRenderEntry> orderedEntries;
+    orderedEntries.reserve(rootEntries.size()
+                           + static_cast<size_t>(std::ranges::count_if(
+                               effectiveLayout, [](const auto& id) { return id.startsWith(SeparatorIdPrefix); })));
+
+    for(const auto& id : std::as_const(effectiveLayout)) {
+        if(id.startsWith(SeparatorIdPrefix)) {
+            orderedEntries.push_back({.isBoundary = true});
+            continue;
+        }
+
+        const auto entryIt = std::ranges::find_if(rootEntries, [&id](const auto& entry) { return entry.id == id; });
+        if(entryIt == rootEntries.cend()) {
+            continue;
+        }
+
+        orderedEntries.push_back(entryIt->entry);
+    }
+
+    return orderedEntries;
+}
+
 void TrackSelectionControllerPrivate::refreshDisabledNodes()
 {
     m_disabledNodeIds.clear();
 
-    const auto disabledIds = m_settings->value<Settings::Gui::Internal::TrackContextMenuDisabledSections>();
+    const auto disabledIds = m_settings->value<Settings::Gui::Internal::ContextMenuTrackDisabledSections>();
     for(const QString& idName : disabledIds) {
         const Id id{idName};
         if(id.isValid()) {
@@ -676,36 +800,6 @@ void TrackSelectionControllerPrivate::refreshDisabledNodes()
 bool TrackSelectionControllerPrivate::isNodeDisabled(const Id& id) const
 {
     return m_disabledNodeIds.contains(id);
-}
-
-void TrackSelectionControllerPrivate::trimSeparators(QMenu* menu)
-{
-    if(!menu) {
-        return;
-    }
-
-    bool previousWasSeparator{true};
-    QList<QAction*> actions = menu->actions();
-
-    for(QAction* action : std::as_const(actions)) {
-        const bool separator = action->isSeparator();
-        if(separator && previousWasSeparator) {
-            menu->removeAction(action);
-            delete action;
-            continue;
-        }
-
-        previousWasSeparator = separator;
-    }
-
-    actions = menu->actions();
-
-    while(!actions.empty() && actions.back() && actions.back()->isSeparator()) {
-        QAction* action = actions.back();
-        menu->removeAction(action);
-        delete action;
-        actions.removeLast();
-    }
 }
 
 bool TrackSelectionControllerPrivate::hasVisibleActions(const QMenu* menu)

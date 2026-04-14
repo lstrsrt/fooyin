@@ -168,8 +168,10 @@ enum GuiInternalSettings : uint32_t
     PlaylistTrackPreloadCount           = 38 | Type::Int,
     TrackCoverSourcePreference          = 39 | Type::Int,
     PlaylistInlineTagEditing            = 40 | Type::Bool,
-    TrackContextMenuDisabledSections    = 41 | Type::StringList,
-    PlaylistContextMenuDisabledSections = 42 | Type::StringList,
+    ContextMenuTrackDisabledSections    = 41 | Type::StringList,
+    ContextMenuPlaylistDisabledSections = 42 | Type::StringList,
+    ContextMenuTrackLayout              = 43 | Type::StringList,
+    ContextMenuPlaylistLayout           = 44 | Type::StringList,
 };
 Q_ENUM_NS(GuiInternalSettings)
 } // namespace Settings::Gui::Internal

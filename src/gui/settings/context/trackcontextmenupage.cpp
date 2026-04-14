@@ -29,92 +29,52 @@ using namespace Qt::StringLiterals;
 
 namespace Fooyin {
 TrackContextMenuPage::TrackContextMenuPage(TrackSelectionController* trackSelection, SettingsManager* settings,
-                                           TrackContextMenuPageMode mode, QObject* parent)
+                                           QObject* parent)
     : SettingsPage{settings->settingsDialog(), parent}
 {
-    switch(mode) {
-        case TrackContextMenuPageMode::PlaylistQueue:
-            setId(Constants::Page::InterfaceContextMenuPlaylist);
-            setName(tr("Playlist / Queue"));
-            break;
-        case TrackContextMenuPageMode::Track:
-            setId(Constants::Page::InterfaceContextMenuTrack);
-            setName(tr("Track"));
-            break;
-    }
-
+    setId(Constants::Page::InterfaceContextMenuTrack);
+    setName(tr("Track"));
     setCategory({tr("Interface"), tr("Context Menu")});
-    setWidgetCreator([trackSelection, settings, mode] {
-        ContextMenuSectionList sections;
-
-        if(mode == TrackContextMenuPageMode::Track) {
-            sections.push_back({
-                .title = {},
-                .nodeFactory
-                = [trackSelection] { return trackContextMenuNodes(trackSelection, TrackContextMenuArea::Track); },
-                .row        = 0,
-                .column     = 0,
-                .rowSpan    = 1,
-                .columnSpan = 1,
-            });
-        }
-        else {
-            sections.push_back({
-                .title = tr("Playlist actions"),
-                .nodeFactory
-                = [trackSelection] { return trackContextMenuNodes(trackSelection, TrackContextMenuArea::Playlist); },
-                .row    = 0,
-                .column = 0,
-            });
-            sections.push_back({
-                .title = tr("Queue actions"),
-                .nodeFactory
-                = [trackSelection] { return trackContextMenuNodes(trackSelection, TrackContextMenuArea::Queue); },
-                .row    = 0,
-                .column = 1,
-            });
-        }
-
+    setWidgetCreator([trackSelection, settings] {
         return new ConfigurableContextMenuWidget(
             tr("Unchecked items will be hidden from track selection context menus."),
-            [settings] { return settings->value<Settings::Gui::Internal::TrackContextMenuDisabledSections>(); },
-            [settings](const QStringList& allNodeIds, const QStringList& disabledIds) {
-                QStringList mergedDisabledIds
-                    = settings->value<Settings::Gui::Internal::TrackContextMenuDisabledSections>();
-
-                for(const auto& id : allNodeIds) {
-                    mergedDisabledIds.removeAll(id);
-                }
-
-                mergedDisabledIds.append(disabledIds);
-                mergedDisabledIds.removeDuplicates();
-
-                settings->set<Settings::Gui::Internal::TrackContextMenuDisabledSections>(mergedDisabledIds);
-            },
-            sections);
+            {.nodeFactory = [trackSelection] { return trackContextMenuNodes(trackSelection); },
+             .readDisabledIds
+             = ContextMenuSettings::makeStringListReader<Settings::Gui::Internal::ContextMenuTrackDisabledSections>(
+                 settings),
+             .writeDisabledIds
+             = ContextMenuSettings::makeStringListWriter<Settings::Gui::Internal::ContextMenuTrackDisabledSections>(
+                 settings),
+             .readTopLevelOrder
+             = ContextMenuSettings::makeStringListReader<Settings::Gui::Internal::ContextMenuTrackLayout>(settings),
+             .writeTopLevelOrder
+             = ContextMenuSettings::makeStringListWriter<Settings::Gui::Internal::ContextMenuTrackLayout>(settings),
+             .allowReordering = true});
     });
 }
 
-ContextMenuNodeList TrackContextMenuPage::trackContextMenuNodes(TrackSelectionController* trackSelection,
-                                                                TrackContextMenuArea area)
+ContextMenuNodeList TrackContextMenuPage::trackContextMenuNodes(TrackSelectionController* trackSelection)
 {
     ContextMenuNodeList nodes;
 
-    if(!trackSelection) {
-        return nodes;
-    }
-
     const auto menuNodes = trackSelection->trackContextMenuNodes();
+    const QString rootId = QString::fromLatin1(Constants::Menus::Context::TrackSelection);
+
     for(const auto& node : menuNodes) {
-        if(node.area != area || !node.parentId) {
+        if(node.area != TrackContextMenuArea::Track || !node.parentId) {
             continue;
         }
 
-        nodes.push_back({
-            .id       = node.id.name(),
-            .title    = node.title,
-            .parentId = node.parentId ? node.parentId->name() : QString{},
-        });
+        QString parentId = node.parentId->name();
+        if(node.isSeparator && parentId != rootId) {
+            continue;
+        }
+
+        if(parentId == rootId) {
+            parentId.clear();
+        }
+
+        nodes.emplace_back(node.id.name(), node.title, parentId, node.isSeparator);
     }
 
     return nodes;

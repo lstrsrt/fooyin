@@ -20,6 +20,7 @@
 #include "playlistcontextmenupage.h"
 
 #include "configurablecontextmenupage.h"
+#include "contextmenuids.h"
 #include "internalguisettings.h"
 
 #include <gui/guiconstants.h>
@@ -30,44 +31,36 @@ PlaylistContextMenuPage::PlaylistContextMenuPage(SettingsManager* settings, QObj
     : SettingsPage{settings->settingsDialog(), parent}
 {
     setId(Constants::Page::InterfaceContextMenuPlaylistWidget);
-    setName(tr("Playlist Widget"));
+    setName(tr("Playlist"));
     setCategory({tr("Interface"), tr("Context Menu")});
     setWidgetCreator([settings] {
         return new ConfigurableContextMenuWidget(
-            tr("Unchecked items will be hidden from the playlist widget context menu."),
-            [settings] { return settings->value<Settings::Gui::Internal::PlaylistContextMenuDisabledSections>(); },
-            [settings](const QStringList&, const QStringList& disabledIds) {
-                settings->set<Settings::Gui::Internal::PlaylistContextMenuDisabledSections>(disabledIds);
-            },
-            {{.title       = {},
-              .nodeFactory = [] { return playlistWidgetContextMenuNodes(); },
-              .row         = 0,
-              .column      = 0,
-              .rowSpan     = 1,
-              .columnSpan  = 1}});
+            tr("Unchecked items will be hidden from the playlist context menu."),
+            {.nodeFactory = [] { return playlistWidgetContextMenuNodes(); },
+             .readDisabledIds
+             = ContextMenuSettings::makeStringListReader<Settings::Gui::Internal::ContextMenuPlaylistDisabledSections>(
+                 settings),
+             .writeDisabledIds
+             = ContextMenuSettings::makeStringListWriter<Settings::Gui::Internal::ContextMenuPlaylistDisabledSections>(
+                 settings),
+             .readTopLevelOrder
+             = ContextMenuSettings::makeStringListReader<Settings::Gui::Internal::ContextMenuPlaylistLayout>(settings),
+             .writeTopLevelOrder
+             = ContextMenuSettings::makeStringListWriter<Settings::Gui::Internal::ContextMenuPlaylistLayout>(settings),
+             .allowReordering = true});
     });
 }
 
 ContextMenuNodeList PlaylistContextMenuPage::playlistWidgetContextMenuNodes()
 {
-    const auto node = [](const char* id, const QString& title, const char* parentId = nullptr) {
-        return ConfigurableContextMenuNode{
-            .id       = QString::fromUtf8(id),
-            .title    = title,
-            .parentId = parentId ? QString::fromUtf8(parentId) : QString{},
-        };
-    };
+    ContextMenuNodeList nodes;
+    nodes.reserve(ContextMenuIds::Playlist::DefaultItems.size());
 
-    return {
-        node(Constants::Menus::Context::PlaylistWidget::Play, PlaylistContextMenuPage::tr("Play")),
-        node(Constants::Menus::Context::PlaylistWidget::StopAfterThis, PlaylistContextMenuPage::tr("Stop after this")),
-        node(Constants::Menus::Context::PlaylistWidget::Remove, PlaylistContextMenuPage::tr("Remove")),
-        node(Constants::Menus::Context::PlaylistWidget::Crop, PlaylistContextMenuPage::tr("Crop")),
-        node(Constants::Menus::Context::PlaylistWidget::Sort, PlaylistContextMenuPage::tr("Sort")),
-        node(Constants::Menus::Context::PlaylistWidget::Clipboard, PlaylistContextMenuPage::tr("Clipboard")),
-        node(Constants::Menus::Context::PlaylistWidget::Presets, PlaylistContextMenuPage::tr("Presets")),
-        node(Constants::Menus::Context::PlaylistWidget::Queue, PlaylistContextMenuPage::tr("Queue")),
-        node(Constants::Menus::Context::PlaylistWidget::TrackActions, PlaylistContextMenuPage::tr("Track actions")),
-    };
+    for(const auto& item : ContextMenuIds::Playlist::DefaultItems) {
+        nodes.emplace_back(QString::fromUtf8(item.id), item.isSeparator ? QString{} : QString::fromUtf8(item.title),
+                           QString{}, item.isSeparator);
+    }
+
+    return nodes;
 }
 } // namespace Fooyin
