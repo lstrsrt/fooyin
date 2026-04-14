@@ -303,7 +303,7 @@ void ConfigurableContextMenuModel::insertSeparator(int row)
         return;
     }
 
-    const QString id    = separatorId();
+    const QString id = separatorId();
 
     beginInsertRows({}, insertRow, insertRow);
 
