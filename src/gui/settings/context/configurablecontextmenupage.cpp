@@ -70,13 +70,17 @@ ConfigurableContextMenuWidget::ConfigurableContextMenuWidget(QString description
             const bool isSeparator  = m_model->isSeparator(index);
 
             if(isTopLevel && !isSeparator) {
-                menu->addAction(tr("Insert separator before"), menu,
-                                [this, row = index.row()] { m_model->insertSeparator(row); });
-                menu->addAction(tr("Insert separator after"), menu,
-                                [this, row = index.row() + 1] { m_model->insertSeparator(row); });
+                if(m_model->canInsertSeparator(index.row())) {
+                    menu->addAction(tr("Insert separator before"), menu,
+                                    [this, row = index.row()] { m_model->insertSeparator(row); });
+                }
+                if(m_model->canInsertSeparator(index.row() + 1)) {
+                    menu->addAction(tr("Insert separator after"), menu,
+                                    [this, row = index.row() + 1] { m_model->insertSeparator(row); });
+                }
             }
 
-            if(!index.isValid() || isTopLevel) {
+            if((!index.isValid() || isTopLevel) && m_model->canInsertSeparator(m_model->rowCount({}))) {
                 menu->addAction(tr("Add separator"), menu, [this] { m_model->insertSeparator(m_model->rowCount({})); });
             }
 

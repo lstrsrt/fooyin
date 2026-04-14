@@ -74,6 +74,7 @@ public:
     [[nodiscard]] QStringList allNodeIds() const;
     [[nodiscard]] QStringList topLevelLayoutIds() const;
     [[nodiscard]] bool isSeparator(const QModelIndex& index) const;
+    [[nodiscard]] bool canInsertSeparator(int row) const;
 
     void insertSeparator(int row);
     void removeSeparator(const QModelIndex& index);

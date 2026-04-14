@@ -275,9 +275,34 @@ bool ConfigurableContextMenuModel::isSeparator(const QModelIndex& index) const
     return index.isValid() && itemForIndex(index)->isSeparator();
 }
 
+bool ConfigurableContextMenuModel::canInsertSeparator(int row) const
+{
+    const int insertRow = std::clamp(row, 0, rootItem()->childCount());
+
+    if(insertRow > 0) {
+        const auto* previousItem = rootItem()->child(insertRow - 1);
+        if(previousItem && previousItem->isSeparator()) {
+            return false;
+        }
+    }
+
+    if(insertRow < rootItem()->childCount()) {
+        const auto* nextItem = rootItem()->child(insertRow);
+        if(nextItem && nextItem->isSeparator()) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
 void ConfigurableContextMenuModel::insertSeparator(int row)
 {
     const int insertRow = std::clamp(row, 0, rootItem()->childCount());
+    if(!canInsertSeparator(insertRow)) {
+        return;
+    }
+
     const QString id    = separatorId();
 
     beginInsertRows({}, insertRow, insertRow);
