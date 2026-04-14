@@ -186,14 +186,20 @@ void RGScannerPlugin::setupReplayGainMenu()
     });
     QObject::connect(rgRemoveAction, &QAction::triggered, this, removeInfo);
 
-    const auto registerReplayGainAction = [this](QAction* action, const Id& id, const auto& updateState) {
-        m_selectionController->registerTrackContextAction(
-            this, TrackContextMenuArea::Track, Constants::Menus::Context::ReplayGain, id, action->text(),
-            [action, updateState](QMenu* menu, const TrackSelection& selection) {
-                action->setEnabled(updateState(selection));
-                menu->addAction(action);
-            });
-    };
+    const auto registerReplayGainAction
+        = [this](QAction* action, const Id& id, const auto& updateState, bool hide = false) {
+              m_selectionController->registerTrackContextAction(
+                  this, TrackContextMenuArea::Track, Constants::Menus::Context::ReplayGain, id, action->text(),
+                  [action, updateState, hide](QMenu* menu, const TrackSelection& selection) {
+                      if(hide) {
+                          action->setVisible(updateState(selection));
+                      }
+                      else {
+                          action->setEnabled(updateState(selection));
+                      }
+                      menu->addAction(action);
+                  });
+          };
 
     registerReplayGainAction(rgTrackAction, "ReplayGain.Scan.Track",
                              [canWriteInfo](const TrackSelection& selection) { return canWriteInfo(selection); });
@@ -202,8 +208,9 @@ void RGScannerPlugin::setupReplayGainMenu()
     registerReplayGainAction(rgAlbumAction, "ReplayGain.Scan.Album", [canWriteInfo](const TrackSelection& selection) {
         return canWriteInfo(selection) && selection.tracks.size() > 1;
     });
-    registerReplayGainAction(opusHeaderGainAction, "ReplayGain.OpusHeaderGain",
-                             [hasWritableOpus](const TrackSelection& selection) { return hasWritableOpus(selection); });
+    registerReplayGainAction(
+        opusHeaderGainAction, "ReplayGain.OpusHeaderGain",
+        [hasWritableOpus](const TrackSelection& selection) { return hasWritableOpus(selection); }, true);
     registerReplayGainAction(rgRemoveAction, "ReplayGain.RemoveInfo", [canWriteInfo](const TrackSelection& selection) {
         return canWriteInfo(selection) && std::ranges::any_of(selection.tracks, [](const Track& track) {
                    return track.hasRGInfo() || track.hasOpusHeaderGain();
