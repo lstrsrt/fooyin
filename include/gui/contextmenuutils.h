@@ -50,15 +50,41 @@ inline QStringList effectiveContextMenuLayout(const QStringList& defaultLayout, 
     layout.reserve(defaultLayout.size() + savedLayout.size());
 
     for(const auto& id : savedLayout) {
-        if((defaultLayout.contains(id) || isSeparatorLayoutId(id)) && !layout.contains(id)) {
+        if(isSeparatorLayoutId(id)) {
+            layout.emplace_back(id);
+        }
+        else if(defaultLayout.contains(id) && !layout.contains(id)) {
             layout.emplace_back(id);
         }
     }
 
-    for(const auto& id : defaultLayout) {
-        if(!layout.contains(id)) {
-            layout.emplace_back(id);
+    for(qsizetype defaultIndex{0}; std::cmp_less(defaultIndex, defaultLayout.size()); ++defaultIndex) {
+        const QString& id = defaultLayout.at(defaultIndex);
+        if(layout.contains(id)) {
+            continue;
         }
+
+        qsizetype insertIndex = layout.size();
+
+        for(qsizetype previousIndex = defaultIndex; previousIndex-- > 0;) {
+            const qsizetype layoutIndex = layout.indexOf(defaultLayout.at(previousIndex));
+            if(layoutIndex >= 0) {
+                insertIndex = layoutIndex + 1;
+                break;
+            }
+        }
+
+        if(insertIndex == layout.size()) {
+            for(qsizetype nextIndex = defaultIndex + 1; nextIndex < defaultLayout.size(); ++nextIndex) {
+                const qsizetype layoutIndex = layout.indexOf(defaultLayout.at(nextIndex));
+                if(layoutIndex >= 0) {
+                    insertIndex = layoutIndex;
+                    break;
+                }
+            }
+        }
+
+        layout.insert(insertIndex, id);
     }
 
     return layout;

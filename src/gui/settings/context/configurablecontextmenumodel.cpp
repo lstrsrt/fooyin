@@ -19,6 +19,8 @@
 
 #include "configurablecontextmenumodel.h"
 
+#include <gui/contextmenuutils.h>
+
 #include <QDataStream>
 #include <QIODevice>
 #include <QUuid>
@@ -74,12 +76,10 @@ QString separatorTitle()
 
 ContextMenuNodeList layoutNodes(const ContextMenuNodeList& nodes, const QStringList& topLevelLayout)
 {
-    std::unordered_map<QString, const ConfigurableContextMenuNode*> nodeById;
     std::unordered_map<QString, ContextMenuNodeList> childrenByParent;
     ContextMenuNodeList topLevelNodes;
 
     for(const auto& node : nodes) {
-        nodeById.emplace(node.id, &node);
         if(node.parentId.isEmpty()) {
             topLevelNodes.emplace_back(node);
         }
@@ -88,30 +88,16 @@ ContextMenuNodeList layoutNodes(const ContextMenuNodeList& nodes, const QStringL
         }
     }
 
-    QStringList effectiveLayout;
-    for(const auto& entry : topLevelLayout) {
-        if((nodeById.contains(entry) || isSeparatorId(entry)) && !effectiveLayout.contains(entry)) {
-            effectiveLayout.push_back(entry);
-        }
-    }
-    if(topLevelLayout.isEmpty()) {
-        for(const auto& node : topLevelNodes) {
-            if(!effectiveLayout.contains(node.id)) {
-                effectiveLayout.emplace_back(node.id);
-            }
-        }
-    }
-    else {
-        for(const auto& node : topLevelNodes) {
-            if(node.isSeparator) {
-                continue;
-            }
+    QStringList defaultLayout;
+    defaultLayout.reserve(static_cast<qsizetype>(topLevelNodes.size()));
 
-            if(!effectiveLayout.contains(node.id)) {
-                effectiveLayout.emplace_back(node.id);
-            }
-        }
+    for(const auto& node : topLevelNodes) {
+        defaultLayout.emplace_back(node.id);
     }
+
+    const QStringList effectiveLayout = topLevelLayout.isEmpty()
+                                          ? defaultLayout
+                                          : ContextMenuUtils::effectiveContextMenuLayout(defaultLayout, topLevelLayout);
 
     ContextMenuNodeList orderedNodes;
     orderedNodes.reserve(nodes.size() + static_cast<size_t>(std::ranges::count_if(effectiveLayout, [](const auto& id) {
