@@ -24,8 +24,8 @@ This document outlines the upcoming features for fooyin.
 | Synchronised lyric support                    | ✅ 0.9.0   |
 | DSP plugin support                            | ✅ 0.10.0  |
 | Equaliser                                     | ✅ 0.10.0  |
-| Internet radio support                        | 🚧 0.11.0  |
-| Audio conversion                              | ❓ TBD     |
+| Internet radio support                        | 🚧 0.11.0 |
+| Audio conversion                              | 🚧 0.12.0 |
 | Metadata lookup                               | ❓ TBD     |
 
 ## Enhancements
