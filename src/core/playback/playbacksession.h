@@ -38,6 +38,7 @@ public:
     [[nodiscard]] const PlaylistTrack& currentTrack() const;
     [[nodiscard]] PlaylistTrack& currentTrack();
     [[nodiscard]] const PlaylistTrack& scheduledTrack() const;
+    [[nodiscard]] const std::optional<PlaylistTrack>& detachedCurrentPlaylistTrack() const;
     [[nodiscard]] bool hasCurrentTrack() const;
     [[nodiscard]] bool isQueueTrack() const;
     [[nodiscard]] uint64_t currentItemId() const;
@@ -64,9 +65,12 @@ public:
     void clearCurrentTrack();
     void resetCurrentTrackState();
     void scheduleTrack(const PlaylistTrack& track);
+    void setDetachedCurrentPlaylistTrack(const PlaylistTrack& track);
+    void clearDetachedCurrentPlaylistTrack();
 
     [[nodiscard]] bool updateCurrentTrack(const Track& track);
     [[nodiscard]] bool updateCurrentTrackPlaylist(const UId& playlistId);
+    [[nodiscard]] bool updateCurrentTrackEntry(const UId& entryId);
     [[nodiscard]] bool updateCurrentTrackIndex(int index);
 
 private:
@@ -77,5 +81,6 @@ private:
     Player::TrackChangeContext m_pendingChangeContext;
     Player::TrackChangeContext m_lastChangeContext;
     std::optional<Player::TrackChangeRequest> m_pendingRequest;
+    std::optional<PlaylistTrack> m_detachedCurrentPlaylistTrack;
 };
 } // namespace Fooyin

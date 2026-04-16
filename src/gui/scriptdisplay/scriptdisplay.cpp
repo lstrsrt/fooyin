@@ -138,7 +138,7 @@ ScriptDisplay::ScriptDisplay(PlayerController* playerController, PlaylistHandler
     QObject::connect(m_playerController, &PlayerController::bitrateChanged, this, &ScriptDisplay::updateText);
     QObject::connect(m_playerController, &PlayerController::currentTrackChanged, this, &ScriptDisplay::updateText);
     QObject::connect(m_playerController, &PlayerController::currentTrackUpdated, this, &ScriptDisplay::updateText);
-    QObject::connect(m_playerController, &PlayerController::playlistTrackChanged, this, &ScriptDisplay::updateText);
+    QObject::connect(m_playerController, &PlayerController::playlistTrackUpdated, this, &ScriptDisplay::updateText);
 
     m_settings->subscribe<Settings::Gui::RatingFullStarSymbol>(this, [this](const QString&) { updateText(); });
     m_settings->subscribe<Settings::Gui::RatingHalfStarSymbol>(this, [this](const QString&) { updateText(); });

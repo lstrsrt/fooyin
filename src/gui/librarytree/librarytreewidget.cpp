@@ -305,7 +305,7 @@ void LibraryTreeWidget::setupConnections()
 
     QObject::connect(m_playerController, &PlayerController::playStateChanged, this,
                      [this](Player::PlayState state) { m_model->setPlayState(state); });
-    QObject::connect(m_playerController, &PlayerController::playlistTrackChanged, this,
+    QObject::connect(m_playerController, &PlayerController::playlistTrackUpdated, this,
                      [this](const auto& track) { playlistTrackChanged(track); });
     QObject::connect(m_playlistHandler, &PlaylistHandler::activePlaylistChanged, this,
                      [this](auto* playlist) { activePlaylistChanged(playlist); });

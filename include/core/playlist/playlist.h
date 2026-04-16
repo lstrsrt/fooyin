@@ -42,10 +42,12 @@ struct FYCORE_EXPORT PlaylistTrack
 {
     Track track;
     UId playlistId;
+    UId entryId;
     int indexInPlaylist{-1};
 
     [[nodiscard]] bool isValid() const;
     [[nodiscard]] bool isInPlaylist() const;
+    [[nodiscard]] bool hasEntryId() const;
 
     static PlaylistTrackList fromTracks(const TrackList& tracks, const UId& playlistId);
     static TrackList toTracks(const PlaylistTrackList& playlistTracks);
@@ -66,7 +68,8 @@ struct FYCORE_EXPORT PlaylistTrack
         size_t operator()(const PlaylistTrack& plTrack) const
         {
             return (std::hash<QString>{}(plTrack.track.uniqueFilepath()))
-                 ^ (std::hash<int>{}(plTrack.indexInPlaylist) << 11) ^ (qHash(plTrack.playlistId) << 22);
+                 ^ (std::hash<int>{}(plTrack.indexInPlaylist) << 11) ^ (qHash(plTrack.playlistId) << 22)
+                 ^ (qHash(plTrack.entryId) << 7);
         }
     };
 };
@@ -109,7 +112,9 @@ public:
     [[nodiscard]] PlaylistTrackList playlistTracks() const;
     [[nodiscard]] std::optional<Track> track(int index) const;
     [[nodiscard]] std::optional<PlaylistTrack> playlistTrack(int index) const;
+    [[nodiscard]] std::optional<PlaylistTrack> playlistTrack(const UId& entryId) const;
     [[nodiscard]] int trackCount() const;
+    [[nodiscard]] int indexOfTrackEntry(const UId& entryId) const;
 
     [[nodiscard]] int currentTrackIndex() const;
     [[nodiscard]] Track currentTrack() const;
@@ -184,6 +189,7 @@ private:
     void setTracksModified(bool modified);
 
     void replaceTracks(const TrackList& tracks);
+    void replaceTracks(const PlaylistTrackList& tracks);
     void appendTracks(const TrackList& tracks);
     void updateTrackAtIndex(int index, const Track& track);
     std::vector<int> removeTracks(const std::vector<int>& indexes);

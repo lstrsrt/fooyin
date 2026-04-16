@@ -142,7 +142,8 @@ void NowPlayingPlugin::initialise(const CorePluginContext& context)
     m_musicLibrary     = context.library;
 
     QObject::connect(m_playerController, &PlayerController::playStateChanged, this, &NowPlayingPlugin::playStateChanged);
-    QObject::connect(m_playerController, &PlayerController::playlistTrackChanged, this, &NowPlayingPlugin::trackChanged);
+    QObject::connect(m_playerController, &PlayerController::playlistTrackUpdated, this,
+                     &NowPlayingPlugin::trackChanged);
     QObject::connect(m_playerController, &PlayerController::positionMoved, this, &NowPlayingPlugin::positionMoved);
 }
 

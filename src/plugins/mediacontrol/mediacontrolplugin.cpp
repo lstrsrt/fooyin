@@ -74,7 +74,7 @@ void MediaControlPlugin::initialise(const CorePluginContext& context)
     m_audioLoader      = context.audioLoader;
     m_settings         = context.settingsManager;
 
-    QObject::connect(m_playerController, &PlayerController::playlistTrackChanged, this,
+    QObject::connect(m_playerController, &PlayerController::playlistTrackUpdated, this,
                      &MediaControlPlugin::trackChanged);
     QObject::connect(m_playerController, &PlayerController::playStateChanged, this,
                      &MediaControlPlugin::playStateChanged);

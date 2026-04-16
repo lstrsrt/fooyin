@@ -111,7 +111,6 @@ public:
     virtual void cutTracks(PlaylistWidgetSessionHost& host);
     virtual void copyTracks(PlaylistWidgetSessionHost& host);
     virtual void pasteTracks(PlaylistWidgetSessionHost& host);
-    virtual void playlistTracksAdded(PlaylistWidgetSessionHost& host, const TrackList& tracks, int index);
     virtual void cropSelection(PlaylistWidgetSessionHost& host);
     virtual void sortTracks(PlaylistWidgetSessionHost& host, const QString& script);
     virtual void sortColumn(PlaylistWidgetSessionHost& host, int column, Qt::SortOrder order);

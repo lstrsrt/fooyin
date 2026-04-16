@@ -19,103 +19,122 @@
 
 #include <core/playlist/playlistchangeset.h>
 
+#include <algorithm>
+#include <ranges>
+#include <unordered_map>
 #include <utility>
 
 constexpr auto ResetThreshold = 500;
 
 namespace Fooyin {
 namespace {
-using TrackKeyList = std::vector<QString>;
+using TrackEntryList = std::vector<UId>;
 
-TrackKeyList playlistTrackKeys(const TrackList& tracks)
+TrackEntryList playlistTrackEntries(const PlaylistTrackList& tracks)
 {
-    TrackKeyList result;
+    TrackEntryList result;
     result.reserve(tracks.size());
-    std::ranges::transform(tracks, std::back_inserter(result), &Track::uniqueFilepath);
+    std::ranges::transform(tracks, std::back_inserter(result), &PlaylistTrack::entryId);
     return result;
 }
 
-std::optional<std::vector<PlaylistTrackMove>> buildPlaylistMoves(TrackKeyList currentKeys, const TrackKeyList& newKeys)
+std::optional<std::vector<PlaylistTrackMove>> buildPlaylistMoves(TrackEntryList currentEntries,
+                                                                 const TrackEntryList& newEntries)
 {
-    if(currentKeys.size() != newKeys.size()) {
+    if(currentEntries.size() != newEntries.size()) {
         return {};
     }
 
     std::vector<PlaylistTrackMove> result;
 
-    for(int targetIndex{0}; std::cmp_less(targetIndex, newKeys.size()); ++targetIndex) {
-        if(currentKeys.at(static_cast<size_t>(targetIndex)) == newKeys.at(static_cast<size_t>(targetIndex))) {
+    for(int targetIndex{0}; std::cmp_less(targetIndex, newEntries.size()); ++targetIndex) {
+        if(currentEntries.at(static_cast<size_t>(targetIndex)) == newEntries.at(static_cast<size_t>(targetIndex))) {
             continue;
         }
 
-        const auto sourceIt = std::ranges::find(currentKeys.cbegin() + targetIndex, currentKeys.cend(),
-                                                newKeys.at(static_cast<size_t>(targetIndex)));
-        if(sourceIt == currentKeys.cend()) {
+        const auto sourceIt = std::ranges::find(currentEntries.begin() + targetIndex, currentEntries.end(),
+                                                newEntries.at(static_cast<size_t>(targetIndex)));
+        if(sourceIt == currentEntries.end()) {
             return {};
         }
 
-        const int sourceIndex = static_cast<int>(std::distance(currentKeys.cbegin(), sourceIt));
-        result.push_back({.sourceIndex = sourceIndex, .targetIndex = targetIndex});
+        result.push_back({.entryId = *sourceIt, .targetIndex = targetIndex});
 
-        std::rotate(currentKeys.begin() + targetIndex, currentKeys.begin() + sourceIndex,
-                    currentKeys.begin() + sourceIndex + 1);
+        std::rotate(currentEntries.begin() + targetIndex, sourceIt, sourceIt + 1);
     }
 
     return result;
 }
 } // namespace
 
-std::optional<PlaylistChangeset> buildPlaylistChangeset(const TrackList& oldTracks, const TrackList& newTracks,
-                                                        const TrackKeySet& updatedTrackPaths)
+std::optional<PlaylistChangeset> buildPlaylistChangeset(const PlaylistTrackList& oldTracks,
+                                                        const PlaylistTrackList& newTracks,
+                                                        const TrackEntryIdSet& updatedTrackEntries)
 {
     PlaylistChangeset result;
-    const TrackKeyList newTrackKeys = playlistTrackKeys(newTracks);
-    std::set<int> updatedIndexes;
+    const TrackEntryList newTrackEntries = playlistTrackEntries(newTracks);
 
-    std::unordered_map<QString, int> newTrackIndexes;
-    newTrackIndexes.reserve(newTracks.size());
+    const auto ensureUniqueEntries = [](const PlaylistTrackList& tracks) {
+        TrackEntryIdSet seenEntries;
+        seenEntries.reserve(tracks.size());
 
-    for(int newIndex{0}; const auto& key : newTrackKeys) {
-        if(!newTrackIndexes.emplace(key, newIndex++).second) {
-            return {};
+        for(const auto& track : tracks) {
+            if(!track.entryId.isValid() || !seenEntries.emplace(track.entryId).second) {
+                return false;
+            }
         }
+        return true;
+    };
+
+    if(!ensureUniqueEntries(oldTracks) || !ensureUniqueEntries(newTracks)) {
+        return {};
     }
 
-    std::unordered_set<QString> oldTrackKeys;
-    oldTrackKeys.reserve(oldTracks.size());
+    std::unordered_map<UId, int, UId::UIdHash> newTrackIndexes;
+    newTrackIndexes.reserve(newTracks.size());
 
-    TrackKeyList retainedTrackKeys;
-    retainedTrackKeys.reserve(std::min(oldTracks.size(), newTracks.size()));
+    for(int newIndex{0}; const auto& track : newTracks) {
+        newTrackIndexes.emplace(track.entryId, newIndex++);
+    }
 
-    for(int oldIndex{0}; const auto& oldTrack : oldTracks) {
-        const QString key = oldTrack.uniqueFilepath();
-        if(!oldTrackKeys.emplace(key).second) {
-            return {};
-        }
+    TrackEntryList retainedTrackEntries;
+    retainedTrackEntries.reserve(std::min(oldTracks.size(), newTracks.size()));
 
-        const auto newIndexIt = newTrackIndexes.find(key);
-        if(newIndexIt == newTrackIndexes.cend()) {
-            result.removedIndexes.push_back(oldIndex);
-            ++oldIndex;
+    TrackEntryIdSet oldEntrySet;
+    oldEntrySet.reserve(oldTracks.size());
+
+    for(const auto& track : oldTracks) {
+        oldEntrySet.emplace(track.entryId);
+    }
+
+    TrackEntryIdSet newEntrySet;
+    newEntrySet.reserve(newTracks.size());
+    for(const auto& track : newTracks) {
+        newEntrySet.emplace(track.entryId);
+    }
+
+    for(const auto& oldTrack : oldTracks) {
+        if(!newEntrySet.contains(oldTrack.entryId)) {
+            result.removedEntries.emplace_back(oldTrack.entryId);
             continue;
         }
 
-        const int newIndex = newIndexIt->second;
-        retainedTrackKeys.push_back(key);
+        const int newIndex = newTrackIndexes.at(oldTrack.entryId);
+        retainedTrackEntries.emplace_back(oldTrack.entryId);
 
-        if(oldTrack != newTracks.at(static_cast<size_t>(newIndex))) {
-            updatedIndexes.emplace(newIndex);
+        if(oldTrack.track != newTracks.at(static_cast<size_t>(newIndex)).track) {
+            result.updatedEntries.emplace_back(oldTrack.entryId);
         }
-        if(updatedTrackPaths.contains(key)) {
-            updatedIndexes.emplace(newIndex);
+        else if(updatedTrackEntries.contains(oldTrack.entryId)) {
+            result.updatedEntries.emplace_back(oldTrack.entryId);
         }
-
-        ++oldIndex;
     }
+
+    result.replacesAllEntries = !oldTracks.empty() && retainedTrackEntries.empty();
 
     PlaylistTrackInsertion insertion;
     for(int newIndex{0}; const auto& track : newTracks) {
-        const bool isNewTrack = !oldTrackKeys.contains(track.uniqueFilepath());
+        const bool isNewTrack = !oldEntrySet.contains(track.entryId);
         if(isNewTrack) {
             if(insertion.index < 0) {
                 insertion.index = newIndex;
@@ -132,29 +151,31 @@ std::optional<PlaylistChangeset> buildPlaylistChangeset(const TrackList& oldTrac
         result.insertions.push_back(std::move(insertion));
     }
 
-    TrackKeyList currentKeys{retainedTrackKeys};
+    TrackEntryList currentEntries{retainedTrackEntries};
     for(const auto& groupedInsertion : result.insertions) {
-        const TrackKeyList insertionKeys = playlistTrackKeys(groupedInsertion.tracks);
-        currentKeys.insert(currentKeys.begin() + groupedInsertion.index, insertionKeys.cbegin(), insertionKeys.cend());
+        const TrackEntryList insertionEntries = playlistTrackEntries(groupedInsertion.tracks);
+        currentEntries.insert(currentEntries.begin() + groupedInsertion.index, insertionEntries.cbegin(),
+                              insertionEntries.cend());
     }
 
-    if(const auto moves = buildPlaylistMoves(std::move(currentKeys), newTrackKeys)) {
+    if(const auto moves = buildPlaylistMoves(std::move(currentEntries), newTrackEntries)) {
         result.moves = *moves;
     }
     else {
         return {};
     }
 
-    result.updatedIndexes.assign(updatedIndexes.cbegin(), updatedIndexes.cend());
+    std::ranges::sort(result.updatedEntries);
+    result.updatedEntries.erase(std::ranges::unique(result.updatedEntries).begin(), result.updatedEntries.end());
 
     int insertedTrackCount{0};
     for(const auto& insertionGroup : result.insertions) {
         insertedTrackCount += static_cast<int>(insertionGroup.tracks.size());
     }
 
-    const int changedTrackCount = static_cast<int>(result.removedIndexes.size()) + insertedTrackCount
+    const int changedTrackCount = static_cast<int>(result.removedEntries.size()) + insertedTrackCount
                                 + static_cast<int>(result.moves.size())
-                                + static_cast<int>(result.updatedIndexes.size());
+                                + static_cast<int>(result.updatedEntries.size());
     const int baselineTrackCount
         = static_cast<int>(oldTracks.size() > newTracks.size() ? oldTracks.size() : newTracks.size());
 

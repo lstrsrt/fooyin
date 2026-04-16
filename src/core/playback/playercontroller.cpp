@@ -38,6 +38,35 @@
 Q_LOGGING_CATEGORY(PLAYER_CONTROLLER, "fy.playercontroller")
 
 namespace Fooyin {
+namespace {
+std::optional<PlaylistTrack> remapPlaylistTrackReference(PlaylistHandler* playlistHandler, const PlaylistTrack& track)
+{
+    if(!track.playlistId.isValid()) {
+        return {};
+    }
+
+    auto* playlist = playlistHandler->playlistById(track.playlistId);
+    if(!playlist) {
+        return {};
+    }
+
+    if(track.entryId.isValid()) {
+        if(const auto playlistTrack = playlist->playlistTrack(track.entryId)) {
+            return playlistTrack;
+        }
+    }
+
+    if(track.indexInPlaylist >= 0) {
+        if(const auto playlistTrack = playlist->playlistTrack(track.indexInPlaylist);
+           playlistTrack && playlistTrack->track.sameIdentityAs(track.track)) {
+            return playlistTrack;
+        }
+    }
+
+    return {};
+}
+} // namespace
+
 class PlayerControllerPrivate
 {
 public:
@@ -84,6 +113,11 @@ public:
     bool enterStoppedState(bool requestTransportStop);
     void emitPositionSignals(const PlaybackProgressTracker::PositionUpdate& update);
     void syncCommittedPlaylistTrack() const;
+    void updateCurrentTrackPlaylist(const UId& playlistId);
+    void updateCurrentTrackEntry(const UId& entryId);
+    void updateCurrentTrackIndex(int index);
+    void syncPlaylistTrackState(const UId& playlistId);
+    void remapPlaylistReferences(const UId& fromPlaylistId, const UId& toPlaylistId);
 
     bool requestSelectedTrack(const RequestedTrack& selection);
     bool requestSelectedTrack(const std::optional<RequestedTrack>& selection);
@@ -245,13 +279,13 @@ Player::UpcomingTrack PlayerControllerPrivate::resolveUpcomingTrack() const
             return {};
         }
         if(m_session.currentTrack().isInPlaylist() && m_settings->value<Settings::Core::FollowPlaybackQueue>()) {
-            if(auto* playlist = m_playlistHandler->playlistById(m_session.currentTrack().playlistId)) {
-                const auto currentTrack = playlist->playlistTrack(m_session.currentTrack().indexInPlaylist);
-                if(!currentTrack.has_value() || !currentTrack->track.sameIdentityAs(m_session.currentTrack().track)) {
+            if(const auto currentTrack = remapPlaylistTrackReference(m_playlistHandler, m_session.currentTrack())) {
+                auto* playlist = m_playlistHandler->playlistById(currentTrack->playlistId);
+                if(!playlist) {
                     return {};
                 }
 
-                const int nextIndex = playlist->nextIndexFrom(m_session.currentTrack().indexInPlaylist, 1, m_playMode);
+                const int nextIndex = playlist->nextIndexFrom(currentTrack->indexInPlaylist, 1, m_playMode);
                 return {
                     .track        = playlist->playlistTrack(nextIndex).value_or(PlaylistTrack{}),
                     .isQueueTrack = false,
@@ -366,6 +400,146 @@ void PlayerControllerPrivate::syncCommittedPlaylistTrack() const
     if(activePlaylist->currentTrackIndex() != currentTrack.indexInPlaylist) {
         activePlaylist->changeCurrentIndex(currentTrack.indexInPlaylist);
     }
+}
+
+void PlayerControllerPrivate::updateCurrentTrackPlaylist(const UId& playlistId)
+{
+    if(m_session.updateCurrentTrackPlaylist(playlistId)) {
+        syncCommittedPlaylistTrack();
+        emit m_self->playlistTrackUpdated(m_session.currentTrack());
+    }
+}
+
+void PlayerControllerPrivate::updateCurrentTrackEntry(const UId& entryId)
+{
+    if(m_session.updateCurrentTrackEntry(entryId)) {
+        emit m_self->playlistTrackUpdated(m_session.currentTrack());
+    }
+}
+
+void PlayerControllerPrivate::updateCurrentTrackIndex(int index)
+{
+    if(m_session.updateCurrentTrackIndex(index)) {
+        syncCommittedPlaylistTrack();
+        emit m_self->playlistTrackUpdated(m_session.currentTrack());
+    }
+}
+
+void PlayerControllerPrivate::syncPlaylistTrackState(const UId& playlistId)
+{
+    if(!playlistId.isValid() || !m_playlistHandler) {
+        return;
+    }
+
+    bool playlistTrackChanged{false};
+
+    const auto syncCurrentTrack = [this, &playlistTrackChanged](const PlaylistTrack& track) {
+        static_cast<void>(m_session.updateCurrentTrack(track.track));
+        playlistTrackChanged |= m_session.updateCurrentTrackPlaylist(track.playlistId);
+        playlistTrackChanged |= m_session.updateCurrentTrackEntry(track.entryId);
+        playlistTrackChanged |= m_session.updateCurrentTrackIndex(track.indexInPlaylist);
+    };
+
+    if(m_session.currentTrack().playlistId == playlistId) {
+        if(const auto remappedTrack = remapPlaylistTrackReference(m_playlistHandler, m_session.currentTrack())) {
+            syncCurrentTrack(*remappedTrack);
+
+            const auto& detachedTrack = m_session.detachedCurrentPlaylistTrack();
+            if(detachedTrack.has_value() && detachedTrack->entryId == remappedTrack->entryId
+               && detachedTrack->playlistId == remappedTrack->playlistId) {
+                m_session.clearDetachedCurrentPlaylistTrack();
+            }
+        }
+        else {
+            m_session.setDetachedCurrentPlaylistTrack(m_session.currentTrack());
+            playlistTrackChanged |= m_session.updateCurrentTrackPlaylist({});
+            playlistTrackChanged |= m_session.updateCurrentTrackEntry({});
+            playlistTrackChanged |= m_session.updateCurrentTrackIndex(-1);
+        }
+
+        syncCommittedPlaylistTrack();
+        if(playlistTrackChanged) {
+            emit m_self->playlistTrackUpdated(m_session.currentTrack());
+        }
+    }
+    else if(const auto& detachedTrack = m_session.detachedCurrentPlaylistTrack();
+            !m_session.currentTrack().isInPlaylist() && detachedTrack.has_value()
+            && detachedTrack->playlistId == playlistId
+            && m_session.currentTrack().track.sameIdentityAs(detachedTrack->track)) {
+        if(const auto remappedTrack = remapPlaylistTrackReference(m_playlistHandler, *detachedTrack)) {
+            syncCurrentTrack(*remappedTrack);
+            m_session.clearDetachedCurrentPlaylistTrack();
+            syncCommittedPlaylistTrack();
+            if(playlistTrackChanged) {
+                emit m_self->playlistTrackUpdated(m_session.currentTrack());
+            }
+        }
+    }
+
+    bool queueChanged{false};
+    auto queueTracks = m_queue.tracks();
+    for(auto& track : queueTracks) {
+        if(track.playlistId != playlistId) {
+            continue;
+        }
+
+        if(const auto remappedTrack = remapPlaylistTrackReference(m_playlistHandler, track)) {
+            if(track != *remappedTrack) {
+                track        = *remappedTrack;
+                queueChanged = true;
+            }
+        }
+        else if(track.playlistId.isValid() || track.entryId.isValid() || track.indexInPlaylist >= 0) {
+            track.playlistId      = {};
+            track.entryId         = {};
+            track.indexInPlaylist = -1;
+            queueChanged          = true;
+        }
+    }
+
+    if(queueChanged) {
+        m_self->replaceTracks(queueTracks);
+    }
+
+    auto* scheduledTrack = m_session.scheduledTrackPtr();
+    if(scheduledTrack && scheduledTrack->playlistId == playlistId) {
+        if(const auto remappedTrack = remapPlaylistTrackReference(m_playlistHandler, *scheduledTrack)) {
+            *scheduledTrack = *remappedTrack;
+        }
+        else {
+            scheduledTrack->playlistId      = {};
+            scheduledTrack->entryId         = {};
+            scheduledTrack->indexInPlaylist = -1;
+        }
+    }
+
+    emitUpcomingTrackChangedIfNeeded();
+}
+
+void PlayerControllerPrivate::remapPlaylistReferences(const UId& fromPlaylistId, const UId& toPlaylistId)
+{
+    if(!fromPlaylistId.isValid() || !toPlaylistId.isValid() || fromPlaylistId == toPlaylistId) {
+        return;
+    }
+
+    auto queueTracks = m_queue.tracks();
+    bool updated{false};
+    for(auto& track : queueTracks) {
+        if(track.playlistId == fromPlaylistId) {
+            track.playlistId = toPlaylistId;
+            updated          = true;
+        }
+    }
+
+    if(updated) {
+        m_self->replaceTracks(queueTracks);
+    }
+
+    if(m_session.currentTrack().playlistId == fromPlaylistId) {
+        updateCurrentTrackPlaylist(toPlaylistId);
+    }
+
+    emitUpcomingTrackChangedIfNeeded();
 }
 
 bool PlayerControllerPrivate::requestSelectedTrack(const RequestedTrack& selection)
@@ -635,8 +809,16 @@ PlayerController::PlayerController(SettingsManager* settings, PlaylistHandler* p
 
     QObject::connect(playlistHandler, &PlaylistHandler::playlistReferencesRemapRequested, this,
                      [this](const UId& fromPlaylistId, const UId& toPlaylistId) {
-                         remapPlaylistReferences(fromPlaylistId, toPlaylistId);
+                         p->remapPlaylistReferences(fromPlaylistId, toPlaylistId);
                      });
+    QObject::connect(playlistHandler, &PlaylistHandler::tracksAdded, this,
+                     [this](Playlist* playlist) { p->syncPlaylistTrackState(playlist ? playlist->id() : UId{}); });
+    QObject::connect(playlistHandler, &PlaylistHandler::tracksChanged, this,
+                     [this](Playlist* playlist) { p->syncPlaylistTrackState(playlist ? playlist->id() : UId{}); });
+    QObject::connect(playlistHandler, &PlaylistHandler::tracksPatched, this,
+                     [this](Playlist* playlist) { p->syncPlaylistTrackState(playlist ? playlist->id() : UId{}); });
+    QObject::connect(playlistHandler, &PlaylistHandler::tracksRemoved, this,
+                     [this](Playlist* playlist) { p->syncPlaylistTrackState(playlist ? playlist->id() : UId{}); });
 }
 
 PlayerController::~PlayerController() = default;
@@ -808,7 +990,7 @@ void PlayerController::setBitrate(int bitrate)
 
 void PlayerController::changeCurrentTrack(const Track& track)
 {
-    changeCurrentTrack(PlaylistTrack{.track = track, .playlistId = {}});
+    changeCurrentTrack(PlaylistTrack{.track = track, .playlistId = {}, .entryId = {}});
 }
 
 void PlayerController::changeCurrentTrack(const PlaylistTrack& track, const Player::TrackChangeContext& context)
@@ -826,7 +1008,7 @@ void PlayerController::changeCurrentTrack(const PlaylistTrack& track, const Play
 
 void PlayerController::commitCurrentTrack(const Track& track)
 {
-    commitCurrentTrack(PlaylistTrack{.track = track, .playlistId = {}});
+    commitCurrentTrack(PlaylistTrack{.track = track, .playlistId = {}, .entryId = {}});
 }
 
 void PlayerController::commitCurrentTrack(const Player::TrackChangeRequest& request)
@@ -856,6 +1038,7 @@ void PlayerController::commitCurrentTrack(const Player::TrackChangeRequest& requ
 
     emit currentTrackChanged(p->m_session.currentTrack().track);
     emit playlistTrackChanged(p->m_session.currentTrack());
+    emit playlistTrackUpdated(p->m_session.currentTrack());
     emit playbackSnapshotChanged(playbackSnapshot());
     p->emitUpcomingTrackChangedIfNeeded();
 }
@@ -877,51 +1060,9 @@ void PlayerController::updateCurrentTrack(const Track& track)
     }
 }
 
-void PlayerController::updateCurrentTrackPlaylist(const UId& playlistId)
-{
-    if(p->m_session.updateCurrentTrackPlaylist(playlistId)) {
-        p->syncCommittedPlaylistTrack();
-        emit playlistTrackChanged(p->m_session.currentTrack());
-    }
-}
-
-void PlayerController::updateCurrentTrackIndex(int index)
-{
-    if(p->m_session.updateCurrentTrackIndex(index)) {
-        p->syncCommittedPlaylistTrack();
-        emit playlistTrackChanged(p->m_session.currentTrack());
-    }
-}
-
 void PlayerController::scheduleNextTrack(const PlaylistTrack& track)
 {
     p->m_session.scheduleTrack(track);
-    p->emitUpcomingTrackChangedIfNeeded();
-}
-
-void PlayerController::remapPlaylistReferences(const UId& fromPlaylistId, const UId& toPlaylistId)
-{
-    if(!fromPlaylistId.isValid() || !toPlaylistId.isValid() || fromPlaylistId == toPlaylistId) {
-        return;
-    }
-
-    auto queueTracks = p->m_queue.tracks();
-    bool updated     = false;
-    for(auto& track : queueTracks) {
-        if(track.playlistId == fromPlaylistId) {
-            track.playlistId = toPlaylistId;
-            updated          = true;
-        }
-    }
-
-    if(updated) {
-        replaceTracks(queueTracks);
-    }
-
-    if(p->m_session.currentTrack().playlistId == fromPlaylistId) {
-        updateCurrentTrackPlaylist(toPlaylistId);
-    }
-
     p->emitUpcomingTrackChangedIfNeeded();
 }
 
@@ -1091,7 +1232,7 @@ PlaylistTrack PlayerController::currentPlaylistTrack() const
 
 void PlayerController::queueTrack(const Track& track)
 {
-    queueTrack(PlaylistTrack{.track = track, .playlistId = {}});
+    queueTrack(PlaylistTrack{.track = track, .playlistId = {}, .entryId = {}});
 }
 
 void PlayerController::queueTrack(const PlaylistTrack& track)
@@ -1135,7 +1276,7 @@ void PlayerController::queueTracks(const QueueTracks& tracks)
 
 void PlayerController::queueTrackNext(const Track& track)
 {
-    queueTrackNext(PlaylistTrack{.track = track, .playlistId = {}});
+    queueTrackNext(PlaylistTrack{.track = track, .playlistId = {}, .entryId = {}});
 }
 
 void PlayerController::queueTrackNext(const PlaylistTrack& track)
@@ -1177,7 +1318,7 @@ void PlayerController::queueTracksNext(const QueueTracks& tracks)
 
 void PlayerController::dequeueTrack(const Track& track)
 {
-    dequeueTrack(PlaylistTrack{.track = track, .playlistId = {}});
+    dequeueTrack(PlaylistTrack{.track = track, .playlistId = {}, .entryId = {}});
 }
 
 void PlayerController::dequeueTrack(const PlaylistTrack& track)

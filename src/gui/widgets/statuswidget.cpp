@@ -229,7 +229,7 @@ void StatusWidgetPrivate::setupConnections()
                      &StatusWidgetPrivate::updatePlayingText);
     QObject::connect(m_playerController, &PlayerController::currentTrackUpdated, this,
                      &StatusWidgetPrivate::updatePlayingText);
-    QObject::connect(m_playerController, &PlayerController::playlistTrackChanged, this,
+    QObject::connect(m_playerController, &PlayerController::playlistTrackUpdated, this,
                      &StatusWidgetPrivate::updatePlayingText);
 }
 

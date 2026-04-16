@@ -21,7 +21,7 @@
 
 #include "fycore_export.h"
 
-#include <core/track.h>
+#include <core/playlist/playlist.h>
 
 #include <optional>
 #include <unordered_set>
@@ -34,14 +34,14 @@ namespace Fooyin {
  */
 struct FYCORE_EXPORT PlaylistTrackMove
 {
-    /** Current playlist index of the track to move. */
-    int sourceIndex{-1};
+    /** Stable playlist entry identity of the track to move. */
+    UId entryId;
     /** Destination playlist index after the move is applied. */
     int targetIndex{-1};
 
     [[nodiscard]] bool isValid() const
     {
-        return sourceIndex >= 0 && targetIndex >= 0 && sourceIndex != targetIndex;
+        return entryId.isValid() && targetIndex >= 0;
     }
 };
 
@@ -54,7 +54,7 @@ struct FYCORE_EXPORT PlaylistTrackInsertion
     /** Destination playlist index for the first inserted track. */
     int index{-1};
     /** Tracks to insert, in final order. */
-    TrackList tracks;
+    PlaylistTrackList tracks;
 
     [[nodiscard]] bool isValid() const
     {
@@ -66,50 +66,50 @@ struct FYCORE_EXPORT PlaylistTrackInsertion
  * Describes an incremental playlist update.
  *
  * The operations are interpreted in this order:
- * 1. remove @c removedIndexes
+ * 1. remove @c removedEntries
  * 2. apply @c insertions
  * 3. apply @c moves
- * 4. refresh @c updatedIndexes
+ * 4. refresh @c updatedEntries
  *
  * If @c requiresReset is set, callers should ignore the incremental fields and
  * rebuild the playlist model from scratch instead.
  */
 struct FYCORE_EXPORT PlaylistChangeset
 {
-    /** Playlist indexes to remove from the pre-change playlist. */
-    std::vector<int> removedIndexes;
+    /** Playlist entries to remove from the pre-change playlist. */
+    std::vector<UId> removedEntries;
     /** Contiguous insertion groups to apply after removals. */
     std::vector<PlaylistTrackInsertion> insertions;
     /** Move operations to apply after insertions. */
     std::vector<PlaylistTrackMove> moves;
-    /** Playlist indexes to refresh after structural changes are applied. */
-    std::vector<int> updatedIndexes;
+    /** Playlist entries to refresh after structural changes are applied. */
+    std::vector<UId> updatedEntries;
+    /** Whether the resulting playlist retains no entry identities from the previous contents. */
+    bool replacesAllEntries{false};
     /** Whether the change is too large or ambiguous for incremental application. */
     bool requiresReset{false};
 
     /** Returns @c true when there is no structural or metadata change to apply. */
     [[nodiscard]] bool isEmpty() const
     {
-        return !requiresReset && removedIndexes.empty() && insertions.empty() && moves.empty()
-            && updatedIndexes.empty();
+        return !requiresReset && removedEntries.empty() && insertions.empty() && moves.empty()
+            && updatedEntries.empty();
     }
 };
 
-using TrackKeySet = std::unordered_set<QString>;
+using TrackEntryIdSet = std::unordered_set<UId, UId::UIdHash>;
 
 /*!
  * Builds a playlist patch that transforms @p oldTracks into @p newTracks.
  *
- * Tracks are matched by @c Track::uniqueFilepath(). If the track identity is
- * ambiguous, the function returns @c std::nullopt so callers can fall back to a
- * full reset.
+ * Tracks are matched by stable playlist @c entryId.
  *
- * @param updatedTrackPaths Optional set of matched track paths that should be
+ * @param updatedTrackEntries Optional set of matched entry ids that should be
  * treated as metadata updates even if the old and new track objects compare equal.
  */
 [[nodiscard]] FYCORE_EXPORT std::optional<PlaylistChangeset>
-buildPlaylistChangeset(const TrackList& oldTracks, const TrackList& newTracks,
-                       const TrackKeySet& updatedTrackPaths = {});
+buildPlaylistChangeset(const PlaylistTrackList& oldTracks, const PlaylistTrackList& newTracks,
+                       const TrackEntryIdSet& updatedTrackEntries = {});
 } // namespace Fooyin
 
 Q_DECLARE_METATYPE(Fooyin::PlaylistTrackMove)

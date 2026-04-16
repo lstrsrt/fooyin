@@ -75,7 +75,7 @@ QueueTracks PlaybackQueueStore::load() const
             continue;
         }
 
-        PlaylistTrack queueTrack{.track = track, .playlistId = {}, .indexInPlaylist = -1};
+        PlaylistTrack queueTrack{.track = track, .playlistId = {}, .entryId = {}, .indexInPlaylist = -1};
 
         if(item.playlistDbId >= 0 && item.playlistTrackIndex >= 0) {
             if(auto* playlist = m_playlistHandler->playlistByDbId(item.playlistDbId)) {

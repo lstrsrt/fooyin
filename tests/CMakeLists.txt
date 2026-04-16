@@ -49,6 +49,7 @@ fooyin_add_test(test_playlistnavigator core/playback/playlistnavigatortest.cpp)
 fooyin_add_test(test_cueparser core/playlist/cueparsertest.cpp data/playlists.qrc)
 fooyin_add_test(test_m3uparser core/playlist/m3uparsertest.cpp data/playlists.qrc)
 fooyin_add_test(test_playlistchangeset core/playlist/playlistchangesettest.cpp)
+fooyin_add_test(test_playlisthandler core/playlist/playlisthandlertest.cpp)
 fooyin_add_test(test_libraryscanner core/library/libraryscannertest.cpp ${CMAKE_SOURCE_DIR}/data/data.qrc)
 fooyin_add_test(test_unifiedmusiclibrary core/library/unifiedmusiclibrarytest.cpp ${CMAKE_SOURCE_DIR}/data/data.qrc)
 

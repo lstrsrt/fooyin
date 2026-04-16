@@ -128,6 +128,7 @@ QByteArray queueTracksToMimeData(const QueueTracks& tracks)
     for(const auto& track : tracks) {
         stream << track.track.id();
         stream << track.playlistId;
+        stream << track.entryId;
         stream << track.indexInPlaylist;
     }
 
@@ -146,6 +147,7 @@ QueueTracks queueTracksFromMimeData(MusicLibrary* library, QByteArray data)
         int id{-1};
         stream >> id;
         stream >> track.playlistId;
+        stream >> track.entryId;
         stream >> track.indexInPlaylist;
 
         track.track = library->trackForId(id);

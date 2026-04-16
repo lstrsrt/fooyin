@@ -71,9 +71,6 @@ public:
     [[nodiscard]] PlaylistTrack currentTrack() const;
     [[nodiscard]] Player::PlayState playState() const;
 
-    void aboutToChangeTracks();
-    void changedTracks();
-
     void startPlayback() const;
 
     [[nodiscard]] bool currentIsActive() const;
@@ -110,7 +107,6 @@ signals:
     void currentPlaylistTracksPatched(const Fooyin::PlaylistChangeset& changeSet);
     void currentPlaylistTracksChanged(const std::vector<int>& indexes, bool allNew);
     void currentPlaylistTracksUpdated(const std::vector<int>& indexes);
-    void currentPlaylistTracksAdded(const Fooyin::TrackList& tracks, int index);
     void currentPlaylistTracksRemoved(const std::vector<int>& indexes);
     void currentPlaylistQueueChanged(const std::vector<int>& tracks);
 
@@ -127,7 +123,6 @@ private:
 
     void handlePlaylistAdded(Playlist* playlist);
     void handlePlaylistMetadataUpdated(Playlist* playlist);
-    void handlePlaylistTracksAdded(Playlist* playlist, const TrackList& tracks, int index);
     void handlePlaylistTracksPatched(Playlist* playlist, const PlaylistChangeset& changeSet);
     void handlePlaylistTracksRemoved(Playlist* playlist, const std::vector<int>& indexes);
 
@@ -148,7 +143,6 @@ private:
     PlaylistColumnRegistry* m_columnRegistry;
     PlaylistUiController* m_uiController;
 
-    bool m_changingTracks{false};
     std::unique_ptr<PlaylistWorkspace> m_workspace;
 };
 } // namespace Fooyin

@@ -17,6 +17,7 @@
  *
  */
 
+#include <core/playlist/playlist.h>
 #include <core/playlist/playlistchangeset.h>
 #include <core/track.h>
 
@@ -33,105 +34,169 @@ Track makeTrack(const QString& path, uint64_t durationMs = 1000, const QString& 
     track.setHash(hash);
     return track;
 }
+
+PlaylistTrack makePlaylistTrack(const QString& path, const UId& playlistId, const UId& entryId, int index,
+                                uint64_t durationMs = 1000, const QString& hash = u"default"_s)
+{
+    return {.track           = makeTrack(path, durationMs, hash),
+            .playlistId      = playlistId,
+            .entryId         = entryId,
+            .indexInPlaylist = index};
+}
 } // namespace
 
 TEST(PlaylistChangesetTest, BuildsInsertionPatchForAppendedTracks)
 {
-    const TrackList oldTracks{makeTrack(u"/music/a.flac"_s), makeTrack(u"/music/b.flac"_s)};
-    const TrackList newTracks{makeTrack(u"/music/a.flac"_s), makeTrack(u"/music/b.flac"_s),
-                              makeTrack(u"/music/c.flac"_s), makeTrack(u"/music/d.flac"_s)};
+    const UId playlistId = UId::create();
+    const UId a          = UId::create();
+    const UId b          = UId::create();
+    const UId c          = UId::create();
+    const UId d          = UId::create();
+    const PlaylistTrackList oldTracks{makePlaylistTrack(u"/music/a.flac"_s, playlistId, a, 0),
+                                      makePlaylistTrack(u"/music/b.flac"_s, playlistId, b, 1)};
+    const PlaylistTrackList newTracks{makePlaylistTrack(u"/music/a.flac"_s, playlistId, a, 0),
+                                      makePlaylistTrack(u"/music/b.flac"_s, playlistId, b, 1),
+                                      makePlaylistTrack(u"/music/c.flac"_s, playlistId, c, 2),
+                                      makePlaylistTrack(u"/music/d.flac"_s, playlistId, d, 3)};
 
     const auto changeSet = buildPlaylistChangeset(oldTracks, newTracks);
     ASSERT_TRUE(changeSet.has_value());
+    EXPECT_FALSE(changeSet->replacesAllEntries);
     EXPECT_FALSE(changeSet->requiresReset);
-    EXPECT_TRUE(changeSet->removedIndexes.empty());
-    ASSERT_EQ(changeSet->insertions.size(), 1U);
+    EXPECT_TRUE(changeSet->removedEntries.empty());
+    ASSERT_EQ(changeSet->insertions.size(), 1);
     EXPECT_EQ(changeSet->insertions.front().index, 2);
-    ASSERT_EQ(changeSet->insertions.front().tracks.size(), 2U);
-    EXPECT_EQ(changeSet->insertions.front().tracks.front().uniqueFilepath(), u"/music/c.flac"_s);
+    ASSERT_EQ(changeSet->insertions.front().tracks.size(), 2);
+    EXPECT_EQ(changeSet->insertions.front().tracks.front().track.uniqueFilepath(), u"/music/c.flac"_s);
     EXPECT_TRUE(changeSet->moves.empty());
-    EXPECT_TRUE(changeSet->updatedIndexes.empty());
+    EXPECT_TRUE(changeSet->updatedEntries.empty());
 }
 
 TEST(PlaylistChangesetTest, BuildsRemovalPatch)
 {
-    const TrackList oldTracks{makeTrack(u"/music/a.flac"_s), makeTrack(u"/music/b.flac"_s),
-                              makeTrack(u"/music/c.flac"_s)};
-    const TrackList newTracks{makeTrack(u"/music/a.flac"_s), makeTrack(u"/music/c.flac"_s)};
+    const UId playlistId = UId::create();
+    const UId a          = UId::create();
+    const UId b          = UId::create();
+    const UId c          = UId::create();
+    const PlaylistTrackList oldTracks{makePlaylistTrack(u"/music/a.flac"_s, playlistId, a, 0),
+                                      makePlaylistTrack(u"/music/b.flac"_s, playlistId, b, 1),
+                                      makePlaylistTrack(u"/music/c.flac"_s, playlistId, c, 2)};
+    const PlaylistTrackList newTracks{makePlaylistTrack(u"/music/a.flac"_s, playlistId, a, 0),
+                                      makePlaylistTrack(u"/music/c.flac"_s, playlistId, c, 1)};
 
     const auto changeSet = buildPlaylistChangeset(oldTracks, newTracks);
     ASSERT_TRUE(changeSet.has_value());
+    EXPECT_FALSE(changeSet->replacesAllEntries);
     EXPECT_FALSE(changeSet->requiresReset);
-    ASSERT_EQ(changeSet->removedIndexes.size(), 1U);
-    EXPECT_EQ(changeSet->removedIndexes.front(), 1);
+    ASSERT_EQ(changeSet->removedEntries.size(), 1);
+    EXPECT_EQ(changeSet->removedEntries.front(), b);
     EXPECT_TRUE(changeSet->insertions.empty());
     EXPECT_TRUE(changeSet->moves.empty());
 }
 
 TEST(PlaylistChangesetTest, BuildsMovePatchForReorderedTracks)
 {
-    const TrackList oldTracks{makeTrack(u"/music/a.flac"_s), makeTrack(u"/music/b.flac"_s),
-                              makeTrack(u"/music/c.flac"_s)};
-    const TrackList newTracks{makeTrack(u"/music/c.flac"_s), makeTrack(u"/music/a.flac"_s),
-                              makeTrack(u"/music/b.flac"_s)};
+    const UId playlistId = UId::create();
+    const UId a          = UId::create();
+    const UId b          = UId::create();
+    const UId c          = UId::create();
+    const PlaylistTrackList oldTracks{makePlaylistTrack(u"/music/a.flac"_s, playlistId, a, 0),
+                                      makePlaylistTrack(u"/music/b.flac"_s, playlistId, b, 1),
+                                      makePlaylistTrack(u"/music/c.flac"_s, playlistId, c, 2)};
+    const PlaylistTrackList newTracks{makePlaylistTrack(u"/music/c.flac"_s, playlistId, c, 0),
+                                      makePlaylistTrack(u"/music/a.flac"_s, playlistId, a, 1),
+                                      makePlaylistTrack(u"/music/b.flac"_s, playlistId, b, 2)};
 
     const auto changeSet = buildPlaylistChangeset(oldTracks, newTracks);
     ASSERT_TRUE(changeSet.has_value());
+    EXPECT_FALSE(changeSet->replacesAllEntries);
     EXPECT_FALSE(changeSet->requiresReset);
-    EXPECT_TRUE(changeSet->removedIndexes.empty());
+    EXPECT_TRUE(changeSet->removedEntries.empty());
     EXPECT_TRUE(changeSet->insertions.empty());
-    ASSERT_EQ(changeSet->moves.size(), 1U);
-    EXPECT_EQ(changeSet->moves.front().sourceIndex, 2);
+    ASSERT_EQ(changeSet->moves.size(), 1);
+    EXPECT_EQ(changeSet->moves.front().entryId, c);
     EXPECT_EQ(changeSet->moves.front().targetIndex, 0);
 }
 
 TEST(PlaylistChangesetTest, BuildsUpdatedIndexesForChangedTrackMetadata)
 {
-    const TrackList oldTracks{makeTrack(u"/music/a.flac"_s, 1000, u"old"_s), makeTrack(u"/music/b.flac"_s)};
-    const TrackList newTracks{makeTrack(u"/music/a.flac"_s, 1000, u"new"_s), makeTrack(u"/music/b.flac"_s)};
+    const UId playlistId = UId::create();
+    const UId a          = UId::create();
+    const UId b          = UId::create();
+    const PlaylistTrackList oldTracks{makePlaylistTrack(u"/music/a.flac"_s, playlistId, a, 0, 1000, u"old"_s),
+                                      makePlaylistTrack(u"/music/b.flac"_s, playlistId, b, 1)};
+    const PlaylistTrackList newTracks{makePlaylistTrack(u"/music/a.flac"_s, playlistId, a, 0, 1000, u"new"_s),
+                                      makePlaylistTrack(u"/music/b.flac"_s, playlistId, b, 1)};
 
     const auto changeSet = buildPlaylistChangeset(oldTracks, newTracks);
     ASSERT_TRUE(changeSet.has_value());
+    EXPECT_FALSE(changeSet->replacesAllEntries);
     EXPECT_FALSE(changeSet->requiresReset);
-    ASSERT_EQ(changeSet->updatedIndexes.size(), 1U);
-    EXPECT_EQ(changeSet->updatedIndexes.front(), 0);
+    ASSERT_EQ(changeSet->updatedEntries.size(), 1);
+    EXPECT_EQ(changeSet->updatedEntries.front(), a);
 }
 
 TEST(PlaylistChangesetTest, BuildsUpdatedIndexesForExplicitlyUpdatedPaths)
 {
-    const TrackList oldTracks{makeTrack(u"/music/a.flac"_s), makeTrack(u"/music/b.flac"_s)};
-    const TrackList newTracks{makeTrack(u"/music/a.flac"_s), makeTrack(u"/music/b.flac"_s)};
+    const UId playlistId = UId::create();
+    const UId a          = UId::create();
+    const UId b          = UId::create();
+    const PlaylistTrackList oldTracks{makePlaylistTrack(u"/music/a.flac"_s, playlistId, a, 0),
+                                      makePlaylistTrack(u"/music/b.flac"_s, playlistId, b, 1)};
+    const PlaylistTrackList newTracks{makePlaylistTrack(u"/music/a.flac"_s, playlistId, a, 0),
+                                      makePlaylistTrack(u"/music/b.flac"_s, playlistId, b, 1)};
 
-    const auto changeSet = buildPlaylistChangeset(oldTracks, newTracks, TrackKeySet{u"/music/b.flac"_s});
+    const auto changeSet = buildPlaylistChangeset(oldTracks, newTracks, TrackEntryIdSet{b});
     ASSERT_TRUE(changeSet.has_value());
+    EXPECT_FALSE(changeSet->replacesAllEntries);
     EXPECT_FALSE(changeSet->requiresReset);
-    ASSERT_EQ(changeSet->updatedIndexes.size(), 1U);
-    EXPECT_EQ(changeSet->updatedIndexes.front(), 1);
+    ASSERT_EQ(changeSet->updatedEntries.size(), 1);
+    EXPECT_EQ(changeSet->updatedEntries.front(), b);
 }
 
-TEST(PlaylistChangesetTest, FallsBackWhenTrackPathsAreDuplicated)
+TEST(PlaylistChangesetTest, FallsBackWhenEntryIdsAreDuplicated)
 {
-    const TrackList oldTracks{makeTrack(u"/music/a.flac"_s), makeTrack(u"/music/a.flac"_s)};
-    const TrackList newTracks{makeTrack(u"/music/a.flac"_s), makeTrack(u"/music/b.flac"_s)};
+    const UId playlistId = UId::create();
+    const UId duplicated = UId::create();
+    const PlaylistTrackList oldTracks{makePlaylistTrack(u"/music/a.flac"_s, playlistId, duplicated, 0),
+                                      makePlaylistTrack(u"/music/a.flac"_s, playlistId, duplicated, 1)};
+    const PlaylistTrackList newTracks{makePlaylistTrack(u"/music/a.flac"_s, playlistId, duplicated, 0),
+                                      makePlaylistTrack(u"/music/b.flac"_s, playlistId, UId::create(), 1)};
 
     EXPECT_FALSE(buildPlaylistChangeset(oldTracks, newTracks).has_value());
 }
 
 TEST(PlaylistChangesetTest, MarksLargeChangesetForReset)
 {
-    TrackList oldTracks;
-    TrackList newTracks;
+    const UId playlistId = UId::create();
+    PlaylistTrackList oldTracks;
+    PlaylistTrackList newTracks;
 
     oldTracks.reserve(600);
     newTracks.reserve(600);
 
     for(int i{0}; i < 600; ++i) {
-        oldTracks.push_back(makeTrack(u"/music/old_%1.flac"_s.arg(i)));
-        newTracks.push_back(makeTrack(u"/music/new_%1.flac"_s.arg(i)));
+        oldTracks.push_back(makePlaylistTrack(u"/music/old_%1.flac"_s.arg(i), playlistId, UId::create(), i));
+        newTracks.push_back(makePlaylistTrack(u"/music/new_%1.flac"_s.arg(i), playlistId, UId::create(), i));
     }
 
     const auto changeSet = buildPlaylistChangeset(oldTracks, newTracks);
     ASSERT_TRUE(changeSet.has_value());
+    EXPECT_TRUE(changeSet->replacesAllEntries);
+    EXPECT_TRUE(changeSet->requiresReset);
+}
+
+TEST(PlaylistChangesetTest, MarksReplacementWhenNoEntriesAreRetained)
+{
+    const UId playlistId = UId::create();
+    const PlaylistTrackList oldTracks{makePlaylistTrack(u"/music/a.flac"_s, playlistId, UId::create(), 0),
+                                      makePlaylistTrack(u"/music/b.flac"_s, playlistId, UId::create(), 1)};
+    const PlaylistTrackList newTracks{makePlaylistTrack(u"/music/c.flac"_s, playlistId, UId::create(), 0),
+                                      makePlaylistTrack(u"/music/d.flac"_s, playlistId, UId::create(), 1)};
+
+    const auto changeSet = buildPlaylistChangeset(oldTracks, newTracks);
+    ASSERT_TRUE(changeSet.has_value());
+    EXPECT_TRUE(changeSet->replacesAllEntries);
     EXPECT_TRUE(changeSet->requiresReset);
 }
 } // namespace Fooyin::Testing

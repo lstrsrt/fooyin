@@ -75,7 +75,6 @@ public:
     void cutTracks(PlaylistWidgetSessionHost& host) override;
     void copyTracks(PlaylistWidgetSessionHost& host) override;
     void pasteTracks(PlaylistWidgetSessionHost& host) override;
-    void playlistTracksAdded(PlaylistWidgetSessionHost& host, const TrackList& tracks, int index) override;
     void cropSelection(PlaylistWidgetSessionHost& host) override;
     void sortTracks(PlaylistWidgetSessionHost& host, const QString& script) override;
     void sortColumn(PlaylistWidgetSessionHost& host, int column, Qt::SortOrder order) override;
@@ -97,6 +96,7 @@ private:
     void applyPlaylistChangeSet(PlaylistWidgetSessionHost& host, const PlaylistChangeset& changeSet);
     void handlePlaylistTracksRemoved(PlaylistWidgetSessionHost& host, const std::vector<int>& indexes);
     void refreshActionState(PlaylistWidget* widget);
+    void syncTrackChangeState(EditablePlaylistSessionHost& host, int playingIndex);
     void handleTrackIndexesChanged(PlaylistWidget* widget, int playingIndex);
     void stopAfterTrack(PlaylistWidget* widget) const;
     void handlePlayingTrackChanged(PlaylistWidget* widget, const PlaylistTrack& track) const;

@@ -19,187 +19,197 @@
 
 #include "playlistcommands.h"
 
-#include "playlist/playlistcontroller.h"
-#include "playlistmodel.h"
-
-#include <core/player/playercontroller.h>
-#include <core/playlist/playlisthandler.h>
+#include <ranges>
+#include <set>
 
 namespace {
-std::map<int, QPersistentModelIndex> saveQueuedIndexes(Fooyin::PlayerController* playerController,
-                                                       Fooyin::PlaylistModel* model, const Fooyin::UId& playlistId)
+Fooyin::PlaylistTrackList playlistTracksFor(Fooyin::PlaylistHandler* handler, const Fooyin::UId& playlistId)
 {
-    std::map<int, QPersistentModelIndex> indexes;
-
-    const auto queuedTracks = playerController->playbackQueue().tracks();
-
-    for(auto i{0}; const auto& track : queuedTracks) {
-        if(track.playlistId == playlistId) {
-            const QModelIndex trackIndex = model->indexAtPlaylistIndex(track.indexInPlaylist, true);
-            if(trackIndex.isValid()) {
-                indexes.emplace(i, trackIndex);
-            }
-        }
-        ++i;
+    if(!handler) {
+        return {};
     }
+
+    if(auto* playlist = handler->playlistById(playlistId)) {
+        return playlist->playlistTracks();
+    }
+
+    return {};
+}
+
+Fooyin::PlaylistTrackList applyInsertions(Fooyin::PlaylistTrackList tracks, const Fooyin::TrackGroups& groups)
+{
+    int insertedTrackCount{0};
+
+    for(const auto& [index, insertedTracks] : groups) {
+        const int insertionIndex = index < 0
+                                     ? static_cast<int>(tracks.size())
+                                     : std::clamp(index + insertedTrackCount, 0, static_cast<int>(tracks.size()));
+        tracks.insert(tracks.begin() + insertionIndex, insertedTracks.cbegin(), insertedTracks.cend());
+        insertedTrackCount += static_cast<int>(insertedTracks.size());
+    }
+
+    return Fooyin::PlaylistTrack::updateIndexes(tracks);
+}
+
+Fooyin::PlaylistTrackList applyRemovals(Fooyin::PlaylistTrackList tracks, const std::vector<int>& indexes)
+{
+    std::set<int> indexesToRemove{indexes.cbegin(), indexes.cend()};
+    for(const int index : indexesToRemove | std::views::reverse) {
+        if(index >= 0 && std::cmp_less(index, tracks.size())) {
+            tracks.erase(tracks.begin() + index);
+        }
+    }
+
+    return Fooyin::PlaylistTrack::updateIndexes(tracks);
+}
+
+std::vector<int> flattenIndexes(const Fooyin::TrackIndexRangeList& ranges)
+{
+    std::vector<int> indexes;
+
+    for(const auto& range : ranges) {
+        for(int index{range.first}; index <= range.last; ++index) {
+            indexes.push_back(index);
+        }
+    }
+
+    std::ranges::sort(indexes);
+    indexes.erase(std::ranges::unique(indexes).begin(), indexes.end());
 
     return indexes;
 }
 
-void restoreQueuedIndexes(Fooyin::PlayerController* playerController,
-                          const std::map<int, QPersistentModelIndex>& indexes)
+Fooyin::PlaylistTrackList applyMove(Fooyin::PlaylistTrackList tracks, const Fooyin::MoveOperationGroup& operation)
 {
-    if(indexes.empty()) {
-        return;
+    const std::vector<int> indexesToMove = flattenIndexes(operation.tracksToMove);
+    if(indexesToMove.empty()) {
+        return tracks;
     }
 
-    auto queuedTracks = playerController->playbackQueue().tracks();
+    Fooyin::PlaylistTrackList movedTracks;
+    movedTracks.reserve(indexesToMove.size());
 
-    for(const auto& [queueIndex, modelIndex] : indexes | std::views::reverse) {
-        if(modelIndex.isValid()) {
-            queuedTracks[queueIndex].indexInPlaylist = modelIndex.data(Fooyin::PlaylistItem::Index).toInt();
-        }
-        else {
-            queuedTracks.erase(queuedTracks.begin() + queueIndex);
+    for(const int index : indexesToMove) {
+        if(index >= 0 && std::cmp_less(index, tracks.size())) {
+            movedTracks.push_back(tracks.at(index));
         }
     }
 
-    playerController->replaceTracks(queuedTracks);
+    if(movedTracks.empty()) {
+        return tracks;
+    }
+
+    int targetIndex = operation.index < 0 ? static_cast<int>(tracks.size()) : operation.index;
+    targetIndex -= static_cast<int>(
+        std::ranges::count_if(indexesToMove, [targetIndex](int index) { return index < targetIndex; }));
+
+    for(const int index : indexesToMove | std::views::reverse) {
+        if(index >= 0 && std::cmp_less(index, tracks.size())) {
+            tracks.erase(tracks.begin() + index);
+        }
+    }
+
+    targetIndex = std::clamp(targetIndex, 0, static_cast<int>(tracks.size()));
+    tracks.insert(tracks.begin() + targetIndex, movedTracks.cbegin(), movedTracks.cend());
+
+    return Fooyin::PlaylistTrack::updateIndexes(tracks);
+}
+
+Fooyin::PlaylistTrackList applyMoves(Fooyin::PlaylistTrackList tracks, const Fooyin::MoveOperation& operation)
+{
+    for(const auto& group : operation) {
+        tracks = applyMove(std::move(tracks), group);
+    }
+
+    return Fooyin::PlaylistTrack::updateIndexes(tracks);
 }
 } // namespace
 
 namespace Fooyin {
-PlaylistCommand::PlaylistCommand(PlayerController* playerController, PlaylistModel* model, const UId& playlistId)
+PlaylistCommand::PlaylistCommand(PlaylistHandler* handler, const UId& playlistId)
     : QUndoCommand{nullptr}
-    , m_playerController{playerController}
-    , m_model{model}
+    , m_handler{handler}
     , m_playlistId{playlistId}
 { }
 
-InsertTracks::InsertTracks(PlayerController* playerController, PlaylistModel* model, const UId& playlistId,
-                           TrackGroups groups)
-    : PlaylistCommand{playerController, model, playlistId}
-    , m_trackGroups{std::move(groups)}
+InsertTracks::InsertTracks(PlaylistHandler* handler, const UId& playlistId, TrackGroups groups)
+    : PlaylistCommand{handler, playlistId}
+    , m_oldTracks{playlistTracksFor(handler, playlistId)}
+    , m_newTracks{applyInsertions(m_oldTracks, groups)}
 { }
 
 void InsertTracks::undo()
 {
-    const auto queuedIndexes = saveQueuedIndexes(m_playerController, m_model, m_playlistId);
-
-    m_model->removeTracks(m_trackGroups);
-
-    restoreQueuedIndexes(m_playerController, queuedIndexes);
+    if(m_handler) {
+        m_handler->replacePlaylistTracks(m_playlistId, m_oldTracks);
+    }
 }
 
 void InsertTracks::redo()
 {
-    const auto queuedIndexes = saveQueuedIndexes(m_playerController, m_model, m_playlistId);
-
-    if(!queuedIndexes.empty()) {
-        auto* playerController = m_playerController;
-        QObject::connect(
-            m_model, &PlaylistModel::playlistTracksChanged, m_model,
-            [playerController, queuedIndexes]() { restoreQueuedIndexes(playerController, queuedIndexes); },
-            Qt::SingleShotConnection);
+    if(m_handler) {
+        m_handler->replacePlaylistTracks(m_playlistId, m_newTracks);
     }
-
-    m_model->insertTracks(m_trackGroups);
 }
 
-RemoveTracks::RemoveTracks(PlayerController* playerController, PlaylistModel* model, const UId& playlistId,
-                           TrackGroups groups)
-    : PlaylistCommand{playerController, model, playlistId}
-    , m_trackGroups{std::move(groups)}
+RemoveTracks::RemoveTracks(PlaylistHandler* handler, const UId& playlistId, std::vector<int> indexes)
+    : PlaylistCommand{handler, playlistId}
+    , m_oldTracks{playlistTracksFor(handler, playlistId)}
+    , m_newTracks{applyRemovals(m_oldTracks, indexes)}
 { }
 
 void RemoveTracks::undo()
 {
-    const auto queuedIndexes = saveQueuedIndexes(m_playerController, m_model, m_playlistId);
-
-    if(!queuedIndexes.empty()) {
-        auto* playerController = m_playerController;
-        QObject::connect(
-            m_model, &PlaylistModel::playlistTracksChanged, m_model,
-            [playerController, queuedIndexes]() { restoreQueuedIndexes(playerController, queuedIndexes); },
-            Qt::SingleShotConnection);
+    if(m_handler) {
+        m_handler->replacePlaylistTracks(m_playlistId, m_oldTracks);
     }
-
-    m_model->insertTracks(m_trackGroups);
 }
 
 void RemoveTracks::redo()
 {
-    const auto queuedIndexes = saveQueuedIndexes(m_playerController, m_model, m_playlistId);
-
-    m_model->removeTracks(m_trackGroups);
-
-    restoreQueuedIndexes(m_playerController, queuedIndexes);
+    if(m_handler) {
+        m_handler->replacePlaylistTracks(m_playlistId, m_newTracks);
+    }
 }
 
-MoveTracks::MoveTracks(PlayerController* playerController, PlaylistModel* model, const UId& playlistId,
-                       MoveOperation operation)
-    : PlaylistCommand{playerController, model, playlistId}
-    , m_operation{std::move(operation)}
+MoveTracks::MoveTracks(PlaylistHandler* handler, const UId& playlistId, MoveOperation operation)
+    : PlaylistCommand{handler, playlistId}
+    , m_oldTracks{playlistTracksFor(handler, playlistId)}
+    , m_newTracks{applyMoves(m_oldTracks, operation)}
 { }
 
 void MoveTracks::undo()
 {
-    const auto queuedIndexes = saveQueuedIndexes(m_playerController, m_model, m_playlistId);
-
-    m_model->moveTracks(m_undoOperation);
-
-    restoreQueuedIndexes(m_playerController, queuedIndexes);
+    if(m_handler) {
+        m_handler->replacePlaylistTracks(m_playlistId, m_oldTracks);
+    }
 }
 
 void MoveTracks::redo()
 {
-    const auto queuedIndexes = saveQueuedIndexes(m_playerController, m_model, m_playlistId);
-
-    m_undoOperation = m_model->moveTracks(m_operation);
-
-    restoreQueuedIndexes(m_playerController, queuedIndexes);
+    if(m_handler) {
+        m_handler->replacePlaylistTracks(m_playlistId, m_newTracks);
+    }
 }
 
-ResetTracks::ResetTracks(PlayerController* playerController, PlaylistModel* model, const UId& playlistId,
-                         PlaylistTrackList oldTracks, PlaylistTrackList newTracks)
-    : PlaylistCommand{playerController, model, playlistId}
-    , m_oldTracks{std::move(oldTracks)}
-    , m_newTracks{std::move(newTracks)}
+ResetTracks::ResetTracks(PlaylistHandler* handler, const UId& playlistId, PlaylistTrackList oldTracks,
+                         const PlaylistTrackList& newTracks)
+    : PlaylistCommand{handler, playlistId}
+    , m_oldTracks{PlaylistTrack::updateIndexes(oldTracks)}
+    , m_newTracks{PlaylistTrack::updateIndexes(newTracks)}
 { }
 
 void ResetTracks::undo()
 {
-    const auto queuedIndexes = saveQueuedIndexes(m_playerController, m_model, m_playlistId);
-
-    auto* model            = m_model;
-    auto* playerController = m_playerController;
-    QObject::connect(
-        model, &PlaylistModel::playlistLoaded, model,
-        [model, playerController, queuedIndexes]() {
-            model->tracksChanged();
-            restoreQueuedIndexes(playerController, queuedIndexes);
-        },
-        Qt::SingleShotConnection);
-
-    m_model->tracksAboutToBeChanged();
-    m_model->reset(m_oldTracks);
+    if(m_handler) {
+        m_handler->replacePlaylistTracks(m_playlistId, m_oldTracks);
+    }
 }
 
 void ResetTracks::redo()
 {
-    const auto queuedIndexes = saveQueuedIndexes(m_playerController, m_model, m_playlistId);
-
-    auto* model            = m_model;
-    auto* playerController = m_playerController;
-    QObject::connect(
-        model, &PlaylistModel::playlistLoaded, model,
-        [model, playerController, queuedIndexes]() {
-            model->tracksChanged();
-            restoreQueuedIndexes(playerController, queuedIndexes);
-        },
-        Qt::SingleShotConnection);
-
-    m_model->tracksAboutToBeChanged();
-    m_model->reset(m_newTracks);
+    if(m_handler) {
+        m_handler->replacePlaylistTracks(m_playlistId, m_newTracks);
+    }
 }
 } // namespace Fooyin

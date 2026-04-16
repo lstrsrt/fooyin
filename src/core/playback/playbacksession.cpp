@@ -57,6 +57,11 @@ const PlaylistTrack& PlaybackSession::scheduledTrack() const
     return m_scheduledTrack;
 }
 
+const std::optional<PlaylistTrack>& PlaybackSession::detachedCurrentPlaylistTrack() const
+{
+    return m_detachedCurrentPlaylistTrack;
+}
+
 bool PlaybackSession::hasCurrentTrack() const
 {
     return m_currentTrack.isValid();
@@ -144,6 +149,7 @@ PlaybackSession::CommitResult PlaybackSession::commitRequest(const Player::Track
     m_currentItemId        = itemId;
     m_scheduledTrack       = {};
     m_pendingRequest.reset();
+    m_detachedCurrentPlaylistTrack.reset();
 
     return result;
 }
@@ -157,12 +163,14 @@ void PlaybackSession::clearPendingRequest()
 void PlaybackSession::clearCurrentTrack()
 {
     m_currentTrack = {};
+    m_detachedCurrentPlaylistTrack.reset();
 }
 
 void PlaybackSession::resetCurrentTrackState()
 {
     m_currentTrack  = {};
     m_currentItemId = 0;
+    m_detachedCurrentPlaylistTrack.reset();
 }
 
 void PlaybackSession::scheduleTrack(const PlaylistTrack& track)
@@ -170,20 +178,34 @@ void PlaybackSession::scheduleTrack(const PlaylistTrack& track)
     m_scheduledTrack = track;
 }
 
+void PlaybackSession::setDetachedCurrentPlaylistTrack(const PlaylistTrack& track)
+{
+    m_detachedCurrentPlaylistTrack = track;
+}
+
+void PlaybackSession::clearDetachedCurrentPlaylistTrack()
+{
+    m_detachedCurrentPlaylistTrack.reset();
+}
+
 bool PlaybackSession::updateCurrentTrack(const Track& track)
 {
-    if(track.uniqueFilepath() == m_currentTrack.track.uniqueFilepath()
-       && track.duration() == m_currentTrack.track.duration()) {
-        m_currentTrack.track = track;
-        return true;
+    if(!track.sameIdentityAs(m_currentTrack.track) || track.sameDataAs(m_currentTrack.track)) {
+        return false;
     }
 
-    return false;
+    m_currentTrack.track = track;
+    return true;
 }
 
 bool PlaybackSession::updateCurrentTrackPlaylist(const UId& playlistId)
 {
     return std::exchange(m_currentTrack.playlistId, playlistId) != playlistId;
+}
+
+bool PlaybackSession::updateCurrentTrackEntry(const UId& entryId)
+{
+    return std::exchange(m_currentTrack.entryId, entryId) != entryId;
 }
 
 bool PlaybackSession::updateCurrentTrackIndex(int index)

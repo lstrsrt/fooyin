@@ -132,7 +132,7 @@ void MprisPlugin::initialise(const CorePluginContext& context)
                 {u"CanGoPrevious"_s, canGoPrevious()},
                 {u"CanSeek"_s, canSeek()}});
     });
-    QObject::connect(m_playerController, &PlayerController::playlistTrackChanged, this, &MprisPlugin::trackChanged);
+    QObject::connect(m_playerController, &PlayerController::playlistTrackUpdated, this, &MprisPlugin::trackChanged);
     QObject::connect(m_playerController, &PlayerController::positionMoved, this,
                      [this](uint64_t ms) { emit Seeked(static_cast<qlonglong>(ms) * 1000); });
 
@@ -457,7 +457,7 @@ void MprisPlugin::trackChanged(const PlaylistTrack& playlistTrack)
 
 void MprisPlugin::loadMetaData(const PlaylistTrack& playlistTrack)
 {
-    const auto& [track, _, index] = playlistTrack;
+    const Track& track = playlistTrack.track;
 
     if(m_currentMetaData.empty()) {
         const auto addIntMetadata = [this](const QString& key, const QString& value) {
@@ -474,7 +474,7 @@ void MprisPlugin::loadMetaData(const PlaylistTrack& playlistTrack)
             }
         };
 
-        m_currentMetaData[u"mpris:trackid"_s]   = formatTrackId(std::max(0, index));
+        m_currentMetaData[u"mpris:trackid"_s]   = formatTrackId(std::max(0, playlistTrack.indexInPlaylist));
         m_currentMetaData[u"mpris:length"_s]    = static_cast<quint64>(track.duration() * 1000);
         m_currentMetaData[u"xesam:url"_s]       = QUrl::fromLocalFile(track.filepath()).toString();
         m_currentMetaData[u"xesam:title"_s]     = track.effectiveTitle();
@@ -489,8 +489,11 @@ void MprisPlugin::loadMetaData(const PlaylistTrack& playlistTrack)
         addIntMetadata(u"xesam:discNumber"_s, track.discNumber());
         addStringListMetadata(u"xesam:albumArtist"_s, track.albumArtists());
         addStringListMetadata(u"xesam:composer"_s, track.composers());
-        addStringListMetadata(u"xesam:comment"_s,
-                              track.comment().isEmpty() ? QStringList{} : QStringList{track.comment()});
+        QStringList comments;
+        if(!track.comment().isEmpty()) {
+            comments.push_back(track.comment());
+        }
+        addStringListMetadata(u"xesam:comment"_s, comments);
 
         if(const QString contentCreated = formatContentCreated(track); !contentCreated.isEmpty()) {
             m_currentMetaData[u"xesam:contentCreated"_s] = contentCreated;

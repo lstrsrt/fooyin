@@ -53,7 +53,10 @@ public:
     [[nodiscard]] Playlist* playlistByName(const QString& name) const;
 
     [[nodiscard]] PlaylistList playlists() const;
+    /** Returns removed playlists retained for session-lifetime pointer stability. */
     [[nodiscard]] PlaylistList removedPlaylists() const;
+    /** Returns removed playlists still pending export or deletion at shutdown. */
+    [[nodiscard]] PlaylistList pendingRemovedPlaylists() const;
 
     /** Creates and returns an empty playlist with a default name. */
     Playlist* createEmptyPlaylist();
@@ -88,6 +91,8 @@ public:
     void appendToPlaylist(const UId& id, const TrackList& tracks);
     /** Replaces the @p tracks of the playlist with @p id if found. */
     void replacePlaylistTracks(const UId& id, const TrackList& tracks);
+    /** Replaces the @p tracks of the playlist with @p id if found, preserving playlist entry identity. */
+    void replacePlaylistTracks(const UId& id, const PlaylistTrackList& tracks);
     /** Moves the tracks of the playlist with @p id to the playlist with @p replaceId. */
     void movePlaylistTracks(const UId& id, const UId& replaceId);
     /** Removes the tracks at @p indexes of the playlist with @p id if found. */

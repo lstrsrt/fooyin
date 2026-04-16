@@ -288,8 +288,9 @@ TEST(PlayerControllerTest, ChangeAndCommitTrackUpdatePublicState)
     QSignalSpy requestSpy{&controller, &PlayerController::trackChangeRequested};
 
     const Track track = makeTrack(u"/tmp/controller.flac"_s, 11, 2000);
-    controller.changeCurrentTrack(PlaylistTrack{.track = track, .playlistId = UId::create(), .indexInPlaylist = 0},
-                                  {.reason = Player::AdvanceReason::ManualSelection, .userInitiated = true});
+    controller.changeCurrentTrack(
+        PlaylistTrack{.track = track, .playlistId = UId::create(), .entryId = UId::create(), .indexInPlaylist = 0},
+        {.reason = Player::AdvanceReason::ManualSelection, .userInitiated = true});
 
     ASSERT_EQ(requestSpy.count(), 1);
     const QVariantList requestArgs = requestSpy.takeFirst();
@@ -411,7 +412,7 @@ TEST(PlayerControllerTest, CommittingQueueTrackOnlyRemovesFirstDuplicateQueueEnt
     PlayerController controller{&settings, nullptr};
 
     const Track track = makeTrack(u"/tmp/queue-duplicate.flac"_s, 16, 1000);
-    const PlaylistTrack queuedTrack{.track = track, .playlistId = {}};
+    const PlaylistTrack queuedTrack{.track = track, .playlistId = {}, .entryId = {}};
 
     QSignalSpy dequeuedSpy{&controller, &PlayerController::tracksDequeued};
 
@@ -656,5 +657,195 @@ TEST(PlayerControllerTest, LibraryTrackUpdatesPreserveShuffleHistory)
 
     EXPECT_EQ(playlist->currentTrackIndex(), currentIndex);
     EXPECT_EQ(playlist->nextIndexFrom(currentIndex, -1, mode), previousIndex);
+}
+
+TEST(PlayerControllerTest, ReplacingPlayingPlaylistTracksPreservesCurrentEntryAcrossInsertedRows)
+{
+    ensureCoreApplication();
+    SettingsManager settings{QDir::tempPath() + u"/fooyin_playercontroller_replace_tracks_preserves_entry_test.ini"_s};
+    registerControllerSettings(settings);
+    PlaylistHandlerHarness harness{settings};
+    ASSERT_TRUE(harness.dbInitialised);
+
+    const TrackList tracks{
+        makeTrack(u"/tmp/replace-a.flac"_s, 91, 1000), makeTrack(u"/tmp/replace-b.flac"_s, 92, 1000),
+        makeTrack(u"/tmp/replace-c.flac"_s, 93, 1000), makeTrack(u"/tmp/replace-d.flac"_s, 94, 1000),
+        makeTrack(u"/tmp/replace-e.flac"_s, 95, 1000), makeTrack(u"/tmp/replace-f.flac"_s, 96, 1000),
+        makeTrack(u"/tmp/replace-g.flac"_s, 97, 1000),
+    };
+
+    auto* playlist = harness.handler.createPlaylist(u"Replace"_s, tracks);
+    ASSERT_NE(playlist, nullptr);
+
+    harness.handler.changeActivePlaylist(playlist);
+
+    PlayerController controller{&settings, &harness.handler};
+    const auto currentTrack = playlist->playlistTrack(3);
+    ASSERT_TRUE(currentTrack.has_value());
+
+    controller.commitCurrentTrack(Player::TrackChangeRequest{
+        .track        = *currentTrack,
+        .context      = {.reason = Player::AdvanceReason::ManualSelection, .userInitiated = true},
+        .isQueueTrack = false,
+        .itemId       = 301,
+    });
+
+    PlaylistTrackList updatedTracks = playlist->playlistTracks();
+    PlaylistTrack duplicatedTrack   = updatedTracks.at(4);
+    duplicatedTrack.entryId         = UId::create();
+    updatedTracks.insert(updatedTracks.begin() + 2, duplicatedTrack);
+
+    harness.handler.replacePlaylistTracks(playlist->id(), updatedTracks);
+
+    const auto remappedTrack = controller.currentPlaylistTrack();
+    EXPECT_EQ(remappedTrack.entryId, currentTrack->entryId);
+    EXPECT_EQ(remappedTrack.track.id(), currentTrack->track.id());
+    EXPECT_EQ(remappedTrack.indexInPlaylist, 4);
+    EXPECT_EQ(playlist->currentTrackIndex(), 4);
+}
+
+TEST(PlayerControllerTest, ReplacingOtherPlaylistTracksDoesNotAffectCurrentPlaybackEntry)
+{
+    ensureCoreApplication();
+    SettingsManager settings{QDir::tempPath() + u"/fooyin_playercontroller_other_playlist_replace_test.ini"_s};
+    registerControllerSettings(settings);
+    PlaylistHandlerHarness harness{settings};
+    ASSERT_TRUE(harness.dbInitialised);
+
+    auto* firstPlaylist = harness.handler.createPlaylist(
+        u"First"_s,
+        {makeTrack(u"/tmp/other-first-a.flac"_s, 101, 1000), makeTrack(u"/tmp/other-first-b.flac"_s, 102, 1000),
+         makeTrack(u"/tmp/other-first-c.flac"_s, 103, 1000), makeTrack(u"/tmp/other-first-d.flac"_s, 104, 1000),
+         makeTrack(u"/tmp/other-first-e.flac"_s, 105, 1000), makeTrack(u"/tmp/other-first-f.flac"_s, 106, 1000),
+         makeTrack(u"/tmp/other-first-g.flac"_s, 107, 1000)});
+    auto* secondPlaylist = harness.handler.createPlaylist(u"Second"_s, {});
+    ASSERT_NE(firstPlaylist, nullptr);
+    ASSERT_NE(secondPlaylist, nullptr);
+
+    harness.handler.changeActivePlaylist(firstPlaylist);
+
+    PlayerController controller{&settings, &harness.handler};
+    const auto currentTrack = firstPlaylist->playlistTrack(3);
+    const auto nextTrack    = firstPlaylist->playlistTrack(4);
+    ASSERT_TRUE(currentTrack.has_value());
+    ASSERT_TRUE(nextTrack.has_value());
+
+    controller.commitCurrentTrack(Player::TrackChangeRequest{
+        .track        = *currentTrack,
+        .context      = {.reason = Player::AdvanceReason::ManualSelection, .userInitiated = true},
+        .isQueueTrack = false,
+        .itemId       = 302,
+    });
+
+    const TrackList pastedTracks{nextTrack->track, nextTrack->track};
+    harness.handler.replacePlaylistTracks(secondPlaylist->id(),
+                                          PlaylistTrack::fromTracks(pastedTracks, secondPlaylist->id()));
+
+    EXPECT_EQ(controller.currentPlaylistTrack().entryId, currentTrack->entryId);
+    EXPECT_EQ(controller.currentPlaylistTrack().indexInPlaylist, 3);
+    EXPECT_EQ(firstPlaylist->currentTrackIndex(), 3);
+
+    QSignalSpy requestSpy{&controller, &PlayerController::trackChangeRequested};
+    controller.next();
+
+    ASSERT_EQ(requestSpy.count(), 1);
+    const auto nextRequest = requestSpy.takeFirst().front().value<Player::TrackChangeRequest>();
+    EXPECT_EQ(nextRequest.track.entryId, nextTrack->entryId);
+    EXPECT_EQ(nextRequest.track.playlistId, firstPlaylist->id());
+    EXPECT_EQ(nextRequest.track.indexInPlaylist, 4);
+}
+
+TEST(PlayerControllerTest, ReplacingPlaylistTracksBackToOriginalRestoresCurrentEntryIndex)
+{
+    ensureCoreApplication();
+    SettingsManager settings{QDir::tempPath() + u"/fooyin_playercontroller_replace_tracks_restore_index_test.ini"_s};
+    registerControllerSettings(settings);
+    PlaylistHandlerHarness harness{settings};
+    ASSERT_TRUE(harness.dbInitialised);
+
+    const TrackList tracks{
+        makeTrack(u"/tmp/restore-a.flac"_s, 111, 1000), makeTrack(u"/tmp/restore-b.flac"_s, 112, 1000),
+        makeTrack(u"/tmp/restore-c.flac"_s, 113, 1000), makeTrack(u"/tmp/restore-d.flac"_s, 114, 1000),
+        makeTrack(u"/tmp/restore-e.flac"_s, 115, 1000),
+    };
+
+    auto* playlist = harness.handler.createPlaylist(u"Restore"_s, tracks);
+    ASSERT_NE(playlist, nullptr);
+
+    harness.handler.changeActivePlaylist(playlist);
+
+    PlayerController controller{&settings, &harness.handler};
+    const auto currentTrack = playlist->playlistTrack(3);
+    ASSERT_TRUE(currentTrack.has_value());
+
+    controller.commitCurrentTrack(Player::TrackChangeRequest{
+        .track        = *currentTrack,
+        .context      = {.reason = Player::AdvanceReason::ManualSelection, .userInitiated = true},
+        .isQueueTrack = false,
+        .itemId       = 303,
+    });
+
+    const PlaylistTrackList originalTracks = playlist->playlistTracks();
+    PlaylistTrackList updatedTracks        = originalTracks;
+    PlaylistTrack insertedTrack            = updatedTracks.at(4);
+    insertedTrack.entryId                  = UId::create();
+    updatedTracks.insert(updatedTracks.begin() + 2, insertedTrack);
+
+    harness.handler.replacePlaylistTracks(playlist->id(), updatedTracks);
+    ASSERT_EQ(controller.currentPlaylistTrack().indexInPlaylist, 4);
+
+    harness.handler.replacePlaylistTracks(playlist->id(), originalTracks);
+
+    EXPECT_EQ(controller.currentPlaylistTrack().entryId, currentTrack->entryId);
+    EXPECT_EQ(controller.currentPlaylistTrack().indexInPlaylist, 3);
+    EXPECT_EQ(playlist->currentTrackIndex(), 3);
+}
+
+TEST(PlayerControllerTest, RestoringRemovedPlayingEntryReattachesPlaylistTrackState)
+{
+    ensureCoreApplication();
+    SettingsManager settings{QDir::tempPath() + u"/fooyin_playercontroller_restore_removed_playing_entry_test.ini"_s};
+    registerControllerSettings(settings);
+    PlaylistHandlerHarness harness{settings};
+    ASSERT_TRUE(harness.dbInitialised);
+
+    const TrackList tracks{
+        makeTrack(u"/tmp/cut-a.flac"_s, 121, 1000), makeTrack(u"/tmp/cut-b.flac"_s, 122, 1000),
+        makeTrack(u"/tmp/cut-c.flac"_s, 123, 1000), makeTrack(u"/tmp/cut-d.flac"_s, 124, 1000),
+        makeTrack(u"/tmp/cut-e.flac"_s, 125, 1000),
+    };
+
+    auto* playlist = harness.handler.createPlaylist(u"CutUndo"_s, tracks);
+    ASSERT_NE(playlist, nullptr);
+
+    harness.handler.changeActivePlaylist(playlist);
+
+    PlayerController controller{&settings, &harness.handler};
+    const PlaylistTrackList originalTracks = playlist->playlistTracks();
+    const auto currentTrack                = playlist->playlistTrack(3);
+    ASSERT_TRUE(currentTrack.has_value());
+
+    controller.commitCurrentTrack(Player::TrackChangeRequest{
+        .track        = *currentTrack,
+        .context      = {.reason = Player::AdvanceReason::ManualSelection, .userInitiated = true},
+        .isQueueTrack = false,
+        .itemId       = 304,
+    });
+
+    PlaylistTrackList removedTracks = originalTracks;
+    removedTracks.erase(removedTracks.begin() + 3);
+    harness.handler.replacePlaylistTracks(playlist->id(), removedTracks);
+
+    EXPECT_FALSE(controller.currentPlaylistTrack().isInPlaylist());
+    EXPECT_FALSE(controller.currentPlaylistTrack().entryId.isValid());
+    EXPECT_EQ(controller.currentPlaylistTrack().track.id(), currentTrack->track.id());
+
+    harness.handler.replacePlaylistTracks(playlist->id(), originalTracks);
+
+    EXPECT_EQ(controller.currentPlaylistTrack().entryId, currentTrack->entryId);
+    EXPECT_EQ(controller.currentPlaylistTrack().playlistId, playlist->id());
+    EXPECT_EQ(controller.currentPlaylistTrack().indexInPlaylist, 3);
+    EXPECT_EQ(controller.currentPlaylistTrack().track.id(), currentTrack->track.id());
+    EXPECT_EQ(playlist->currentTrackIndex(), 3);
 }
 } // namespace Fooyin::Testing

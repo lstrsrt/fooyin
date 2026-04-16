@@ -87,6 +87,12 @@ PlaylistTrack PlaylistNavigator::populateTrackMetadata(Playlist* playlist, Track
         playlist->updateTrackAtIndex(index, track);
     }
 
-    return {.track = track, .playlistId = playlist->id(), .indexInPlaylist = index};
+    if(const auto playlistTrack = playlist->playlistTrack(index)) {
+        auto result{*playlistTrack};
+        result.track = track;
+        return result;
+    }
+
+    return {.track = track, .playlistId = playlist->id(), .entryId = {}, .indexInPlaylist = index};
 }
 } // namespace Fooyin

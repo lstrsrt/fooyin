@@ -366,10 +366,8 @@ void ApplicationPrivate::exportAllPlaylists(bool shutdown)
         parser->savePlaylist(&playlistFile, ext, playlist->tracks(), playlistDir, pathType, writeMetadata);
     };
 
-    auto playlists        = m_playlistHandler->playlists();
-    auto removedPlaylists = m_playlistHandler->removedPlaylists();
-    const auto canDelete
-        = shutdown && m_settings->fileValue(Settings::Core::Internal::AutoExportPlaylistsRemove, true).toBool();
+    auto playlists       = m_playlistHandler->playlists();
+    const auto canDelete = shutdown && m_settings->fileValue(AutoExportPlaylistsRemove, true).toBool();
 
     for(const auto& playlist : playlists) {
         if(playlist->tracksModified() || (canDelete && playlist->trackCount() == 0)) {
@@ -377,10 +375,9 @@ void ApplicationPrivate::exportAllPlaylists(bool shutdown)
         }
     }
 
-    const auto saveRemoved
-        = m_settings->fileValue(Settings::Core::Internal::AutoExportPlaylistsSaveRemoved, false).toBool();
+    const auto saveRemoved = shutdown && m_settings->fileValue(AutoExportPlaylistsSaveRemoved, false).toBool();
     if(canDelete || saveRemoved) {
-        for(const auto& playlist : removedPlaylists) {
+        for(const auto& playlist : m_playlistHandler->pendingRemovedPlaylists()) {
             saveOrDeletePlaylist(playlist, canDelete ? ForceDelete : Save);
         }
     }

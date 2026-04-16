@@ -32,6 +32,7 @@
 #include <QThread>
 
 #include <expected>
+#include <unordered_map>
 
 namespace Fooyin {
 class AudioLoader;
@@ -90,6 +91,7 @@ public:
         Position      = 1 << 0,
         Bitrate       = 1 << 1,
         PlaybackState = 1 << 2,
+        All           = Position | Bitrate | PlaybackState,
     };
     Q_DECLARE_FLAGS(PlaybackDependencies, PlaybackDependency)
     Q_FLAG(PlaybackDependencies)
@@ -145,8 +147,10 @@ public:
 
     [[nodiscard]] PlaylistTrack playingTrack() const;
     void stopAfterTrack(const QModelIndex& index);
-    TrackIndexResult trackIndexAtPlaylistIndex(int index);
-    QModelIndex indexAtPlaylistIndex(int index, bool includeEnd = false);
+    [[nodiscard]] TrackIndexResult trackIndexAtPlaylistIndex(int index) const;
+    [[nodiscard]] QModelIndex indexAtPlaylistIndex(int index, bool includeEnd = false) const;
+    [[nodiscard]] int playlistIndexForTrackEntry(const UId& entryId) const;
+    QModelIndex indexAtTrackEntry(const UId& entryId) const;
     [[nodiscard]] QModelIndexList indexesOfTrackId(int id);
 
     void insertTracks(const TrackGroups& tracks);
@@ -170,7 +174,7 @@ signals:
     void filesDropped(const QList<QUrl>& urls, int index);
     void tracksInserted(const Fooyin::TrackGroups& groups);
     void tracksMoved(const Fooyin::MoveOperation& operation);
-    void playlistTracksChanged(int index);
+    void trackGroupApplied();
 
 protected:
     void invalidateData() override;
@@ -182,6 +186,12 @@ public slots:
     void refreshPlayingTrackBitrateData();
 
 private:
+    struct PlayingTrackIndexResolution
+    {
+        int index{-1};
+        bool structuralRemapPending{false};
+    };
+
     struct EditableTrackContext
     {
         int column{-1};
@@ -262,9 +272,12 @@ private:
     void refreshTracksForDependency(const std::vector<int>& indexes, PlaybackDependency dependency);
     void refreshTracksForDependencies(const std::vector<int>& indexes, PlaybackDependencies dependencies);
     void coverUpdated(const Track& track);
+    [[nodiscard]] bool playbackTrackMatchesPlaylistIndex(const PlaylistTrack& track, int index) const;
+    [[nodiscard]] PlayingTrackIndexResolution resolvePlayingTrackIndex(const PlaylistTrack& track) const;
+    [[nodiscard]] int resolveTrackIndex(const PlaylistTrack& track) const;
     void syncPlayingTrackIndex();
     void syncStopAtTrackIndex();
-    bool trackIsPlaying(const Track& track, int index) const;
+    bool trackIsPlaying(const PlaylistTrack& track, int index) const;
 
     ParentChildRangesList determineRowGroups(const QModelIndexList& indexes);
 
@@ -306,6 +319,7 @@ private:
     ItemKeyMap m_nodes;
     TrackIdNodeMap m_trackParents;
     std::map<int, UId> m_trackIndexes;
+    std::unordered_map<UId, UId, UId::UIdHash> m_trackEntryIndexes;
 
     PlaylistPreset m_currentPreset;
     PlaylistColumnList m_columns;

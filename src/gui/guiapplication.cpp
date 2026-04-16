@@ -379,7 +379,7 @@ void GuiApplicationPrivate::setupConnections()
 
     QObject::connect(m_playerController, &PlayerController::playStateChanged, m_mainWindow.get(),
                      [this]() { updateWindowTitle(); });
-    QObject::connect(m_playerController, &PlayerController::playlistTrackChanged, m_self,
+    QObject::connect(m_playerController, &PlayerController::playlistTrackUpdated, m_self,
                      [this]() { updateWindowTitle(); });
     QObject::connect(m_playerController, &PlayerController::positionChangedSeconds, m_self,
                      [this]() { updateWindowTitle(); });

@@ -217,10 +217,6 @@ void PlaylistWidgetSession::copyTracks(PlaylistWidgetSessionHost& /*host*/) { }
 
 void PlaylistWidgetSession::pasteTracks(PlaylistWidgetSessionHost& /*host*/) { }
 
-void PlaylistWidgetSession::playlistTracksAdded(PlaylistWidgetSessionHost& /*host*/, const TrackList& /*tracks*/,
-                                                int /*index*/)
-{ }
-
 void PlaylistWidgetSession::cropSelection(PlaylistWidgetSessionHost& /*host*/) { }
 
 void PlaylistWidgetSession::sortTracks(PlaylistWidgetSessionHost& /*host*/, const QString& /*script*/) { }

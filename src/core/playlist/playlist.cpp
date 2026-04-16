@@ -34,10 +34,6 @@
 
 using namespace Qt::StringLiterals;
 
-namespace {
-using AlbumTracks = std::vector<int>;
-} // namespace
-
 namespace Fooyin {
 bool PlaylistTrack::isValid() const
 {
@@ -49,12 +45,17 @@ bool PlaylistTrack::isInPlaylist() const
     return playlistId.isValid();
 }
 
+bool PlaylistTrack::hasEntryId() const
+{
+    return entryId.isValid();
+}
+
 PlaylistTrackList PlaylistTrack::fromTracks(const TrackList& tracks, const UId& playlistId)
 {
     PlaylistTrackList playlistTracks;
 
     for(int i{0}; const Track& track : tracks) {
-        playlistTracks.emplace_back(track, playlistId, i++);
+        playlistTracks.emplace_back(track, playlistId, UId::create(), i++);
     }
 
     return playlistTracks;
@@ -76,6 +77,9 @@ PlaylistTrackList PlaylistTrack::updateIndexes(const PlaylistTrackList& playlist
     PlaylistTrackList tracks{playlistTracks};
 
     for(int i{0}; PlaylistTrack& track : tracks) {
+        if(!track.entryId.isValid()) {
+            track.entryId = UId::create();
+        }
         track.indexInPlaylist = i++;
     }
 
@@ -89,8 +93,8 @@ const Track& PlaylistTrack::extractor(const PlaylistTrack& item)
 
 bool PlaylistTrack::operator<(const PlaylistTrack& other) const
 {
-    return std::tie(track, playlistId, indexInPlaylist)
-         < std::tie(other.track, other.playlistId, other.indexInPlaylist);
+    return std::tie(track, playlistId, entryId, indexInPlaylist)
+         < std::tie(other.track, other.playlistId, other.entryId, other.indexInPlaylist);
 }
 
 struct Playlist::PrivateKey
@@ -102,6 +106,8 @@ struct Playlist::PrivateKey
 class PlaylistPrivate
 {
 public:
+    using AlbumTracks = std::vector<int>;
+
     struct NavigationState
     {
         int currentTrackIndex{-1};
@@ -137,12 +143,16 @@ public:
     int getNextIndex(int delta, Playlist::PlayModes mode, bool onlyCheck);
     int getNextIndexFrom(int currentIndex, int delta, Playlist::PlayModes mode, bool onlyCheck);
     [[nodiscard]] std::optional<Track> getTrack(int index) const;
+    [[nodiscard]] std::optional<PlaylistTrack> getPlaylistTrack(int index) const;
+    [[nodiscard]] int indexOfTrackEntry(const UId& entryId) const;
+    void replacePlaylistTracks(const PlaylistTrackList& tracks);
 
     UId m_id;
     int m_dbId{-1};
     QString m_name;
     int m_index{-1};
     TrackList m_tracks;
+    std::vector<UId> m_trackEntryIds;
 
     SettingsManager* m_settings;
     ScriptParser m_parser;
@@ -341,14 +351,14 @@ void PlaylistPrivate::syncShuffleStateToCurrentTrack()
     }
 }
 
-std::vector<AlbumTracks>::iterator PlaylistPrivate::findAlbumContainingTrack(int trackIndex)
+std::vector<PlaylistPrivate::AlbumTracks>::iterator PlaylistPrivate::findAlbumContainingTrack(int trackIndex)
 {
     return std::ranges::find_if(m_albumShuffleOrder, [trackIndex](const AlbumTracks& album) {
         return std::ranges::find(album, trackIndex) != album.end();
     });
 }
 
-AlbumTracks PlaylistPrivate::getAlbumTracks(int currentIndex)
+PlaylistPrivate::AlbumTracks PlaylistPrivate::getAlbumTracks(int currentIndex)
 {
     if(m_albumShuffleOrder.empty()) {
         createAlbumShuffleOrder();
@@ -375,7 +385,9 @@ void PlaylistPrivate::sortAlbumTracks(AlbumTracks& album, const QString& sortScr
     trackIndexes.reserve(album.size());
 
     for(const int trackIndex : album) {
-        trackIndexes.emplace_back(m_tracks.at(trackIndex), m_id, trackIndex);
+        const UId entryId
+            = std::cmp_less(trackIndex, m_trackEntryIds.size()) ? m_trackEntryIds.at(trackIndex) : UId::create();
+        trackIndexes.emplace_back(m_tracks.at(trackIndex), m_id, entryId, trackIndex);
     }
 
     trackIndexes = m_sorter.calcSortTracks(sortScript, trackIndexes, PlaylistTrack::extractor);
@@ -623,6 +635,43 @@ std::optional<Track> PlaylistPrivate::getTrack(int index) const
     return m_tracks.at(index);
 }
 
+std::optional<PlaylistTrack> PlaylistPrivate::getPlaylistTrack(int index) const
+{
+    if(const auto track = getTrack(index)) {
+        const UId entryId = std::cmp_less(index, m_trackEntryIds.size()) ? m_trackEntryIds.at(index) : UId{};
+        return PlaylistTrack{.track = track.value(), .playlistId = m_id, .entryId = entryId, .indexInPlaylist = index};
+    }
+
+    return {};
+}
+
+int PlaylistPrivate::indexOfTrackEntry(const UId& entryId) const
+{
+    if(!entryId.isValid()) {
+        return -1;
+    }
+
+    const auto it = std::ranges::find(m_trackEntryIds, entryId);
+    if(it == m_trackEntryIds.cend()) {
+        return -1;
+    }
+
+    return static_cast<int>(std::distance(m_trackEntryIds.cbegin(), it));
+}
+
+void PlaylistPrivate::replacePlaylistTracks(const PlaylistTrackList& tracks)
+{
+    m_tracks.clear();
+    m_trackEntryIds.clear();
+    m_tracks.reserve(tracks.size());
+    m_trackEntryIds.reserve(tracks.size());
+
+    for(const PlaylistTrack& playlistTrack : tracks) {
+        m_tracks.emplace_back(playlistTrack.track);
+        m_trackEntryIds.emplace_back(playlistTrack.entryId.isValid() ? playlistTrack.entryId : UId::create());
+    }
+}
+
 Playlist::Playlist(PrivateKey /*key*/, int dbId, QString name, int index, SettingsManager* settings)
     : p{std::make_unique<PlaylistPrivate>(dbId, std::move(name), index, settings)}
 { }
@@ -658,7 +707,8 @@ PlaylistTrackList Playlist::playlistTracks() const
 {
     PlaylistTrackList tracks;
     for(int i{0}; const auto& track : p->m_tracks) {
-        tracks.emplace_back(track, p->m_id, i++);
+        const UId entryId = std::cmp_less(i, p->m_trackEntryIds.size()) ? p->m_trackEntryIds.at(i) : UId{};
+        tracks.emplace_back(track, p->m_id, entryId, i++);
     }
     return tracks;
 }
@@ -670,15 +720,22 @@ std::optional<Track> Playlist::track(int index) const
 
 std::optional<PlaylistTrack> Playlist::playlistTrack(int index) const
 {
-    if(const auto track = p->getTrack(index)) {
-        return PlaylistTrack{track.value(), p->m_id, index};
-    }
-    return {};
+    return p->getPlaylistTrack(index);
+}
+
+std::optional<PlaylistTrack> Playlist::playlistTrack(const UId& entryId) const
+{
+    return playlistTrack(indexOfTrackEntry(entryId));
 }
 
 int Playlist::trackCount() const
 {
     return static_cast<int>(p->m_tracks.size());
+}
+
+int Playlist::indexOfTrackEntry(const UId& entryId) const
+{
+    return p->indexOfTrackEntry(entryId);
 }
 
 int Playlist::currentTrackIndex() const
@@ -979,10 +1036,31 @@ void Playlist::setTracksModified(bool modified)
 
 void Playlist::replaceTracks(const TrackList& tracks)
 {
-    if(std::exchange(p->m_tracks, tracks) != tracks) {
+    replaceTracks(PlaylistTrack::fromTracks(tracks, p->m_id));
+}
+
+void Playlist::replaceTracks(const PlaylistTrackList& tracks)
+{
+    const PlaylistTrackList updatedTracks = PlaylistTrack::updateIndexes(tracks);
+    if(playlistTracks() != updatedTracks) {
+        const int previousCurrentIndex = currentTrackIndex();
+        const UId previousCurrentEntry
+            = playlistTrack(previousCurrentIndex).has_value() ? playlistTrack(previousCurrentIndex)->entryId : UId{};
+
+        p->replacePlaylistTracks(updatedTracks);
         p->m_tracksModified = true;
         p->m_trackShuffleOrder.clear();
         p->m_albumShuffleOrder.clear();
+
+        if(previousCurrentEntry.isValid()) {
+            changeCurrentIndex(indexOfTrackEntry(previousCurrentEntry));
+        }
+        else if(trackCount() == 0 || previousCurrentIndex < 0) {
+            changeCurrentIndex(-1);
+        }
+        else {
+            changeCurrentIndex(std::min(previousCurrentIndex, trackCount() - 1));
+        }
     }
 }
 
@@ -992,7 +1070,15 @@ void Playlist::appendTracks(const TrackList& tracks)
         return;
     }
 
-    std::ranges::copy(tracks, std::back_inserter(p->m_tracks));
+    const PlaylistTrackList playlistTracks = PlaylistTrack::fromTracks(tracks, p->m_id);
+    p->m_tracks.reserve(p->m_tracks.size() + playlistTracks.size());
+    p->m_trackEntryIds.reserve(p->m_trackEntryIds.size() + playlistTracks.size());
+
+    for(const PlaylistTrack& playlistTrack : playlistTracks) {
+        p->m_tracks.emplace_back(playlistTrack.track);
+        p->m_trackEntryIds.emplace_back(playlistTrack.entryId);
+    }
+
     p->m_tracksModified = true;
     p->m_trackShuffleOrder.clear();
     p->m_albumShuffleOrder.clear();
@@ -1066,6 +1152,9 @@ std::vector<int> Playlist::removeTracks(const std::vector<int>& indexes)
         }
 
         p->m_tracks.erase(p->m_tracks.begin() + index);
+        if(std::cmp_less(index, p->m_trackEntryIds.size())) {
+            p->m_trackEntryIds.erase(p->m_trackEntryIds.begin() + index);
+        }
         removedIndexes.emplace_back(index);
 
         std::erase_if(p->m_trackShuffleOrder, [index](int num) { return num == index; });

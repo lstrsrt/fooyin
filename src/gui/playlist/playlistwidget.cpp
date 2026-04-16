@@ -1163,13 +1163,13 @@ void PlaylistWidget::selectAll()
 
 void PlaylistWidget::followCurrentTrack()
 {
-    const auto [track, playlistId, index] = m_model->playingTrack();
+    const PlaylistTrack playingTrack = m_model->playingTrack();
 
-    if(!track.isValid() || playlistId != m_playlistController->currentPlaylistId()) {
+    if(!playingTrack.track.isValid() || playingTrack.playlistId != m_playlistController->currentPlaylistId()) {
         return;
     }
 
-    QModelIndex modelIndex = m_model->indexAtPlaylistIndex(index, true);
+    QModelIndex modelIndex = m_model->indexAtPlaylistIndex(playingTrack.indexInPlaylist, true);
     while(modelIndex.isValid() && m_header->isSectionHidden(modelIndex.column())) {
         modelIndex = modelIndex.siblingAtColumn(modelIndex.column() + 1);
     }

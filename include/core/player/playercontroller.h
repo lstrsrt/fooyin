@@ -104,11 +104,8 @@ public:
     void commitCurrentTrack(const PlaylistTrack& track,
                             const Player::TrackChangeContext& context = Player::TrackChangeContext{});
     void updateCurrentTrack(const Track& track);
-    void updateCurrentTrackPlaylist(const UId& playlistId);
-    void updateCurrentTrackIndex(int index);
 
     void scheduleNextTrack(const PlaylistTrack& track);
-    void remapPlaylistReferences(const UId& fromPlaylistId, const UId& toPlaylistId);
 
     [[nodiscard]] Track upcomingTrack() const;
     [[nodiscard]] PlaylistTrack upcomingPlaylistTrack() const;
@@ -154,9 +151,18 @@ signals:
     void bitrateChanged(int bitrate);
     void positionMoved(uint64_t ms);
 
+    /*! Emitted when the actual playback track changes. */
     void currentTrackChanged(const Fooyin::Track& track);
+    /*! Emitted when metadata for the current playback track is refreshed in place. */
     void currentTrackUpdated(const Fooyin::Track& track);
+    /*!
+     * Emitted when the actual playback track changes and the playlist-backed reference for that new track is known.
+     * Unlike playlistTrackUpdated(), this is not emitted for in-place playlist reference remaps of the same
+     * playback item.
+     */
     void playlistTrackChanged(const Fooyin::PlaylistTrack& track);
+    /*! Emitted when the current playback track's playlist reference changes, including structural remaps. */
+    void playlistTrackUpdated(const Fooyin::PlaylistTrack& track);
     void trackPlayed(const Fooyin::Track& track);
     void trackChangeRequested(const Fooyin::Player::TrackChangeRequest& request);
     void upcomingTrackChanged(const Fooyin::Player::UpcomingTrack& upcomingTrack);

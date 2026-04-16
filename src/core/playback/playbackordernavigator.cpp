@@ -49,21 +49,30 @@ Playlist* PlaybackOrderNavigator::playbackPlaylist() const
 
 Playlist* PlaybackOrderNavigator::playlistForTrack(const PlaylistTrack& track) const
 {
-    if(!m_playlistHandler || !track.isValid() || !track.playlistId.isValid() || track.indexInPlaylist < 0) {
+    if(!m_playlistHandler || !track.isValid() || !track.playlistId.isValid()) {
         return nullptr;
     }
 
     auto* playlist = m_playlistHandler->playlistById(track.playlistId);
-    if(!playlist || track.indexInPlaylist >= playlist->trackCount()) {
+    if(!playlist) {
         return nullptr;
     }
 
-    const auto playlistTrack = playlist->playlistTrack(track.indexInPlaylist);
-    if(!playlistTrack.has_value() || !playlistTrack->track.sameIdentityAs(track.track)) {
-        return nullptr;
+    if(track.entryId.isValid()) {
+        if(const auto playlistTrack = playlist->playlistTrack(track.entryId);
+           playlistTrack && playlistTrack->track.sameIdentityAs(track.track)) {
+            return playlist;
+        }
     }
 
-    return playlist;
+    if(track.indexInPlaylist >= 0 && track.indexInPlaylist < playlist->trackCount()) {
+        const auto playlistTrack = playlist->playlistTrack(track.indexInPlaylist);
+        if(playlistTrack.has_value() && playlistTrack->track.sameIdentityAs(track.track)) {
+            return playlist;
+        }
+    }
+
+    return nullptr;
 }
 
 PlaylistTrack PlaybackOrderNavigator::previewPlaybackRelativeTrack(int delta) const
@@ -170,8 +179,13 @@ void PlaybackOrderNavigator::activatePlaylistTrack(const PlaylistTrack& track)
             m_playlistHandler->changeActivePlaylist(playlist);
         }
 
-        if(track.indexInPlaylist >= 0) {
-            playlist->changeCurrentIndex(track.indexInPlaylist);
+        int trackIndex{track.indexInPlaylist};
+        if(track.entryId.isValid()) {
+            trackIndex = playlist->indexOfTrackEntry(track.entryId);
+        }
+
+        if(trackIndex >= 0) {
+            playlist->changeCurrentIndex(trackIndex);
         }
     }
 }

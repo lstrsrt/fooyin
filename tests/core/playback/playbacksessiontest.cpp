@@ -41,6 +41,7 @@ PlaylistTrack makePlaylistTrack(const QString& path, int id, uint64_t durationMs
     return PlaylistTrack{
         .track           = makeTrack(path, id, durationMs),
         .playlistId      = UId::create(),
+        .entryId         = UId::create(),
         .indexInPlaylist = index,
     };
 }
@@ -150,6 +151,7 @@ TEST(PlaybackSessionTest, UpdateHelpersOnlyMutateMatchingCurrentTrack)
     EXPECT_TRUE(session.updateCurrentTrack(updatedTrack));
     EXPECT_EQ(session.currentTrack().track.title(), u"Updated"_s);
     EXPECT_TRUE(session.updateCurrentTrackPlaylist(UId::create()));
+    EXPECT_TRUE(session.updateCurrentTrackEntry(UId::create()));
     EXPECT_TRUE(session.updateCurrentTrackIndex(7));
 
     const Track otherTrack = makeTrack(u"/tmp/other.flac"_s, 6, 1500);

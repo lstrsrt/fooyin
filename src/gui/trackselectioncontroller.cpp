@@ -1161,6 +1161,7 @@ QueueTracks TrackSelectionControllerPrivate::queueTracksForSelection(const Track
         for(size_t i{0}; i < selection.tracks.size(); ++i) {
             queueTracks.push_back(PlaylistTrack{.track           = selection.tracks.at(i),
                                                 .playlistId      = *selection.playlistId,
+                                                .entryId         = {},
                                                 .indexInPlaylist = selection.playlistIndexes.at(i)});
         }
         return queueTracks;

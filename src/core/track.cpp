@@ -402,6 +402,14 @@ Track::ExtraTags internExtraTags(const TrackPrivate& track, const Track::ExtraTa
     return interned;
 }
 
+template <typename Map>
+bool sameFlatStringMap(const Map& lhs, const Map& rhs)
+{
+    return lhs.size() == rhs.size() && std::ranges::equal(lhs, rhs, [](const auto& lhsItem, const auto& rhsItem) {
+               return lhsItem.first == rhsItem.first && lhsItem.second == rhsItem.second;
+           });
+}
+
 Track::Track()
     : Track{std::shared_ptr<TrackMetadataStore>{}}
 { }
@@ -463,6 +471,47 @@ bool Track::sameIdentityAs(const Track& other) const
 
     return uniqueFilepath() == other.uniqueFilepath() && subsong() == other.subsong() && offset() == other.offset()
         && duration() == other.duration();
+}
+
+bool Track::sameDataAs(const Track& other) const
+{
+    return p->libraryId == other.p->libraryId && p->enabled == other.p->enabled && p->id == other.p->id
+        && p->hash == other.p->hash
+        && resolveString(*p, StringPool::Domain::Codec, p->codec)
+               == resolveString(*other.p, StringPool::Domain::Codec, other.p->codec)
+        && p->filepath == other.p->filepath && p->title == other.p->title
+        && resolveStrings(*p, StringPool::Domain::Artist, p->artists)
+               == resolveStrings(*other.p, StringPool::Domain::Artist, other.p->artists)
+        && resolveString(*p, StringPool::Domain::Album, p->album)
+               == resolveString(*other.p, StringPool::Domain::Album, other.p->album)
+        && resolveStrings(*p, StringPool::Domain::AlbumArtist, p->albumArtists)
+               == resolveStrings(*other.p, StringPool::Domain::AlbumArtist, other.p->albumArtists)
+        && p->trackNumber == other.p->trackNumber && p->trackTotal == other.p->trackTotal
+        && p->discNumber == other.p->discNumber && p->discTotal == other.p->discTotal
+        && resolveStrings(*p, StringPool::Domain::Genre, p->genres)
+               == resolveStrings(*other.p, StringPool::Domain::Genre, other.p->genres)
+        && resolveStrings(*p, StringPool::Domain::Composer, p->composers)
+               == resolveStrings(*other.p, StringPool::Domain::Composer, other.p->composers)
+        && resolveStrings(*p, StringPool::Domain::Performer, p->performers)
+               == resolveStrings(*other.p, StringPool::Domain::Performer, other.p->performers)
+        && p->comment == other.p->comment && p->date == other.p->date && p->year == other.p->year
+        && p->dateSinceEpoch == other.p->dateSinceEpoch && p->yearSinceEpoch == other.p->yearSinceEpoch
+        && sameFlatStringMap(p->extraTags, other.p->extraTags) && p->removedTags == other.p->removedTags
+        && sameFlatStringMap(p->extraProps, other.p->extraProps) && p->cuePath == other.p->cuePath
+        && p->subsong == other.p->subsong && p->offset == other.p->offset && p->duration == other.p->duration
+        && p->filesize == other.p->filesize && p->bitrate == other.p->bitrate && p->sampleRate == other.p->sampleRate
+        && p->channels == other.p->channels && p->bitDepth == other.p->bitDepth
+        && p->codecProfile == other.p->codecProfile && p->tool == other.p->tool && p->tagTypes == other.p->tagTypes
+        && resolveString(*p, StringPool::Domain::Encoding, p->encoding)
+               == resolveString(*other.p, StringPool::Domain::Encoding, other.p->encoding)
+        && p->rating == other.p->rating && p->playcount == other.p->playcount && p->createdTime == other.p->createdTime
+        && p->addedTime == other.p->addedTime && p->modifiedTime == other.p->modifiedTime
+        && p->firstPlayed == other.p->firstPlayed && p->lastPlayed == other.p->lastPlayed
+        && p->rgTrackGain == other.p->rgTrackGain && p->rgAlbumGain == other.p->rgAlbumGain
+        && p->rgTrackPeak == other.p->rgTrackPeak && p->rgAlbumPeak == other.p->rgAlbumPeak
+        && p->metadataWasRead == other.p->metadataWasRead && p->metadataWasModified == other.p->metadataWasModified
+        && p->isInArchive == other.p->isInArchive && p->archivePath == other.p->archivePath
+        && p->filepathWithinArchive == other.p->filepathWithinArchive;
 }
 
 QString Track::generateHash()
