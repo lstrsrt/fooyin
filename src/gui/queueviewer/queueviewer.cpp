@@ -30,6 +30,7 @@
 #include <gui/configdialog.h>
 #include <gui/guiconstants.h>
 #include <gui/guiutils.h>
+#include <gui/trackmimedata.h>
 #include <gui/widgets/scriptlineedit.h>
 #include <utils/actions/actioncontainer.h>
 #include <utils/actions/actionmanager.h>
@@ -421,9 +422,17 @@ void QueueViewer::handleQueueTracksMoved(int row, const QList<int>& indexes) con
     replaceQueueTracks(std::move(tracks));
 }
 
-void QueueViewer::handleTracksDropped(int row, const QByteArray& mimeData) const
+void QueueViewer::handleTracksDropped(int row, const QMimeData* mimeData) const
 {
-    const TrackList tracks = Gui::tracksFromMimeData(m_playlistInteractor->library(), mimeData);
+    TrackList tracks;
+
+    if(const auto mimeTracks = TrackMimeData::tracksFrom(mimeData); mimeTracks && !mimeTracks->empty()) {
+        tracks = *mimeTracks;
+    }
+    else if(mimeData) {
+        tracks = Gui::tracksFromMimeData(m_playlistInteractor->library(),
+                                         mimeData->data(QString::fromLatin1(Constants::Mime::TrackIds)));
+    }
 
     QueueTracks queueTracks;
     for(const Track& track : tracks) {

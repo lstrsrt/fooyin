@@ -26,6 +26,7 @@
 #include <gui/guiconstants.h>
 #include <gui/guisettings.h>
 #include <gui/iconloader.h>
+#include <gui/trackmimedata.h>
 #include <utils/modelutils.h>
 #include <utils/settings/settingsmanager.h>
 #include <utils/utils.h>
@@ -240,18 +241,19 @@ QVariant QueueViewerModel::data(const QModelIndex& index, int role) const
 
 QStringList QueueViewerModel::mimeTypes() const
 {
-    return {QString::fromLatin1(ViewerItems), QString::fromLatin1(Constants::Mime::TrackIds),
-            QString::fromLatin1(Constants::Mime::QueueTracks)};
+    return {QString::fromLatin1(ViewerItems), QString::fromLatin1(Constants::Mime::Tracks),
+            QString::fromLatin1(Constants::Mime::TrackIds), QString::fromLatin1(Constants::Mime::QueueTracks)};
 }
 
 bool QueueViewerModel::canDropMimeData(const QMimeData* data, Qt::DropAction action, int row, int column,
                                        const QModelIndex& parent) const
 {
     if(action == Qt::MoveAction && data->hasFormat(QString::fromLatin1(ViewerItems))) {
-        return !m_showCurrent || row > 0;
+        return !m_currentTrackItem || row > 0;
     }
     if((action == Qt::CopyAction || action == Qt::MoveAction)
-       && (data->hasFormat(QString::fromLatin1(Constants::Mime::TrackIds))
+       && (data->hasFormat(QString::fromLatin1(Constants::Mime::Tracks))
+           || data->hasFormat(QString::fromLatin1(Constants::Mime::TrackIds))
            || data->hasFormat(QString::fromLatin1(Constants::Mime::QueueTracks)))) {
         return true;
     }
@@ -311,8 +313,9 @@ bool QueueViewerModel::dropMimeData(const QMimeData* data, Qt::DropAction action
         }
 
         emit queueTracksMoved(std::clamp(queueRow, 0, static_cast<int>(m_trackItems.size())), queueIndexes);
+        return true;
     }
-    else if(data->hasFormat(QString::fromLatin1(Constants::Mime::QueueTracks))) {
+    if(data->hasFormat(QString::fromLatin1(Constants::Mime::QueueTracks))) {
         int queueRow{row};
         if(queueRow < 0) {
             queueRow = static_cast<int>(m_trackItems.size());
@@ -322,8 +325,11 @@ bool QueueViewerModel::dropMimeData(const QMimeData* data, Qt::DropAction action
         }
         emit playlistTracksDropped(std::clamp(queueRow, 0, static_cast<int>(m_trackItems.size())),
                                    data->data(QString::fromLatin1(Constants::Mime::QueueTracks)));
+        return true;
     }
-    else if(data->hasFormat(QString::fromLatin1(Constants::Mime::TrackIds))) {
+
+    const auto mimeTracks = TrackMimeData::tracksFrom(data);
+    if((mimeTracks && !mimeTracks->empty()) || data->hasFormat(QString::fromLatin1(Constants::Mime::TrackIds))) {
         int queueRow{row};
         if(queueRow < 0) {
             queueRow = static_cast<int>(m_trackItems.size());
@@ -331,10 +337,11 @@ bool QueueViewerModel::dropMimeData(const QMimeData* data, Qt::DropAction action
         else if(m_currentTrackItem) {
             --queueRow;
         }
-        emit tracksDropped(std::clamp(queueRow, 0, static_cast<int>(m_trackItems.size())),
-                           data->data(QString::fromLatin1(Constants::Mime::TrackIds)));
+        emit tracksDropped(std::clamp(queueRow, 0, static_cast<int>(m_trackItems.size())), data);
+        return true;
     }
-    return true;
+
+    return false;
 }
 
 void QueueViewerModel::reset(const QueueTracks& tracks)

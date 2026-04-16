@@ -25,6 +25,7 @@
 
 class QJsonObject;
 class QModelIndex;
+class QMimeData;
 
 namespace Fooyin {
 class ActionManager;
@@ -109,7 +110,7 @@ private:
     void handleRowsChanged() const;
     void removeSelectedTracks() const;
     void handleQueueTracksMoved(int row, const QList<int>& indexes) const;
-    void handleTracksDropped(int row, const QByteArray& mimeData) const;
+    void handleTracksDropped(int row, const QMimeData* mimeData) const;
     void handlePlaylistTracksDropped(int row, const QByteArray& mimeData) const;
     void handleQueueDoubleClicked(const QModelIndex& index) const;
     void replaceQueueTracks(QueueTracks tracks) const;

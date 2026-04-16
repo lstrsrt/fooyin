@@ -29,6 +29,8 @@
 
 #include <QIcon>
 
+class QMimeData;
+
 namespace Fooyin {
 class PlayerController;
 class SettingsManager;
@@ -67,7 +69,7 @@ public:
 
 signals:
     void queueTracksMoved(int row, const QList<int>& indexes);
-    void tracksDropped(int row, const QByteArray& data);
+    void tracksDropped(int row, const QMimeData* data);
     void playlistTracksDropped(int row, const QByteArray& data);
 
 private:
