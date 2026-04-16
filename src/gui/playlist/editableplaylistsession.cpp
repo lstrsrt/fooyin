@@ -710,8 +710,8 @@ void EditablePlaylistSession::handleRestoredState(PlaylistWidgetSessionHost& ses
 void EditablePlaylistSession::handleTracksChanged(PlaylistWidgetSessionHost& sessionHost,
                                                   const std::vector<int>& indexes, bool allNew)
 {
-    auto* widget = sessionHost.sessionWidget();
-    auto& host   = editableHost(widget);
+    auto* widget          = sessionHost.sessionWidget();
+    auto& host            = editableHost(widget);
     auto* currentPlaylist = host.playlistController()->currentPlaylist();
     if(!currentPlaylist) {
         return;
