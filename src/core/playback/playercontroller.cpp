@@ -139,8 +139,13 @@ public:
     void remapPlaylistReferences(const UId& fromPlaylistId, const UId& toPlaylistId);
 
     bool requestSelectedTrack(const RequestedTrack& selection);
+    bool requestSelectedTrack(const RequestedTrack& selection, const Player::TrackChangeContext& context);
     bool requestSelectedTrack(const std::optional<RequestedTrack>& selection);
+    bool requestSelectedTrack(const std::optional<RequestedTrack>& selection,
+                              const Player::TrackChangeContext& context);
     bool requestBoundaryRestart(PlaybackOrderNavigator::RestartTarget target);
+    bool requestBoundaryRestart(PlaybackOrderNavigator::RestartTarget target,
+                                const Player::TrackChangeContext& context);
 
     bool applyTransportAction(const TransportAction& action);
     bool stopAtBoundary(PlaybackCursor::BoundaryStop boundary);
@@ -563,13 +568,19 @@ void PlayerControllerPrivate::remapPlaylistReferences(const UId& fromPlaylistId,
 
 bool PlayerControllerPrivate::requestSelectedTrack(const RequestedTrack& selection)
 {
+    return requestSelectedTrack(selection, m_session.pendingChangeContext());
+}
+
+bool PlayerControllerPrivate::requestSelectedTrack(const RequestedTrack& selection,
+                                                   const Player::TrackChangeContext& context)
+{
     if(!selection.track.isValid() || !m_session.canAcceptRequest()) {
         return false;
     }
 
     requestTrackChange({
         .track        = selection.track,
-        .context      = m_session.pendingChangeContext(),
+        .context      = context,
         .isQueueTrack = selection.isQueueTrack,
     });
 
@@ -581,7 +592,19 @@ bool PlayerControllerPrivate::requestSelectedTrack(const std::optional<Requested
     return selection.has_value() && requestSelectedTrack(*selection);
 }
 
+bool PlayerControllerPrivate::requestSelectedTrack(const std::optional<RequestedTrack>& selection,
+                                                   const Player::TrackChangeContext& context)
+{
+    return selection.has_value() && requestSelectedTrack(*selection, context);
+}
+
 bool PlayerControllerPrivate::requestBoundaryRestart(PlaybackOrderNavigator::RestartTarget target)
+{
+    return requestBoundaryRestart(target, m_session.pendingChangeContext());
+}
+
+bool PlayerControllerPrivate::requestBoundaryRestart(PlaybackOrderNavigator::RestartTarget target,
+                                                     const Player::TrackChangeContext& context)
 {
     if(target == PlaybackOrderNavigator::RestartTarget::None || !m_session.canAcceptRequest()) {
         return false;
@@ -593,7 +616,7 @@ bool PlayerControllerPrivate::requestBoundaryRestart(PlaybackOrderNavigator::Res
     }
 
     m_cursor.reset();
-    return requestSelectedTrack({.track = track, .isQueueTrack = false});
+    return requestSelectedTrack({.track = track, .isQueueTrack = false}, context);
 }
 
 bool PlayerControllerPrivate::applyTransportAction(const TransportAction& action)
@@ -907,7 +930,20 @@ void PlayerController::previous()
     p->m_playMode &= ~Playlist::RepeatTrack;
 
     const PlayerControllerPrivate::TransportAction action = p->selectPreviousAction();
-    p->applyTransportAction(action);
+    const Player::TrackChangeContext context{
+        .reason        = Player::AdvanceReason::ManualPrevious,
+        .userInitiated = true,
+    };
+
+    if(action.type == PlayerControllerPrivate::TransportAction::Type::RequestSelection) {
+        p->requestSelectedTrack(action.selection, context);
+    }
+    else if(action.type == PlayerControllerPrivate::TransportAction::Type::RestartAtBoundary) {
+        p->requestBoundaryRestart(action.restartTarget, context);
+    }
+    else {
+        p->applyTransportAction(action);
+    }
 
     if(action.type == PlayerControllerPrivate::TransportAction::Type::StopAtBoundary
        || action.type == PlayerControllerPrivate::TransportAction::Type::KeepCurrentTrack) {
