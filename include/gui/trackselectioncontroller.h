@@ -45,6 +45,7 @@ struct FYGUI_EXPORT TrackSelection
     TrackList tracks;
     std::optional<UId> playlistId;
     std::vector<int> playlistIndexes;
+    std::vector<UId> playlistEntryIds;
     std::optional<int> primaryPlaylistIndex;
     bool playbackOnSend{false};
     bool playlistBacked{false};

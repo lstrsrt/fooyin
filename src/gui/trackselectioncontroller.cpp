@@ -1157,12 +1157,13 @@ QueueTracks TrackSelectionControllerPrivate::queueTracksForSelection(const Track
 
     const bool playlistBacked = selection.playlistBacked && selection.playlistId
                              && selection.playlistIndexes.size() == selection.tracks.size();
+    const bool hasPlaylistEntryIds = selection.playlistEntryIds.size() == selection.tracks.size();
     if(playlistBacked) {
         for(size_t i{0}; i < selection.tracks.size(); ++i) {
             queueTracks.push_back(PlaylistTrack{.track           = selection.tracks.at(i),
                                                 .playlistId      = *selection.playlistId,
-                                                .entryId         = {},
-                                                .indexInPlaylist = selection.playlistIndexes.at(i)});
+                              .entryId         = hasPlaylistEntryIds ? selection.playlistEntryIds.at(i) : UId{},
+                              .indexInPlaylist = selection.playlistIndexes.at(i)});
         }
         return queueTracks;
     }

@@ -388,6 +388,15 @@ TrackSelection PlaylistWidgetSession::makeTrackSelection(const TrackList& tracks
 
     if(playlist) {
         selection.playlistId = playlist->id();
+        selection.playlistEntryIds.reserve(playlistIndexes.size());
+        for(const int index : playlistIndexes) {
+            if(const auto playlistTrack = playlist->playlistTrack(index)) {
+                selection.playlistEntryIds.emplace_back(playlistTrack->entryId);
+            }
+            else {
+                selection.playlistEntryIds.emplace_back(UId{});
+            }
+        }
     }
 
     if(!playlistIndexes.empty()) {

@@ -528,6 +528,7 @@ void StatusWidget::contextMenuEvent(QContextMenuEvent* event)
             playingSelection.playlistId           = playlistTrack.playlistId;
             playingSelection.primaryPlaylistIndex = playlistTrack.indexInPlaylist;
             playingSelection.playlistIndexes.push_back(playlistTrack.indexInPlaylist);
+            playingSelection.playlistEntryIds.push_back(playlistTrack.entryId);
             playingSelection.playlistBacked = true;
         }
         else if(const Track currentTrack = p->m_playerController->currentTrack(); currentTrack.isValid()) {

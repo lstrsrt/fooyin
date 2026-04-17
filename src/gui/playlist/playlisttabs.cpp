@@ -375,8 +375,10 @@ void PlaylistTabs::contextMenuEvent(QContextMenuEvent* event)
 
             const auto playlistTracks = playlist->playlistTracks();
             selection.playlistIndexes.reserve(playlistTracks.size());
+            selection.playlistEntryIds.reserve(playlistTracks.size());
             for(const PlaylistTrack& track : playlistTracks) {
                 selection.playlistIndexes.emplace_back(track.indexInPlaylist);
+                selection.playlistEntryIds.emplace_back(track.entryId);
             }
 
             m_selectionController->changeSelectedTracks(selection);

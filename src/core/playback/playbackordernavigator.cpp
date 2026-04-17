@@ -228,10 +228,12 @@ std::optional<PlaybackOrderNavigator::RequestedTrack> PlaybackOrderNavigator::se
 
     if(m_queue->empty() && m_playlistHandler) {
         if(m_settings->value<Settings::Core::FollowPlaybackQueue>() && *m_state.isQueueTrack) {
-            return RequestedTrack{
-                .track        = followQueuedTrackIndex(delta),
-                .isQueueTrack = false,
-            };
+            if(const auto followedTrack = followQueuedTrackIndex(delta); followedTrack.isValid()) {
+                return RequestedTrack{
+                    .track        = followedTrack,
+                    .isQueueTrack = false,
+                };
+            }
         }
 
         return RequestedTrack{
