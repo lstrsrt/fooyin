@@ -286,13 +286,13 @@ void EditablePlaylistSession::setupConnections(PlaylistWidgetSessionHost& sessio
         changePlaylist(widgetSessionHost(widget), nullptr, widget->playlistController()->currentPlaylist());
     });
     QObject::connect(widget->playlistController(), &PlaylistController::playingTrackChanged, widget,
-                     [widget, this](const PlaylistTrack& track) { handlePlayingTrackChanged(widget, track); });
-    QObject::connect(widget->playerController(), &PlayerController::playlistTrackChanged, widget, [widget]() {
-        auto& editableSession = editableHost(widget);
-        if(editableSession.settingsManager()->value<Settings::Gui::CursorFollowsPlayback>()) {
-            editableSession.followCurrentTrack();
-        }
-    });
+                     [widget, this](const PlaylistTrack& track) {
+                         auto& editableSession = editableHost(widget);
+                         handlePlayingTrackChanged(widget, track);
+                         if(editableSession.settingsManager()->value<Settings::Gui::CursorFollowsPlayback>()) {
+                             editableSession.followCurrentTrack();
+                         }
+                     });
     QObject::connect(widget->playerController(), &PlayerController::trackChangeRequested, widget,
                      [widget](const Player::TrackChangeRequest& request) {
                          widget->playlistModel()->playingTrackChanged(request.track);
