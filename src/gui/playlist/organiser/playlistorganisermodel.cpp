@@ -24,6 +24,7 @@
 #include <gui/guiconstants.h>
 #include <gui/iconloader.h>
 #include <utils/datastream.h>
+#include <utils/stringcollator.h>
 #include <utils/utils.h>
 
 #include <QApplication>
@@ -334,6 +335,84 @@ void PlaylistOrganiserModel::playlistRemoved(Playlist* playlist)
     endRemoveRows();
 
     m_nodes.erase(key);
+}
+
+void PlaylistOrganiserModel::sortAllPlaylists(const SortOrder order)
+{
+    emit layoutAboutToBeChanged();
+    sortPlaylists(rootItem(), order);
+    emit layoutChanged();
+}
+
+void PlaylistOrganiserModel::sortGroupPlaylists(const QModelIndexList& indices, const SortOrder order)
+{
+    if(indices.size() != 1) {
+        return;
+    }
+
+    auto* sortGroup = itemForIndex(indices.first());
+
+    if(sortGroup->type() != PlaylistOrganiserItem::Type::GroupItem) {
+        return;
+    }
+
+    emit layoutAboutToBeChanged();
+    sortPlaylists(sortGroup, order);
+    emit layoutChanged();
+}
+
+void PlaylistOrganiserModel::sortPlaylists(PlaylistOrganiserItem* parent, const SortOrder order)
+{
+    if(!parent) {
+        return;
+    }
+
+    auto children = parent->children();
+    if(children.empty()) {
+        return;
+    }
+
+    std::vector<PlaylistOrganiserItem*> playlists;
+    playlists.reserve(children.size());
+
+    for(auto* child : children) {
+        if(!child) {
+            continue;
+        }
+
+        if(child->type() == PlaylistOrganiserItem::PlaylistItem) {
+            playlists.emplace_back(child);
+        }
+        else {
+            sortPlaylists(child, order);
+        }
+    }
+
+    if(playlists.size() < 2) {
+        return;
+    }
+
+    StringCollator collator;
+    collator.setCaseSensitivity(Qt::CaseInsensitive);
+
+    std::ranges::sort(playlists, [&collator, order](auto* first, auto* second) {
+        const int compare = collator.compare(first->title(), second->title());
+        return order == Descending ? compare > 0 : compare < 0;
+    });
+
+    auto nextPlaylist = playlists.cbegin();
+    for(auto& child : children) {
+        if(child && child->type() == PlaylistOrganiserItem::PlaylistItem) {
+            child = *nextPlaylist;
+            ++nextPlaylist;
+        }
+    }
+
+    parent->clearChildren();
+    for(auto* child : children) {
+        parent->appendChild(child);
+    }
+    parent->resetChildren();
 }
 
 QModelIndex PlaylistOrganiserModel::indexForPlaylist(Playlist* playlist)

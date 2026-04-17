@@ -85,6 +85,12 @@ private:
     QAction* m_editAutoPlaylist;
     Command* m_editAutoPlaylistCmd;
 
+    QAction* m_sortAllPlaylists;
+    Command* m_sortAllPlaylistsCmd;
+
+    QAction* m_sortGroupPlaylists;
+    Command* m_sortGroupPlaylistsCmd;
+
     UId m_currentPlaylistId;
     bool m_creatingPlaylist{false};
 };
