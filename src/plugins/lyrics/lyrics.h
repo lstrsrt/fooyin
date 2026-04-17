@@ -19,11 +19,14 @@
 
 #pragma once
 
+#include <cstdint>
+#include <tuple>
+#include <vector>
+
 #include <QApplication>
 #include <QFont>
 #include <QString>
 #include <QStringList>
-#include <cstdint>
 
 namespace Fooyin::Lyrics {
 struct Metadata
