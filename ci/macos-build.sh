@@ -3,6 +3,7 @@
 set -euo pipefail
 
 export FOOYIN_DIR=$PWD
+export SDKROOT=$(xcrun --sdk macosx --show-sdk-path)
 export CC=$(brew --prefix llvm)/bin/clang
 export CXX=$(brew --prefix llvm)/bin/clang++
 export CXXFLAGS="-fexperimental-library"
@@ -14,6 +15,7 @@ cmake -S "$FOOYIN_DIR" \
   -B build \
   -DCMAKE_BUILD_TYPE=Release \
   -DCMAKE_OSX_DEPLOYMENT_TARGET=14.0 \
+  -DCMAKE_OSX_SYSROOT="$SDKROOT" \
   -DICU_ROOT="$(brew --prefix icu4c@78)"
 
 cmake --build build
