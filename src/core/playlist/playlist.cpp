@@ -924,6 +924,23 @@ Track Playlist::nextTrackFrom(int currentIndex, int delta, PlayModes mode)
     return p->m_tracks.at(index);
 }
 
+Track Playlist::nextTrackChangeFrom(int currentIndex, int delta, PlayModes mode)
+{
+    p->m_currentTrackIndex = currentIndex;
+    p->syncShuffleStateToCurrentTrack();
+
+    const int index = p->getNextIndex(delta, mode, false);
+
+    if(index < 0 || index >= trackCount()) {
+        changeCurrentIndex(-1);
+        return {};
+    }
+
+    changeCurrentIndex(index);
+
+    return currentTrack();
+}
+
 Track Playlist::nextTrackChange(int delta, PlayModes mode)
 {
     const int index = p->getNextIndex(delta, mode, false);

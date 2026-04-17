@@ -151,6 +151,7 @@ public:
      */
     Track nextTrack(int delta, PlayModes mode);
     Track nextTrackFrom(int currentIndex, int delta, PlayModes mode);
+    Track nextTrackChangeFrom(int currentIndex, int delta, PlayModes mode);
     /*!
      * Changes to and returns the next track to be played based on the @p delta from the current
      * index and the @p mode.

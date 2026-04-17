@@ -92,14 +92,13 @@ PlaylistTrack PlaybackOrderNavigator::previewPlaybackRelativeTrack(int delta) co
 PlaylistTrack PlaybackOrderNavigator::advancePlaybackRelativeTrack(int delta)
 {
     if(auto* playlist = playbackPlaylist()) {
-        const int nextIndex = playlist->nextIndexFrom(m_state.currentTrack->indexInPlaylist, delta, *m_state.playMode);
-        if(nextIndex < 0 || nextIndex >= playlist->trackCount()) {
-            playlist->changeCurrentIndex(-1);
+        const Track track
+            = playlist->nextTrackChangeFrom(m_state.currentTrack->indexInPlaylist, delta, *m_state.playMode);
+        if(!track.isValid()) {
             return {};
         }
 
-        playlist->changeCurrentIndex(nextIndex);
-        return playlist->playlistTrack(nextIndex).value_or(PlaylistTrack{});
+        return playlist->playlistTrack(playlist->currentTrackIndex()).value_or(PlaylistTrack{});
     }
 
     if(!m_playlistHandler) {
