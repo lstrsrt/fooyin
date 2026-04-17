@@ -86,6 +86,7 @@ LyricsEditor::LyricsEditor(const Track& track, std::shared_ptr<NetworkAccessMana
 LyricsEditor::LyricsEditor(Lyrics lyrics, PlayerController* playerController, LyricsSaver* lyricsSaver,
                            SettingsManager* settings, QWidget* parent)
     : PropertiesTabWidget{parent}
+    , m_track{playerController->currentTrack()}
     , m_lyricsSaver{lyricsSaver}
     , m_playerController{playerController}
     , m_settings{settings}
@@ -95,16 +96,20 @@ LyricsEditor::LyricsEditor(Lyrics lyrics, PlayerController* playerController, Ly
 {
     setupUi();
     setupConnections();
-    updateTrack(m_playerController->currentTrack());
 
-    if(auto* draft = currentDraft()) {
-        draft->originalLyrics       = m_lyrics;
-        draft->workingLyrics        = m_lyrics;
-        draft->originalLyricsLoaded = true;
-        draft->dirty                = false;
-        loadCurrentDraft();
-        updatePendingState();
+    if(m_track.isValid()) {
+        m_currentTrackKey = trackKey(m_track);
+
+        auto& draft                = ensureDraft(m_track);
+        draft.originalLyrics       = m_lyrics;
+        draft.workingLyrics        = m_lyrics;
+        draft.originalLyricsLoaded = true;
+        draft.dirty                = false;
     }
+
+    loadCurrentDraft();
+    setControlsEnabled();
+    updatePendingState();
 }
 
 void LyricsEditor::updateTrack(const Track& track)
@@ -213,6 +218,11 @@ void LyricsEditor::apply()
         return;
     }
 
+    Lyrics appliedLyrics{m_lyrics};
+    if(const auto* draft = currentDraft()) {
+        appliedLyrics = draft->workingLyrics;
+    }
+
     const auto saveMethod = static_cast<SaveMethod>(
         m_settings->fileValue(Settings::SaveMethod, static_cast<int>(SaveMethod::Directory)).toInt());
 
@@ -251,6 +261,11 @@ void LyricsEditor::apply()
     m_pendingTagTracks.clear();
     loadCurrentDraft();
     updatePendingState();
+
+    if(appliedLyrics.isValid()) {
+        appliedLyrics.isLocal = true;
+    }
+    emit lyricsEdited(appliedLyrics);
 }
 
 void LyricsEditor::finish()
@@ -467,7 +482,6 @@ void LyricsEditor::setupConnections()
     QObject::connect(m_playerController, &PlayerController::positionChanged, this, &LyricsEditor::updateButtons);
     QObject::connect(m_playerController, &PlayerController::playStateChanged, this, &LyricsEditor::updateButtons);
 
-    loadCurrentDraft();
     setControlsEnabled();
 
     if(m_lyricsFinder) {
