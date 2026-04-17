@@ -1,6 +1,9 @@
+find_package(ZLIB REQUIRED)
+
 create_fooyin_plugin_internal(
     lyrics
     DEPENDS Fooyin::Gui
+        ZLIB::ZLIB
     SOURCES lyrics.h
             lyricscolours.h
             lyricsconstants.h
