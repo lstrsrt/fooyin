@@ -293,23 +293,45 @@ void finaliseLines(Fooyin::Lyrics::Lyrics& lyrics)
     sortLinesByTimestamp(lyrics);
 
     auto& lines = lyrics.lines;
-    if(lines.size() < 2) {
+    if(lines.size() >= 2) {
+        auto it   = lines.begin();
+        auto next = std::next(it);
+
+        while(next != lines.end()) {
+            if(next->timestamp > it->timestamp) {
+                it->duration = next->timestamp - it->timestamp;
+            }
+            ++it;
+            ++next;
+        }
+
+        if(lyrics.type != Fooyin::Lyrics::Lyrics::Type::Unsynced) {
+            it->duration = 0;
+        }
+    }
+
+    if(lyrics.type != Fooyin::Lyrics::Lyrics::Type::SyncedWords) {
         return;
     }
 
-    auto it   = lines.begin();
-    auto next = std::next(it);
-
-    while(next != lines.end()) {
-        if(next->timestamp > it->timestamp) {
-            it->duration = next->timestamp - it->timestamp;
+    for(auto& line : lines) {
+        if(line.words.empty()) {
+            continue;
         }
-        ++it;
-        ++next;
-    }
 
-    if(lyrics.type != Fooyin::Lyrics::Lyrics::Type::Unsynced) {
-        it->duration = 0;
+        auto wordIt   = line.words.begin();
+        auto nextWord = std::next(wordIt);
+        while(nextWord != line.words.end()) {
+            if(wordIt->duration == 0 && nextWord->timestamp > wordIt->timestamp) {
+                wordIt->duration = nextWord->timestamp - wordIt->timestamp;
+            }
+            ++wordIt;
+            ++nextWord;
+        }
+
+        if(line.duration > 0 && wordIt->duration == 0 && line.endTimestamp() > wordIt->timestamp) {
+            wordIt->duration = line.endTimestamp() - wordIt->timestamp;
+        }
     }
 }
 
