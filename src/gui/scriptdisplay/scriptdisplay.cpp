@@ -487,17 +487,32 @@ void ScriptDisplay::updateViewportAlignment()
 
 Track ScriptDisplay::currentTrack() const
 {
+    if(const Track track = m_playerController->currentTrack(); track.isValid()) {
+        return track;
+    }
+
     if(auto* playlist = m_playlistHandler->activePlaylist(); playlist && playlist->currentTrack().isValid()) {
         return playlist->currentTrack();
     }
 
-    return m_playerController->currentTrack();
+    return {};
+}
+
+Playlist* ScriptDisplay::currentPlaylist() const
+{
+    if(const PlaylistTrack track = m_playerController->currentPlaylistTrack(); track.playlistId.isValid()) {
+        if(auto* playlist = m_playlistHandler->playlistById(track.playlistId)) {
+            return playlist;
+        }
+    }
+
+    return nullptr;
 }
 
 QString ScriptDisplay::evaluateScript()
 {
     if(const Track track = currentTrack(); track.isValid()) {
-        auto contextData = makePlaybackScriptContext(m_playerController, m_playlistHandler->activePlaylist(),
+        auto contextData = makePlaybackScriptContext(m_playerController, currentPlaylist(),
                                                      TrackListContextPolicy::Fallback, {}, true, false,
                                                      {m_settings->value<Settings::Gui::RatingFullStarSymbol>(),
                                                       m_settings->value<Settings::Gui::RatingHalfStarSymbol>(),

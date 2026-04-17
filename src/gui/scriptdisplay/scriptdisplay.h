@@ -34,6 +34,7 @@ class QTextBrowser;
 
 namespace Fooyin {
 class ActionManager;
+class Playlist;
 class PlayerController;
 class PlaylistHandler;
 class PropertiesDialog;
@@ -90,6 +91,7 @@ private:
     void updateText();
     void updateViewportAlignment();
     [[nodiscard]] Track currentTrack() const;
+    [[nodiscard]] Playlist* currentPlaylist() const;
     [[nodiscard]] QString evaluateScript();
     void activateLink(const QString& link) const;
 
