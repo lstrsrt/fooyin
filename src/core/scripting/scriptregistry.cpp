@@ -701,7 +701,7 @@ ScriptResult ScriptRegistry::valueInternal(const QString& var, const ScriptSubje
         return {};
     }
 
-    return value(resolveBuiltInVariableKind(var), var, subject);
+    return value(resolveVariableInternal(var), var, subject);
 }
 
 ScriptResult ScriptRegistry::calculateResult(const ScriptRegistry::FuncRet& funcRet) const
@@ -733,11 +733,28 @@ ScriptResult ScriptRegistry::calculateResult(const ScriptRegistry::FuncRet& func
     return result;
 }
 
+const ScriptRegistry::VariableInvoker* ScriptRegistry::customVariableInvoker(const VariableKind kind,
+                                                                             const QString& var) const
+{
+    if(kind == VariableKind::Generic) {
+        if(const auto it = m_genericVariableInvokers.find(var); it != m_genericVariableInvokers.cend()) {
+            return &it->second;
+        }
+        return nullptr;
+    }
+
+    if(const auto it = m_customVariables.find(kind); it != m_customVariables.cend()) {
+        return &it->second;
+    }
+
+    return nullptr;
+}
+
 ScriptResult ScriptRegistry::valueForTrack(VariableKind kind, const QString& var, const Track& track,
                                            const Playlist* playlist) const
 {
-    if(const auto it = m_customVariables.find(kind); it != m_customVariables.cend()) {
-        return it->second(makeContext(m_context, &track, nullptr, playlist), var);
+    if(const auto* invoker = customVariableInvoker(kind, var); invoker != nullptr) {
+        return (*invoker)(makeContext(m_context, &track, nullptr, playlist), var);
     }
 
     if(isTrackListVariableKind(kind)) {
@@ -768,8 +785,8 @@ ScriptResult ScriptRegistry::valueForTrack(VariableKind kind, const QString& var
 ScriptResult ScriptRegistry::valueForTrackList(VariableKind kind, const QString& var, const TrackList& tracks,
                                                const Playlist* playlist) const
 {
-    if(const auto it = m_customVariables.find(kind); it != m_customVariables.cend()) {
-        return it->second(makeContext(m_context, nullptr, &tracks, playlist), var);
+    if(const auto* invoker = customVariableInvoker(kind, var); invoker != nullptr) {
+        return (*invoker)(makeContext(m_context, nullptr, &tracks, playlist), var);
     }
 
     if(const auto value = trackListValue(kind, tracks, *this); value.has_value()) {
@@ -785,8 +802,8 @@ ScriptResult ScriptRegistry::valueForTrackList(VariableKind kind, const QString&
 
 ScriptResult ScriptRegistry::valueForPlaylist(VariableKind kind, const QString& var, const Playlist& playlist) const
 {
-    if(const auto it = m_customVariables.find(kind); it != m_customVariables.cend()) {
-        return it->second(makeContext(m_context, nullptr, nullptr, &playlist), var);
+    if(const auto* invoker = customVariableInvoker(kind, var); invoker != nullptr) {
+        return (*invoker)(makeContext(m_context, nullptr, nullptr, &playlist), var);
     }
 
     if(var.isEmpty()) {
@@ -981,7 +998,13 @@ void ScriptRegistry::registerVariable(VariableKind kind, const QString& name, Va
     const QString upperName = name.toUpper();
 
     m_customVariableKinds[upperName] = kind;
-    m_customVariables[kind]          = invoker;
+
+    if(kind == VariableKind::Generic) {
+        m_genericVariableInvokers[upperName] = invoker;
+    }
+    else {
+        m_customVariables[kind] = invoker;
+    }
 }
 
 ScriptFunctionId ScriptRegistry::registerFunction(const QString& name, FunctionInvoker invoker)

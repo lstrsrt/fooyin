@@ -142,10 +142,13 @@ public:
     [[nodiscard]] const TrackListAggregateCache& cachedTrackListValues(const TrackList& tracks) const;
 
 private:
+    [[nodiscard]] const VariableInvoker* customVariableInvoker(VariableKind kind, const QString& var) const;
+
     ScriptContext m_context;
     std::unordered_map<QString, ScriptFunctionId> m_functionIds;
     std::vector<RegisteredFunction> m_functions;
     std::unordered_map<QString, VariableKind> m_customVariableKinds;
+    std::unordered_map<QString, VariableInvoker> m_genericVariableInvokers;
     std::unordered_map<VariableKind, VariableInvoker> m_customVariables;
     mutable TrackListAggregateCache m_trackListCache;
 };
