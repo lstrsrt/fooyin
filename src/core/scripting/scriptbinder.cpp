@@ -242,6 +242,9 @@ VariableKind resolveBuiltInVariableKind(const QString& var)
     if(var == "PLAYTIME"_L1) {
         return VariableKind::Playtime;
     }
+    if(var == "PLAYLIST_SIZE"_L1) {
+        return VariableKind::PlaylistSize;
+    }
     if(var == "PLAYLIST_DURATION"_L1) {
         return VariableKind::PlaylistDuration;
     }

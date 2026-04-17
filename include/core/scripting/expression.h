@@ -139,6 +139,7 @@ enum class VariableKind : uint8_t
     RGAlbumPeakDB,
     TrackCount,
     Playtime,
+    PlaylistSize,
     PlaylistDuration,
     PlaylistElapsed,
     PlaybackTime,

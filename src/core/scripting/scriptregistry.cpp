@@ -242,6 +242,7 @@ bool isTrackListVariableKind(const VariableKind kind)
         case VariableKind::Genres:
         case VariableKind::TrackCount:
         case VariableKind::Playtime:
+        case VariableKind::PlaylistSize:
         case VariableKind::PlaylistDuration:
         case VariableKind::PlaylistElapsed:
             return true;
@@ -384,6 +385,8 @@ std::optional<ScriptRegistry::FuncRet> trackListValue(const VariableKind kind, c
         case VariableKind::Playtime:
         case VariableKind::PlaylistDuration:
             return cache.playtime;
+        case VariableKind::PlaylistSize:
+            return cache.playlistSize;
         case VariableKind::PlaylistElapsed:
             return cache.playlistElapsed;
         case VariableKind::Genres:
@@ -814,6 +817,7 @@ ScriptResult ScriptRegistry::valueForPlaylist(VariableKind kind, const QString& 
         switch(kind) {
             case VariableKind::TrackCount:
             case VariableKind::Playtime:
+            case VariableKind::PlaylistSize:
             case VariableKind::PlaylistDuration:
             case VariableKind::PlaylistElapsed:
             case VariableKind::Genres:
@@ -846,6 +850,7 @@ const ScriptRegistry::TrackListAggregateCache& ScriptRegistry::cachedTrackListVa
         m_trackListCache.currentPosition = currentPosition;
         m_trackListCache.playlistIndex   = playlistIndex;
         m_trackListCache.playtime        = Scripting::playtime(tracks);
+        m_trackListCache.playlistSize    = Scripting::playlistSize(tracks);
         m_trackListCache.genres          = Scripting::genres(tracks);
         m_trackListCache.playlistElapsed = playlistDuration(tracks);
     }

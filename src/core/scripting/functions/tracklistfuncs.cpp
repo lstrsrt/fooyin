@@ -40,6 +40,14 @@ QString playtime(const TrackList& tracks)
     return Utils::msToString(total);
 }
 
+QString playlistSize(const TrackList& tracks)
+{
+    const uint64_t total = std::transform_reduce(tracks.cbegin(), tracks.cend(), 0ULL, std::plus<>(),
+                                                 [](const auto& track) { return track.fileSize(); });
+
+    return Utils::formatFileSize(total);
+}
+
 QString genres(const TrackList& tracks)
 {
     std::set<QString> uniqueGenres;
