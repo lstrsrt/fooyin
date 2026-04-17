@@ -417,8 +417,6 @@ QSize FilterDelegate::richTextSize(const QStyleOptionViewItem& option, const QMo
         return metrics.size(Qt::TextSingleLine, option.text);
     }
 
-    QSize size{0, 0};
-
     return richTextNaturalSize(option, richText);
 }
 
