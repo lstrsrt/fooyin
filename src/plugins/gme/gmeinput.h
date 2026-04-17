@@ -22,7 +22,7 @@
 #include <core/coresettings.h>
 #include <core/engine/audioinput.h>
 
-class Music_Emu;
+struct Music_Emu;
 
 namespace Fooyin::Gme {
 struct MusicEmuDeleter
