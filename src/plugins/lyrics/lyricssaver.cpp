@@ -31,7 +31,7 @@
 #include <QDir>
 #include <QFile>
 #include <QIODevice>
-#include <QTimer>
+#include <QTimerEvent>
 
 using namespace Qt::StringLiterals;
 
@@ -145,15 +145,12 @@ LyricsSaver::LyricsSaver(MusicLibrary* library, SettingsManager* settings, QObje
     : QObject{parent}
     , m_library{library}
     , m_settings{settings}
-    , m_autosaveTimer{nullptr}
+    , m_hasPendingAutoSave{false}
 { }
 
 void LyricsSaver::autoSaveLyrics(const Lyrics& lyrics, const Track& track)
 {
-    if(m_autosaveTimer) {
-        m_autosaveTimer->stop();
-        m_autosaveTimer->deleteLater();
-    }
+    clearAutoSaveTimer();
 
     if(track.isInArchive()) {
         return;
@@ -167,30 +164,17 @@ void LyricsSaver::autoSaveLyrics(const Lyrics& lyrics, const Track& track)
         return;
     }
 
-    const auto saveToMethod = [this, lyrics, track]() {
-        const auto saveMethod = static_cast<SaveMethod>(
-            m_settings->fileValue(Settings::SaveMethod, static_cast<int>(SaveMethod::Directory)).toInt());
-        switch(saveMethod) {
-            case SaveMethod::Tag:
-                writeLyricsToTag(lyrics, track);
-                break;
-            case SaveMethod::Directory:
-                saveLyricsToFile(lyrics, track);
-                break;
-        }
-    };
-
     const auto saveScheme = static_cast<SaveScheme>(m_settings->fileValue(Settings::SaveScheme, 0).toInt());
 
     switch(saveScheme) {
         case SaveScheme::Autosave:
-            saveToMethod();
+            saveToCurrentMethod(lyrics, track);
             break;
         case SaveScheme::AutosavePeriod: {
-            m_autosaveTimer = new QTimer(this);
-            m_autosaveTimer->setSingleShot(true);
-            QObject::connect(m_autosaveTimer, &QTimer::timeout, this, saveToMethod);
-            m_autosaveTimer->start(std::min(AutosaveTimer, static_cast<int>(track.duration() / 3)));
+            m_pendingAutoSaveLyrics = lyrics;
+            m_pendingAutoSaveTrack  = track;
+            m_hasPendingAutoSave    = true;
+            m_autosaveTimer.start(std::min(AutosaveTimer, static_cast<int>(track.duration() / 3)), this);
         }
         case SaveScheme::Manual:
             break;
@@ -199,25 +183,13 @@ void LyricsSaver::autoSaveLyrics(const Lyrics& lyrics, const Track& track)
 
 void LyricsSaver::saveLyrics(const Lyrics& lyrics, const Track& track)
 {
-    if(m_autosaveTimer) {
-        m_autosaveTimer->stop();
-        m_autosaveTimer->deleteLater();
-    }
+    clearAutoSaveTimer();
 
     if(track.isInArchive()) {
         return;
     }
 
-    const auto saveMethod = static_cast<SaveMethod>(
-        m_settings->fileValue(Settings::SaveMethod, static_cast<int>(SaveMethod::Directory)).toInt());
-    switch(saveMethod) {
-        case SaveMethod::Tag:
-            writeLyricsToTag(lyrics, track);
-            break;
-        case SaveMethod::Directory:
-            saveLyricsToFile(lyrics, track);
-            break;
-    }
+    saveToCurrentMethod(lyrics, track);
 }
 
 void LyricsSaver::writeLyricsToTags(const TrackList& tracks)
@@ -314,5 +286,46 @@ QString LyricsSaver::lyricsToLrc(const Lyrics& lyrics, const SaveOptions& option
 void LyricsSaver::lyricsToLrc(const Lyrics& lyrics, QIODevice* device, const SaveOptions& options)
 {
     toLrc(lyrics, device, formatTimestamp, options);
+}
+
+void LyricsSaver::timerEvent(QTimerEvent* event)
+{
+    if(event->timerId() != m_autosaveTimer.timerId()) {
+        QObject::timerEvent(event);
+        return;
+    }
+
+    if(!m_hasPendingAutoSave) {
+        m_autosaveTimer.stop();
+        return;
+    }
+
+    const Lyrics lyrics{m_pendingAutoSaveLyrics};
+    const Track track{m_pendingAutoSaveTrack};
+    clearAutoSaveTimer();
+
+    saveToCurrentMethod(lyrics, track);
+}
+
+void LyricsSaver::clearAutoSaveTimer()
+{
+    m_autosaveTimer.stop();
+    m_pendingAutoSaveLyrics = {};
+    m_pendingAutoSaveTrack  = {};
+    m_hasPendingAutoSave    = false;
+}
+
+void LyricsSaver::saveToCurrentMethod(const Lyrics& lyrics, const Track& track)
+{
+    const auto saveMethod = static_cast<SaveMethod>(
+        m_settings->fileValue(Settings::SaveMethod, static_cast<int>(SaveMethod::Directory)).toInt());
+    switch(saveMethod) {
+        case SaveMethod::Tag:
+            writeLyricsToTag(lyrics, track);
+            break;
+        case SaveMethod::Directory:
+            saveLyricsToFile(lyrics, track);
+            break;
+    }
 }
 } // namespace Fooyin::Lyrics

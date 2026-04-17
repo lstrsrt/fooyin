@@ -19,14 +19,17 @@
 
 #pragma once
 
+#include "lyrics.h"
+
 #include <core/scripting/scriptparser.h>
 #include <core/track.h>
 
+#include <QBasicTimer>
 #include <QObject>
 
 #include <optional>
 
-class QTimer;
+class QTimerEvent;
 
 namespace Fooyin {
 class MusicLibrary;
@@ -34,8 +37,6 @@ class SettingsManager;
 class Track;
 
 namespace Lyrics {
-struct Lyrics;
-
 class LyricsSaver : public QObject
 {
     Q_OBJECT
@@ -63,12 +64,22 @@ public:
     static QString lyricsToLrc(const Lyrics& lyrics, const SaveOptions& options);
     static void lyricsToLrc(const Lyrics& lyrics, QIODevice* device, const SaveOptions& options);
 
+protected:
+    void timerEvent(QTimerEvent* event) override;
+
 private:
+    void clearAutoSaveTimer();
+    void saveToCurrentMethod(const Lyrics& lyrics, const Track& track);
+
     MusicLibrary* m_library;
     SettingsManager* m_settings;
 
     ScriptParser m_parser;
-    QTimer* m_autosaveTimer;
+    QBasicTimer m_autosaveTimer;
+
+    Lyrics m_pendingAutoSaveLyrics;
+    Track m_pendingAutoSaveTrack;
+    bool m_hasPendingAutoSave;
 };
 } // namespace Lyrics
 } // namespace Fooyin
