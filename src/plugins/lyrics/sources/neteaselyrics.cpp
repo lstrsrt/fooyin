@@ -19,6 +19,8 @@
 
 #include "neteaselyrics.h"
 
+#include "lyricsparser.h"
+
 #include <core/network/networkaccessmanager.h>
 
 #include <QJsonArray>
@@ -26,6 +28,8 @@
 #include <QNetworkCookie>
 #include <QNetworkReply>
 #include <QNetworkRequest>
+#include <QRegularExpression>
+#include <QTextStream>
 #include <QUrl>
 #include <QUrlQuery>
 
@@ -43,6 +47,64 @@ QNetworkRequest setupRequest(const char* url)
     req.setHeader(QNetworkRequest::ContentTypeHeader, u"application/x-www-form-urlencoded"_s);
 
     return req;
+}
+
+QString yrcToEnhancedLrc(const QString& yrc)
+{
+    if(yrc.isEmpty()) {
+        return {};
+    }
+
+    QString converted;
+    QTextStream stream{&converted};
+
+    static const QRegularExpression LinePattern{uR"(^\[(\d+),(\d+)\](.*)$)"_s};
+    static const QRegularExpression WordPattern{uR"(\((\d+),(\d+),\d+\)(.*?)(?=\(\d+,\d+,\d+\)|$))"_s};
+
+    const QStringList lines = yrc.split(u'\n', Qt::SkipEmptyParts);
+    for(QString line : lines) {
+        if(line.endsWith(u'\r')) {
+            line.chop(1);
+        }
+        if(line.isEmpty()) {
+            continue;
+        }
+
+        const QRegularExpressionMatch lineMatch = LinePattern.match(line);
+        if(!lineMatch.hasMatch()) {
+            return {};
+        }
+
+        bool ok{false};
+        const uint64_t lineTimestamp = lineMatch.capturedView(1).toULongLong(&ok);
+        if(!ok) {
+            return {};
+        }
+
+        stream << u"[%1]"_s.arg(Fooyin::Lyrics::formatTimestamp(lineTimestamp));
+
+        bool hasWords{false};
+        auto wordIt = WordPattern.globalMatch(lineMatch.captured(3));
+        while(wordIt.hasNext()) {
+            const QRegularExpressionMatch wordMatch = wordIt.next();
+
+            const uint64_t wordTimestamp = wordMatch.capturedView(1).toULongLong(&ok);
+            if(!ok) {
+                return {};
+            }
+
+            stream << u"<%1>%2"_s.arg(Fooyin::Lyrics::formatTimestamp(wordTimestamp), wordMatch.captured(3));
+            hasWords = true;
+        }
+
+        if(!hasWords) {
+            return {};
+        }
+
+        stream << "\n";
+    }
+
+    return converted.trimmed();
 }
 } // namespace
 
@@ -141,7 +203,7 @@ void NeteaseLyrics::makeLyricRequest()
     urlQuery.addQueryItem(u"kv"_s, u"0"_s);
     urlQuery.addQueryItem(u"tv"_s, u"0"_s);
     urlQuery.addQueryItem(u"rv"_s, u"0"_s);
-    urlQuery.addQueryItem(u"yv"_s, u"0"_s);
+    urlQuery.addQueryItem(u"yv"_s, u"1"_s);
     urlQuery.addQueryItem(u"ytv"_s, u"0"_s);
     urlQuery.addQueryItem(u"yrv"_s, u"0"_s);
     urlQuery.addQueryItem(u"os"_s, u"pc"_s);
@@ -157,16 +219,28 @@ void NeteaseLyrics::makeLyricRequest()
 void NeteaseLyrics::handleLyricReply()
 {
     QJsonObject obj;
-    if(getJsonFromReply(reply(), &obj)) {
-        resetReply();
+    const bool hasJson = getJsonFromReply(reply(), &obj);
+    resetReply();
 
+    if(hasJson) {
         if(m_currentIndex < 0 || std::cmp_greater_equal(m_currentIndex, m_data.size())) {
             emit searchResult(m_data);
             return;
         }
 
-        const QJsonObject lrc = obj.value("lrc"_L1).toObject();
-        const QString lyrics  = lrc.value("lyric"_L1).toString().trimmed();
+        QString lyrics;
+
+        const QJsonObject yrc   = obj.value("yrc"_L1).toObject();
+        const QString yrcLyrics = yrc.value("lyric"_L1).toString().trimmed();
+        if(!yrcLyrics.isEmpty()) {
+            lyrics = yrcToEnhancedLrc(yrcLyrics);
+        }
+
+        if(lyrics.isEmpty()) {
+            const QJsonObject lrc = obj.value("lrc"_L1).toObject();
+            lyrics                = lrc.value("lyric"_L1).toString().trimmed();
+        }
+
         if(!lyrics.isEmpty() && lyrics != "暂无歌词"_L1) {
             LyricData& data = m_data.at(m_currentIndex);
             data.data       = lyrics;
