@@ -29,10 +29,14 @@
 
 using namespace Qt::StringLiterals;
 
+constexpr auto SearchUrl = "https://lyrics.kugou.com/search"_L1;
+constexpr auto LyricUrl  = "https://lyrics.kugou.com/download"_L1;
+
 namespace {
 QNetworkRequest setupRequest(const QUrl& url)
 {
     QNetworkRequest req{url};
+    req.setAttribute(QNetworkRequest::RedirectPolicyAttribute, QNetworkRequest::NoLessSafeRedirectPolicy);
     return req;
 }
 } // namespace
@@ -50,8 +54,8 @@ void KugouLyrics::search(const SearchParams& params)
     m_data.clear();
 
     // Construct search URL
-    QString keyword = u"%1-%2"_s.arg(params.artist, params.title);
-    QUrl url(QStringLiteral("http://lyrics.kugou.com/search"));
+    const QString keyword = u"%1-%2"_s.arg(params.artist, params.title);
+    QUrl url{SearchUrl};
     QUrlQuery q;
     q.addQueryItem(u"ver"_s, u"1"_s);
     q.addQueryItem(u"man"_s, u"yes"_s);
@@ -105,11 +109,13 @@ void KugouLyrics::handleSearchReply()
         }
 
         KugouMetadata metadata;
-        metadata.id        = it.value("id"_L1).toString();
+        metadata.id        = it.value("id"_L1).toVariant().toString();
         metadata.accessKey = it.value("accesskey"_L1).toString();
         metadata.title     = it.value("song"_L1).toString();
         metadata.artist    = it.value("singer"_L1).toString();
-        m_metadata.push_back(std::move(metadata));
+        if(!metadata.id.isEmpty() && !metadata.accessKey.isEmpty()) {
+            m_metadata.push_back(std::move(metadata));
+        }
     }
 
     if(m_metadata.empty()) {
@@ -130,7 +136,7 @@ void KugouLyrics::makeLyricRequest()
 
     const KugouMetadata& metadata = m_metadata.at(m_currentIndex);
 
-    QUrl url(QStringLiteral("http://lyrics.kugou.com/download"));
+    QUrl url{LyricUrl};
     QUrlQuery q;
     q.addQueryItem(u"ver"_s, u"1"_s);
     q.addQueryItem(u"client"_s, u"pc"_s);
@@ -151,7 +157,11 @@ void KugouLyrics::makeLyricRequest()
 void KugouLyrics::handleLyricReply()
 {
     QJsonObject obj;
-    if(getJsonFromReply(reply(), &obj)) {
+    const bool hasJson = getJsonFromReply(reply(), &obj);
+
+    resetReply();
+
+    if(hasJson) {
         // If content exists, it's base64 encoded
         const QString content = obj.value("content"_L1).toString();
         if(!content.isEmpty()) {

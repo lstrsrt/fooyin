@@ -46,7 +46,7 @@ private:
     };
 
     std::vector<KugouMetadata> m_metadata;
-    int m_currentIndex;
+    int m_currentIndex{-1};
     std::vector<LyricData> m_data;
 };
 } // namespace Fooyin::Lyrics
