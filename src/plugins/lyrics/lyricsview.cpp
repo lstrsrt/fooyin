@@ -21,6 +21,9 @@
 
 #include "lyricsmodel.h"
 
+#include <gui/scripting/richtextutils.h>
+
+#include <QAbstractTextDocumentLayout>
 #include <QApplication>
 #include <QBrush>
 #include <QContextMenuEvent>
@@ -29,9 +32,25 @@
 #include <QPainter>
 #include <QPen>
 #include <QScrollBar>
+#include <QTextDocument>
 #include <QWheelEvent>
 
 using namespace Qt::StringLiterals;
+
+namespace {
+QString alignmentToCss(const Qt::Alignment alignment)
+{
+    switch(alignment & Qt::AlignHorizontal_Mask) {
+        case Qt::AlignRight:
+            return u"right"_s;
+        case Qt::AlignLeft:
+            return u"left"_s;
+        case Qt::AlignCenter:
+        default:
+            return u"center"_s;
+    }
+}
+} // namespace
 
 namespace Fooyin::Lyrics {
 LyricsView::LyricsView(QWidget* parent)
@@ -98,7 +117,7 @@ void LyricsView::setDisplayMargins(const QMargins& margins)
     viewport()->update();
 }
 
-void LyricsView::setDisplayString(const QString& string)
+void LyricsView::setDisplayString(const RichText& string)
 {
     m_displayString = string;
     viewport()->update();
@@ -122,12 +141,34 @@ void LyricsView::contextMenuEvent(QContextMenuEvent* event)
 
 void LyricsView::paintEvent(QPaintEvent* event)
 {
-    if(!m_displayString.isEmpty()) {
+    if(!m_displayString.empty()) {
         QPainter painter{viewport()};
         const QRect textRect = viewport()->rect().adjusted(m_displayMargins.left(), m_displayMargins.top(),
                                                            -m_displayMargins.right(), -m_displayMargins.bottom());
-        const auto alignment = (m_displayAlignment & Qt::AlignHorizontal_Mask) | Qt::AlignVCenter | Qt::TextWordWrap;
-        painter.drawText(textRect, alignment, m_displayString);
+        if(textRect.isEmpty()) {
+            return;
+        }
+
+        QTextDocument document;
+        document.setDocumentMargin(0);
+        document.setTextWidth(textRect.width());
+        document.setHtml(u"<html><body style=\"margin:0;text-align:%1;\">%2</body></html>"_s.arg(
+            alignmentToCss(m_displayAlignment), richTextToHtml(m_displayString)));
+
+        const qreal docHeight = document.size().height();
+        qreal textTop         = textRect.top();
+        if(docHeight < textRect.height()) {
+            textTop += (textRect.height() - docHeight) / 2.0;
+        }
+
+        painter.save();
+        painter.setClipRect(textRect);
+        painter.translate(textRect.left(), textTop);
+
+        const QAbstractTextDocumentLayout::PaintContext context;
+        document.documentLayout()->draw(&painter, context);
+
+        painter.restore();
         return;
     }
 
@@ -172,7 +213,7 @@ void LyricsView::mousePressEvent(QMouseEvent* event)
 
     QListView::mousePressEvent(event);
 
-    if(event->button() != Qt::LeftButton || !m_displayString.isEmpty()) {
+    if(event->button() != Qt::LeftButton || !m_displayString.empty()) {
         event->ignore();
         return;
     }
@@ -193,7 +234,7 @@ void LyricsView::mouseMoveEvent(QMouseEvent* event)
 {
     QListView::mouseMoveEvent(event);
 
-    if(!m_leftButtonDown || !(event->buttons() & Qt::LeftButton) || !m_displayString.isEmpty()) {
+    if(!m_leftButtonDown || !(event->buttons() & Qt::LeftButton) || !m_displayString.empty()) {
         return;
     }
 

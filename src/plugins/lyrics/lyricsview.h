@@ -19,6 +19,8 @@
 
 #pragma once
 
+#include <gui/scripting/richtext.h>
+
 #include <QListView>
 #include <QMargins>
 #include <QPersistentModelIndex>
@@ -44,7 +46,7 @@ public:
     void setEdgeFadeEnabled(bool enabled);
     void setEdgeFadeSizePercent(int percent);
     void setDisplayMargins(const QMargins& margins);
-    void setDisplayString(const QString& string);
+    void setDisplayString(const RichText& string);
 
     [[nodiscard]] bool isDragSeeking() const;
 
@@ -78,7 +80,7 @@ private:
     void updateDragPreview(const QPoint& pos);
     void clearDragPreview();
 
-    QString m_displayString;
+    RichText m_displayString;
     Qt::Alignment m_displayAlignment;
     QMargins m_displayMargins;
 

@@ -33,6 +33,7 @@
 #include <core/scripting/scriptparser.h>
 #include <gui/configdialog.h>
 #include <gui/guisettings.h>
+#include <gui/scripting/scriptformatter.h>
 #include <gui/widgets/colourbutton.h>
 #include <gui/widgets/scriptlineedit.h>
 #include <utils/settings/settingsmanager.h>
@@ -257,7 +258,7 @@ void LyricsWidget::updateLyrics(const Track& track, bool force)
         return;
     }
 
-    m_lyricsView->setDisplayString(m_parser.evaluate(m_config.noLyricsScript, track));
+    m_lyricsView->setDisplayString(noLyricsDisplayText(track));
 
     m_finderConnection = QObject::connect(m_lyricsFinder, &LyricsFinder::lyricsFound, this,
                                           [this](const Track& /*track*/, const Lyrics& lyrics) { loadLyrics(lyrics); });
@@ -441,7 +442,7 @@ void LyricsWidget::applyConfig(const ConfigData& config)
     updateScrollMode(static_cast<ScrollMode>(m_config.scrollMode));
 
     if(!m_currentLyrics.isValid() && m_currentTrack.isValid()) {
-        m_lyricsView->setDisplayString(m_parser.evaluate(m_config.noLyricsScript, m_currentTrack));
+        m_lyricsView->setDisplayString(noLyricsDisplayText(m_currentTrack));
     }
 }
 
@@ -737,7 +738,7 @@ void LyricsWidget::handleLyricsSearchFinished(const Track& track, bool foundAny)
     m_lyricsView->setEdgeFadeEnabled(false);
 
     if(track.isValid()) {
-        m_lyricsView->setDisplayString(m_parser.evaluate(m_config.noLyricsScript, track));
+        m_lyricsView->setDisplayString(noLyricsDisplayText(track));
     }
     else {
         m_lyricsView->setDisplayString({});
@@ -760,7 +761,7 @@ void LyricsWidget::changeLyrics(const Lyrics& lyrics)
         updateEdgeFadeState();
     }
     else {
-        m_lyricsView->setDisplayString(m_parser.evaluate(m_config.noLyricsScript, m_currentTrack));
+        m_lyricsView->setDisplayString(noLyricsDisplayText(m_currentTrack));
         m_model->setLyrics({});
         m_lyricsView->setEdgeFadeEnabled(false);
     }
@@ -807,6 +808,27 @@ void LyricsWidget::setCurrentTime(uint64_t time)
     m_currentTime = time;
     m_model->setCurrentTime(time);
     highlightCurrentLine();
+}
+
+RichText LyricsWidget::noLyricsDisplayText(const Track& track)
+{
+    const QString displayText = m_parser.evaluate(m_config.noLyricsScript, track);
+    if(displayText.isEmpty()) {
+        return {};
+    }
+
+    ScriptFormatter formatter;
+
+    QFont baseFont;
+    if(m_config.baseFont.isEmpty() || !baseFont.fromString(m_config.baseFont)) {
+        baseFont = Lyrics::defaultFont();
+    }
+    formatter.setBaseFont(baseFont);
+
+    const Colours colours = m_config.colours.isValid() ? m_config.colours.value<Colours>() : Colours{};
+    formatter.setBaseColour(colours.colour(Colours::Type::LineUnsynced, m_lyricsView->palette()));
+
+    return formatter.evaluate(displayText);
 }
 
 void LyricsWidget::updateViewportPadding()

@@ -39,6 +39,7 @@ class EngineController;
 class PlayerController;
 class SettingsManager;
 class Track;
+struct RichText;
 
 namespace Lyrics {
 class LyricsView;
@@ -110,6 +111,7 @@ private:
 
     void setCurrentTime(uint64_t time);
     void seekTo(const QModelIndex& index, const QPoint& pos);
+    [[nodiscard]] RichText noLyricsDisplayText(const Track& track);
     void updateViewportPadding();
     void updateEdgeFadeState();
 
