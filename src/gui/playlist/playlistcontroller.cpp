@@ -45,7 +45,7 @@ PlaylistController::PlaylistController(Application* app, TrackSelectionControlle
     , m_presetRegistry{new PresetRegistry(m_settings, this)}
     , m_columnRegistry{new PlaylistColumnRegistry(m_settings, this)}
     , m_uiController{new PlaylistUiController(this, this)}
-    , m_workspace{std::make_unique<PlaylistWorkspace>(m_settings)}
+    , m_workspace{std::make_unique<PlaylistWorkspace>()}
 {
     m_workspace->restorePlaylistStates(m_handler);
 

@@ -25,12 +25,11 @@ namespace Fooyin {
 class PlayerController;
 class Playlist;
 class PlaylistHandler;
-class SettingsManager;
 
 class PlaylistWorkspace
 {
 public:
-    explicit PlaylistWorkspace(SettingsManager* settings);
+    explicit PlaylistWorkspace();
     ~PlaylistWorkspace();
 
     void restorePlaylistStates(PlaylistHandler* handler);

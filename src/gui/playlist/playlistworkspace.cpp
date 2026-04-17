@@ -25,10 +25,9 @@
 #include <utility>
 
 namespace Fooyin {
-PlaylistWorkspace::PlaylistWorkspace(SettingsManager* settings)
+PlaylistWorkspace::PlaylistWorkspace()
     : m_loaded{false}
     , m_currentPlaylist{nullptr}
-    , m_state{settings}
 { }
 
 PlaylistWorkspace::~PlaylistWorkspace() = default;
@@ -44,7 +43,7 @@ void PlaylistWorkspace::restoreLastPlaylist(PlaylistHandler* handler, PlayerCont
         return;
     }
 
-    const int lastId = m_state.lastPlaylistDbId();
+    const int lastId = PlaylistWorkspaceState::lastPlaylistDbId();
 
     if(lastId >= 0) {
         m_currentPlaylist = handler->playlistByDbId(lastId);

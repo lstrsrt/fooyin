@@ -36,10 +36,10 @@ class SettingsManager;
 class PlaylistWorkspaceState
 {
 public:
-    explicit PlaylistWorkspaceState(SettingsManager* settings);
+    PlaylistWorkspaceState();
     ~PlaylistWorkspaceState();
 
-    [[nodiscard]] int lastPlaylistDbId() const;
+    static int lastPlaylistDbId();
     void savePersistentState(Playlist* currentPlaylist) const;
     void restorePlaylistStates(PlaylistHandler* handler);
 
@@ -64,7 +64,6 @@ public:
     void setClipboard(const TrackList& tracks);
 
 private:
-    SettingsManager* m_settings;
     std::unordered_map<Playlist*, std::unique_ptr<QUndoStack>> m_histories;
     std::unordered_map<Playlist*, PlaylistViewState> m_states;
     std::unordered_map<Playlist*, QString> m_currentSearches;

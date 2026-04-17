@@ -31,13 +31,11 @@ constexpr auto LastPlaylistId = "PlaylistWidget/LastPlaylistId";
 constexpr auto PlaylistStates = "PlaylistWidget/PlaylistStates";
 
 namespace Fooyin {
-PlaylistWorkspaceState::PlaylistWorkspaceState(SettingsManager* settings)
-    : m_settings{settings}
-{ }
+PlaylistWorkspaceState::PlaylistWorkspaceState() { }
 
 PlaylistWorkspaceState::~PlaylistWorkspaceState() = default;
 
-int PlaylistWorkspaceState::lastPlaylistDbId() const
+int PlaylistWorkspaceState::lastPlaylistDbId()
 {
     const FyStateSettings stateSettings;
     return stateSettings.value(LastPlaylistId, -1).toInt();
