@@ -21,6 +21,7 @@
 
 #include <gui/fywidget.h>
 
+class QJsonObject;
 class QTreeView;
 
 namespace Fooyin {
@@ -44,9 +45,28 @@ public:
 
     [[nodiscard]] QString name() const override;
     [[nodiscard]] QString layoutName() const override;
+    void saveLayoutData(QJsonObject& layout) override;
+    void loadLayoutData(const QJsonObject& layout) override;
+
+    struct ConfigData
+    {
+        QString leftScript;
+        QString rightScript;
+        QString playingTextColour;
+        QString playingBackgroundColour;
+    };
+
+    [[nodiscard]] ConfigData factoryConfig() const;
+    [[nodiscard]] ConfigData defaultConfig() const;
+    [[nodiscard]] const ConfigData& currentConfig() const;
+    void saveDefaults(const ConfigData& config) const;
+    void clearSavedDefaults() const;
+    void applyConfig(const ConfigData& config);
 
 protected:
+    void changeEvent(QEvent* event) override;
     void contextMenuEvent(QContextMenuEvent* event) override;
+    void openConfigDialog() override;
 
 private:
     void selectionChanged();
@@ -61,6 +81,8 @@ private:
     void importPlaylists(const QList<QUrl>& urls, const QString& group, int index);
     void tracksToPlaylist(const std::vector<int>& trackIds, const UId& id);
     void tracksToGroup(const std::vector<int>& trackIds, const QString& group, int index);
+    [[nodiscard]] ConfigData configFromLayout(const QJsonObject& layout) const;
+    static void saveConfigToLayout(const ConfigData& config, QJsonObject& layout);
 
     ActionManager* m_actionManager;
     SettingsManager* m_settings;
@@ -91,6 +113,7 @@ private:
     QAction* m_sortGroupPlaylists;
     Command* m_sortGroupPlaylistsCmd;
 
+    ConfigData m_config;
     UId m_currentPlaylistId;
     bool m_creatingPlaylist{false};
 };

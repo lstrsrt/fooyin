@@ -1,6 +1,6 @@
 /*
  * Fooyin
- * Copyright © 2023, Luke Taylor <LukeT1@proton.me>
+ * Copyright © 2026, Luke Taylor <luket@pm.me>
  *
  * Fooyin is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,44 +19,28 @@
 
 #pragma once
 
-#include <utils/treeitem.h>
+#include <core/scripting/scriptproviders.h>
+#include <core/scripting/scripttypes.h>
 
 #include <QString>
 
 namespace Fooyin {
-class Playlist;
+class PlaylistOrganiserItem;
 
-class PlaylistOrganiserItem : public TreeItem<PlaylistOrganiserItem>
+class OrganiserScripEnvironment : public ScriptEnvironment
 {
 public:
-    enum Type
-    {
-        Root = 0,
-        GroupItem,
-        PlaylistItem
-    };
+    explicit OrganiserScripEnvironment(const PlaylistOrganiserItem* item = nullptr);
 
-    enum Data
-    {
-        ItemType = Qt::UserRole,
-        PlaylistData,
-        RichText,
-        RichRightText,
-    };
+    void setItem(const PlaylistOrganiserItem* item);
 
-    PlaylistOrganiserItem();
-    PlaylistOrganiserItem(QString title, PlaylistOrganiserItem* parent);
-    PlaylistOrganiserItem(Playlist* playlist, PlaylistOrganiserItem* parent);
-
-    Type type() const;
-    QString title() const;
-    Playlist* playlist() const;
-
-    void setTitle(const QString& title);
+    [[nodiscard]] QString nodeName() const;
+    [[nodiscard]] bool isGroup() const;
+    [[nodiscard]] int count() const;
 
 private:
-    Type m_type;
-    QString m_title;
-    Playlist* m_playlist;
+    const PlaylistOrganiserItem* m_item;
 };
+
+[[nodiscard]] StaticScriptVariableProvider organiserScripVariableProvider();
 } // namespace Fooyin

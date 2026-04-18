@@ -22,6 +22,7 @@
 #include "dialog/autoplaylistdialog.h"
 #include "playlist/playlistcontroller.h"
 #include "playlist/playlistinteractor.h"
+#include "playlistorganiserconfigwidget.h"
 #include "playlistorganiserdelegate.h"
 #include "playlistorganisermodel.h"
 
@@ -37,8 +38,11 @@
 #include <utils/settings/settingsmanager.h>
 #include <utils/utils.h>
 
+#include <QApplication>
 #include <QContextMenuEvent>
+#include <QEvent>
 #include <QFileInfo>
+#include <QJsonObject>
 #include <QMainWindow>
 #include <QMenu>
 #include <QTreeView>
@@ -50,8 +54,12 @@
 
 using namespace Qt::StringLiterals;
 
-constexpr auto OrganiserModel = "PlaylistOrganiser/Model";
-constexpr auto OrganiserState = "PlaylistOrganiser/State";
+constexpr auto OrganiserModel                   = "PlaylistOrganiser/Model";
+constexpr auto OrganiserState                   = "PlaylistOrganiser/State";
+constexpr auto OrganiserLeftScript              = "PlaylistOrganiser/LeftScript";
+constexpr auto OrganiserRightScript             = "PlaylistOrganiser/RightScript";
+constexpr auto OrganiserPlayingTextColour       = "PlaylistOrganiser/PlayingTextColour";
+constexpr auto OrganiserPlayingBackgroundColour = "PlaylistOrganiser/PlayingBackgroundColour";
 
 namespace {
 QByteArray saveExpandedState(QTreeView* view, QAbstractItemModel* model)
@@ -149,6 +157,19 @@ bool isPlaylistUrl(const QUrl& url)
     return extensions.contains(extension);
 }
 
+QString normaliseColour(const QString& colour)
+{
+    const QColor parsedColour{colour};
+    return parsedColour.isValid() ? parsedColour.name(QColor::HexArgb) : QString{};
+}
+
+QColor defaultPlayingBackgroundColour()
+{
+    QColor colour = QApplication::palette().highlight().color();
+    colour.setAlpha(90);
+    return colour;
+}
+
 } // namespace
 
 namespace Fooyin {
@@ -192,7 +213,7 @@ PlaylistOrganiser::PlaylistOrganiser(ActionManager* actionManager, PlaylistInter
     layout->addWidget(m_organiserTree);
 
     m_organiserTree->setHeaderHidden(true);
-    m_organiserTree->setUniformRowHeights(true);
+    m_organiserTree->setUniformRowHeights(false);
     m_organiserTree->setSelectionBehavior(QAbstractItemView::SelectRows);
     m_organiserTree->setSelectionMode(QAbstractItemView::ExtendedSelection);
     m_organiserTree->setDragEnabled(true);
@@ -203,7 +224,7 @@ PlaylistOrganiser::PlaylistOrganiser(ActionManager* actionManager, PlaylistInter
     m_organiserTree->setAllColumnsShowFocus(true);
 
     m_organiserTree->setModel(m_model);
-    m_organiserTree->setItemDelegate(new PlaylistOrganiserDelegate(this));
+    m_organiserTree->setItemDelegate(new PlaylistOrganiserDelegate(m_organiserTree));
 
     actionManager->addContextObject(m_context);
 
@@ -310,6 +331,9 @@ PlaylistOrganiser::PlaylistOrganiser(ActionManager* actionManager, PlaylistInter
         m_model->populate();
     }
 
+    m_config = defaultConfig();
+    applyConfig(m_config);
+
     selectCurrentPlaylist();
 }
 
@@ -327,6 +351,94 @@ QString PlaylistOrganiser::name() const
 QString PlaylistOrganiser::layoutName() const
 {
     return u"PlaylistOrganiser"_s;
+}
+
+void PlaylistOrganiser::saveLayoutData(QJsonObject& layout)
+{
+    saveConfigToLayout(m_config, layout);
+}
+
+void PlaylistOrganiser::loadLayoutData(const QJsonObject& layout)
+{
+    applyConfig(configFromLayout(layout));
+}
+
+PlaylistOrganiser::ConfigData PlaylistOrganiser::factoryConfig() const
+{
+    return {
+        .leftScript              = PlaylistOrganiserModel::defaultLeftDisplayScript(),
+        .rightScript             = PlaylistOrganiserModel::defaultRightDisplayScript(),
+        .playingTextColour       = {},
+        .playingBackgroundColour = {},
+    };
+}
+
+PlaylistOrganiser::ConfigData PlaylistOrganiser::defaultConfig() const
+{
+    auto config{factoryConfig()};
+
+    config.leftScript  = m_settings->fileValue(OrganiserLeftScript, config.leftScript).toString();
+    config.rightScript = m_settings->fileValue(OrganiserRightScript, config.rightScript).toString();
+
+    config.playingTextColour = normaliseColour(m_settings->fileValue(OrganiserPlayingTextColour, {}).toString());
+    config.playingBackgroundColour
+        = normaliseColour(m_settings->fileValue(OrganiserPlayingBackgroundColour, {}).toString());
+
+    return config;
+}
+
+const PlaylistOrganiser::ConfigData& PlaylistOrganiser::currentConfig() const
+{
+    return m_config;
+}
+
+void PlaylistOrganiser::saveDefaults(const ConfigData& config) const
+{
+    m_settings->fileSet(OrganiserLeftScript, config.leftScript);
+    m_settings->fileSet(OrganiserRightScript, config.rightScript);
+    m_settings->fileSet(OrganiserPlayingTextColour, normaliseColour(config.playingTextColour));
+    m_settings->fileSet(OrganiserPlayingBackgroundColour, normaliseColour(config.playingBackgroundColour));
+}
+
+void PlaylistOrganiser::clearSavedDefaults() const
+{
+    m_settings->fileRemove(OrganiserLeftScript);
+    m_settings->fileRemove(OrganiserRightScript);
+    m_settings->fileRemove(OrganiserPlayingTextColour);
+    m_settings->fileRemove(OrganiserPlayingBackgroundColour);
+}
+
+void PlaylistOrganiser::applyConfig(const ConfigData& config)
+{
+    m_config.leftScript              = config.leftScript;
+    m_config.rightScript             = config.rightScript;
+    m_config.playingTextColour       = normaliseColour(config.playingTextColour);
+    m_config.playingBackgroundColour = normaliseColour(config.playingBackgroundColour);
+
+    const QColor playingTextColour{m_config.playingTextColour};
+    QColor playingBackgroundColour{m_config.playingBackgroundColour};
+    if(!playingBackgroundColour.isValid()) {
+        playingBackgroundColour = defaultPlayingBackgroundColour();
+    }
+
+    m_model->setDisplayScripts(m_config.leftScript, m_config.rightScript);
+    m_model->setColours(playingTextColour, playingBackgroundColour);
+}
+
+void PlaylistOrganiser::changeEvent(QEvent* event)
+{
+    FyWidget::changeEvent(event);
+
+    switch(event->type()) {
+        case QEvent::PaletteChange:
+        case QEvent::StyleChange:
+            applyConfig(m_config);
+            m_organiserTree->doItemsLayout();
+            m_organiserTree->viewport()->update();
+            break;
+        default:
+            break;
+    }
 }
 
 void PlaylistOrganiser::contextMenuEvent(QContextMenuEvent* event)
@@ -381,6 +493,7 @@ void PlaylistOrganiser::contextMenuEvent(QContextMenuEvent* event)
     m_sortGroupPlaylists->setEnabled(groupCount == 1 && playlistCount == 0); // only enable if a group is selected
 
     menu->addSeparator();
+    addConfigureAction(menu, false);
 
     if(index.data(PlaylistOrganiserItem::ItemType).toInt() == PlaylistOrganiserItem::PlaylistItem) {
         if(auto* savePlaylist = m_actionManager->command(Constants::Actions::SavePlaylist)) {
@@ -629,6 +742,39 @@ void PlaylistOrganiser::tracksToGroup(const std::vector<int>& trackIds, const QS
     if(auto* playlist = m_playlistInteractor->handler()->createNewPlaylist(name, tracks)) {
         m_model->playlistInserted(playlist, group, index);
     }
+}
+
+PlaylistOrganiser::ConfigData PlaylistOrganiser::configFromLayout(const QJsonObject& layout) const
+{
+    ConfigData config{defaultConfig()};
+
+    if(layout.contains("LeftScript"_L1)) {
+        config.leftScript = layout.value("LeftScript"_L1).toString();
+    }
+    if(layout.contains("RightScript"_L1)) {
+        config.rightScript = layout.value("RightScript"_L1).toString();
+    }
+    if(layout.contains("PlayingTextColour"_L1)) {
+        config.playingTextColour = normaliseColour(layout.value("PlayingTextColour"_L1).toString());
+    }
+    if(layout.contains("PlayingBackgroundColour"_L1)) {
+        config.playingBackgroundColour = normaliseColour(layout.value("PlayingBackgroundColour"_L1).toString());
+    }
+
+    return config;
+}
+
+void PlaylistOrganiser::saveConfigToLayout(const ConfigData& config, QJsonObject& layout)
+{
+    layout["LeftScript"_L1]              = config.leftScript;
+    layout["RightScript"_L1]             = config.rightScript;
+    layout["PlayingTextColour"_L1]       = normaliseColour(config.playingTextColour);
+    layout["PlayingBackgroundColour"_L1] = normaliseColour(config.playingBackgroundColour);
+}
+
+void PlaylistOrganiser::openConfigDialog()
+{
+    showConfigDialog(new PlaylistOrganiserConfigDialog(this, this));
 }
 } // namespace Fooyin
 

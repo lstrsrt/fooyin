@@ -21,6 +21,9 @@
 
 #include "playlistorganiseritem.h"
 
+#include <core/scripting/scriptparser.h>
+#include <gui/scripting/richtext.h>
+#include <gui/scripting/scriptformatter.h>
 #include <utils/id.h>
 #include <utils/treemodel.h>
 
@@ -46,10 +49,18 @@ public:
 
     explicit PlaylistOrganiserModel(PlaylistHandler* playlistHandler, PlayerController* playerController);
 
+    [[nodiscard]] static QString defaultLeftDisplayScript();
+    [[nodiscard]] static QString defaultRightDisplayScript();
+
     void populate();
     void populateMissing();
     QByteArray saveModel();
     bool restoreModel(QByteArray data);
+    void setDisplayScripts(const QString& leftScript, const QString& rightScript);
+    void setColours(const QColor& playingTextColour, const QColor& playingBackgroundColour);
+
+    [[nodiscard]] QString leftDisplayScript() const;
+    [[nodiscard]] QString rightDisplayScript() const;
 
     QModelIndex createGroup(const QModelIndex& parent);
     QModelIndex createPlaylist(Playlist* playlist, const QModelIndex& parent);
@@ -87,7 +98,13 @@ signals:
     void tracksDroppedOnGroup(const std::vector<int>& trackIds, const QString& group, int index);
 
 private:
+    void refreshData(const QList<int>& roles, PlaylistOrganiserItem* parent = nullptr);
+    void refreshPlaylist(Playlist* playlist, const QList<int>& roles = {});
     void sortPlaylists(PlaylistOrganiserItem* parent, SortOrder order);
+    [[nodiscard]] QString evaluateScript(const ParsedScript& script, const PlaylistOrganiserItem* item) const;
+    [[nodiscard]] RichText evaluateRichScript(const ParsedScript& script, const PlaylistOrganiserItem* item) const;
+    [[nodiscard]] RichText leftRichText(const PlaylistOrganiserItem* item) const;
+    [[nodiscard]] RichText rightRichText(const PlaylistOrganiserItem* item) const;
     QByteArray saveIndexes(const QModelIndexList& indexes) const;
     QModelIndexList restoreIndexes(QByteArray data);
     void recurseSaveModel(QDataStream& stream, PlaylistOrganiserItem* parent);
@@ -101,6 +118,14 @@ private:
     std::unordered_map<QString, PlaylistOrganiserItem> m_nodes;
 
     QString m_activePlaylistKey;
+    QColor m_playingTextColour;
     QColor m_playingColour;
+
+    mutable ScriptParser m_scriptParser;
+    mutable ScriptFormatter m_scriptFormatter;
+    QString m_leftScriptText;
+    QString m_rightScriptText;
+    ParsedScript m_leftScript;
+    ParsedScript m_rightScript;
 };
 } // namespace Fooyin

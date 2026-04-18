@@ -19,10 +19,13 @@
 
 #include "playlistorganisermodel.h"
 
+#include "organiserscripenvironment.h"
+
 #include <core/player/playercontroller.h>
 #include <core/playlist/playlisthandler.h>
 #include <gui/guiconstants.h>
 #include <gui/iconloader.h>
+#include <gui/scripting/richtextutils.h>
 #include <utils/datastream.h>
 #include <utils/stringcollator.h>
 #include <utils/utils.h>
@@ -110,6 +113,7 @@ QString playlistKey(const QString& name)
     static const QString prefix = u"Playlist."_s;
     return prefix + name;
 }
+
 } // namespace
 
 namespace Fooyin {
@@ -119,6 +123,8 @@ PlaylistOrganiserModel::PlaylistOrganiserModel(PlaylistHandler* playlistHandler,
     , m_playingColour{QApplication::palette().highlight().color()}
 {
     m_playingColour.setAlpha(90);
+    m_scriptParser.addProvider(organiserScripVariableProvider());
+    setDisplayScripts(defaultLeftDisplayScript(), defaultRightDisplayScript());
 
     auto playlistChanged = [this](const QString& key, Qt::ItemDataRole role) {
         if(m_nodes.contains(key)) {
@@ -131,12 +137,72 @@ PlaylistOrganiserModel::PlaylistOrganiserModel(PlaylistHandler* playlistHandler,
                      [this, playlistChanged](Playlist* playlist) {
                          if(playlist) {
                              const QString prevKey = std::exchange(m_activePlaylistKey, playlistKey(playlist->name()));
+                             playlistChanged(prevKey, Qt::ForegroundRole);
                              playlistChanged(prevKey, Qt::BackgroundRole);
+                             playlistChanged(m_activePlaylistKey, Qt::ForegroundRole);
                              playlistChanged(m_activePlaylistKey, Qt::BackgroundRole);
                          }
                      });
     QObject::connect(m_playerController, &PlayerController::playStateChanged, this,
                      [this, playlistChanged]() { playlistChanged(m_activePlaylistKey, Qt::DecorationRole); });
+    QObject::connect(m_playlistHandler, &PlaylistHandler::playlistUpdated, this,
+                     [this](Playlist* playlist) { refreshPlaylist(playlist); });
+    QObject::connect(m_playlistHandler, &PlaylistHandler::tracksAdded, this,
+                     [this](Playlist* playlist, const TrackList&, int) { refreshPlaylist(playlist); });
+    QObject::connect(m_playlistHandler, &PlaylistHandler::tracksPatched, this,
+                     [this](Playlist* playlist, const PlaylistChangeset&) { refreshPlaylist(playlist); });
+    QObject::connect(m_playlistHandler, &PlaylistHandler::tracksChanged, this,
+                     [this](Playlist* playlist, const std::vector<int>&) { refreshPlaylist(playlist); });
+    QObject::connect(m_playlistHandler, &PlaylistHandler::tracksUpdated, this,
+                     [this](Playlist* playlist, const std::vector<int>&) { refreshPlaylist(playlist); });
+    QObject::connect(m_playlistHandler, &PlaylistHandler::tracksRemoved, this,
+                     [this](Playlist* playlist, const std::vector<int>&) { refreshPlaylist(playlist); });
+}
+
+QString PlaylistOrganiserModel::defaultLeftDisplayScript()
+{
+    return u"%node_name%$if(%is_group%, \\[%count%\\],)"_s;
+}
+
+QString PlaylistOrganiserModel::defaultRightDisplayScript()
+{
+    return {};
+}
+
+void PlaylistOrganiserModel::setDisplayScripts(const QString& leftScript, const QString& rightScript)
+{
+    if(m_leftScriptText == leftScript && m_rightScriptText == rightScript) {
+        return;
+    }
+
+    m_leftScriptText  = leftScript;
+    m_rightScriptText = rightScript;
+    m_leftScript      = m_scriptParser.parse(leftScript);
+    m_rightScript     = m_scriptParser.parse(rightScript);
+
+    refreshData({PlaylistOrganiserItem::RichText, PlaylistOrganiserItem::RichRightText, Qt::SizeHintRole});
+}
+
+void PlaylistOrganiserModel::setColours(const QColor& playingTextColour, const QColor& playingBackgroundColour)
+{
+    if(m_playingTextColour == playingTextColour && m_playingColour == playingBackgroundColour) {
+        return;
+    }
+
+    m_playingTextColour = playingTextColour;
+    m_playingColour     = playingBackgroundColour;
+
+    refreshData({Qt::ForegroundRole, Qt::BackgroundRole});
+}
+
+QString PlaylistOrganiserModel::leftDisplayScript() const
+{
+    return m_leftScriptText;
+}
+
+QString PlaylistOrganiserModel::rightDisplayScript() const
+{
+    return m_rightScriptText;
 }
 
 void PlaylistOrganiserModel::populate()
@@ -310,7 +376,8 @@ void PlaylistOrganiserModel::playlistRenamed(Playlist* playlist)
         item->setTitle(playlist->name());
 
         const QModelIndex index = indexForPlaylist(playlist);
-        emit dataChanged(index, index, {Qt::DisplayRole});
+        emit dataChanged(index, index,
+                         {PlaylistOrganiserItem::RichText, PlaylistOrganiserItem::RichRightText, Qt::SizeHintRole});
     }
 }
 
@@ -415,6 +482,68 @@ void PlaylistOrganiserModel::sortPlaylists(PlaylistOrganiserItem* parent, const 
     parent->resetChildren();
 }
 
+void PlaylistOrganiserModel::refreshData(const QList<int>& roles, PlaylistOrganiserItem* parent)
+{
+    parent = parent ? parent : rootItem();
+
+    if(parent->childCount() > 0) {
+        const QModelIndex parentIndex = indexOfItem(parent);
+        emit dataChanged(index(0, 0, parentIndex), index(parent->childCount() - 1, 0, parentIndex), roles);
+
+        for(int row{0}; row < parent->childCount(); ++row) {
+            if(auto* child = parent->child(row)) {
+                refreshData(roles, child);
+            }
+        }
+    }
+}
+
+void PlaylistOrganiserModel::refreshPlaylist(Playlist* playlist, const QList<int>& roles)
+{
+    const QModelIndex index = indexForPlaylist(playlist);
+    if(index.isValid()) {
+        emit dataChanged(index, index,
+                         roles.isEmpty() ? QList<int>{PlaylistOrganiserItem::RichText,
+                                                      PlaylistOrganiserItem::RichRightText, Qt::SizeHintRole}
+                                         : roles);
+    }
+}
+
+QString PlaylistOrganiserModel::evaluateScript(const ParsedScript& script, const PlaylistOrganiserItem* item) const
+{
+    if(!item) {
+        return {};
+    }
+
+    OrganiserScripEnvironment environment{item};
+    const ScriptContext context{.environment = &environment, .playlist = item->playlist()};
+
+    if(const auto* playlist = item->playlist()) {
+        return m_scriptParser.evaluate(script, *playlist, context);
+    }
+
+    return m_scriptParser.evaluate(script, context);
+}
+
+RichText PlaylistOrganiserModel::evaluateRichScript(const ParsedScript& script, const PlaylistOrganiserItem* item) const
+{
+    return trimRichText(m_scriptFormatter.evaluate(evaluateScript(script, item)));
+}
+
+RichText PlaylistOrganiserModel::leftRichText(const PlaylistOrganiserItem* item) const
+{
+    return evaluateRichScript(m_leftScript, item);
+}
+
+RichText PlaylistOrganiserModel::rightRichText(const PlaylistOrganiserItem* item) const
+{
+    if(m_rightScriptText.isEmpty()) {
+        return {};
+    }
+
+    return evaluateRichScript(m_rightScript, item);
+}
+
 QModelIndex PlaylistOrganiserModel::indexForPlaylist(Playlist* playlist)
 {
     if(!playlist) {
@@ -462,23 +591,20 @@ QVariant PlaylistOrganiserModel::data(const QModelIndex& index, int role) const
                               && item->playlist()->id() == m_playlistHandler->activePlaylist()->id();
 
     switch(role) {
-        case(Qt::DisplayRole):
-            if(type == PlaylistOrganiserItem::PlaylistItem) {
-                return item->title();
-            }
-            if(type == PlaylistOrganiserItem::GroupItem) {
-                return u"%1 [%2]"_s.arg(item->title()).arg(item->childCount());
+        case Qt::EditRole:
+            return item->title();
+        case Qt::ForegroundRole:
+            if(currentIsActive && m_playingTextColour.isValid()) {
+                return m_playingTextColour;
             }
             break;
-        case(Qt::EditRole):
-            return item->title();
-        case(Qt::BackgroundRole): {
+        case Qt::BackgroundRole: {
             if(currentIsActive) {
                 return m_playingColour;
             }
             break;
         }
-        case(Qt::DecorationRole):
+        case Qt::DecorationRole:
             if(currentIsActive) {
                 const auto state = m_playerController->playState();
                 if(state == Player::PlayState::Playing) {
@@ -490,10 +616,14 @@ QVariant PlaylistOrganiserModel::data(const QModelIndex& index, int role) const
             }
             break;
 
-        case(PlaylistOrganiserItem::ItemType):
+        case PlaylistOrganiserItem::ItemType:
             return QVariant::fromValue(item->type());
-        case(PlaylistOrganiserItem::PlaylistData):
+        case PlaylistOrganiserItem::PlaylistData:
             return QVariant::fromValue(item->playlist());
+        case PlaylistOrganiserItem::RichText:
+            return leftRichText(item);
+        case PlaylistOrganiserItem::RichRightText:
+            return rightRichText(item);
         default:
             break;
     }
@@ -529,7 +659,8 @@ bool PlaylistOrganiserModel::setData(const QModelIndex& index, const QVariant& v
         }
     }
 
-    emit dataChanged(index, index, {Qt::DisplayRole});
+    emit dataChanged(index, index,
+                     {PlaylistOrganiserItem::RichText, PlaylistOrganiserItem::RichRightText, Qt::SizeHintRole});
 
     return true;
 }
