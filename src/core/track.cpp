@@ -1549,9 +1549,15 @@ void Track::setComment(const QString& comment)
 
 void Track::setDate(const QString& date)
 {
+    const auto clearDerivedDateFields = [this]() {
+        p->year           = -1;
+        p->dateSinceEpoch = 0;
+        p->yearSinceEpoch = 0;
+    };
+
     p->date = date;
     if(date.isEmpty()) {
-        p->year = -1;
+        clearDerivedDateFields();
         return;
     }
 
@@ -1616,6 +1622,8 @@ void Track::setDate(const QString& date)
             return;
         }
     }
+
+    clearDerivedDateFields();
 }
 
 void Track::setYear(int year)
