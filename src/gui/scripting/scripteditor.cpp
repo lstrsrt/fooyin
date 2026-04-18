@@ -24,6 +24,7 @@
 #include "scriptreferenceentries.h"
 
 #include <core/coresettings.h>
+#include <core/library/librarymanager.h>
 #include <core/scripting/scriptenvironmenthelpers.h>
 #include <core/scripting/scriptparser.h>
 #include <core/track.h>
@@ -441,6 +442,7 @@ public:
     void restoreState();
 
     ScriptEditor* m_self;
+    LibraryManager* m_libraryManager;
     FySettings m_settings;
     Track m_track;
     Track m_placeholderTrack;
@@ -482,6 +484,7 @@ public:
 
 ScriptEditorPrivate::ScriptEditorPrivate(ScriptEditor* self, LibraryManager* libraryManager, const Track& track)
     : m_self{self}
+    , m_libraryManager{libraryManager}
     , m_track{track}
     , m_mainSplitter{new QSplitter(Qt::Horizontal, m_self)}
     , m_documentSplitter{new QSplitter(Qt::Vertical, m_self)}
@@ -590,22 +593,46 @@ void ScriptEditorPrivate::setupConnections()
 
 void ScriptEditorPrivate::setupPlaceholder()
 {
-    m_placeholderTrack.setFilePath(QDir::homePath() + "/placeholder.flac"_L1);
-    m_placeholderTrack.setTitle(u"Title"_s);
-    m_placeholderTrack.setAlbum(u"Album"_s);
-    m_placeholderTrack.setAlbumArtists({u"Album Artist 1"_s, u"Album Artist 2"_s});
-    m_placeholderTrack.setArtists({u"Artist 1"_s, u"Artist 2"_s});
-    m_placeholderTrack.setDate(u"2024-08-24"_s);
-    m_placeholderTrack.setTrackNumber(u"1"_s);
+    QString basePath = QDir::homePath() + "/Music"_L1;
+    if(m_libraryManager->hasLibrary()) {
+        const auto& libraries = m_libraryManager->allLibraries();
+        if(!libraries.empty()) {
+            const auto& library = libraries.cbegin()->second;
+            m_placeholderTrack.setLibraryId(library.id);
+            basePath = library.path;
+        }
+    }
+
+    m_placeholderTrack.setFilePath(
+        QDir{basePath}.filePath(u"The Static Hour/City After Midnight/04 - Signal Fires.flac"_s));
+    m_placeholderTrack.setTitle(u"Signal Fires"_s);
+    m_placeholderTrack.setAlbum(u"City After Midnight"_s);
+    m_placeholderTrack.setAlbumArtists({u"The Static Hour"_s});
+    m_placeholderTrack.setArtists({u"The Static Hour"_s, u"Mina Vale"_s});
+    m_placeholderTrack.setDate(u"2023-10-06"_s);
+    m_placeholderTrack.setTrackNumber(u"4"_s);
+    m_placeholderTrack.setTrackTotal(u"11"_s);
     m_placeholderTrack.setDiscNumber(u"1"_s);
-    m_placeholderTrack.setBitDepth(16);
-    m_placeholderTrack.setSampleRate(48000);
-    m_placeholderTrack.setBitrate(850);
-    m_placeholderTrack.setComment(u"Comment"_s);
-    m_placeholderTrack.setComposers({u"Composer 1"_s, u"Composer 2"_s});
-    m_placeholderTrack.setPerformers({u"Performer 1"_s, u"Performer 2"_s});
-    m_placeholderTrack.setDuration(180000);
-    m_placeholderTrack.setFileSize(34560000);
+    m_placeholderTrack.setDiscTotal(u"1"_s);
+    m_placeholderTrack.setGenres({u"Synthpop"_s, u"Indie Pop"_s});
+    m_placeholderTrack.setBitDepth(24);
+    m_placeholderTrack.setSampleRate(44100);
+    m_placeholderTrack.setBitrate(1012);
+    m_placeholderTrack.setChannels(2);
+    m_placeholderTrack.setCodec(u"FLAC"_s);
+    m_placeholderTrack.setTagTypes({u"XiphComment"_s});
+    m_placeholderTrack.setEncoding(u"Lossless"_s);
+    m_placeholderTrack.setComment(u"Single mix"_s);
+    m_placeholderTrack.setComposers({u"Ada Mercer"_s, u"Jon Keene"_s});
+    m_placeholderTrack.setPerformers({u"Ada Mercer"_s, u"Jon Keene"_s, u"Mina Vale"_s});
+    m_placeholderTrack.setRatingStars(4);
+    m_placeholderTrack.setPlayCount(27);
+    m_placeholderTrack.addExtraTag(u"LABEL"_s, u"Northline Records"_s);
+    m_placeholderTrack.addExtraTag(u"CATALOGNUMBER"_s, u"NLR-042"_s);
+    m_placeholderTrack.setCreatedTime(1696618800000);
+    m_placeholderTrack.setAddedTime(1696963320000);
+    m_placeholderTrack.setDuration(222000);
+    m_placeholderTrack.setFileSize(28700000);
 }
 
 void ScriptEditorPrivate::setupReference()
