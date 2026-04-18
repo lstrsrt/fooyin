@@ -24,6 +24,7 @@
 #include "tageditorconstants.h"
 #include "tageditormodel.h"
 #include "tageditorview.h"
+#include "tagfilldialog.h"
 
 #include <core/constants.h>
 #include <core/coresettings.h>
@@ -37,10 +38,13 @@
 
 #include <QCheckBox>
 #include <QContextMenuEvent>
+#include <QDialog>
 #include <QHeaderView>
 #include <QMenu>
 #include <QMessageBox>
 #include <QVBoxLayout>
+
+#include <ranges>
 
 using namespace Qt::StringLiterals;
 
@@ -67,6 +71,7 @@ TagEditorWidget::TagEditorWidget(ActionManager* actionManager, TagEditorFieldReg
     , m_starDelegate{nullptr}
     , m_toolsButton{new ToolButton(this)}
     , m_autoTrackNum{new QAction(tr("Auto &track number"), this)}
+    , m_autoFillValuesAction{new QAction(tr("Automatically &fill values…"), this)}
     , m_changeFields{new QAction(tr("&Change default fields…"), this)}
 {
     setObjectName(TagEditorWidget::name());
@@ -89,6 +94,7 @@ TagEditorWidget::TagEditorWidget(ActionManager* actionManager, TagEditorFieldReg
     m_toolsButton->setPopupMode(ToolButton::InstantPopup);
     auto* toolsMenu = new QMenu(m_toolsButton);
     toolsMenu->addAction(m_autoTrackNum);
+    toolsMenu->addAction(m_autoFillValuesAction);
     toolsMenu->addAction(m_changeFields);
     m_toolsButton->setMenu(toolsMenu);
     m_view->addCustomTool(m_toolsButton);
@@ -110,6 +116,7 @@ TagEditorWidget::TagEditorWidget(ActionManager* actionManager, TagEditorFieldReg
         m_view->removeRowAction()->setEnabled(!m_readOnly && !selected.empty());
     });
     QObject::connect(m_autoTrackNum, &QAction::triggered, m_model, &TagEditorModel::autoNumberTracks);
+    QObject::connect(m_autoFillValuesAction, &QAction::triggered, this, &TagEditorWidget::autoFillValues);
     QObject::connect(m_changeFields, &QAction::triggered, this,
                      [this]() { m_settings->settingsDialog()->openAtPage(Constants::Page::TagEditorFields); });
 }
@@ -155,6 +162,7 @@ void TagEditorWidget::setReadOnly(bool readOnly)
     m_view->addRowAction()->setDisabled(readOnly);
     m_view->removeRowAction()->setDisabled(readOnly);
     m_autoTrackNum->setDisabled(readOnly);
+    m_autoFillValuesAction->setDisabled(readOnly);
 }
 
 void TagEditorWidget::configureDelegates(const std::vector<TagEditorField>& items)
@@ -221,6 +229,47 @@ TrackList TagEditorWidget::commitCurrentScopeEdits()
     return changedTracks;
 }
 
+void TagEditorWidget::stageTrackChanges(const TrackList& tracks, bool metadataChanges)
+{
+    if(tracks.empty()) {
+        return;
+    }
+
+    mergeTracks(m_tracks, tracks);
+    mergeTracks(m_pendingTracks, tracks);
+
+    if(metadataChanges) {
+        m_hasPendingMetadataChanges = true;
+    }
+    else {
+        m_hasPendingStatChanges = true;
+    }
+
+    emit tracksChanged(tracks);
+}
+
+void TagEditorWidget::autoFillValues()
+{
+    if(m_fillDialog) {
+        m_fillDialog->raise();
+        m_fillDialog->activateWindow();
+        return;
+    }
+
+    const TrackList committedTracks = commitCurrentScopeEdits();
+    if(!committedTracks.empty()) {
+        emit tracksChanged(committedTracks);
+    }
+
+    const TrackList tracks = activeTracks();
+    if(tracks.empty()) {
+        return;
+    }
+
+    m_fillDialog
+        = openFillDialog(tracks, this, [this](const FillValuesResult& result) { handleFillDialogAccepted(result); });
+}
+
 TrackList TagEditorWidget::activeTracks() const
 {
     if(m_session) {
@@ -237,6 +286,18 @@ TrackList TagEditorWidget::activeTracks() const
 bool TagEditorWidget::hasPendingScopeChanges() const
 {
     return m_hasPendingScopeChanges;
+}
+
+void TagEditorWidget::handleFillDialogAccepted(const FillValuesResult& result)
+{
+    if(result.matchedTracks == 0 && result.unmatchedTracks == 0 && result.changedTracks == 0) {
+        return;
+    }
+
+    if(!result.tracks.empty()) {
+        stageTrackChanges(result.tracks, true);
+        refreshModel();
+    }
 }
 
 void TagEditorWidget::mergeTracks(TrackList& destination, const TrackList& source)

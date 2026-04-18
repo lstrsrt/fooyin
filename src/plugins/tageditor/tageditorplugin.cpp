@@ -22,9 +22,11 @@
 #include "settings/tageditorfieldregistry.h"
 #include "settings/tageditorpage.h"
 #include "tageditorwidget.h"
+#include "tagfilldialog.h"
 
 #include <core/engine/audioloader.h>
 #include <core/library/musiclibrary.h>
+#include <gui/guiconstants.h>
 #include <gui/plugins/guiplugincontext.h>
 #include <gui/propertiesdialog.h>
 #include <gui/trackselectioncontroller.h>
@@ -32,12 +34,24 @@
 #include <utils/actions/actioncontainer.h>
 #include <utils/actions/actionmanager.h>
 #include <utils/settings/settingsmanager.h>
+#include <utils/utils.h>
 
+#include <QAction>
+#include <QMainWindow>
 #include <QMenu>
 
 using namespace Qt::StringLiterals;
 
 namespace Fooyin::TagEditor {
+namespace {
+bool canWriteTracks(const TrackList& tracks, const std::shared_ptr<AudioLoader>& audioLoader)
+{
+    return !tracks.empty() && std::ranges::all_of(tracks, [&audioLoader](const Track& track) {
+        return !track.hasCue() && !track.isInArchive() && audioLoader->canWriteMetadata(track);
+    });
+}
+} // namespace
+
 void TagEditorPlugin::initialise(const CorePluginContext& context)
 {
     m_settings    = context.settingsManager;
@@ -60,16 +74,39 @@ void TagEditorPlugin::initialise(const GuiPluginContext& context)
     //     u"TagEditor"_s, [this]() { return createEditor(); }, u"Tag Editor"_s);
 
     m_propertiesDialog->insertTab(0, u"Metadata"_s, [this](const TrackList& tracks) { return createEditor(tracks); });
+
+    auto* autoFillValuesAction = new QAction(tr("Automatically fill values…"), this);
+    QObject::connect(autoFillValuesAction, &QAction::triggered, this, [this]() {
+        const TrackSelection selection = m_trackSelection->selectedSelection();
+        if(!canWriteTracks(selection.tracks, m_audioLoader)) {
+            return;
+        }
+
+        openFillDialog(selection.tracks, Utils::getMainWindow(), [this](const FillValuesResult& result) {
+            if(!result.tracks.empty()) {
+                m_library->writeTrackMetadata(result.tracks);
+            }
+        });
+    });
+
+    m_trackSelection->registerTrackContextAction(
+        this, TrackContextMenuArea::Track, Constants::Menus::Context::Tagging, "TagEditor.AutoFillValues",
+        autoFillValuesAction->text(),
+        [this, autoFillValuesAction](QMenu* menu, const TrackSelection& selection) {
+            if(selection.tracks.empty()) {
+                return;
+            }
+
+            autoFillValuesAction->setEnabled(canWriteTracks(selection.tracks, m_audioLoader));
+            menu->addAction(autoFillValuesAction);
+        },
+        Constants::Menus::Context::TaggingRating);
 }
 
 TagEditorWidget* TagEditorPlugin::createEditor(const TrackList& tracks)
 {
-    const bool canWrite = std::ranges::all_of(tracks, [this](const Track& track) {
-        return !track.hasCue() && !track.isInArchive() && m_audioLoader->canWriteMetadata(track);
-    });
-
     auto* tagEditor = new TagEditorWidget(m_actionManager, m_registry, m_settings);
-    tagEditor->setReadOnly(!canWrite);
+    tagEditor->setReadOnly(!canWriteTracks(tracks, m_audioLoader));
     tagEditor->setTracks(tracks);
     QObject::connect(tagEditor, &TagEditorWidget::trackMetadataChanged, m_library, &MusicLibrary::writeTrackMetadata);
     QObject::connect(tagEditor, &TagEditorWidget::trackStatsChanged, m_library,

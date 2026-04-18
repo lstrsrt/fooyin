@@ -11,9 +11,9 @@ function(fooyin_add_test name)
             PRIVATE Fooyin::Core
                     Fooyin::CorePrivate
                     Fooyin::Gui
-            Fooyin::GuiPrivate
+                    Fooyin::GuiPrivate
                     Fooyin::Utils
-            Qt6::Test
+                    Qt6::Test
                     GTest::gtest_main
     )
     gtest_discover_tests(${name})
@@ -67,3 +67,4 @@ fooyin_add_test(test_filtercontroller plugins/filters/filtercontrollertest.cpp)
 target_link_libraries(test_filtercontroller PRIVATE Fooyin::FiltersInternal)
 fooyin_add_test(test_filterpipeline plugins/filters/filterpipelinetest.cpp)
 target_link_libraries(test_filterpipeline PRIVATE Fooyin::FiltersInternal)
+fooyin_add_test(test_tagfillpattern plugins/tageditor/tagfillpatterntest.cpp ${CMAKE_SOURCE_DIR}/src/plugins/tageditor/tagfillpattern.cpp)

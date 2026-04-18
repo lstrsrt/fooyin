@@ -25,7 +25,10 @@
 #include <gui/fywidget.h>
 #include <gui/propertiesdialog.h>
 
+#include <QPointer>
 #include <QWidget>
+
+class QDialog;
 
 namespace Fooyin {
 class ActionManager;
@@ -40,6 +43,7 @@ class TagEditorFieldRegistry;
 class TagEditorAutocompleteDelegate;
 class TagEditorModel;
 class TagEditorView;
+struct FillValuesResult;
 
 class TagEditorWidget : public PropertiesTabWidget
 {
@@ -71,6 +75,9 @@ private:
     void configureDelegates(const std::vector<TagEditorField>& items);
     void refreshModel();
     TrackList commitCurrentScopeEdits();
+    void stageTrackChanges(const TrackList& tracks, bool metadataChanges);
+    void autoFillValues();
+    void handleFillDialogAccepted(const FillValuesResult& result);
     void updatePendingScopeState();
     [[nodiscard]] TrackList activeTracks() const;
     static void mergeTracks(TrackList& destination, const TrackList& source);
@@ -102,7 +109,9 @@ private:
 
     ToolButton* m_toolsButton;
     QAction* m_autoTrackNum;
+    QAction* m_autoFillValuesAction;
     QAction* m_changeFields;
+    QPointer<QDialog> m_fillDialog;
 };
 } // namespace TagEditor
 } // namespace Fooyin

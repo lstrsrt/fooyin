@@ -1,23 +1,32 @@
 create_fooyin_plugin_internal(
     tageditor
     DEPENDS Fooyin::Gui
-        SOURCES settings/tageditorfieldregistry.cpp
-                settings/tageditorfieldregistry.h
-                settings/tageditorfieldsmodel.cpp
-                settings/tageditorfieldsmodel.h
-                settings/tageditorpage.cpp
-                settings/tageditorpage.h
-                tageditorconstants.h
-                tageditorautocompletedelegate.cpp
-                tageditorautocompletedelegate.h
-                tageditoritem.cpp
-                tageditoritem.h
-                tageditormodel.cpp
-                tageditormodel.h
-                tageditorplugin.cpp
-                tageditorplugin.h
-                tageditorview.cpp
-                tageditorview.h
-                tageditorwidget.cpp
-                tageditorwidget.h
+            Fooyin::CorePrivate
+    SOURCES settings/tageditorfieldregistry.cpp
+            settings/tageditorfieldregistry.h
+            settings/tageditorfieldsmodel.cpp
+            settings/tageditorfieldsmodel.h
+            settings/tageditorpage.cpp
+            settings/tageditorpage.h
+            tageditorconstants.h
+            tageditorautocompletedelegate.cpp
+            tageditorautocompletedelegate.h
+            tageditoritem.cpp
+            tageditoritem.h
+            tageditormodel.cpp
+            tageditormodel.h
+            tagfillpattern.cpp
+            tagfillpattern.h
+            tagfilloperation.cpp
+            tagfilloperation.h
+            tagfilldialog.cpp
+            tagfilldialog.h
+            tagfillpreviewmodel.cpp
+            tagfillpreviewmodel.h
+            tageditorplugin.cpp
+            tageditorplugin.h
+            tageditorview.cpp
+            tageditorview.h
+            tageditorwidget.cpp
+            tageditorwidget.h
 )
