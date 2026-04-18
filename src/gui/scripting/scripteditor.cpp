@@ -594,7 +594,7 @@ void ScriptEditorPrivate::setupConnections()
 void ScriptEditorPrivate::setupPlaceholder()
 {
     QString basePath = QDir::homePath() + "/Music"_L1;
-    if(m_libraryManager->hasLibrary()) {
+    if(m_libraryManager && m_libraryManager->hasLibrary()) {
         const auto& libraries = m_libraryManager->allLibraries();
         if(!libraries.empty()) {
             const auto& library = libraries.cbegin()->second;
