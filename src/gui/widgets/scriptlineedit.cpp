@@ -104,6 +104,21 @@ void ScriptTextEdit::contextMenuEvent(QContextMenuEvent* event)
 
     menu->popup(event->globalPos());
 }
+
+ScriptComboBox::ScriptComboBox(QWidget* parent)
+    : ScriptComboBox{{}, {}, parent}
+{ }
+
+ScriptComboBox::ScriptComboBox(const QString& script, QWidget* parent)
+    : ScriptComboBox{script, {}, parent}
+{ }
+
+ScriptComboBox::ScriptComboBox(const QString& script, const Track& track, QWidget* parent)
+    : QComboBox{parent}
+{
+    setLineEdit(new ScriptLineEdit(script, track, this));
+    setEditable(true);
+}
 } // namespace Fooyin
 
 #include "gui/widgets/moc_scriptlineedit.cpp"

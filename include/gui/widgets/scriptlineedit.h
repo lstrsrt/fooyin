@@ -23,6 +23,7 @@
 
 #include <gui/widgets/multilinedelegate.h>
 
+#include <QComboBox>
 #include <QLineEdit>
 #include <QPlainTextEdit>
 
@@ -56,5 +57,15 @@ protected:
 
 private:
     QAction* m_openEditor;
+};
+
+class FYGUI_EXPORT ScriptComboBox : public QComboBox
+{
+    Q_OBJECT
+
+public:
+    explicit ScriptComboBox(QWidget* parent = nullptr);
+    explicit ScriptComboBox(const QString& script, QWidget* parent = nullptr);
+    ScriptComboBox(const QString& script, const Track& track, QWidget* parent = nullptr);
 };
 } // namespace Fooyin
