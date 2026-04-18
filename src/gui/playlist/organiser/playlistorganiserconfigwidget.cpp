@@ -71,9 +71,11 @@ PlaylistOrganiserConfigDialog::PlaylistOrganiserConfigDialog(PlaylistOrganiser* 
     scriptHint->setTextFormat(Qt::RichText);
     scriptHint->setWordWrap(true);
 
-    scriptGroupLayout->addWidget(new QLabel(tr("Left script") + u":"_s, this), 0, 0);
+    //: Refers to the left script field.
+    scriptGroupLayout->addWidget(new QLabel(tr("Left") + u":"_s, this), 0, 0);
     scriptGroupLayout->addWidget(m_leftScript, 0, 1);
-    scriptGroupLayout->addWidget(new QLabel(tr("Right script") + u":"_s, this), 1, 0);
+    //: Refers to the right script field.
+    scriptGroupLayout->addWidget(new QLabel(tr("Right") + u":"_s, this), 1, 0);
     scriptGroupLayout->addWidget(m_rightScript, 1, 1);
     scriptGroupLayout->addWidget(scriptHint, 2, 0, 1, 2);
     scriptGroupLayout->setColumnStretch(1, 1);

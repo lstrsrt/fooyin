@@ -166,7 +166,7 @@ QString PlaylistOrganiserModel::defaultLeftDisplayScript()
 
 QString PlaylistOrganiserModel::defaultRightDisplayScript()
 {
-    return {};
+    return u"$if(%is_group%,,%count%)"_s;
 }
 
 void PlaylistOrganiserModel::setDisplayScripts(const QString& leftScript, const QString& rightScript)
