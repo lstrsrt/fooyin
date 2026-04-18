@@ -19,6 +19,8 @@
 
 #include "configurablecontextmenupage.h"
 
+#include "configurablecontextmenudelegate.h"
+
 #include <algorithm>
 
 #include <QGridLayout>
@@ -47,9 +49,10 @@ ConfigurableContextMenuWidget::ConfigurableContextMenuWidget(QString description
 
     m_model->setReorderingEnabled(m_definition.allowReordering);
     m_tree->setModel(m_model);
+    m_tree->setItemDelegate(new ConfigurableContextMenuDelegate(m_tree));
     m_tree->setHeaderHidden(true);
     m_tree->setRootIsDecorated(true);
-    m_tree->setUniformRowHeights(true);
+    m_tree->setUniformRowHeights(false);
     m_tree->header()->setStretchLastSection(true);
     m_tree->setDragEnabled(m_definition.allowReordering);
     m_tree->setAcceptDrops(m_definition.allowReordering);

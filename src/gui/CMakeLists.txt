@@ -330,6 +330,8 @@ set(SOURCES
     settings/artwork/artworksourcespage.h
     settings/context/configurablecontextmenumodel.cpp
     settings/context/configurablecontextmenumodel.h
+    settings/context/configurablecontextmenudelegate.cpp
+    settings/context/configurablecontextmenudelegate.h
     settings/context/configurablecontextmenupage.cpp
     settings/context/configurablecontextmenupage.h
     settings/context/staticcontextmenupage.cpp
