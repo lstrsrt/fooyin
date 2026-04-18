@@ -22,6 +22,10 @@
 #include <core/scripting/scriptvalue.h>
 
 namespace Fooyin::Scripting {
+ScriptResult boolAnd(const ScriptValueList& vec);
+ScriptResult boolNot(const ScriptValueList& vec);
+ScriptResult boolOr(const ScriptValueList& vec);
+ScriptResult boolXOr(const ScriptValueList& vec);
 ScriptResult cif(const ScriptValueList& vec);
 ScriptResult cif2(const ScriptValueList& vec);
 ScriptResult cif3(const ScriptValueList& vec);

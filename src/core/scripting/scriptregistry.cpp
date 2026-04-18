@@ -598,6 +598,10 @@ void ScriptRegistry::addDefaultFunctions()
 
     registerFunction(u"timems"_s, makeScriptFunctionInvoker<Scripting::msToString>());
 
+    registerFunction(u"and"_s, makeScriptFunctionInvoker<Scripting::boolAnd>());
+    registerFunction(u"not"_s, makeScriptFunctionInvoker<Scripting::boolNot>());
+    registerFunction(u"or"_s, makeScriptFunctionInvoker<Scripting::boolOr>());
+    registerFunction(u"xor"_s, makeScriptFunctionInvoker<Scripting::boolXOr>());
     registerFunction(u"if"_s, makeScriptFunctionInvoker<Scripting::cif>());
     registerFunction(u"if2"_s, makeScriptFunctionInvoker<Scripting::cif2>());
     registerFunction(u"if3"_s, makeScriptFunctionInvoker<Scripting::cif3>());

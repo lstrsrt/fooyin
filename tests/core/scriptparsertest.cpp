@@ -434,6 +434,15 @@ TEST_F(ScriptParserTest, MathTest)
 
 TEST_F(ScriptParserTest, ConditionalTest)
 {
+    EXPECT_EQ(u"", m_parser.evaluate(u"$and(1,1)"_s));
+    EXPECT_EQ(u"true", m_parser.evaluate(u"$if($and(1,$strcmp(a,a),$stricmp(B,b)),true,false)"_s));
+    EXPECT_EQ(u"false", m_parser.evaluate(u"$if($and(1,,2),true,false)"_s));
+    EXPECT_EQ(u"true", m_parser.evaluate(u"$if($or(,,$strcmp(a,a)),true,false)"_s));
+    EXPECT_EQ(u"false", m_parser.evaluate(u"$if($not($stricmp(a,a)),true,false)"_s));
+    EXPECT_EQ(u"true", m_parser.evaluate(u"$if($not($strcmp(a,b)),true,false)"_s));
+    EXPECT_EQ(u"true", m_parser.evaluate(u"$if($xor($strcmp(a,a),,),true,false)"_s));
+    EXPECT_EQ(u"false", m_parser.evaluate(u"$if($xor($strcmp(a,a),$stricmp(b,b)),true,false)"_s));
+    EXPECT_EQ(u"true", m_parser.evaluate(u"$if($xor($strcmp(a,a),,$stricmp(b,b),$strcmp(c,c)),true,false)"_s));
     EXPECT_EQ(u"true", m_parser.evaluate(u"$ifequal(1,1,true,false)"_s));
     EXPECT_EQ(u"false", m_parser.evaluate(u"$ifgreater(23,32,true,false)"_s));
     EXPECT_EQ(u"true", m_parser.evaluate(u"$iflonger(aaa,2,true,false)"_s));

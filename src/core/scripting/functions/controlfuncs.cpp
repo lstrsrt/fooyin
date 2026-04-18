@@ -19,7 +19,53 @@
 
 #include "controlfuncs.h"
 
+#include <ranges>
+
 namespace Fooyin::Scripting {
+ScriptResult boolAnd(const ScriptValueList& vec)
+{
+    if(vec.empty()) {
+        return {};
+    }
+
+    ScriptResult result;
+    result.cond = std::ranges::all_of(vec, [](const ScriptResult& value) { return value.cond; });
+    return result;
+}
+
+ScriptResult boolNot(const ScriptValueList& vec)
+{
+    if(vec.size() != 1) {
+        return {};
+    }
+
+    ScriptResult result;
+    result.cond = !vec.front().cond;
+    return result;
+}
+
+ScriptResult boolOr(const ScriptValueList& vec)
+{
+    if(vec.empty()) {
+        return {};
+    }
+
+    ScriptResult result;
+    result.cond = std::ranges::any_of(vec, [](const ScriptResult& value) { return value.cond; });
+    return result;
+}
+
+ScriptResult boolXOr(const ScriptValueList& vec)
+{
+    if(vec.empty()) {
+        return {};
+    }
+
+    ScriptResult result;
+    result.cond = std::ranges::count_if(vec, [](const ScriptResult& value) { return value.cond; }) % 2 == 1;
+    return result;
+}
+
 ScriptResult cif(const ScriptValueList& vec)
 {
     const auto size = vec.size();
