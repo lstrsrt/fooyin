@@ -156,19 +156,18 @@ FillValuesDialog::FillValuesDialog(TrackList tracks, QWidget* parent)
     m_pattern->setToolTip(tr("Patterns use literal text and %field% captures.\n"
                              "This does not support full scripting."));
 
-    layout->addWidget(new QLabel(tr("Source") + u":"_s, this), 0, 0);
-    layout->addWidget(m_sourceMode, 0, 1);
-    layout->addWidget(new QLabel(tr("Source script") + u":"_s, this), 1, 0);
-    layout->addWidget(m_sourceScript, 1, 1);
-    layout->addWidget(new QLabel(tr("Pattern") + u":"_s, this), 2, 0);
-    layout->addWidget(m_pattern, 2, 1);
-
     m_previewLabel->setWordWrap(true);
 
-    layout->addWidget(m_previewLabel, 3, 0, 1, 2);
-    layout->addWidget(m_preview, 4, 0, 1, 2);
-    layout->addWidget(m_buttons, 5, 0, 1, 2);
-    layout->setColumnStretch(1, 1);
+    int row{0};
+    layout->addWidget(new QLabel(tr("Source") + u":"_s, this), row, 0);
+    layout->addWidget(m_sourceMode, row, 1);
+    layout->addWidget(m_sourceScript, row++, 2);
+    layout->addWidget(new QLabel(tr("Pattern") + u":"_s, this), row, 0);
+    layout->addWidget(m_pattern, row++, 1, 1, 2);
+    layout->addWidget(m_previewLabel, row++, 0, 1, 2);
+    layout->addWidget(m_preview, row++, 0, 1, 3);
+    layout->addWidget(m_buttons, row++, 0, 1, 3);
+    layout->setColumnStretch(2, 1);
     layout->setRowStretch(4, 1);
 
     m_preview->setEditTriggers(QAbstractItemView::NoEditTriggers);
@@ -313,7 +312,7 @@ void FillValuesDialog::updatePreview()
 
 QString FillValuesDialog::fillFieldColumnTitle(const QString& field)
 {
-    const QString upperField = field.toUpper();
+    QString upperField = field.toUpper();
 
     if(upperField == QLatin1StringView{Fooyin::Constants::MetaData::Title}) {
         return tr("Track Title");
