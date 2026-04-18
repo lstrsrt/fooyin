@@ -19,6 +19,8 @@
 
 #pragma once
 
+#include "fycore_export.h"
+
 #include <core/scripting/expression.h>
 #include <core/scripting/scriptparser.h>
 
@@ -28,7 +30,7 @@ class ScriptRegistry;
 struct BoundExpression;
 using BoundExpressionList = std::vector<BoundExpression>;
 
-struct BoundFunctionValue
+struct FYCORE_EXPORT BoundFunctionValue
 {
     QString name;
     FunctionKind kind{FunctionKind::Generic};
@@ -38,14 +40,14 @@ struct BoundFunctionValue
 
 using BoundExpressionValue = std::variant<QString, BoundFunctionValue, BoundExpressionList>;
 
-struct BoundExpression
+struct FYCORE_EXPORT BoundExpression
 {
     Expr::Type type{Expr::Null};
     VariableKind variableKind{VariableKind::Generic};
     BoundExpressionValue value{QString{}};
 };
 
-struct BoundScript
+struct FYCORE_EXPORT BoundScript
 {
     QString input;
     BoundExpressionList expressions;
@@ -57,8 +59,8 @@ struct BoundScript
     }
 };
 
-[[nodiscard]] VariableKind resolveBuiltInVariableKind(const QString& var);
-[[nodiscard]] FunctionKind resolveBuiltInFunctionKind(const QString& name);
+[[nodiscard]] FYCORE_EXPORT VariableKind resolveBuiltInVariableKind(const QString& var);
+[[nodiscard]] FYCORE_EXPORT FunctionKind resolveBuiltInFunctionKind(const QString& name);
 
-[[nodiscard]] BoundScript bindScript(const ParsedScript& script, const ScriptRegistry* registry);
+[[nodiscard]] FYCORE_EXPORT BoundScript bindScript(const ParsedScript& script, const ScriptRegistry* registry);
 } // namespace Fooyin
