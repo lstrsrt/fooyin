@@ -59,6 +59,8 @@ private:
 
     ScriptLineEdit* m_titleScript;
 
+    ScriptLineEdit* m_propertiesSidebarTrackScript;
+
     QRadioButton* m_preferPlaying;
     QRadioButton* m_preferSelection;
 
@@ -72,6 +74,7 @@ private:
 GuiTrackDisplayPageWidget::GuiTrackDisplayPageWidget(SettingsManager* settings)
     : m_settings{settings}
     , m_titleScript{new ScriptLineEdit(this)}
+    , m_propertiesSidebarTrackScript{new ScriptLineEdit(this)}
     , m_preferPlaying{new QRadioButton(tr("Prefer currently playing track"), this)}
     , m_preferSelection{new QRadioButton(tr("Prefer current selection"), this)}
     , m_starRatingSize{new QSpinBox(this)}
@@ -87,6 +90,17 @@ GuiTrackDisplayPageWidget::GuiTrackDisplayPageWidget(SettingsManager* settings)
     nowPlayingGroupLayout->addWidget(new QLabel(tr("Window title") + u":"_s, this), row, 0);
     nowPlayingGroupLayout->addWidget(m_titleScript, row++, 1, 1, 2);
     nowPlayingGroupLayout->setColumnStretch(2, 1);
+
+    auto* propertiesDialogGroup       = new QGroupBox(tr("Properties Dialog"), this);
+    auto* propertiesDialogGroupLayout = new QGridLayout(propertiesDialogGroup);
+
+    m_propertiesSidebarTrackScript->setToolTip(
+        tr("Controls how individual tracks are labelled in the properties sidebar."));
+
+    row = 0;
+    propertiesDialogGroupLayout->addWidget(new QLabel(tr("Sidebar track display") + u":"_s, this), row, 0);
+    propertiesDialogGroupLayout->addWidget(m_propertiesSidebarTrackScript, row++, 1);
+    propertiesDialogGroupLayout->setColumnStretch(1, 1);
 
     m_starRatingSize->setRange(5, 30);
     m_starRatingSize->setSuffix(u" px"_s);
@@ -132,6 +146,7 @@ GuiTrackDisplayPageWidget::GuiTrackDisplayPageWidget(SettingsManager* settings)
 
     row = 0;
     mainLayout->addWidget(nowPlayingGroup, row++, 0, 1, 2);
+    mainLayout->addWidget(propertiesDialogGroup, row++, 0, 1, 2);
     mainLayout->addWidget(selectionGroupBox, row++, 0, 1, 2);
     mainLayout->addWidget(ratingsGroupBox, row++, 0, 1, 2);
     mainLayout->setColumnStretch(1, 1);
@@ -158,6 +173,7 @@ void GuiTrackDisplayPageWidget::updateRatingPreview()
 void GuiTrackDisplayPageWidget::load()
 {
     m_titleScript->setText(m_settings->value<WindowTitleTrackScript>());
+    m_propertiesSidebarTrackScript->setText(m_settings->value<PropertiesSidebarTrackScript>());
 
     const auto option = static_cast<SelectionDisplay>(m_settings->value<InfoDisplayPrefer>());
     if(option == SelectionDisplay::PreferPlaying) {
@@ -177,6 +193,7 @@ void GuiTrackDisplayPageWidget::load()
 void GuiTrackDisplayPageWidget::apply()
 {
     m_settings->set<WindowTitleTrackScript>(m_titleScript->text());
+    m_settings->set<PropertiesSidebarTrackScript>(m_propertiesSidebarTrackScript->text());
 
     const SelectionDisplay option
         = m_preferPlaying->isChecked() ? SelectionDisplay::PreferPlaying : SelectionDisplay::PreferSelection;
@@ -195,6 +212,7 @@ void GuiTrackDisplayPageWidget::apply()
 void GuiTrackDisplayPageWidget::reset()
 {
     m_settings->reset<WindowTitleTrackScript>();
+    m_settings->reset<PropertiesSidebarTrackScript>();
     m_settings->reset<InfoDisplayPrefer>();
     m_settings->reset<StarRatingSize>();
     m_settings->reset<RatingFullStarSymbol>();

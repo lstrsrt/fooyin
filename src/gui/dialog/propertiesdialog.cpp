@@ -19,8 +19,10 @@
 
 #include <core/coresettings.h>
 #include <core/library/libraryutils.h>
+#include <core/scripting/scriptparser.h>
 #include <gui/guiconstants.h>
 #include <gui/iconloader.h>
+#include <gui/internalguisettings.h>
 #include <gui/propertiesdialog.h>
 #include <gui/widgets/toolbutton.h>
 #include <utils/actions/actionmanager.h>
@@ -316,7 +318,7 @@ class PropertiesDialogWidget : public QDialog
     Q_OBJECT
 
 public:
-    explicit PropertiesDialogWidget(ActionManager* actionManager, const TrackList& tracks,
+    explicit PropertiesDialogWidget(ActionManager* actionManager, SettingsManager* settings, const TrackList& tracks,
                                     PropertiesDialog::TabList tabs);
 
     [[nodiscard]] QSize sizeHint() const override
@@ -391,6 +393,8 @@ private:
     bool m_closing{false};
     bool m_restoringTab{false};
     ActionManager* m_actionManager{nullptr};
+    SettingsManager* m_settings{nullptr};
+    mutable ScriptParser m_scriptParser;
     WidgetContext* m_context;
     QPushButton* m_applyButton{nullptr};
     QTabWidget* m_tabWidget{nullptr};
@@ -424,9 +428,10 @@ PropertiesDialogWidget* activePropertiesDialogWidget()
 }
 } // namespace
 
-PropertiesDialogWidget::PropertiesDialogWidget(ActionManager* actionManager, const TrackList& tracks,
-                                               PropertiesDialog::TabList tabs)
+PropertiesDialogWidget::PropertiesDialogWidget(ActionManager* actionManager, SettingsManager* settings,
+                                               const TrackList& tracks, PropertiesDialog::TabList tabs)
     : m_actionManager{actionManager}
+    , m_settings{settings}
     , m_context{new WidgetContext(this, Context{PropertiesDialogContext}, this)}
     , m_tabWidget(new QTabWidget(this))
     , m_scopeButton{new ToolButton(this)}
@@ -941,7 +946,14 @@ QString PropertiesDialogWidget::scopeLabel(int trackIndex) const
     }
 
     const Track& track = m_session.workingTracks()[trackIndex];
-    return u"%1. %2"_s.arg(trackIndex + 1).arg(track.filenameExt());
+
+    QString script = m_settings->value<Settings::Gui::Internal::PropertiesSidebarTrackScript>();
+    if(script.isEmpty()) {
+        script = u"[%track%. ]%title%"_s;
+    }
+
+    const QString trackScopeLabel = m_scriptParser.evaluate(script, track);
+    return trackScopeLabel;
 }
 
 int PropertiesDialogWidget::scopeHostWidth(bool scopePanelVisible) const
@@ -953,9 +965,10 @@ int PropertiesDialogWidget::scopeHostWidth(bool scopePanelVisible) const
     return std::max(m_scopePanel->sizeHint().width(), m_scopePanel->minimumWidth());
 }
 
-PropertiesDialog::PropertiesDialog(ActionManager* actionManager, QObject* parent)
+PropertiesDialog::PropertiesDialog(ActionManager* actionManager, SettingsManager* settings, QObject* parent)
     : QObject{parent}
     , m_actionManager{actionManager}
+    , m_settings{settings}
     , m_toggleScopeAction{new QAction(tr("Toggle Sidebar"), this)}
     , m_previousTrackAction{new QAction(tr("Previous Track"), this)}
     , m_nextTrackAction{new QAction(tr("Next Track"), this)}
@@ -1031,7 +1044,7 @@ void PropertiesDialog::insertTab(int index, const QString& title, const WidgetBu
 
 void PropertiesDialog::show(const TrackList& tracks)
 {
-    auto* dialog = new PropertiesDialogWidget(m_actionManager, tracks, m_tabs);
+    auto* dialog = new PropertiesDialogWidget(m_actionManager, m_settings, tracks, m_tabs);
     dialog->setAttribute(Qt::WA_DeleteOnClose);
 
     QObject::connect(dialog, &QDialog::finished, dialog, &PropertiesDialogWidget::saveState);

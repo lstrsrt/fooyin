@@ -174,6 +174,7 @@ enum GuiInternalSettings : uint32_t
     ContextMenuPlaylistLayout              = 44 | Type::StringList,
     ContextMenuLibraryTreeDisabledSections = 45 | Type::StringList,
     ContextMenuLibraryTreeLayout           = 46 | Type::StringList,
+    PropertiesSidebarTrackScript           = 47 | Type::String,
 };
 Q_ENUM_NS(GuiInternalSettings)
 } // namespace Settings::Gui::Internal

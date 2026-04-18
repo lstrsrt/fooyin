@@ -123,7 +123,7 @@ class FYGUI_EXPORT PropertiesDialog : public QObject
 public:
     using TabList = std::vector<PropertiesTab>;
 
-    explicit PropertiesDialog(ActionManager* actionManager, QObject* parent = nullptr);
+    explicit PropertiesDialog(ActionManager* actionManager, SettingsManager* settings, QObject* parent = nullptr);
     ~PropertiesDialog() override;
 
     void addTab(const QString& title, const WidgetBuilder& widgetBuilder);
@@ -134,6 +134,7 @@ public:
 
 private:
     ActionManager* m_actionManager;
+    SettingsManager* m_settings;
     QAction* m_toggleScopeAction;
     QAction* m_previousTrackAction;
     QAction* m_nextTrackAction;

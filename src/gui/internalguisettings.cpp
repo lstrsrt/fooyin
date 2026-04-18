@@ -171,5 +171,7 @@ GuiSettings::GuiSettings(SettingsManager* settingsManager)
         QStringList{}, u"Interface/ContextMenuLibraryTreeDisabledSections"_s);
     m_settings->createSetting<Internal::ContextMenuLibraryTreeLayout>(QStringList{},
                                                                       u"Interface/ContextMenuLibraryTreeLayout"_s);
+    m_settings->createSetting<Internal::PropertiesSidebarTrackScript>(u"[%track%. ]%title%"_s,
+                                                                      u"Interface/PropertiesSidebarTrackScript "_s);
 }
 } // namespace Fooyin
