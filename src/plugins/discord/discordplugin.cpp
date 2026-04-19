@@ -42,6 +42,7 @@ DiscordPlugin::DiscordPlugin()
     : m_discordClient{new DiscordIPCClient(this)}
     , m_throttler{new SignalThrottler(this)}
     , m_positionSyncedTrackId{-1}
+    , m_clearOnPause{false}
 { }
 
 void DiscordPlugin::initialise(const CorePluginContext& context)
@@ -50,6 +51,8 @@ void DiscordPlugin::initialise(const CorePluginContext& context)
     m_settings = context.settingsManager;
 
     m_discordSettings = std::make_unique<DiscordSettings>(m_settings);
+
+    m_clearOnPause = m_settings->value<Settings::Discord::ClearOnPause>();
 
     QObject::connect(m_player, &PlayerController::currentTrackChanged, this, [this] {
         m_positionSyncedTrackId = -1;
@@ -74,6 +77,10 @@ void DiscordPlugin::initialise(const CorePluginContext& context)
 
     m_settings->subscribe<Settings::Discord::DiscordEnabled>(this, &DiscordPlugin::toggleEnabled);
     m_settings->subscribe<Settings::Discord::ShowStateIcon>(m_throttler, &SignalThrottler::throttle);
+    m_settings->subscribe<Settings::Discord::ClearOnPause>(this, [this](bool enabled) {
+        m_clearOnPause = enabled;
+        updateActivity();
+    });
     m_settings->subscribe<Settings::Discord::ClientId>(this, &DiscordPlugin::startClientIdChangeTask);
     m_settings->subscribe<Settings::Discord::TitleField>(m_throttler, &SignalThrottler::throttle);
     m_settings->subscribe<Settings::Discord::ArtistField>(m_throttler, &SignalThrottler::throttle);
@@ -191,7 +198,8 @@ void DiscordPlugin::updateActivity()
         return;
     }
 
-    if(m_player->playState() == Player::PlayState::Stopped) {
+    const auto state = m_player->playState();
+    if(state == Player::PlayState::Stopped || (state == Player::PlayState::Paused && m_clearOnPause)) {
         startClearActivityTask();
         return;
     }

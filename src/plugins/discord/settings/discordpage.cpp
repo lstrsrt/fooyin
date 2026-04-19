@@ -48,6 +48,7 @@ private:
 
     QCheckBox* m_enable;
     QCheckBox* m_showPlayState;
+    QCheckBox* m_clearOnPause;
     QLineEdit* m_clientId;
 
     QLineEdit* m_titleField;
@@ -59,6 +60,7 @@ DiscordPageWidget::DiscordPageWidget(SettingsManager* settings)
     : m_settings{settings}
     , m_enable{new QCheckBox(tr("Enable"), this)}
     , m_showPlayState{new QCheckBox(tr("Show playstate"), this)}
+    , m_clearOnPause{new QCheckBox(tr("Clear on pause"), this)}
     , m_clientId{new QLineEdit(this)}
     , m_titleField{new QLineEdit(this)}
     , m_artistField{new QLineEdit(this)}
@@ -78,10 +80,12 @@ DiscordPageWidget::DiscordPageWidget(SettingsManager* settings)
     auto* layout = new QGridLayout(this);
 
     m_showPlayState->setToolTip(tr("Display a small icon in Discord showing the current playback state"));
+    m_clearOnPause->setToolTip(tr("Clear status when paused"));
 
     row = 0;
     layout->addWidget(m_enable, row++, 0, 1, 2);
     layout->addWidget(m_showPlayState, row++, 0, 1, 2);
+    layout->addWidget(m_clearOnPause, row++, 0, 1, 2);
     layout->addWidget(new QLabel(tr("Client ID") + ":"_L1, this), row, 0);
     layout->addWidget(m_clientId, row++, 1);
     layout->addWidget(fieldsGroup, row++, 0, 1, 2);
@@ -92,6 +96,7 @@ void DiscordPageWidget::load()
 {
     m_enable->setChecked(m_settings->value<Settings::Discord::DiscordEnabled>());
     m_showPlayState->setChecked(m_settings->value<Settings::Discord::ShowStateIcon>());
+    m_clearOnPause->setChecked(m_settings->value<Settings::Discord::ClearOnPause>());
     m_clientId->setText(m_settings->value<Settings::Discord::ClientId>());
     m_titleField->setText(m_settings->value<Settings::Discord::TitleField>());
     m_artistField->setText(m_settings->value<Settings::Discord::ArtistField>());
@@ -102,6 +107,7 @@ void DiscordPageWidget::apply()
 {
     m_settings->set<Settings::Discord::DiscordEnabled>(m_enable->isChecked());
     m_settings->set<Settings::Discord::ShowStateIcon>(m_showPlayState->isChecked());
+    m_settings->set<Settings::Discord::ClearOnPause>(m_clearOnPause->isChecked());
     m_settings->set<Settings::Discord::ClientId>(m_clientId->text());
     m_settings->set<Settings::Discord::TitleField>(m_titleField->text());
     m_settings->set<Settings::Discord::ArtistField>(m_artistField->text());
@@ -112,6 +118,7 @@ void DiscordPageWidget::reset()
 {
     m_settings->reset<Settings::Discord::DiscordEnabled>();
     m_settings->reset<Settings::Discord::ShowStateIcon>();
+    m_settings->reset<Settings::Discord::ClearOnPause>();
     m_settings->reset<Settings::Discord::ClientId>();
     m_settings->reset<Settings::Discord::TitleField>();
     m_settings->reset<Settings::Discord::ArtistField>();

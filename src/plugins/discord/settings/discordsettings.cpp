@@ -35,5 +35,6 @@ DiscordSettings::DiscordSettings(SettingsManager* settingsManager)
     m_settings->createSetting<TitleField>(u"%title%"_s, u"Discord/TitleField"_s);
     m_settings->createSetting<ShowStateIcon>(true, u"Discord/ShowPlayStateIcon"_s);
     m_settings->createSetting<DiscordEnabled>(false, u"Discord/Enable"_s);
+    m_settings->createSetting<ClearOnPause>(false, u"Discord/ClearOnPause"_s);
 }
 } // namespace Fooyin::Discord

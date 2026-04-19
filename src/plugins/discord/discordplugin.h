@@ -73,6 +73,7 @@ private:
     SignalThrottler* m_throttler;
     ScriptParser m_scriptParser;
     int m_positionSyncedTrackId;
+    bool m_clearOnPause;
 
     std::optional<QCoro::Task<>> m_clientIdTask;
     std::optional<QCoro::Task<>> m_connectTask;

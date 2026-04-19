@@ -36,6 +36,7 @@ enum DiscordSettings : uint32_t
     TitleField     = 4 | Type::String,
     ShowStateIcon  = 5 | Type::Bool,
     DiscordEnabled = 6 | Type::Bool,
+    ClearOnPause   = 7 | Type::Bool,
 };
 Q_ENUM_NS(DiscordSettings)
 } // namespace Settings::Discord
