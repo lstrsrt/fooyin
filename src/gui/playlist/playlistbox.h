@@ -21,12 +21,16 @@
 
 #include <gui/fywidget.h>
 
+#include <QPointer>
+
 class QComboBox;
+class QPoint;
 
 namespace Fooyin {
 class Playlist;
 class PlaylistController;
 class PlaylistHandler;
+class PopupLineEdit;
 
 class PlaylistBox : public FyWidget
 {
@@ -46,10 +50,19 @@ public:
     void currentPlaylistChanged(const Playlist* playlist) const;
     void changePlaylist(int index);
 
+    void showContextMenu(const QPoint& pos);
+    void showRenameEditor();
+    void closeRenameEditor();
+    void cancelRenameEditor();
+
+    [[nodiscard]] Playlist* currentPlaylist() const;
+
 private:
     PlaylistController* m_playlistController;
     PlaylistHandler* m_playlistHandler;
 
     QComboBox* m_playlistBox;
+    QPointer<PopupLineEdit> m_lineEdit;
+    bool m_renameCancelled;
 };
 } // namespace Fooyin

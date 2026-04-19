@@ -19,11 +19,18 @@
 
 #include "playlistbox.h"
 
-#include <core/playlist/playlisthandler.h>
-
+#include "dialog/autoplaylistdialog.h"
 #include "playlist/playlistcontroller.h"
 
+#include <core/playlist/playlisthandler.h>
+#include <gui/widgets/popuplineedit.h>
+#include <utils/utils.h>
+
+#include <QAction>
 #include <QComboBox>
+#include <QMainWindow>
+#include <QMenu>
+#include <QSignalBlocker>
 #include <QVBoxLayout>
 
 using namespace Qt::StringLiterals;
@@ -34,6 +41,8 @@ PlaylistBox::PlaylistBox(PlaylistController* playlistController, QWidget* parent
     , m_playlistController{playlistController}
     , m_playlistHandler{m_playlistController->playlistHandler()}
     , m_playlistBox{new QComboBox(this)}
+    , m_lineEdit{nullptr}
+    , m_renameCancelled{false}
 {
     QObject::setObjectName(PlaylistBox::name());
 
@@ -43,6 +52,8 @@ PlaylistBox::PlaylistBox(PlaylistController* playlistController, QWidget* parent
     layout->addWidget(m_playlistBox);
 
     QObject::connect(m_playlistBox, &QComboBox::currentIndexChanged, this, &PlaylistBox::changePlaylist);
+    m_playlistBox->setContextMenuPolicy(Qt::CustomContextMenu);
+    QObject::connect(m_playlistBox, &QWidget::customContextMenuRequested, this, &PlaylistBox::showContextMenu);
     QObject::connect(m_playlistController, &PlaylistController::playlistsLoaded, this,
                      [this]() { currentPlaylistChanged(m_playlistController->currentPlaylist()); });
     QObject::connect(
@@ -91,6 +102,10 @@ void PlaylistBox::removePlaylist(const Playlist* playlist)
 {
     if(!playlist) {
         return;
+    }
+
+    if(const auto* current = currentPlaylist(); current && current->id() == playlist->id()) {
+        closeRenameEditor();
     }
 
     const int count = m_playlistBox->count();
@@ -143,5 +158,126 @@ void PlaylistBox::changePlaylist(int index)
 
     const auto id = m_playlistBox->itemData(index).value<UId>();
     m_playlistController->changeCurrentPlaylist(id);
+}
+
+void PlaylistBox::showContextMenu(const QPoint& pos)
+{
+    auto* menu = new QMenu(this);
+    menu->setAttribute(Qt::WA_DeleteOnClose);
+
+    auto* createPlaylist = new QAction(tr("Add &new playlist"), menu);
+    QObject::connect(createPlaylist, &QAction::triggered, this, [this]() {
+        closeRenameEditor();
+
+        if(auto* playlist = m_playlistHandler->createEmptyPlaylist()) {
+            m_playlistController->changeCurrentPlaylist(playlist);
+        }
+    });
+    menu->addAction(createPlaylist);
+
+    auto* createAutoPlaylist = new QAction(tr("Add new &autoplaylist"), menu);
+    QObject::connect(createAutoPlaylist, &QAction::triggered, this, [this]() {
+        closeRenameEditor();
+
+        auto* autoDialog = new AutoPlaylistDialog(Utils::getMainWindow());
+        autoDialog->setAttribute(Qt::WA_DeleteOnClose);
+        QObject::connect(autoDialog, &AutoPlaylistDialog::playlistEdited, autoDialog,
+                         [this](const QString& name, const QString& query, const QString& sortQuery, bool forceSorted) {
+                             if(auto* playlist
+                                = m_playlistHandler->createNewAutoPlaylist(name, query, sortQuery, forceSorted)) {
+                                 m_playlistController->changeCurrentPlaylist(playlist);
+                             }
+                         });
+        autoDialog->show();
+    });
+    menu->addAction(createAutoPlaylist);
+
+    if(auto* playlist = currentPlaylist()) {
+        menu->addSeparator();
+
+        if(playlist->isAutoPlaylist()) {
+            auto* editAutoPlaylist = new QAction(tr("&Edit autoplaylist"), menu);
+            QObject::connect(editAutoPlaylist, &QAction::triggered, this, [this, playlist]() {
+                closeRenameEditor();
+
+                auto* autoDialog = new AutoPlaylistDialog(m_playlistHandler, playlist, Utils::getMainWindow());
+                autoDialog->setAttribute(Qt::WA_DeleteOnClose);
+                autoDialog->show();
+            });
+            menu->addAction(editAutoPlaylist);
+        }
+
+        auto* renameAction
+            = new QAction(playlist->isAutoPlaylist() ? tr("Re&name autoplaylist") : tr("Re&name playlist"), menu);
+        QObject::connect(renameAction, &QAction::triggered, this, &PlaylistBox::showRenameEditor);
+        menu->addAction(renameAction);
+
+        auto* removeAction
+            = new QAction(playlist->isAutoPlaylist() ? tr("&Remove autoplaylist") : tr("&Remove playlist"), menu);
+        QObject::connect(removeAction, &QAction::triggered, this, [this, playlist]() {
+            closeRenameEditor();
+            m_playlistHandler->removePlaylist(playlist->id());
+        });
+        menu->addAction(removeAction);
+    }
+
+    menu->popup(m_playlistBox->mapToGlobal(pos));
+}
+
+void PlaylistBox::showRenameEditor()
+{
+    auto* playlist = currentPlaylist();
+    if(!playlist) {
+        return;
+    }
+
+    closeRenameEditor();
+    m_renameCancelled = false;
+
+    m_lineEdit = new PopupLineEdit(playlist->name(), this);
+    m_lineEdit->setAttribute(Qt::WA_DeleteOnClose);
+    m_lineEdit->setGeometry(m_playlistBox->geometry());
+
+    QObject::connect(m_lineEdit, &PopupLineEdit::editingCancelled, this, &PlaylistBox::cancelRenameEditor);
+    QObject::connect(m_lineEdit, &QLineEdit::editingFinished, this, [this, playlistId = playlist->id()]() {
+        if(!m_lineEdit) {
+            return;
+        }
+
+        const QString text = m_lineEdit->text();
+        closeRenameEditor();
+
+        if(m_renameCancelled) {
+            return;
+        }
+
+        if(auto* current = m_playlistHandler->playlistById(playlistId)) {
+            if(text != current->name()) {
+                m_playlistHandler->renamePlaylist(playlistId, text);
+            }
+        }
+    });
+
+    m_lineEdit->show();
+    m_lineEdit->selectAll();
+    m_lineEdit->setFocus(Qt::ActiveWindowFocusReason);
+}
+
+void PlaylistBox::closeRenameEditor()
+{
+    if(m_lineEdit) {
+        m_lineEdit->close();
+    }
+}
+
+void PlaylistBox::cancelRenameEditor()
+{
+    m_renameCancelled = true;
+    closeRenameEditor();
+}
+
+Playlist* PlaylistBox::currentPlaylist() const
+{
+    return m_playlistController->currentPlaylist();
 }
 } // namespace Fooyin
