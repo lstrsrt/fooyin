@@ -34,6 +34,12 @@ class MusicLibrary;
 class PlaylistHandlerPrivate;
 class SettingsManager;
 
+enum class PlaylistTrackChangeSource
+{
+    External = 0,
+    History,
+};
+
 class FYCORE_EXPORT PlaylistHandler : public QObject
 {
     Q_OBJECT
@@ -90,9 +96,11 @@ public:
     /** Adds @p tracks to the end of the playlist with @p id if found. */
     void appendToPlaylist(const UId& id, const TrackList& tracks);
     /** Replaces the @p tracks of the playlist with @p id if found. */
-    void replacePlaylistTracks(const UId& id, const TrackList& tracks);
+    void replacePlaylistTracks(const UId& id, const TrackList& tracks,
+                               PlaylistTrackChangeSource source = PlaylistTrackChangeSource::External);
     /** Replaces the @p tracks of the playlist with @p id if found, preserving playlist entry identity. */
-    void replacePlaylistTracks(const UId& id, const PlaylistTrackList& tracks);
+    void replacePlaylistTracks(const UId& id, const PlaylistTrackList& tracks,
+                               PlaylistTrackChangeSource source = PlaylistTrackChangeSource::External);
     /** Moves the tracks of the playlist with @p id to the playlist with @p replaceId. */
     void movePlaylistTracks(const UId& id, const UId& replaceId);
     /** Removes the tracks at @p indexes of the playlist with @p id if found. */
@@ -142,8 +150,10 @@ signals:
     void playlistReferencesRemapRequested(const Fooyin::UId& fromPlaylistId, const Fooyin::UId& toPlaylistId);
 
     void tracksAdded(Fooyin::Playlist* playlist, const Fooyin::TrackList& tracks, int index);
-    void tracksPatched(Fooyin::Playlist* playlist, const Fooyin::PlaylistChangeset& changeSet);
-    void tracksChanged(Fooyin::Playlist* playlist, const std::vector<int>& indexes);
+    void tracksPatched(Fooyin::Playlist* playlist, const Fooyin::PlaylistChangeset& changeSet,
+                       Fooyin::PlaylistTrackChangeSource source);
+    void tracksChanged(Fooyin::Playlist* playlist, const std::vector<int>& indexes,
+                       Fooyin::PlaylistTrackChangeSource source);
     void tracksUpdated(Fooyin::Playlist* playlist, const std::vector<int>& indexes);
     void tracksRemoved(Fooyin::Playlist* playlist, const std::vector<int>& indexes);
 
@@ -151,3 +161,5 @@ private:
     std::unique_ptr<PlaylistHandlerPrivate> p;
 };
 } // namespace Fooyin
+
+Q_DECLARE_METATYPE(Fooyin::PlaylistTrackChangeSource)

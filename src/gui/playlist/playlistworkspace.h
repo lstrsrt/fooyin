@@ -45,6 +45,8 @@ public:
 
     [[nodiscard]] Playlist* changeCurrentPlaylist(PlaylistHandler* handler, PlayerController* playerController,
                                                   Playlist* playlist);
+    void resetPlaylistViewState(Playlist* playlist);
+    void clearPlaylistHistory(Playlist* playlist);
     void resetPlaylistSessionState(Playlist* playlist);
     void resetCurrentPlaylistSessionState();
     void removePlaylist(Playlist* playlist);

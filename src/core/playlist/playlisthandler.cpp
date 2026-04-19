@@ -131,6 +131,7 @@ public:
     void updateIndices();
     void savePlaylists();
     void replacePlaylistTracks(Playlist* playlist, const PlaylistTrackList& tracks,
+                               PlaylistTrackChangeSource source           = PlaylistTrackChangeSource::External,
                                const TrackEntryIdSet& updatedTrackEntries = {});
     void cancelPendingRemovedPlaylist(const QString& name);
     void trackPendingRemovedPlaylist(Playlist* playlist);
@@ -250,10 +251,10 @@ void PlaylistHandlerPrivate::regenerateAutoPlaylists(const TrackList& updatedTra
         playlist->replaceTracks(newTracks);
 
         if(changeSet) {
-            emit m_self->tracksPatched(playlist.get(), changeSet.value());
+            emit m_self->tracksPatched(playlist.get(), changeSet.value(), PlaylistTrackChangeSource::External);
         }
         else {
-            emit m_self->tracksChanged(playlist.get(), {});
+            emit m_self->tracksChanged(playlist.get(), {}, PlaylistTrackChangeSource::External);
         }
     }
 }
@@ -278,7 +279,7 @@ void PlaylistHandlerPrivate::handleTracksChanged(const TrackList& tracks)
             for(const int index : updatedIndexes) {
                 playlist->updateTrackAtIndex(index, playlistTracks.at(index));
             }
-            emit m_self->tracksChanged(playlist.get(), updatedIndexes);
+            emit m_self->tracksChanged(playlist.get(), updatedIndexes, PlaylistTrackChangeSource::External);
         }
     }
 }
@@ -405,6 +406,7 @@ void PlaylistHandlerPrivate::savePlaylists()
 }
 
 void PlaylistHandlerPrivate::replacePlaylistTracks(Playlist* playlist, const PlaylistTrackList& tracks,
+                                                   PlaylistTrackChangeSource source,
                                                    const TrackEntryIdSet& updatedTrackEntries)
 {
     if(!playlist) {
@@ -422,10 +424,10 @@ void PlaylistHandlerPrivate::replacePlaylistTracks(Playlist* playlist, const Pla
     playlist->replaceTracks(newTracks);
 
     if(changeSet && !changeSet->isEmpty()) {
-        emit m_self->tracksPatched(playlist, *changeSet);
+        emit m_self->tracksPatched(playlist, *changeSet, source);
     }
     else {
-        emit m_self->tracksChanged(playlist, {});
+        emit m_self->tracksChanged(playlist, {}, source);
     }
 }
 
@@ -873,17 +875,18 @@ void PlaylistHandler::appendToPlaylist(const UId& id, const TrackList& tracks)
     }
 }
 
-void PlaylistHandler::replacePlaylistTracks(const UId& id, const TrackList& tracks)
+void PlaylistHandler::replacePlaylistTracks(const UId& id, const TrackList& tracks, PlaylistTrackChangeSource source)
 {
     if(auto* playlist = playlistById(id)) {
-        p->replacePlaylistTracks(playlist, rebuildPlaylistTracksPreservingEntries(playlist, tracks));
+        p->replacePlaylistTracks(playlist, rebuildPlaylistTracksPreservingEntries(playlist, tracks), source);
     }
 }
 
-void PlaylistHandler::replacePlaylistTracks(const UId& id, const PlaylistTrackList& tracks)
+void PlaylistHandler::replacePlaylistTracks(const UId& id, const PlaylistTrackList& tracks,
+                                            PlaylistTrackChangeSource source)
 {
     if(auto* playlist = playlistById(id)) {
-        p->replacePlaylistTracks(playlist, tracks);
+        p->replacePlaylistTracks(playlist, tracks, source);
     }
 }
 

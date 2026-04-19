@@ -141,14 +141,14 @@ InsertTracks::InsertTracks(PlaylistHandler* handler, const UId& playlistId, Trac
 void InsertTracks::undo()
 {
     if(m_handler) {
-        m_handler->replacePlaylistTracks(m_playlistId, m_oldTracks);
+        m_handler->replacePlaylistTracks(m_playlistId, m_oldTracks, PlaylistTrackChangeSource::History);
     }
 }
 
 void InsertTracks::redo()
 {
     if(m_handler) {
-        m_handler->replacePlaylistTracks(m_playlistId, m_newTracks);
+        m_handler->replacePlaylistTracks(m_playlistId, m_newTracks, PlaylistTrackChangeSource::History);
     }
 }
 
@@ -161,14 +161,14 @@ RemoveTracks::RemoveTracks(PlaylistHandler* handler, const UId& playlistId, std:
 void RemoveTracks::undo()
 {
     if(m_handler) {
-        m_handler->replacePlaylistTracks(m_playlistId, m_oldTracks);
+        m_handler->replacePlaylistTracks(m_playlistId, m_oldTracks, PlaylistTrackChangeSource::History);
     }
 }
 
 void RemoveTracks::redo()
 {
     if(m_handler) {
-        m_handler->replacePlaylistTracks(m_playlistId, m_newTracks);
+        m_handler->replacePlaylistTracks(m_playlistId, m_newTracks, PlaylistTrackChangeSource::History);
     }
 }
 
@@ -181,14 +181,14 @@ MoveTracks::MoveTracks(PlaylistHandler* handler, const UId& playlistId, MoveOper
 void MoveTracks::undo()
 {
     if(m_handler) {
-        m_handler->replacePlaylistTracks(m_playlistId, m_oldTracks);
+        m_handler->replacePlaylistTracks(m_playlistId, m_oldTracks, PlaylistTrackChangeSource::History);
     }
 }
 
 void MoveTracks::redo()
 {
     if(m_handler) {
-        m_handler->replacePlaylistTracks(m_playlistId, m_newTracks);
+        m_handler->replacePlaylistTracks(m_playlistId, m_newTracks, PlaylistTrackChangeSource::History);
     }
 }
 
@@ -202,14 +202,14 @@ ResetTracks::ResetTracks(PlaylistHandler* handler, const UId& playlistId, Playli
 void ResetTracks::undo()
 {
     if(m_handler) {
-        m_handler->replacePlaylistTracks(m_playlistId, m_oldTracks);
+        m_handler->replacePlaylistTracks(m_playlistId, m_oldTracks, PlaylistTrackChangeSource::History);
     }
 }
 
 void ResetTracks::redo()
 {
     if(m_handler) {
-        m_handler->replacePlaylistTracks(m_playlistId, m_newTracks);
+        m_handler->replacePlaylistTracks(m_playlistId, m_newTracks, PlaylistTrackChangeSource::History);
     }
 }
 } // namespace Fooyin

@@ -31,7 +31,7 @@ constexpr auto LastPlaylistId = "PlaylistWidget/LastPlaylistId";
 constexpr auto PlaylistStates = "PlaylistWidget/PlaylistStates";
 
 namespace Fooyin {
-PlaylistWorkspaceState::PlaylistWorkspaceState() { }
+PlaylistWorkspaceState::PlaylistWorkspaceState() = default;
 
 PlaylistWorkspaceState::~PlaylistWorkspaceState() = default;
 
@@ -101,14 +101,32 @@ void PlaylistWorkspaceState::restorePlaylistStates(PlaylistHandler* handler)
     }
 }
 
-void PlaylistWorkspaceState::resetPlaylistSessionState(Playlist* playlist)
+void PlaylistWorkspaceState::resetPlaylistViewState(Playlist* playlist)
+{
+    if(!playlist) {
+        return;
+    }
+
+    m_states.erase(playlist);
+}
+
+void PlaylistWorkspaceState::clearPlaylistHistory(Playlist* playlist)
 {
     if(!playlist) {
         return;
     }
 
     m_histories.erase(playlist);
-    m_states.erase(playlist);
+}
+
+void PlaylistWorkspaceState::resetPlaylistSessionState(Playlist* playlist)
+{
+    if(!playlist) {
+        return;
+    }
+
+    clearPlaylistHistory(playlist);
+    resetPlaylistViewState(playlist);
 }
 
 void PlaylistWorkspaceState::removePlaylist(Playlist* playlist)
@@ -177,25 +195,33 @@ void PlaylistWorkspaceState::addToHistory(Playlist* playlist, QUndoCommand* comm
 
 bool PlaylistWorkspaceState::canUndo(Playlist* playlist) const
 {
-    return playlist && m_histories.contains(playlist) && m_histories.at(playlist)->canUndo();
+    if(const auto* undoHistory = history(playlist)) {
+        return undoHistory->canUndo();
+    }
+
+    return false;
 }
 
 bool PlaylistWorkspaceState::canRedo(Playlist* playlist) const
 {
-    return playlist && m_histories.contains(playlist) && m_histories.at(playlist)->canRedo();
+    if(const auto* undoHistory = history(playlist)) {
+        return undoHistory->canRedo();
+    }
+
+    return false;
 }
 
 void PlaylistWorkspaceState::undo(Playlist* playlist)
 {
-    if(canUndo(playlist)) {
-        m_histories.at(playlist)->undo();
+    if(auto* undoHistory = history(playlist); undoHistory && undoHistory->canUndo()) {
+        undoHistory->undo();
     }
 }
 
 void PlaylistWorkspaceState::redo(Playlist* playlist)
 {
-    if(canRedo(playlist)) {
-        m_histories.at(playlist)->redo();
+    if(auto* undoHistory = history(playlist); undoHistory && undoHistory->canRedo()) {
+        undoHistory->redo();
     }
 }
 
@@ -217,5 +243,25 @@ TrackList PlaylistWorkspaceState::clipboard() const
 void PlaylistWorkspaceState::setClipboard(const TrackList& tracks)
 {
     m_clipboard = tracks;
+}
+
+QUndoStack* PlaylistWorkspaceState::history(Playlist* playlist)
+{
+    if(!playlist) {
+        return nullptr;
+    }
+
+    const auto historyIt = m_histories.find(playlist);
+    return historyIt != m_histories.end() ? historyIt->second.get() : nullptr;
+}
+
+const QUndoStack* PlaylistWorkspaceState::history(Playlist* playlist) const
+{
+    if(!playlist) {
+        return nullptr;
+    }
+
+    const auto historyIt = m_histories.find(playlist);
+    return historyIt != m_histories.cend() ? historyIt->second.get() : nullptr;
 }
 } // namespace Fooyin

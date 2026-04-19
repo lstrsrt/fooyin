@@ -307,14 +307,23 @@ void PlaylistController::handlePlaylistMetadataUpdated(Playlist* playlist)
     }
 }
 
-void PlaylistController::handlePlaylistTracksPatched(Playlist* playlist, const PlaylistChangeset& changeSet)
+void PlaylistController::handlePlaylistTracksPatched(Playlist* playlist, const PlaylistChangeset& changeSet,
+                                                     PlaylistTrackChangeSource source)
 {
-    if(!m_workspace->isCurrentPlaylist(playlist)) {
-        return;
+    const bool isCurrentPlaylist = m_workspace->isCurrentPlaylist(playlist);
+    if(changeSet.replacesAllEntries) {
+        m_workspace->resetPlaylistViewState(playlist);
+
+        if(source != PlaylistTrackChangeSource::History) {
+            m_workspace->clearPlaylistHistory(playlist);
+            if(isCurrentPlaylist) {
+                emit playlistHistoryChanged();
+            }
+        }
     }
 
-    if(changeSet.replacesAllEntries) {
-        m_workspace->resetPlaylistSessionState(playlist);
+    if(!isCurrentPlaylist) {
+        return;
     }
 
     emit currentPlaylistTracksPatched(changeSet);
@@ -433,16 +442,25 @@ void PlaylistController::handleQueueChanged(const QueueTracks& removed, const Qu
     }
 }
 
-void PlaylistController::handlePlaylistUpdated(Playlist* playlist, const std::vector<int>& indexes)
+void PlaylistController::handlePlaylistUpdated(Playlist* playlist, const std::vector<int>& indexes,
+                                               PlaylistTrackChangeSource source)
 {
     bool allNew{false};
+    const bool isCurrentPlaylist = m_workspace->isCurrentPlaylist(playlist);
 
     if(playlist && (indexes.empty() || std::cmp_equal(indexes.size(), playlist->trackCount()))) {
         allNew = true;
-        m_workspace->resetPlaylistSessionState(playlist);
+        m_workspace->resetPlaylistViewState(playlist);
+
+        if(source != PlaylistTrackChangeSource::History) {
+            m_workspace->clearPlaylistHistory(playlist);
+            if(isCurrentPlaylist) {
+                emit playlistHistoryChanged();
+            }
+        }
     }
 
-    if(m_workspace->isCurrentPlaylist(playlist)) {
+    if(isCurrentPlaylist) {
         emit currentPlaylistTracksChanged(indexes, allNew);
     }
 }

@@ -39,6 +39,7 @@ class PlaylistColumnRegistry;
 class PlaylistHandler;
 class PlaylistUiController;
 class PlaylistWorkspace;
+enum class PlaylistTrackChangeSource;
 struct PlaylistTrack;
 class PresetRegistry;
 enum class TrackAction;
@@ -123,7 +124,8 @@ private:
 
     void handlePlaylistAdded(Playlist* playlist);
     void handlePlaylistMetadataUpdated(Playlist* playlist);
-    void handlePlaylistTracksPatched(Playlist* playlist, const PlaylistChangeset& changeSet);
+    void handlePlaylistTracksPatched(Playlist* playlist, const PlaylistChangeset& changeSet,
+                                     PlaylistTrackChangeSource source);
     void handlePlaylistTracksRemoved(Playlist* playlist, const std::vector<int>& indexes);
 
     void handleTracksQueued(const QueueTracks& tracks);
@@ -131,7 +133,7 @@ private:
     void handleTracksDequeued(const PlaylistIndexes& indexes);
     void handleQueueChanged(const QueueTracks& removed, const QueueTracks& added);
 
-    void handlePlaylistUpdated(Playlist* playlist, const std::vector<int>& indexes);
+    void handlePlaylistUpdated(Playlist* playlist, const std::vector<int>& indexes, PlaylistTrackChangeSource source);
     void handleTracksUpdated(Playlist* playlist, const std::vector<int>& indexes);
     void handlePlaylistRemoved(Playlist* playlist);
 

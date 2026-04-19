@@ -43,6 +43,8 @@ public:
     void savePersistentState(Playlist* currentPlaylist) const;
     void restorePlaylistStates(PlaylistHandler* handler);
 
+    void resetPlaylistViewState(Playlist* playlist);
+    void clearPlaylistHistory(Playlist* playlist);
     void resetPlaylistSessionState(Playlist* playlist);
     void removePlaylist(Playlist* playlist);
 
@@ -64,6 +66,9 @@ public:
     void setClipboard(const TrackList& tracks);
 
 private:
+    [[nodiscard]] QUndoStack* history(Playlist* playlist);
+    [[nodiscard]] const QUndoStack* history(Playlist* playlist) const;
+
     std::unordered_map<Playlist*, std::unique_ptr<QUndoStack>> m_histories;
     std::unordered_map<Playlist*, PlaylistViewState> m_states;
     std::unordered_map<Playlist*, QString> m_currentSearches;

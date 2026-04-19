@@ -110,6 +110,16 @@ Playlist* PlaylistWorkspace::changeCurrentPlaylist(PlaylistHandler* handler, Pla
     return std::exchange(m_currentPlaylist, playlist);
 }
 
+void PlaylistWorkspace::resetPlaylistViewState(Playlist* playlist)
+{
+    m_state.resetPlaylistViewState(playlist);
+}
+
+void PlaylistWorkspace::clearPlaylistHistory(Playlist* playlist)
+{
+    m_state.clearPlaylistHistory(playlist);
+}
+
 void PlaylistWorkspace::resetPlaylistSessionState(Playlist* playlist)
 {
     m_state.resetPlaylistSessionState(playlist);
