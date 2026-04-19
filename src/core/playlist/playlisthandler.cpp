@@ -1000,9 +1000,10 @@ void PlaylistHandler::handleTracksDeleted(const TrackList& tracks)
 void PlaylistHandler::changePlaylistIndex(const UId& id, int index)
 {
     if(auto* playlist = playlistById(id)) {
-        if(!playlist->isTemporary()) {
+        if(!playlist->isTemporary() && index != playlist->index()) {
             Utils::move(p->m_playlists, playlist->index(), index);
             p->updateIndices();
+            emit playlistIndexChanged(playlist);
         }
     }
 }
