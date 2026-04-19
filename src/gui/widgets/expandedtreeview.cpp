@@ -3785,9 +3785,7 @@ void ExpandedTreeView::timerEvent(QTimerEvent* event)
     if(event->timerId() == p->m_delayedLayout.timerId()) {
         p->m_delayedLayout.stop();
         p->m_delayedPendingLayout = false;
-        if(isVisible()) {
-            doItemsLayout();
-        }
+        doItemsLayout();
     }
     else if(event->timerId() == p->m_autoScrollTimer.timerId()) {
         p->doAutoScroll();
