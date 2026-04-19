@@ -169,7 +169,11 @@ QString msToString(uint64_t ms)
 
 QString formatFileSize(uint64_t bytes, bool includeBytes)
 {
-    static const QStringList units = {u"bytes"_s, u"KB"_s, u"MB"_s, u"GB"_s, u"TB"_s};
+    if(bytes == 0) {
+        return u"0 B"_s;
+    }
+
+    static const QStringList units = {u"B"_s, u"KB"_s, u"MB"_s, u"GB"_s, u"TB"_s};
     auto size                      = static_cast<double>(bytes);
     int unitIndex{0};
 
