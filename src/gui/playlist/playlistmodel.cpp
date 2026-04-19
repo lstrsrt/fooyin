@@ -655,6 +655,30 @@ void mergeColumnSets(std::set<int>& target, const std::set<int>& source)
 {
     target.insert(source.cbegin(), source.cend());
 }
+
+// TODO: make these colours configurable
+QColor playingRowColor()
+{
+    QColor base = QApplication::palette().color(QPalette::Inactive, QPalette::Highlight);
+
+    if(Fooyin::Utils::isDarkMode()) {
+        base = base.lighter(150);
+    }
+    else {
+        base = base.darker(150);
+    }
+
+    base.setAlpha(110);
+    return base;
+}
+
+QColor disabledRowColor()
+{
+    QColor c{Qt::red};
+    c.setAlpha(50);
+
+    return c;
+}
 } // namespace
 
 namespace Fooyin {
@@ -667,8 +691,8 @@ PlaylistModel::PlaylistModel(PlaylistInteractor* playlistInteractor, AudioLoader
     , m_coverProvider{coverProvider}
     , m_id{UId::create()}
     , m_resetting{false}
-    , m_playingColour{QApplication::palette().highlight().color()}
-    , m_disabledColour{Qt::red}
+    , m_playingColour{playingRowColor()}
+    , m_disabledColour{disabledRowColor()}
     , m_populator{playlistInteractor->playerController(), settings}
     , m_playlistLoaded{false}
     , m_pixmapPadding{settings->value<Settings::Gui::Internal::PlaylistImagePadding>()}
@@ -680,9 +704,6 @@ PlaylistModel::PlaylistModel(PlaylistInteractor* playlistInteractor, AudioLoader
     , m_currentPlaylist{nullptr}
     , m_currentPlayState{Player::PlayState::Stopped}
 {
-    m_playingColour.setAlpha(90);
-    m_disabledColour.setAlpha(50);
-
     m_populator.setUseVarious(m_settings->value<Settings::Core::UseVariousForCompilations>());
     m_populator.setPreloadCount(m_settings->value<Settings::Gui::Internal::PlaylistTrackPreloadCount>());
     m_populator.moveToThread(&m_populatorThread);
@@ -709,14 +730,8 @@ PlaylistModel::PlaylistModel(PlaylistInteractor* playlistInteractor, AudioLoader
     m_settings->subscribe<Settings::Gui::RatingHalfStarSymbol>(this, refreshRatingStars);
     m_settings->subscribe<Settings::Gui::RatingEmptyStarSymbol>(this, refreshRatingStars);
 
-    auto updateColours = [this]() {
-        m_playingColour = QApplication::palette().highlight().color();
-        m_playingColour.setAlpha(90);
-        invalidateData();
-    };
-    m_settings->subscribe<Settings::Gui::Theme>(this, updateColours);
-    m_settings->subscribe<Settings::Gui::Style>(this, updateColours);
-
+    m_settings->subscribe<Settings::Gui::Theme>(this, &PlaylistModel::updateColours);
+    m_settings->subscribe<Settings::Gui::Style>(this, &PlaylistModel::updateColours);
     m_settings->subscribe<Settings::Gui::IconTheme>(this, [this]() { invalidateData(); });
 
     QObject::connect(&m_populator, &PlaylistPopulator::finished, this, [this]() {
@@ -1147,6 +1162,12 @@ void PlaylistModel::setPixmapColumnSize(int column, int size)
 void PlaylistModel::setPixmapColumnSizes(const std::vector<int>& sizes)
 {
     m_columnSizes = sizes;
+}
+
+void PlaylistModel::updateColours()
+{
+    m_playingColour = playingRowColor();
+    invalidateData();
 }
 
 void PlaylistModel::reset(const PlaylistTrackList& tracks)

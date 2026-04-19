@@ -139,6 +139,7 @@ public:
     void setFont(const QFont& font);
     void setPixmapColumnSize(int column, int size);
     void setPixmapColumnSizes(const std::vector<int>& sizes);
+    void updateColours();
 
     void reset(const PlaylistTrackList& tracks);
     void reset(const PlaylistPreset& preset, const PlaylistColumnList& columns, Playlist* playlist,

@@ -561,6 +561,21 @@ void PlaylistWidget::keyPressEvent(QKeyEvent* event)
     QWidget::keyPressEvent(event);
 }
 
+void PlaylistWidget::changeEvent(QEvent* event)
+{
+    FyWidget::changeEvent(event);
+
+    switch(event->type()) {
+        case QEvent::FontChange:
+        case QEvent::PaletteChange:
+        case QEvent::StyleChange:
+            m_model->updateColours();
+            break;
+        default:
+            break;
+    }
+}
+
 void PlaylistWidget::setupConnections()
 {
     // clang-format off
