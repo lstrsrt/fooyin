@@ -189,8 +189,6 @@ void PlaylistBox::changePlaylist(int index)
 
 void PlaylistBox::setupActions()
 {
-    const Context context = m_context->context();
-
     const QStringList editCategory{tr("Edit")};
     const QStringList switcherCategory{tr("Playlist Switcher")};
 
