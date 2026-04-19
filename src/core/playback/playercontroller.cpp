@@ -63,25 +63,6 @@ std::optional<PlaylistTrack> remapPlaylistTrackReference(PlaylistHandler* playli
         }
     }
 
-    std::optional<PlaylistTrack> matchingTrack;
-
-    const auto playlistTracks = playlist->playlistTracks();
-    for(const auto& playlistTrack : playlistTracks) {
-        if(!playlistTrack.track.sameIdentityAs(track.track)) {
-            continue;
-        }
-
-        if(matchingTrack.has_value()) {
-            return {};
-        }
-
-        matchingTrack = playlistTrack;
-    }
-
-    if(matchingTrack.has_value()) {
-        return matchingTrack;
-    }
-
     return {};
 }
 } // namespace

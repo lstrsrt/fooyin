@@ -66,10 +66,21 @@ TrackKeySet playlistTrackKeySet(const TrackList& tracks)
     return result;
 }
 
-PlaylistTrackList rebuildPlaylistTracksPreservingEntries(Playlist* playlist, const TrackList& tracks)
+enum class PreservationMode : uint8_t
+{
+    Preserve,
+    Ignore,
+};
+
+PlaylistTrackList rebuildPlaylistTracks(Playlist* playlist, const TrackList& tracks,
+                                        PreservationMode mode = PreservationMode::Ignore)
 {
     if(!playlist) {
         return {};
+    }
+
+    if(mode == PreservationMode::Ignore) {
+        return PlaylistTrack::fromTracks(tracks, playlist->id());
     }
 
     const PlaylistTrackList oldTracks = playlist->playlistTracks();
@@ -232,7 +243,8 @@ void PlaylistHandlerPrivate::regenerateAutoPlaylists(const TrackList& updatedTra
 
         const PlaylistTrackList oldTracks = playlist->playlistTracks();
         const TrackList regeneratedTracks = playlist->autoPlaylistTracks(tracks);
-        const PlaylistTrackList newTracks = rebuildPlaylistTracksPreservingEntries(playlist.get(), regeneratedTracks);
+        const PlaylistTrackList newTracks
+            = rebuildPlaylistTracks(playlist.get(), regeneratedTracks, PreservationMode::Preserve);
 
         TrackEntryIdSet updatedEntries;
         updatedEntries.reserve(oldTracks.size());
@@ -755,7 +767,7 @@ Playlist* PlaylistHandler::createPlaylist(const QString& name, const TrackList& 
     auto* playlist   = p->addNewPlaylist(name);
 
     if(playlist) {
-        p->replacePlaylistTracks(playlist, rebuildPlaylistTracksPreservingEntries(playlist, tracks));
+        p->replacePlaylistTracks(playlist, rebuildPlaylistTracks(playlist, tracks));
         if(isNew) {
             emit playlistAdded(playlist);
         }
@@ -768,7 +780,7 @@ Playlist* PlaylistHandler::createTempPlaylist(const QString& name, const TrackLi
 {
     auto* playlist = p->addNewPlaylist(name, true);
     if(playlist) {
-        p->replacePlaylistTracks(playlist, rebuildPlaylistTracksPreservingEntries(playlist, tracks));
+        p->replacePlaylistTracks(playlist, rebuildPlaylistTracks(playlist, tracks));
     }
 
     return playlist;
@@ -798,7 +810,7 @@ Playlist* PlaylistHandler::createNewPlaylist(const QString& name, const TrackLis
     auto* playlist        = p->addNewPlaylist(newName);
 
     if(playlist) {
-        p->replacePlaylistTracks(playlist, rebuildPlaylistTracksPreservingEntries(playlist, tracks));
+        p->replacePlaylistTracks(playlist, rebuildPlaylistTracks(playlist, tracks));
         emit playlistAdded(playlist);
     }
 
@@ -810,7 +822,7 @@ Playlist* PlaylistHandler::createNewTempPlaylist(const QString& name, const Trac
     const QString newName = p->findUniqueName(name);
     auto* playlist        = p->addNewPlaylist(newName, true);
     if(playlist) {
-        p->replacePlaylistTracks(playlist, rebuildPlaylistTracksPreservingEntries(playlist, tracks));
+        p->replacePlaylistTracks(playlist, rebuildPlaylistTracks(playlist, tracks));
     }
 
     return playlist;
@@ -831,9 +843,8 @@ Playlist* PlaylistHandler::createAutoPlaylist(const QString& name, const QString
             playlist->setSortQuery(sortQuery);
             playlist->setForceSorted(forceSorted);
 
-            const TrackList regeneratedTracks = playlist->autoPlaylistTracks(p->m_library->tracks());
-            const PlaylistTrackList playlistTracks
-                = rebuildPlaylistTracksPreservingEntries(playlist, regeneratedTracks);
+            const TrackList regeneratedTracks      = playlist->autoPlaylistTracks(p->m_library->tracks());
+            const PlaylistTrackList playlistTracks = rebuildPlaylistTracks(playlist, regeneratedTracks);
 
             if(playlist->playlistTracks() != PlaylistTrack::updateIndexes(playlistTracks)) {
                 p->replacePlaylistTracks(playlist, playlistTracks);
@@ -858,7 +869,7 @@ Playlist* PlaylistHandler::createNewAutoPlaylist(const QString& name, const QStr
 
     if(playlist) {
         const TrackList regeneratedTracks = playlist->autoPlaylistTracks(p->m_library->tracks());
-        p->replacePlaylistTracks(playlist, rebuildPlaylistTracksPreservingEntries(playlist, regeneratedTracks));
+        p->replacePlaylistTracks(playlist, rebuildPlaylistTracks(playlist, regeneratedTracks));
         emit playlistAdded(playlist);
     }
 
@@ -878,7 +889,7 @@ void PlaylistHandler::appendToPlaylist(const UId& id, const TrackList& tracks)
 void PlaylistHandler::replacePlaylistTracks(const UId& id, const TrackList& tracks, PlaylistTrackChangeSource source)
 {
     if(auto* playlist = playlistById(id)) {
-        p->replacePlaylistTracks(playlist, rebuildPlaylistTracksPreservingEntries(playlist, tracks), source);
+        p->replacePlaylistTracks(playlist, rebuildPlaylistTracks(playlist, tracks), source);
     }
 }
 
