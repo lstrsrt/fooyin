@@ -23,7 +23,6 @@
 #include <core/engine/audioloader.h>
 #include <core/internalcoresettings.h>
 #include <core/library/musiclibrary.h>
-#include <core/playback/playbackstatestore.h>
 #include <core/track.h>
 #include <utils/database/dbconnectionhandler.h>
 #include <utils/database/dbconnectionpool.h>
@@ -69,15 +68,6 @@ void registerCoreSettings(SettingsManager& settings)
                                                                      u"Playback/ShuffleAlbumsGroupScript"_s);
     settings.createSetting<Settings::Core::ShuffleAlbumsSortScript>(u"%track%"_s,
                                                                     u"Playback/ShuffleAlbumsSortScript"_s);
-}
-
-void clearStoredPlaybackState()
-{
-    const PlaybackStateStore playbackStateStore;
-    playbackStateStore.clearActivePlaylistDbId();
-    playbackStateStore.clearActiveTrackIndex();
-    playbackStateStore.clearPlaybackPosition();
-    playbackStateStore.clearPlaybackState();
 }
 
 bool createPlaylistTables(const DbConnectionPoolPtr& dbPool)
@@ -334,114 +324,5 @@ TEST(PlaylistHandlerTest, ReaddingSameNameCancelsPendingRemovedExportOnly)
     EXPECT_EQ(archived.front(), firstPlaylist);
     EXPECT_EQ(firstPlaylist->name(), u"Session A"_s);
     EXPECT_TRUE(harness.handler.pendingRemovedPlaylists().empty());
-}
-
-TEST(PlaylistHandlerTest, RestoreCurrentTrackRequestedRequiresPlaybackRestoreEnabled)
-{
-    ensureCoreApplication();
-    SettingsManager settings{QDir::tempPath() + u"/fooyin_playlisthandler_restore_disabled_test.ini"_s};
-    registerCoreSettings(settings);
-    settings.fileSet(Settings::Core::Internal::SaveActivePlaylistState, true);
-    settings.fileSet(Settings::Core::Internal::SavePlaybackState, false);
-    clearStoredPlaybackState();
-
-    QTemporaryDir storageDir;
-    ASSERT_TRUE(storageDir.isValid());
-
-    const QString dbFilePath = storageDir.filePath(u"playlisthandler.sqlite"_s);
-    const Track track        = makeTrack(u"/tmp/startup.flac"_s, 1);
-
-    {
-        PlaylistHandlerHarness harness{settings, dbFilePath};
-        ASSERT_TRUE(harness.dbInitialised);
-        harness.library.setTracks({track});
-
-        auto* playlist = harness.handler.createPlaylist(u"Startup"_s, {track});
-        ASSERT_NE(playlist, nullptr);
-
-        harness.handler.changeActivePlaylist(playlist);
-        playlist->changeCurrentIndex(0);
-        harness.handler.savePlaylists();
-    }
-
-    {
-        PlaylistHandlerHarness harness{settings, dbFilePath};
-        ASSERT_TRUE(harness.dbInitialised);
-        harness.library.setTracks({track});
-
-        bool restoreRequested{false};
-        QObject::connect(&harness.handler, &PlaylistHandler::restoreCurrentTrackRequested, &harness.handler,
-                         [&](const PlaylistTrack&) { restoreRequested = true; });
-
-        harness.library.emitTracksLoaded();
-
-        EXPECT_FALSE(restoreRequested);
-        ASSERT_NE(harness.handler.activePlaylist(), nullptr);
-        EXPECT_EQ(harness.handler.activePlaylist()->currentTrackIndex(), 0);
-    }
-}
-
-TEST(PlaylistHandlerTest, RestoreCurrentTrackRequestedSkipsStoppedStateButResumesPausedState)
-{
-    ensureCoreApplication();
-    SettingsManager settings{QDir::tempPath() + u"/fooyin_playlisthandler_restore_state_test.ini"_s};
-    registerCoreSettings(settings);
-    settings.fileSet(Settings::Core::Internal::SaveActivePlaylistState, true);
-    settings.fileSet(Settings::Core::Internal::SavePlaybackState, true);
-    clearStoredPlaybackState();
-
-    QTemporaryDir storageDir;
-    ASSERT_TRUE(storageDir.isValid());
-
-    const QString dbFilePath = storageDir.filePath(u"playlisthandler.sqlite"_s);
-    const Track track        = makeTrack(u"/tmp/startup.flac"_s, 1);
-
-    {
-        PlaylistHandlerHarness harness{settings, dbFilePath};
-        ASSERT_TRUE(harness.dbInitialised);
-        harness.library.setTracks({track});
-
-        auto* playlist = harness.handler.createPlaylist(u"Startup"_s, {track});
-        ASSERT_NE(playlist, nullptr);
-
-        harness.handler.changeActivePlaylist(playlist);
-        playlist->changeCurrentIndex(0);
-        harness.handler.savePlaylists();
-    }
-
-    const PlaybackStateStore playbackStateStore;
-    playbackStateStore.savePlaybackState(Player::PlayState::Stopped);
-
-    {
-        PlaylistHandlerHarness harness{settings, dbFilePath};
-        ASSERT_TRUE(harness.dbInitialised);
-        harness.library.setTracks({track});
-
-        bool restoreRequested{false};
-        QObject::connect(&harness.handler, &PlaylistHandler::restoreCurrentTrackRequested, &harness.handler,
-                         [&](const PlaylistTrack&) { restoreRequested = true; });
-
-        harness.library.emitTracksLoaded();
-
-        EXPECT_FALSE(restoreRequested);
-    }
-
-    playbackStateStore.savePlaybackState(Player::PlayState::Paused);
-
-    {
-        PlaylistHandlerHarness harness{settings, dbFilePath};
-        ASSERT_TRUE(harness.dbInitialised);
-        harness.library.setTracks({track});
-
-        std::optional<PlaylistTrack> restoredTrack;
-        QObject::connect(&harness.handler, &PlaylistHandler::restoreCurrentTrackRequested, &harness.handler,
-                         [&](const PlaylistTrack& playlistTrack) { restoredTrack = playlistTrack; });
-
-        harness.library.emitTracksLoaded();
-
-        ASSERT_TRUE(restoredTrack.has_value());
-        EXPECT_EQ(restoredTrack->track.id(), track.id());
-        EXPECT_EQ(restoredTrack->indexInPlaylist, 0);
-    }
 }
 } // namespace Fooyin::Testing

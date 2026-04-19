@@ -19,14 +19,16 @@
 
 #include <core/player/playercontroller.h>
 
-#include "core/playlist/playlisthandler.h"
+#include "internalcoresettings.h"
 #include "playbackcursor.h"
 #include "playbackordernavigator.h"
 #include "playbackprogresstracker.h"
 #include "playbacksession.h"
+#include "playbackstatestore.h"
 
 #include <core/coresettings.h>
 #include <core/player/playbackqueue.h>
+#include <core/playlist/playlisthandler.h>
 #include <core/track.h>
 #include <utils/helpers.h>
 #include <utils/settings/settingsmanager.h>
@@ -134,6 +136,9 @@ public:
     [[nodiscard]] TransportAction selectPlayAction();
     [[nodiscard]] TransportAction selectPreviousAction();
     [[nodiscard]] TransportAction selectAdvanceAction(Player::AdvanceReason reason);
+
+    void saveActiveTrack() const;
+    void restoreActiveTrack() const;
 
     PlayerController* m_self;
     SettingsManager* m_settings;
@@ -634,6 +639,56 @@ bool PlayerControllerPrivate::stopAtBoundary(PlaybackCursor::BoundaryStop bounda
     return true;
 }
 
+void PlayerControllerPrivate::saveActiveTrack() const
+{
+    PlaybackState::clearActiveTrackIndex();
+
+    const auto track = m_self->currentPlaylistTrack();
+    if(!track.isValid() || !m_settings->fileValue(Settings::Core::Internal::SaveActivePlaylistState).toBool()) {
+        return;
+    }
+
+    auto* playlist = m_playlistHandler->activePlaylist();
+
+    if(playlist && !playlist->isTemporary() && track.isInPlaylist()) {
+        PlaybackState::saveActiveTrackIndex(track.indexInPlaylist);
+    }
+}
+
+void PlayerControllerPrivate::restoreActiveTrack() const
+{
+    if(!m_settings->fileValue(Settings::Core::Internal::SaveActivePlaylistState).toBool()) {
+        PlaybackState::clearActiveTrackIndex();
+        return;
+    }
+
+    auto* playlist = m_playlistHandler->activePlaylist();
+    if(!playlist || playlist->isTemporary()) {
+        return;
+    }
+
+    if(const auto lastIndex = PlaybackState::activeTrackIndex(); lastIndex.has_value()) {
+        const int count = playlist->trackCount();
+        if(*lastIndex >= 0 && *lastIndex < count) {
+            playlist->changeCurrentIndex(*lastIndex);
+
+            const auto state = PlaybackState::playbackState();
+            if(!state.has_value() || *state == Player::PlayState::Stopped) {
+                return;
+            }
+
+            if(const auto track = playlist->playlistTrack(*lastIndex); track.has_value() && track->isValid()) {
+                m_self->commitCurrentTrack(*track);
+                m_self->changeCurrentTrack(*track);
+            }
+        }
+        else {
+            qCInfo(PLAYER_CONTROLLER) << "Ignoring stale saved track index" << *lastIndex;
+            PlaybackState::clearActiveTrackIndex();
+        }
+    }
+}
+
 PlayerControllerPrivate::TransportAction PlayerControllerPrivate::selectAdvanceAction(Player::AdvanceReason reason)
 {
     if(!m_stopCurrentSkip && m_stopAfterCurrentArmed) {
@@ -799,6 +854,7 @@ PlayerController::PlayerController(SettingsManager* settings, PlaylistHandler* p
         p->setStopAfterCurrentArmed(enabled);
         p->emitUpcomingTrackChangedIfNeeded();
     });
+    settings->subscribe<Settings::Core::Shutdown>(this, [this]() { p->saveActiveTrack(); });
 
     if(!playlistHandler) {
         return;
@@ -810,6 +866,8 @@ PlayerController::PlayerController(SettingsManager* settings, PlaylistHandler* p
         }
     };
 
+    QObject::connect(playlistHandler, &PlaylistHandler::playlistsPopulated, this,
+                     [this]() { p->restoreActiveTrack(); });
     QObject::connect(playlistHandler, &PlaylistHandler::activePlaylistChanged, this,
                      [this]() { p->emitUpcomingTrackChangedIfNeeded(); });
     QObject::connect(playlistHandler, &PlaylistHandler::tracksAdded, this, changeUpcomingTrack);
@@ -823,12 +881,6 @@ PlayerController::PlayerController(SettingsManager* settings, PlaylistHandler* p
             stop();
         }
     });
-
-    QObject::connect(playlistHandler, &PlaylistHandler::restoreCurrentTrackRequested, this,
-                     [this](const PlaylistTrack& track) {
-                         commitCurrentTrack(track);
-                         changeCurrentTrack(track);
-                     });
 
     QObject::connect(playlistHandler, &PlaylistHandler::playlistReferencesRemapRequested, this,
                      [this](const UId& fromPlaylistId, const UId& toPlaylistId) {

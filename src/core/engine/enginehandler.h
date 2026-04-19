@@ -19,6 +19,8 @@
 
 #pragma once
 
+#include "core/playback/playbackstatestore.h"
+
 #include <core/engine/enginecontroller.h>
 #include <core/engine/enginedefs.h>
 #include <core/player/playerdefs.h>
@@ -170,11 +172,16 @@ private:
     [[nodiscard]] bool cachedNextTrackReadyFor(const Engine::PlaybackItem& item) const;
     void clearNextTrackReadiness();
 
+    void savePlaybackState() const;
+    void loadPlaybackState();
+
     PlayerController* m_playerController;
     SettingsManager* m_settings;
 
     QThread m_engineThread;
     AudioEngine* m_engine;
+
+    bool m_restoreStartup;
 
     std::map<QString, OutputCreator> m_outputs;
     CurrentOutput m_currentOutput;

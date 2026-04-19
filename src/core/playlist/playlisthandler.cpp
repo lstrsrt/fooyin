@@ -165,7 +165,6 @@ public:
     MusicLibrary* m_library;
     SettingsManager* m_settings;
     PlaylistDatabase m_playlistConnector;
-    PlaybackStateStore m_playbackStateStore;
 
     PlaylistPtrList m_playlists;
     PlaylistPtrList m_removedPlaylists;
@@ -402,18 +401,10 @@ void PlaylistHandlerPrivate::savePlaylists()
     }
 
     if(m_activePlaylist->isTemporary()) {
-        m_playbackStateStore.clearActivePlaylistDbId();
+        PlaybackState::clearActivePlaylistDbId();
     }
     else {
-        m_playbackStateStore.saveActivePlaylistDbId(m_activePlaylist->dbId());
-    }
-
-    if(!m_activePlaylist->isTemporary()
-       && m_settings->fileValue(Settings::Core::Internal::SaveActivePlaylistState, false).toBool()) {
-        m_playbackStateStore.saveActiveTrackIndex(m_activePlaylist->currentTrackIndex());
-    }
-    else {
-        m_playbackStateStore.clearActiveTrackIndex();
+        PlaybackState::saveActivePlaylistDbId(m_activePlaylist->dbId());
     }
 }
 
@@ -513,7 +504,7 @@ bool PlaylistHandlerPrivate::validIndex(int index) const
 
 void PlaylistHandlerPrivate::restoreActivePlaylist()
 {
-    const auto lastId = m_playbackStateStore.activePlaylistDbId();
+    const auto lastId = PlaybackState::activePlaylistDbId();
     if(!lastId.has_value()) {
         return;
     }
@@ -526,29 +517,6 @@ void PlaylistHandlerPrivate::restoreActivePlaylist()
 
     m_activePlaylist = playlist->get();
     emit m_self->activePlaylistChanged(m_activePlaylist);
-
-    if(m_settings->fileValue(Settings::Core::Internal::SaveActivePlaylistState).toBool()) {
-        if(const auto lastIndex = m_playbackStateStore.activeTrackIndex(); lastIndex.has_value()) {
-            m_activePlaylist->changeCurrentIndex(*lastIndex);
-        }
-    }
-
-    const bool restorePlaybackState
-        = m_settings->fileValue(Settings::Core::Internal::SavePlaybackState, false).toBool();
-    if(!restorePlaybackState) {
-        return;
-    }
-
-    const auto state = m_playbackStateStore.playbackState();
-    if(!state.has_value() || *state == Player::PlayState::Stopped) {
-        return;
-    }
-
-    const int currentIndex = m_activePlaylist->currentTrackIndex();
-    if(const auto restoredTrack = m_activePlaylist->playlistTrack(currentIndex);
-       restoredTrack && restoredTrack->isValid()) {
-        emit m_self->restoreCurrentTrackRequested(*restoredTrack);
-    }
 }
 
 Playlist* PlaylistHandlerPrivate::addNewPlaylist(const QString& name, bool isTemporary)

@@ -147,7 +147,6 @@ signals:
     void playlistIndexChanged(Fooyin::Playlist* playlist);
     void activePlaylistChanged(Fooyin::Playlist* playlist);
     void activePlaylistDeleted();
-    void restoreCurrentTrackRequested(const Fooyin::PlaylistTrack& track);
     void playlistReferencesRemapRequested(const Fooyin::UId& fromPlaylistId, const Fooyin::UId& toPlaylistId);
 
     void tracksAdded(Fooyin::Playlist* playlist, const Fooyin::TrackList& tracks, int index);

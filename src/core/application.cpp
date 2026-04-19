@@ -34,7 +34,6 @@
 #include "library/sortingregistry.h"
 #include "library/unifiedmusiclibrary.h"
 #include "playback/playbackqueuestore.h"
-#include "playback/playbackstatestore.h"
 #include "playlist/parsers/cueparser.h"
 #include "playlist/parsers/m3uparser.h"
 #include "playlist/playlistloader.h"
@@ -109,15 +108,6 @@ public:
     void startSaveTimer();
     void exportAllPlaylists(bool shutdown);
 
-    void saveActivePlaylistState() const;
-    uint64_t loadActivePlaylistState() const;
-
-    void savePlaybackState() const;
-    void loadPlaybackState(uint64_t restoredPosition) const;
-
-    void handleRestoreCurrentTrackRequested(const PlaylistTrack& track);
-    void handleStartupTrackStatusChanged(const Engine::TrackStatusContext& context);
-
     void loadDatabaseSettings() const;
     void saveDatabaseSettings() const;
 
@@ -136,7 +126,6 @@ public:
     PlaylistHandler* m_playlistHandler;
     PlayerController* m_playerController;
     PlaybackQueueStore m_playbackQueueStore;
-    PlaybackStateStore m_playbackStateStore;
     EngineHandler m_engine;
     SortingRegistry* m_sortingRegistry;
     std::shared_ptr<NetworkAccessManager> m_networkManager;
@@ -146,7 +135,6 @@ public:
 
     QBasicTimer m_playlistSaveTimer;
     QBasicTimer m_settingsSaveTimer;
-    QMetaObject::Connection m_trackLoadedConnection;
 };
 
 ApplicationPrivate::ApplicationPrivate(Application* self_)
@@ -224,9 +212,6 @@ void ApplicationPrivate::setupConnections()
                      [this](const Track& track) { markTrack(track); });
 
     m_settings->subscribe<Settings::Core::Shutdown>(m_self, [this]() {
-        saveActivePlaylistState();
-        savePlaybackState();
-
         const auto state = m_engine.engineState();
         if(state != Engine::PlaybackState::Stopped && state != Engine::PlaybackState::Error) {
             QObject::connect(&m_engine, &EngineController::finished, m_self, Application::quit);
@@ -384,103 +369,6 @@ void ApplicationPrivate::exportAllPlaylists(bool shutdown)
     }
 }
 
-void ApplicationPrivate::saveActivePlaylistState() const
-{
-    if(m_settings->fileValue(Settings::Core::Internal::SaveActivePlaylistState, false).toBool()) {
-        const auto lastPos = static_cast<quint64>(m_playerController->currentPosition());
-        m_playbackStateStore.savePlaybackPosition(lastPos);
-    }
-    else {
-        m_playbackStateStore.clearPlaybackPosition();
-    }
-}
-
-uint64_t ApplicationPrivate::loadActivePlaylistState() const
-{
-    if(!m_playerController->currentTrack().isValid()) {
-        return 0;
-    }
-
-    if(!m_settings->fileValue(Settings::Core::Internal::SaveActivePlaylistState, false).toBool()) {
-        return 0;
-    }
-
-    return m_playbackStateStore.playbackPosition().value_or(0);
-}
-
-void ApplicationPrivate::savePlaybackState() const
-{
-    if(m_settings->fileValue(Settings::Core::Internal::SavePlaybackState, false).toBool()) {
-        m_playbackStateStore.savePlaybackState(m_playerController->playState());
-    }
-    else {
-        m_playbackStateStore.clearPlaybackState();
-    }
-}
-
-void ApplicationPrivate::loadPlaybackState(uint64_t restoredPosition) const
-{
-    if(!m_playerController->currentTrack().isValid()) {
-        return;
-    }
-
-    if(!m_settings->fileValue(Settings::Core::Internal::SavePlaybackState, false).toBool()) {
-        return;
-    }
-
-    const auto state = m_playbackStateStore.playbackState();
-    if(!state.has_value()) {
-        return;
-    }
-
-    switch(*state) {
-        case Player::PlayState::Paused:
-            qCDebug(APP) << "Restoring paused state…";
-            m_engine.restorePosition(restoredPosition, true);
-            break;
-        case Player::PlayState::Playing:
-            qCDebug(APP) << "Restoring playing state…";
-            QMetaObject::invokeMethod(
-                m_playerController,
-                [this, restoredPosition]() {
-                    if(restoredPosition > 0) {
-                        m_engine.restorePosition(restoredPosition, false);
-                    }
-                    m_playerController->play();
-                },
-                Qt::QueuedConnection);
-            break;
-        case Player::PlayState::Stopped:
-            qCDebug(APP) << "Restoring stopped state…";
-            break;
-    }
-}
-
-void ApplicationPrivate::handleRestoreCurrentTrackRequested(const PlaylistTrack& /*track*/)
-{
-    if(m_trackLoadedConnection) {
-        QObject::disconnect(m_trackLoadedConnection);
-    }
-
-    m_trackLoadedConnection = QObject::connect(
-        &m_engine, &EngineHandler::trackStatusContextChanged, m_self,
-        [this](const Engine::TrackStatusContext& context) { handleStartupTrackStatusChanged(context); });
-}
-
-void ApplicationPrivate::handleStartupTrackStatusChanged(const Engine::TrackStatusContext& context)
-{
-    if(context.status == Engine::TrackStatus::Loaded) {
-        QObject::disconnect(m_trackLoadedConnection);
-        m_trackLoadedConnection         = {};
-        const uint64_t restoredPosition = loadActivePlaylistState();
-        loadPlaybackState(restoredPosition);
-    }
-    else if(context.status == Engine::TrackStatus::Invalid || context.status == Engine::TrackStatus::NoTrack) {
-        QObject::disconnect(m_trackLoadedConnection);
-        m_trackLoadedConnection = {};
-    }
-}
-
 void ApplicationPrivate::loadDatabaseSettings() const
 {
     const DbConnectionProvider dbProvider{m_database->connectionPool()};
@@ -519,8 +407,6 @@ Application::Application(QObject* parent)
     QObject::connect(
         p->m_playlistHandler, &PlaylistHandler::playlistsPopulated, this,
         [this]() { p->m_playerController->replaceTracks(p->m_playbackQueueStore.load()); }, Qt::SingleShotConnection);
-    QObject::connect(p->m_playlistHandler, &PlaylistHandler::restoreCurrentTrackRequested, this,
-                     std::bind_front(&ApplicationPrivate::handleRestoreCurrentTrackRequested, p.get()));
     QObject::connect(p->m_playerController, &PlayerController::tracksQueued, this,
                      [this]() { p->m_playbackQueueStore.save(p->m_playerController->playbackQueue()); });
     QObject::connect(p->m_playerController, &PlayerController::tracksDequeued, this,

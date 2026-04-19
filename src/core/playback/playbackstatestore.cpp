@@ -29,20 +29,20 @@ constexpr auto ActiveTrackIndexKey   = "Playlist/ActiveTrackIndex"_L1;
 constexpr auto LastPlaybackPosition  = "Player/LastPosition"_L1;
 constexpr auto LastPlaybackState     = "Player/LastState"_L1;
 
-namespace Fooyin {
-void PlaybackStateStore::saveActivePlaylistDbId(int dbId) const
+namespace Fooyin::PlaybackState {
+void saveActivePlaylistDbId(int dbId)
 {
     FyStateSettings stateSettings;
     stateSettings.setValue(ActivePlaylistDbIdKey, dbId);
 }
 
-void PlaybackStateStore::clearActivePlaylistDbId() const
+void clearActivePlaylistDbId()
 {
     FyStateSettings stateSettings;
     stateSettings.remove(ActivePlaylistDbIdKey);
 }
 
-std::optional<int> PlaybackStateStore::activePlaylistDbId() const
+std::optional<int> activePlaylistDbId()
 {
     const FyStateSettings stateSettings;
     if(stateSettings.contains(ActivePlaylistDbIdKey)) {
@@ -52,19 +52,19 @@ std::optional<int> PlaybackStateStore::activePlaylistDbId() const
     return {};
 }
 
-void PlaybackStateStore::saveActiveTrackIndex(int index) const
+void saveActiveTrackIndex(int index)
 {
     FyStateSettings stateSettings;
     stateSettings.setValue(ActiveTrackIndexKey, index);
 }
 
-void PlaybackStateStore::clearActiveTrackIndex() const
+void clearActiveTrackIndex()
 {
     FyStateSettings stateSettings;
     stateSettings.remove(ActiveTrackIndexKey);
 }
 
-std::optional<int> PlaybackStateStore::activeTrackIndex() const
+std::optional<int> activeTrackIndex()
 {
     const FyStateSettings stateSettings;
     if(stateSettings.contains(ActiveTrackIndexKey)) {
@@ -74,19 +74,19 @@ std::optional<int> PlaybackStateStore::activeTrackIndex() const
     return {};
 }
 
-void PlaybackStateStore::savePlaybackPosition(uint64_t position) const
+void savePlaybackPosition(uint64_t position)
 {
     FyStateSettings stateSettings;
     stateSettings.setValue(LastPlaybackPosition, QVariant::fromValue(position));
 }
 
-void PlaybackStateStore::clearPlaybackPosition() const
+void clearPlaybackPosition()
 {
     FyStateSettings stateSettings;
     stateSettings.remove(LastPlaybackPosition);
 }
 
-std::optional<uint64_t> PlaybackStateStore::playbackPosition() const
+std::optional<uint64_t> playbackPosition()
 {
     const FyStateSettings stateSettings;
     if(stateSettings.contains(LastPlaybackPosition)) {
@@ -96,19 +96,19 @@ std::optional<uint64_t> PlaybackStateStore::playbackPosition() const
     return {};
 }
 
-void PlaybackStateStore::savePlaybackState(Player::PlayState state) const
+void savePlaybackState(Player::PlayState state)
 {
     FyStateSettings stateSettings;
     stateSettings.setValue(LastPlaybackState, Utils::Enum::toString(state));
 }
 
-void PlaybackStateStore::clearPlaybackState() const
+void clearPlaybackState()
 {
     FyStateSettings stateSettings;
     stateSettings.remove(LastPlaybackState);
 }
 
-std::optional<Player::PlayState> PlaybackStateStore::playbackState() const
+std::optional<Player::PlayState> playbackState()
 {
     const FyStateSettings stateSettings;
     if(stateSettings.contains(LastPlaybackState)) {
@@ -117,4 +117,4 @@ std::optional<Player::PlayState> PlaybackStateStore::playbackState() const
 
     return {};
 }
-} // namespace Fooyin
+} // namespace Fooyin::PlaybackState

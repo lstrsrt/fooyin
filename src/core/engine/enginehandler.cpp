@@ -74,6 +74,8 @@ EngineHandler::EngineHandler(std::shared_ptr<AudioLoader> audioLoader, PlayerCon
     , m_playerController{playerController}
     , m_settings{settings}
     , m_engine{new AudioEngine(std::move(audioLoader), settings, dspRegistry)}
+    , m_restoreStartup{m_settings->fileValue(Settings::Core::Internal::SaveActivePlaylistState, false).toBool()
+                       && m_settings->fileValue(Settings::Core::Internal::SavePlaybackState, false).toBool()}
     , m_levelReadyRelayConnected{false}
     , m_currentTrackItemId{0}
     , m_engineOwnedTransitionItemId{9}
@@ -148,6 +150,8 @@ EngineHandler::EngineHandler(std::shared_ptr<AudioLoader> audioLoader, PlayerCon
 
     m_settings->subscribe<Settings::Core::AudioOutput>(this, &EngineHandler::changeOutput);
     m_settings->subscribe<Settings::Core::OutputVolume>(this, &EngineHandler::updateVolume);
+
+    m_settings->subscribe<Settings::Core::Shutdown>(this, &EngineHandler::savePlaybackState);
 }
 
 EngineHandler::~EngineHandler()
@@ -578,9 +582,12 @@ void EngineHandler::handleTrackStatus(Engine::TrackStatus status, const Track& t
                 m_pendingTrackChange.reset();
             }
             break;
-        case Engine::TrackStatus::Loading:
         case Engine::TrackStatus::Loaded:
         case Engine::TrackStatus::Buffered:
+            if(m_restoreStartup) {
+                loadPlaybackState();
+            }
+        case Engine::TrackStatus::Loading:
         case Engine::TrackStatus::Unreadable:
             break;
     }
@@ -818,6 +825,70 @@ void EngineHandler::clearNextTrackReadiness()
 {
     m_lastPreparedNextTrack      = {};
     m_lastPreparedNextTrackReady = false;
+}
+
+void EngineHandler::savePlaybackState() const
+{
+    if(m_settings->fileValue(Settings::Core::Internal::SaveActivePlaylistState, false).toBool()) {
+        const auto lastPos = static_cast<quint64>(m_playerController->currentPosition());
+        PlaybackState::savePlaybackPosition(lastPos);
+    }
+    else {
+        PlaybackState::clearPlaybackPosition();
+    }
+
+    if(m_settings->fileValue(Settings::Core::Internal::SavePlaybackState, false).toBool()) {
+        PlaybackState::savePlaybackState(m_playerController->playState());
+    }
+    else {
+        PlaybackState::clearPlaybackState();
+    }
+}
+
+void EngineHandler::loadPlaybackState()
+{
+    if(!m_restoreStartup) {
+        return;
+    }
+    m_restoreStartup = false;
+
+    if(!m_playerController->currentTrack().isValid()) {
+        return;
+    }
+
+    if(!m_settings->fileValue(Settings::Core::Internal::SaveActivePlaylistState, false).toBool()) {
+        return;
+    }
+    if(!m_settings->fileValue(Settings::Core::Internal::SavePlaybackState, false).toBool()) {
+        return;
+    }
+
+    const auto state = PlaybackState::playbackState();
+    if(!state.has_value()) {
+        return;
+    }
+
+    const auto pos = PlaybackState::playbackPosition();
+    if(!pos.has_value()) {
+        return;
+    }
+
+    switch(*state) {
+        case Player::PlayState::Paused:
+            qCDebug(ENG_HANDLER) << "Restoring paused state…";
+            restorePosition(*pos, true);
+            break;
+        case Player::PlayState::Playing:
+            qCDebug(ENG_HANDLER) << "Restoring playing state…";
+            if(pos > 0) {
+                restorePosition(*pos, false);
+            }
+            m_playerController->play();
+            break;
+        case Player::PlayState::Stopped:
+            qCDebug(ENG_HANDLER) << "Restoring stopped state…";
+            break;
+    }
 }
 
 void EngineHandler::setup()

@@ -19,31 +19,25 @@
 
 #pragma once
 
-#include "fycore_export.h"
-
 #include <core/player/playerdefs.h>
 
 #include <cstdint>
 #include <optional>
 
-namespace Fooyin {
-class FYCORE_EXPORT PlaybackStateStore
-{
-public:
-    void saveActivePlaylistDbId(int dbId) const;
-    void clearActivePlaylistDbId() const;
-    [[nodiscard]] std::optional<int> activePlaylistDbId() const;
+namespace Fooyin::PlaybackState {
+void saveActivePlaylistDbId(int dbId);
+void clearActivePlaylistDbId();
+std::optional<int> activePlaylistDbId();
 
-    void saveActiveTrackIndex(int index) const;
-    void clearActiveTrackIndex() const;
-    [[nodiscard]] std::optional<int> activeTrackIndex() const;
+void saveActiveTrackIndex(int index);
+void clearActiveTrackIndex();
+std::optional<int> activeTrackIndex();
 
-    void savePlaybackPosition(uint64_t position) const;
-    void clearPlaybackPosition() const;
-    [[nodiscard]] std::optional<uint64_t> playbackPosition() const;
+void savePlaybackPosition(uint64_t position);
+void clearPlaybackPosition();
+std::optional<uint64_t> playbackPosition();
 
-    void savePlaybackState(Player::PlayState state) const;
-    void clearPlaybackState() const;
-    [[nodiscard]] std::optional<Player::PlayState> playbackState() const;
-};
-} // namespace Fooyin
+void savePlaybackState(Player::PlayState state);
+void clearPlaybackState();
+std::optional<Player::PlayState> playbackState();
+} // namespace Fooyin::PlaybackState
