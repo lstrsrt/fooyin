@@ -63,6 +63,14 @@ ViewMenu::ViewMenu(ActionManager* actionManager, SettingsManager* settings, QObj
     viewMenu->addAction(showEditorCmd);
     QObject::connect(showEditor, &QAction::triggered, this, &ViewMenu::openScriptEditor);
 
+    auto* showPlaylistManager = new QAction(tr("&Playlist Manager"), this);
+    showPlaylistManager->setStatusTip(tr("Open the playlist manager window"));
+    auto* showPlaylistManagerCmd
+        = m_actionManager->registerAction(showPlaylistManager, Constants::Actions::PlaylistManager);
+    showPlaylistManagerCmd->setCategories(viewCategory);
+    viewMenu->addAction(showPlaylistManagerCmd);
+    QObject::connect(showPlaylistManager, &QAction::triggered, this, &ViewMenu::openPlaylistManager);
+
     viewMenu->addSeparator();
 
     auto* focusSearchBar = new QAction(tr("Focus Search &Bar"), this);

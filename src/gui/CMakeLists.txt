@@ -195,6 +195,10 @@ set(SOURCES
     menubar/playbackmenu.h
     menubar/viewmenu.cpp
     menubar/viewmenu.h
+    playlist/manager/playlistmanagermodel.cpp
+    playlist/manager/playlistmanagermodel.h
+    playlist/manager/playlistmanagerwidget.cpp
+    playlist/manager/playlistmanagerwidget.h
     playlist/organiser/playlistorganiser.cpp
     playlist/organiser/playlistorganiser.h
     playlist/organiser/playlistorganiserconfigwidget.cpp

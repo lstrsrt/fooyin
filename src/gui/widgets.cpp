@@ -41,6 +41,7 @@
 #include "librarytree/librarytreewidget.h"
 #include "mainwindow.h"
 #include "output/outputprofilemanager.h"
+#include "playlist/manager/playlistmanagerwidget.h"
 #include "playlist/organiser/playlistorganiser.h"
 #include "playlist/playlistbox.h"
 #include "playlist/playlistcontroller.h"
@@ -164,6 +165,14 @@ void Widgets::registerWidgets()
         u"PlaylistOrganiser"_s,
         [this]() { return new PlaylistOrganiser(m_gui->actionManager(), m_playlistInteractor, m_settings, m_window); },
         tr("Playlist Organiser"));
+
+    provider->registerWidget(
+        u"PlaylistManager"_s,
+        [this]() {
+            return new PlaylistManagerWidget(m_gui->actionManager(), m_playlistController, m_playlistInteractor,
+                                             m_settings, m_window);
+        },
+        tr("Playlist Manager"));
 
     provider->registerWidget(
         u"PlaybackQueue"_s,

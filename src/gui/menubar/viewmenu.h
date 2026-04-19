@@ -37,6 +37,7 @@ public:
 signals:
     void focusSearchBar();
     void openQuickSetup();
+    void openPlaylistManager();
     void openLog();
     void openScriptEditor();
     void showNowPlaying();

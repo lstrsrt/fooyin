@@ -35,6 +35,7 @@
 #include "menubar/mainmenubar.h"
 #include "menubar/playbackmenu.h"
 #include "menubar/viewmenu.h"
+#include "playlist/manager/playlistmanagerwidget.h"
 #include "playlist/playlistcontroller.h"
 #include "playlist/playlistinteractor.h"
 #include "playlist/playlistuicontroller.h"
@@ -97,6 +98,7 @@
 #include <QMessageBox>
 #include <QMimeDatabase>
 #include <QPixmapCache>
+#include <QPointer>
 #include <QPushButton>
 #include <QStyle>
 #include <QStyleFactory>
@@ -201,6 +203,7 @@ public:
     void showScriptEditor();
     void showSearchPlaylistDialog();
     void showSearchLibraryDialog();
+    void showPlaylistManager();
     void focusSearchBar() const;
     void showQuickSearch() const;
     void showPropertiesDialog(const TrackList& tracks) const;
@@ -258,6 +261,7 @@ public:
     GuiPluginContext m_guiPluginContext;
 
     std::unique_ptr<LogWidget> m_logWidget;
+    QPointer<PlaylistManagerWidget> m_playlistManagerWidget;
     Widgets* m_widgets;
     ScriptParser m_scriptParser;
     CoverProvider m_coverProvider;
@@ -431,6 +435,7 @@ void GuiApplicationPrivate::setupConnections()
     QObject::connect(m_libraryMenu, &LibraryMenu::requestSearch, m_self, [this]() { showSearchLibraryDialog(); });
     QObject::connect(m_libraryMenu, &LibraryMenu::requestQuickSearch, m_self, [this]() { showQuickSearch(); });
     QObject::connect(m_viewMenu, &ViewMenu::openQuickSetup, m_editableLayout.get(), &EditableLayout::showQuickSetup);
+    QObject::connect(m_viewMenu, &ViewMenu::openPlaylistManager, m_self, [this]() { showPlaylistManager(); });
     QObject::connect(m_viewMenu, &ViewMenu::focusSearchBar, m_self, [this]() { focusSearchBar(); });
     QObject::connect(m_viewMenu, &ViewMenu::openLog, m_logWidget.get(), &LogWidget::show);
     QObject::connect(m_viewMenu, &ViewMenu::openScriptEditor, m_self, [this]() { showScriptEditor(); });
@@ -1087,6 +1092,23 @@ void GuiApplicationPrivate::showSearchLibraryDialog()
     coverProvider->setParent(search);
 
     search->show();
+}
+
+void GuiApplicationPrivate::showPlaylistManager()
+{
+    if(m_playlistManagerWidget) {
+        m_playlistManagerWidget->show();
+        m_playlistManagerWidget->raise();
+        m_playlistManagerWidget->activateWindow();
+        return;
+    }
+
+    m_playlistManagerWidget
+        = new PlaylistManagerWidget(m_actionManager, m_playlistController.get(), &m_playlistInteractor, m_settings);
+    m_playlistManagerWidget->setAttribute(Qt::WA_DeleteOnClose);
+    m_playlistManagerWidget->finalise();
+
+    m_playlistManagerWidget->show();
 }
 
 void GuiApplicationPrivate::focusSearchBar() const
