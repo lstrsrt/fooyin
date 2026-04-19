@@ -3008,11 +3008,15 @@ void ExpandedTreeView::setModel(QAbstractItemModel* model)
     p->m_model            = model;
     QAbstractItemView::setModel(model);
 
-    QObject::connect(model, &QAbstractItemModel::modelAboutToBeReset, this, [this]() {
+    QObject::disconnect(p->m_model, &QAbstractItemModel::rowsRemoved, this, nullptr);
+    // Do header layout after the tree
+    QObject::disconnect(p->m_model, &QAbstractItemModel::layoutChanged, p->m_header, nullptr);
+
+    QObject::connect(p->m_model, &QAbstractItemModel::modelAboutToBeReset, this, [this]() {
         p->interruptDelayedItemsLayout();
         p->m_viewItems.clear();
     });
-    QObject::connect(model, &QAbstractItemModel::rowsRemoved, this, &ExpandedTreeView::rowsRemoved);
+    QObject::connect(p->m_model, &QAbstractItemModel::rowsRemoved, this, &ExpandedTreeView::rowsRemoved);
 
     if(p->m_sortingEnabled) {
         sortByColumn(p->m_header->sortIndicatorSection(), p->m_header->sortIndicatorOrder());
