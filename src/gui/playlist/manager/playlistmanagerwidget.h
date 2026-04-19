@@ -27,7 +27,6 @@ class QAbstractItemModel;
 class QJsonObject;
 class QSortFilterProxyModel;
 class QShowEvent;
-class QTableView;
 class QAction;
 
 namespace Fooyin {
@@ -64,6 +63,9 @@ protected:
     void closeEvent(QCloseEvent* event) override;
 
 private:
+    [[nodiscard]] QByteArray saveHeaderState() const;
+    void resetToPlaylistIndexOrder();
+
     void addPlaylistContentsMenu(QMenu* menu, Playlist* playlist);
     void setupActions();
     void updateActionState();

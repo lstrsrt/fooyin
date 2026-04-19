@@ -76,6 +76,7 @@ public:
     void populate();
 
     void addPlaylist(Playlist* playlist);
+    void reorderPlaylist(Playlist* playlist);
     void removePlaylist(Playlist* playlist);
     void refreshPlaylist(Playlist* playlist);
 

@@ -92,6 +92,8 @@ PlaylistManagerModel::PlaylistManagerModel(PlaylistInteractor* playlistInteracto
                      &PlaylistManagerModel::refreshPlaylist);
     QObject::connect(m_playlistHandler, &PlaylistHandler::playlistUpdated, this,
                      &PlaylistManagerModel::refreshPlaylist);
+    QObject::connect(m_playlistHandler, &PlaylistHandler::playlistIndexChanged, this,
+                     &PlaylistManagerModel::reorderPlaylist);
     QObject::connect(m_playlistHandler, &PlaylistHandler::tracksAdded, this, &PlaylistManagerModel::refreshPlaylist);
     QObject::connect(m_playlistHandler, &PlaylistHandler::tracksPatched, this, &PlaylistManagerModel::refreshPlaylist);
     QObject::connect(m_playlistHandler, &PlaylistHandler::tracksChanged, this, &PlaylistManagerModel::refreshPlaylist);
@@ -314,6 +316,26 @@ void PlaylistManagerModel::addPlaylist(Playlist* playlist)
     m_playlists.push_back(playlist);
     m_summaries.push_back(summarisePlaylist(playlist));
     endInsertRows();
+}
+
+void PlaylistManagerModel::reorderPlaylist(Playlist* playlist)
+{
+    const int from = rowForPlaylist(playlist);
+    if(from < 0) {
+        return;
+    }
+
+    const int to = playlist->index();
+    if(to == from) {
+        return;
+    }
+
+    const int destRow = (to > from) ? (to + 1) : to;
+
+    beginMoveRows({}, from, from, {}, destRow);
+    Utils::move(m_playlists, from, to);
+    Utils::move(m_summaries, from, to);
+    endMoveRows();
 }
 
 void PlaylistManagerModel::removePlaylist(Playlist* playlist)

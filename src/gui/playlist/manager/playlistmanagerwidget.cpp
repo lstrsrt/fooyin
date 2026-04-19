@@ -48,6 +48,7 @@
 #include <QKeySequence>
 #include <QMainWindow>
 #include <QMenu>
+#include <QSignalBlocker>
 #include <QSortFilterProxyModel>
 #include <QVBoxLayout>
 
@@ -132,7 +133,6 @@ PlaylistManagerWidget::PlaylistManagerWidget(ActionManager* actionManager, Playl
     m_view->setSelectionBehavior(QAbstractItemView::SelectRows);
     m_view->setSelectionMode(QAbstractItemView::SingleSelection);
     m_view->setSortingEnabled(true);
-    m_view->sortByColumn(PlaylistManagerModel::Name, Qt::AscendingOrder);
     m_view->setEditTriggers(QAbstractItemView::EditKeyPressed | QAbstractItemView::SelectedClicked);
     m_view->setDragDropMode(QAbstractItemView::DropOnly);
     m_view->setDropIndicatorShown(true);
@@ -154,6 +154,7 @@ PlaylistManagerWidget::PlaylistManagerWidget(ActionManager* actionManager, Playl
         header->setSectionHidden(column, true);
     }
 
+    resetToPlaylistIndexOrder();
     setupActions();
 
     QObject::connect(m_view, &QWidget::customContextMenuRequested, this,
@@ -187,7 +188,7 @@ QString PlaylistManagerWidget::layoutName() const
 
 void PlaylistManagerWidget::saveLayoutData(QJsonObject& layout)
 {
-    layout["State"_L1]                 = QString::fromUtf8(m_view->header()->saveState().toBase64());
+    layout["State"_L1]                 = QString::fromUtf8(saveHeaderState().toBase64());
     layout["ActivateOnSingleClick"_L1] = m_activateOnSingleClick;
 }
 
@@ -196,6 +197,9 @@ void PlaylistManagerWidget::loadLayoutData(const QJsonObject& layout)
     if(layout.contains("State"_L1)) {
         m_view->header()->restoreState(QByteArray::fromBase64(layout.value("State"_L1).toString().toUtf8()));
     }
+
+    resetToPlaylistIndexOrder();
+
     if(layout.contains("ActivateOnSingleClick"_L1)) {
         m_activateOnSingleClick = layout.value("ActivateOnSingleClick"_L1).toBool();
     }
@@ -203,8 +207,31 @@ void PlaylistManagerWidget::loadLayoutData(const QJsonObject& layout)
 
 void PlaylistManagerWidget::finalise()
 {
-    m_view->sortByColumn(m_view->header()->sortIndicatorSection(), m_view->header()->sortIndicatorOrder());
     selectCurrentPlaylist();
+}
+
+QByteArray PlaylistManagerWidget::saveHeaderState() const
+{
+    auto* header = m_view->header();
+    if(!header) {
+        return {};
+    }
+
+    const int sortSection = header->sortIndicatorSection();
+    const auto sortOrder  = header->sortIndicatorOrder();
+
+    const QSignalBlocker block{header};
+    header->setSortIndicator(-1, Qt::AscendingOrder);
+
+    const QByteArray state = header->saveState();
+    header->setSortIndicator(sortSection, sortOrder);
+    return state;
+}
+
+void PlaylistManagerWidget::resetToPlaylistIndexOrder()
+{
+    m_proxyModel->sort(-1);
+    m_view->header()->setSortIndicator(-1, Qt::AscendingOrder);
 }
 
 QSize PlaylistManagerWidget::sizeHint() const
@@ -459,9 +486,8 @@ void PlaylistManagerWidget::showHeaderContextMenu(const QPoint& pos)
     auto* menu = new QMenu(this);
     menu->setAttribute(Qt::WA_DeleteOnClose);
 
-    const std::array columns
-        = {PlaylistManagerModel::Tracks, PlaylistManagerModel::Duration, PlaylistManagerModel::TotalSize};
-    for(const auto column : columns) {
+    for(const auto column :
+        {PlaylistManagerModel::Tracks, PlaylistManagerModel::Duration, PlaylistManagerModel::TotalSize}) {
         auto* action = new QAction(m_model->headerData(column, Qt::Horizontal, Qt::DisplayRole).toString(), menu);
         action->setCheckable(true);
         action->setChecked(!m_view->header()->isSectionHidden(column));
@@ -469,6 +495,12 @@ void PlaylistManagerWidget::showHeaderContextMenu(const QPoint& pos)
                          [this, column](bool visible) { m_view->header()->setSectionHidden(column, !visible); });
         menu->addAction(action);
     }
+
+    menu->addSeparator();
+
+    auto* resetAction = new QAction(tr("Restore playlist order"), menu);
+    QObject::connect(resetAction, &QAction::triggered, this, [this]() { resetToPlaylistIndexOrder(); });
+    menu->addAction(resetAction);
 
     menu->popup(m_view->header()->viewport()->mapToGlobal(pos));
 }
