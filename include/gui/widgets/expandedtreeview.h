@@ -61,6 +61,10 @@ public:
 
     void setModel(QAbstractItemModel* model) override;
 
+    [[nodiscard]] bool isSortingEnabled() const;
+    void setSortingEnabled(bool enabled);
+    void sortByColumn(int column, Qt::SortOrder order);
+
     [[nodiscard]] bool isSpanning(int column) const;
     void setSpan(int column, bool span);
     [[nodiscard]] bool extendSpansIntoParents() const;
@@ -109,9 +113,7 @@ public:
 
     void doItemsLayout() override;
     void reset() override;
-    void updateGeometries() override;
 
-    void dataChanged(const QModelIndex& topLeft, const QModelIndex& bottomRight, const QList<int>& roles) override;
     void selectAll() override;
 
 signals:
@@ -123,6 +125,9 @@ protected:
     friend class BaseView;
     friend class TreeView;
     friend class IconView;
+
+    void updateGeometries() override;
+    void dataChanged(const QModelIndex& topLeft, const QModelIndex& bottomRight, const QList<int>& roles) override;
 
     bool viewportEvent(QEvent* event) override;
     void dragMoveEvent(QDragMoveEvent* event) override;

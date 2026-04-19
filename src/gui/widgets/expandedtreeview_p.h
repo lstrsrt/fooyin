@@ -133,6 +133,7 @@ public:
     bool m_uniformRowHeights{false};
     bool m_selectBeforeDrag{false};
     bool m_selectIgnoreParents{false};
+    bool m_sortingEnabled{false};
 
     mutable bool m_delayedPendingLayout{false};
     bool m_updatingGeometry{false};
