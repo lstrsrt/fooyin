@@ -57,6 +57,13 @@ public:
     void filesToActivePlaylist(const QList<QUrl>& urls);
     void loadPlaylist(const QList<QPair<QString, QUrl>>& playlistData, bool play = false);
 
+    void tracksToPlaylist(const TrackList& tracks, const UId& id);
+    void tracksToCurrentPlaylist(const TrackList& tracks);
+    void tracksToCurrentPlaylistReplace(const TrackList& tracks, bool play = false);
+    void tracksToNewPlaylist(const QString& playlistName, const TrackList& tracks, bool play = false);
+    void tracksToNewPlaylistReplace(const QString& playlistName, const TrackList& tracks, bool play = false);
+    void tracksToActivePlaylist(const TrackList& tracks);
+
     template <typename Func>
     void filesToTracks(const QList<QUrl>& urls, Func&& func)
     {
@@ -77,7 +84,7 @@ public:
         loadPlaylistTracks(urls, std::forward<Func>(func));
     }
 
-    void trackMimeToPlaylist(const QByteArray& data, const UId& id);
+    void trackIdsToPlaylist(const QByteArray& data, const UId& id);
 
 private:
     [[nodiscard]] ScanRequest startFileScan(const QList<QUrl>& urls) const;

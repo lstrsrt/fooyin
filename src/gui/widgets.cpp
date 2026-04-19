@@ -154,7 +154,7 @@ void Widgets::registerWidgets()
             QObject::connect(playlistTabs, &PlaylistTabs::filesDropped, m_playlistInteractor,
                              &PlaylistInteractor::filesToPlaylist);
             QObject::connect(playlistTabs, &PlaylistTabs::tracksDropped, m_playlistInteractor,
-                             &PlaylistInteractor::trackMimeToPlaylist);
+                             &PlaylistInteractor::trackIdsToPlaylist);
             return playlistTabs;
         },
         tr("Playlist Tabs"));

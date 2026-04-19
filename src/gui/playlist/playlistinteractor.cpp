@@ -236,20 +236,7 @@ void PlaylistInteractor::filesToPlaylist(const QList<QUrl>& urls, const UId& id)
         return;
     }
 
-    if(id.isValid()) {
-        scanFiles(urls, [this, id](const TrackList& scannedTracks) {
-            if(auto* playlist = m_handler->playlistById(id)) {
-                appendToPlaylist(playlist, scannedTracks);
-                activatePlaylist(playlist);
-            }
-        });
-    }
-    else {
-        scanFiles(urls, [this](const TrackList& scannedTracks) {
-            const QString playlistName = Track::findCommonField(scannedTracks);
-            activatePlaylist(m_handler->createNewPlaylist(playlistName, scannedTracks));
-        });
-    }
+    scanFiles(urls, [this, id](const TrackList& scannedTracks) { tracksToPlaylist(scannedTracks, id); });
 }
 
 void PlaylistInteractor::filesToCurrentPlaylist(const QList<QUrl>& urls)
@@ -258,9 +245,7 @@ void PlaylistInteractor::filesToCurrentPlaylist(const QList<QUrl>& urls)
         return;
     }
 
-    scanFiles(urls, [this](const TrackList& scannedTracks) {
-        appendToPlaylist(m_controller->currentPlaylist(), scannedTracks);
-    });
+    scanFiles(urls, [this](const TrackList& scannedTracks) { tracksToCurrentPlaylist(scannedTracks); });
 }
 
 void PlaylistInteractor::filesToCurrentPlaylistReplace(const QList<QUrl>& urls, bool play)
@@ -269,15 +254,8 @@ void PlaylistInteractor::filesToCurrentPlaylistReplace(const QList<QUrl>& urls, 
         return;
     }
 
-    scanFiles(urls, [this, play](const TrackList& scannedTracks) {
-        if(auto* playlist = m_controller->currentPlaylist()) {
-            if(scannedTracks.empty()) {
-                return;
-            }
-            m_handler->replacePlaylistTracks(playlist->id(), scannedTracks);
-            activatePlaylist(playlist, 0, play);
-        }
-    });
+    scanFiles(urls,
+              [this, play](const TrackList& scannedTracks) { tracksToCurrentPlaylistReplace(scannedTracks, play); });
 }
 
 void PlaylistInteractor::filesToNewPlaylist(const QString& playlistName, const QList<QUrl>& urls, bool play)
@@ -286,11 +264,9 @@ void PlaylistInteractor::filesToNewPlaylist(const QString& playlistName, const Q
         return;
     }
 
-    auto handleScanResult = [this, playlistName, play](const TrackList& scannedTracks) {
-        activatePlaylist(appendOrCreateNamedPlaylist(playlistName, scannedTracks), play);
-    };
-
-    scanFiles(urls, handleScanResult);
+    scanFiles(urls, [this, playlistName, play](const TrackList& scannedTracks) {
+        tracksToNewPlaylist(playlistName, scannedTracks, play);
+    });
 }
 
 void PlaylistInteractor::filesToNewPlaylistReplace(const QString& playlistName, const QList<QUrl>& urls, bool play)
@@ -299,11 +275,9 @@ void PlaylistInteractor::filesToNewPlaylistReplace(const QString& playlistName, 
         return;
     }
 
-    auto handleScanResult = [this, playlistName, play](const TrackList& scannedTracks) {
-        activatePlaylist(m_handler->createPlaylist(playlistName, scannedTracks), play);
-    };
-
-    scanFiles(urls, handleScanResult);
+    scanFiles(urls, [this, playlistName, play](const TrackList& scannedTracks) {
+        tracksToNewPlaylistReplace(playlistName, scannedTracks, play);
+    });
 }
 
 void PlaylistInteractor::filesToActivePlaylist(const QList<QUrl>& urls)
@@ -316,8 +290,7 @@ void PlaylistInteractor::filesToActivePlaylist(const QList<QUrl>& urls)
         return;
     }
 
-    scanFiles(urls,
-              [this](const TrackList& scannedTracks) { appendToPlaylist(m_handler->activePlaylist(), scannedTracks); });
+    scanFiles(urls, [this](const TrackList& scannedTracks) { tracksToActivePlaylist(scannedTracks); });
 }
 
 void PlaylistInteractor::loadPlaylist(const QList<QPair<QString, QUrl>>& playlistData, bool play)
@@ -335,20 +308,79 @@ void PlaylistInteractor::loadPlaylist(const QList<QPair<QString, QUrl>>& playlis
     }
 }
 
-void PlaylistInteractor::trackMimeToPlaylist(const QByteArray& data, const UId& id)
+void PlaylistInteractor::tracksToPlaylist(const TrackList& tracks, const UId& id)
 {
-    const TrackList tracks = Gui::tracksFromMimeData(m_library, data);
     if(tracks.empty()) {
         return;
     }
 
     if(id.isValid()) {
-        m_handler->appendToPlaylist(id, tracks);
+        if(auto* playlist = m_handler->playlistById(id)) {
+            appendToPlaylist(playlist, tracks);
+            activatePlaylist(playlist);
+        }
     }
     else {
         const QString playlistName = Track::findCommonField(tracks);
-        activatePlaylist(m_handler->createPlaylist(playlistName, tracks));
+        activatePlaylist(m_handler->createNewPlaylist(playlistName, tracks));
     }
+}
+
+void PlaylistInteractor::tracksToCurrentPlaylist(const TrackList& tracks)
+{
+    if(tracks.empty()) {
+        return;
+    }
+
+    appendToPlaylist(m_controller->currentPlaylist(), tracks);
+}
+
+void PlaylistInteractor::tracksToCurrentPlaylistReplace(const TrackList& tracks, bool play)
+{
+    if(tracks.empty()) {
+        return;
+    }
+
+    if(auto* playlist = m_controller->currentPlaylist()) {
+        m_handler->replacePlaylistTracks(playlist->id(), tracks);
+        activatePlaylist(playlist, 0, play);
+    }
+}
+
+void PlaylistInteractor::tracksToNewPlaylist(const QString& playlistName, const TrackList& tracks, bool play)
+{
+    if(tracks.empty()) {
+        return;
+    }
+
+    activatePlaylist(appendOrCreateNamedPlaylist(playlistName, tracks), play);
+}
+
+void PlaylistInteractor::tracksToNewPlaylistReplace(const QString& playlistName, const TrackList& tracks, bool play)
+{
+    if(tracks.empty()) {
+        return;
+    }
+
+    activatePlaylist(m_handler->createPlaylist(playlistName, tracks), play);
+}
+
+void PlaylistInteractor::tracksToActivePlaylist(const TrackList& tracks)
+{
+    if(!m_handler->activePlaylist()) {
+        return;
+    }
+
+    if(tracks.empty()) {
+        return;
+    }
+
+    appendToPlaylist(m_handler->activePlaylist(), tracks);
+}
+
+void PlaylistInteractor::trackIdsToPlaylist(const QByteArray& data, const UId& id)
+{
+    tracksToPlaylist(Gui::tracksFromMimeData(m_library, data), id);
 }
 } // namespace Fooyin
 
