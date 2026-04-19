@@ -21,7 +21,9 @@
 
 #include <core/coresettings.h>
 #include <core/engine/audioloader.h>
+#include <core/internalcoresettings.h>
 #include <core/library/musiclibrary.h>
+#include <core/playback/playbackstatestore.h>
 #include <core/track.h>
 #include <utils/database/dbconnectionhandler.h>
 #include <utils/database/dbconnectionpool.h>
@@ -35,6 +37,8 @@
 #include <QTemporaryDir>
 
 #include <gtest/gtest.h>
+
+#include <optional>
 
 using namespace Qt::StringLiterals;
 
@@ -65,6 +69,15 @@ void registerCoreSettings(SettingsManager& settings)
                                                                      u"Playback/ShuffleAlbumsGroupScript"_s);
     settings.createSetting<Settings::Core::ShuffleAlbumsSortScript>(u"%track%"_s,
                                                                     u"Playback/ShuffleAlbumsSortScript"_s);
+}
+
+void clearStoredPlaybackState()
+{
+    const PlaybackStateStore playbackStateStore;
+    playbackStateStore.clearActivePlaylistDbId();
+    playbackStateStore.clearActiveTrackIndex();
+    playbackStateStore.clearPlaybackPosition();
+    playbackStateStore.clearPlaybackState();
 }
 
 bool createPlaylistTables(const DbConnectionPoolPtr& dbPool)
@@ -105,6 +118,16 @@ public:
         : MusicLibrary(parent)
     { }
 
+    void setTracks(TrackList tracks)
+    {
+        m_tracks = std::move(tracks);
+    }
+
+    void emitTracksLoaded()
+    {
+        emit tracksLoaded(m_tracks);
+    }
+
     bool hasLibrary() const override
     {
         return false;
@@ -123,7 +146,7 @@ public:
     void loadAllTracks() override { }
     bool isEmpty() const override
     {
-        return true;
+        return m_tracks.empty();
     }
     void refreshAll() override { }
     void rescanAll() override { }
@@ -162,17 +185,29 @@ public:
 
     TrackList tracks() const override
     {
+        return m_tracks;
+    }
+
+    Track trackForId(int id) const override
+    {
+        for(const auto& track : m_tracks) {
+            if(track.id() == id) {
+                return track;
+            }
+        }
         return {};
     }
 
-    Track trackForId(int) const override
+    TrackList tracksForIds(const TrackIds& ids) const override
     {
-        return {};
-    }
-
-    TrackList tracksForIds(const TrackIds&) const override
-    {
-        return {};
+        TrackList result;
+        result.reserve(ids.size());
+        for(const int id : ids) {
+            if(const Track track = trackForId(id); track.isValid()) {
+                result.emplace_back(track);
+            }
+        }
+        return result;
     }
 
     std::shared_ptr<TrackMetadataStore> metadataStore() const override
@@ -206,17 +241,21 @@ public:
     {
         return {};
     }
+
+private:
+    TrackList m_tracks;
 };
 
 struct PlaylistHandlerHarness
 {
-    explicit PlaylistHandlerHarness(SettingsManager& settings)
-        : dbPool{[this]() {
+    explicit PlaylistHandlerHarness(SettingsManager& settings, QString dbFilePath = {})
+        : m_dbFilePath{std::move(dbFilePath)}
+        , dbPool{[this]() {
             EXPECT_TRUE(dbDir.isValid());
 
             DbConnection::DbParams params;
             params.type     = u"QSQLITE"_s;
-            params.filePath = dbDir.filePath(u"playlisthandler.sqlite"_s);
+            params.filePath = !m_dbFilePath.isEmpty() ? m_dbFilePath : dbDir.filePath(u"playlisthandler.sqlite"_s);
 
             auto pool = DbConnectionPool::create(params, u"playlisthandler_test"_s);
             EXPECT_TRUE(pool);
@@ -229,6 +268,7 @@ struct PlaylistHandlerHarness
     { }
 
     QTemporaryDir dbDir;
+    QString m_dbFilePath;
     DbConnectionPoolPtr dbPool;
     DbConnectionHandler dbConnectionHandler;
     bool dbInitialised;
@@ -294,5 +334,114 @@ TEST(PlaylistHandlerTest, ReaddingSameNameCancelsPendingRemovedExportOnly)
     EXPECT_EQ(archived.front(), firstPlaylist);
     EXPECT_EQ(firstPlaylist->name(), u"Session A"_s);
     EXPECT_TRUE(harness.handler.pendingRemovedPlaylists().empty());
+}
+
+TEST(PlaylistHandlerTest, RestoreCurrentTrackRequestedRequiresPlaybackRestoreEnabled)
+{
+    ensureCoreApplication();
+    SettingsManager settings{QDir::tempPath() + u"/fooyin_playlisthandler_restore_disabled_test.ini"_s};
+    registerCoreSettings(settings);
+    settings.fileSet(Settings::Core::Internal::SaveActivePlaylistState, true);
+    settings.fileSet(Settings::Core::Internal::SavePlaybackState, false);
+    clearStoredPlaybackState();
+
+    QTemporaryDir storageDir;
+    ASSERT_TRUE(storageDir.isValid());
+
+    const QString dbFilePath = storageDir.filePath(u"playlisthandler.sqlite"_s);
+    const Track track        = makeTrack(u"/tmp/startup.flac"_s, 1);
+
+    {
+        PlaylistHandlerHarness harness{settings, dbFilePath};
+        ASSERT_TRUE(harness.dbInitialised);
+        harness.library.setTracks({track});
+
+        auto* playlist = harness.handler.createPlaylist(u"Startup"_s, {track});
+        ASSERT_NE(playlist, nullptr);
+
+        harness.handler.changeActivePlaylist(playlist);
+        playlist->changeCurrentIndex(0);
+        harness.handler.savePlaylists();
+    }
+
+    {
+        PlaylistHandlerHarness harness{settings, dbFilePath};
+        ASSERT_TRUE(harness.dbInitialised);
+        harness.library.setTracks({track});
+
+        bool restoreRequested{false};
+        QObject::connect(&harness.handler, &PlaylistHandler::restoreCurrentTrackRequested, &harness.handler,
+                         [&](const PlaylistTrack&) { restoreRequested = true; });
+
+        harness.library.emitTracksLoaded();
+
+        EXPECT_FALSE(restoreRequested);
+        ASSERT_NE(harness.handler.activePlaylist(), nullptr);
+        EXPECT_EQ(harness.handler.activePlaylist()->currentTrackIndex(), 0);
+    }
+}
+
+TEST(PlaylistHandlerTest, RestoreCurrentTrackRequestedSkipsStoppedStateButResumesPausedState)
+{
+    ensureCoreApplication();
+    SettingsManager settings{QDir::tempPath() + u"/fooyin_playlisthandler_restore_state_test.ini"_s};
+    registerCoreSettings(settings);
+    settings.fileSet(Settings::Core::Internal::SaveActivePlaylistState, true);
+    settings.fileSet(Settings::Core::Internal::SavePlaybackState, true);
+    clearStoredPlaybackState();
+
+    QTemporaryDir storageDir;
+    ASSERT_TRUE(storageDir.isValid());
+
+    const QString dbFilePath = storageDir.filePath(u"playlisthandler.sqlite"_s);
+    const Track track        = makeTrack(u"/tmp/startup.flac"_s, 1);
+
+    {
+        PlaylistHandlerHarness harness{settings, dbFilePath};
+        ASSERT_TRUE(harness.dbInitialised);
+        harness.library.setTracks({track});
+
+        auto* playlist = harness.handler.createPlaylist(u"Startup"_s, {track});
+        ASSERT_NE(playlist, nullptr);
+
+        harness.handler.changeActivePlaylist(playlist);
+        playlist->changeCurrentIndex(0);
+        harness.handler.savePlaylists();
+    }
+
+    const PlaybackStateStore playbackStateStore;
+    playbackStateStore.savePlaybackState(Player::PlayState::Stopped);
+
+    {
+        PlaylistHandlerHarness harness{settings, dbFilePath};
+        ASSERT_TRUE(harness.dbInitialised);
+        harness.library.setTracks({track});
+
+        bool restoreRequested{false};
+        QObject::connect(&harness.handler, &PlaylistHandler::restoreCurrentTrackRequested, &harness.handler,
+                         [&](const PlaylistTrack&) { restoreRequested = true; });
+
+        harness.library.emitTracksLoaded();
+
+        EXPECT_FALSE(restoreRequested);
+    }
+
+    playbackStateStore.savePlaybackState(Player::PlayState::Paused);
+
+    {
+        PlaylistHandlerHarness harness{settings, dbFilePath};
+        ASSERT_TRUE(harness.dbInitialised);
+        harness.library.setTracks({track});
+
+        std::optional<PlaylistTrack> restoredTrack;
+        QObject::connect(&harness.handler, &PlaylistHandler::restoreCurrentTrackRequested, &harness.handler,
+                         [&](const PlaylistTrack& playlistTrack) { restoredTrack = playlistTrack; });
+
+        harness.library.emitTracksLoaded();
+
+        ASSERT_TRUE(restoredTrack.has_value());
+        EXPECT_EQ(restoredTrack->track.id(), track.id());
+        EXPECT_EQ(restoredTrack->indexInPlaylist, 0);
+    }
 }
 } // namespace Fooyin::Testing

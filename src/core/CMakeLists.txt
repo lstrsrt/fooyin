@@ -224,6 +224,8 @@ set(SOURCES
     playback/playbackqueuestore.h
     playback/playbackordernavigator.cpp
     playback/playbackordernavigator.h
+    playback/playbackstatestore.cpp
+    playback/playbackstatestore.h
     playback/playbackprogresstracker.cpp
     playback/playbackprogresstracker.h
     playback/playbacksession.cpp

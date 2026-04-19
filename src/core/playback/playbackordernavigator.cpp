@@ -266,6 +266,13 @@ std::optional<PlaybackOrderNavigator::RequestedTrack> PlaybackOrderNavigator::se
     }
 
     if(m_playlistHandler) {
+        if(const auto currentTrack = m_playlistHandler->currentTrack(); currentTrack.isValid()) {
+            return RequestedTrack{
+                .track        = currentTrack,
+                .isQueueTrack = false,
+            };
+        }
+
         return RequestedTrack{
             .track        = m_playlistHandler->advanceRelativeTrack(*m_state.playMode, 1),
             .isQueueTrack = false,

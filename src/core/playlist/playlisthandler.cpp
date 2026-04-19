@@ -22,11 +22,13 @@
 #include "application.h"
 #include "database/playlistdatabase.h"
 #include "internalcoresettings.h"
+#include "playback/playbackstatestore.h"
 #include "playback/playlistnavigator.h"
 
 #include <core/coresettings.h>
 #include <core/library/libraryutils.h>
 #include <core/library/musiclibrary.h>
+#include <core/player/playerdefs.h>
 #include <core/playlist/playlist.h>
 #include <utils/crypto.h>
 #include <utils/helpers.h>
@@ -43,9 +45,6 @@
 Q_LOGGING_CATEGORY(PL_HANDLER, "fy.playlisthandler")
 
 using namespace Qt::StringLiterals;
-
-constexpr auto ActiveId    = "Playlist/ActiveId";
-constexpr auto ActiveIndex = "Playlist/ActiveTrackIndex";
 
 namespace Fooyin {
 namespace {
@@ -154,6 +153,7 @@ public:
     MusicLibrary* m_library;
     SettingsManager* m_settings;
     PlaylistDatabase m_playlistConnector;
+    PlaybackStateStore m_playbackStateStore;
 
     PlaylistPtrList m_playlists;
     PlaylistPtrList m_removedPlaylists;
@@ -388,21 +388,19 @@ void PlaylistHandlerPrivate::savePlaylists()
         return;
     }
 
-    FyStateSettings stateSettings;
-
     if(m_activePlaylist->isTemporary()) {
-        stateSettings.remove(QLatin1String{ActiveId});
+        m_playbackStateStore.clearActivePlaylistDbId();
     }
     else {
-        stateSettings.setValue(ActiveId, m_activePlaylist->dbId());
+        m_playbackStateStore.saveActivePlaylistDbId(m_activePlaylist->dbId());
     }
 
     if(!m_activePlaylist->isTemporary()
        && m_settings->fileValue(Settings::Core::Internal::SaveActivePlaylistState, false).toBool()) {
-        stateSettings.setValue(ActiveIndex, m_activePlaylist->currentTrackIndex());
+        m_playbackStateStore.saveActiveTrackIndex(m_activePlaylist->currentTrackIndex());
     }
     else {
-        stateSettings.remove(ActiveIndex);
+        m_playbackStateStore.clearActiveTrackIndex();
     }
 }
 
@@ -501,15 +499,13 @@ bool PlaylistHandlerPrivate::validIndex(int index) const
 
 void PlaylistHandlerPrivate::restoreActivePlaylist()
 {
-    const FyStateSettings stateSettings;
-
-    const int lastId = stateSettings.value(ActiveId).toInt();
-    if(lastId < 0) {
+    const auto lastId = m_playbackStateStore.activePlaylistDbId();
+    if(!lastId.has_value()) {
         return;
     }
 
     auto playlist
-        = std::ranges::find_if(std::as_const(m_playlists), [lastId](const auto& pl) { return pl->dbId() == lastId; });
+        = std::ranges::find_if(std::as_const(m_playlists), [lastId](const auto& pl) { return pl->dbId() == *lastId; });
     if(playlist == m_playlists.cend()) {
         return;
     }
@@ -518,13 +514,26 @@ void PlaylistHandlerPrivate::restoreActivePlaylist()
     emit m_self->activePlaylistChanged(m_activePlaylist);
 
     if(m_settings->fileValue(Settings::Core::Internal::SaveActivePlaylistState).toBool()) {
-        const int lastIndex = stateSettings.value(ActiveIndex).toInt();
-        m_activePlaylist->changeCurrentIndex(lastIndex);
-
-        if(const auto restoredTrack = m_activePlaylist->playlistTrack(lastIndex);
-           restoredTrack && restoredTrack->isValid()) {
-            emit m_self->restoreCurrentTrackRequested(*restoredTrack);
+        if(const auto lastIndex = m_playbackStateStore.activeTrackIndex(); lastIndex.has_value()) {
+            m_activePlaylist->changeCurrentIndex(*lastIndex);
         }
+    }
+
+    const bool restorePlaybackState
+        = m_settings->fileValue(Settings::Core::Internal::SavePlaybackState, false).toBool();
+    if(!restorePlaybackState) {
+        return;
+    }
+
+    const auto state = m_playbackStateStore.playbackState();
+    if(!state.has_value() || *state == Player::PlayState::Stopped) {
+        return;
+    }
+
+    const int currentIndex = m_activePlaylist->currentTrackIndex();
+    if(const auto restoredTrack = m_activePlaylist->playlistTrack(currentIndex);
+       restoredTrack && restoredTrack->isValid()) {
+        emit m_self->restoreCurrentTrackRequested(*restoredTrack);
     }
 }
 

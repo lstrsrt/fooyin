@@ -489,6 +489,36 @@ TEST(PlayerControllerTest, CommitingPlaylistTrackSyncsActivePlaylistIndex)
     EXPECT_EQ(playlist->currentTrackIndex(), 1);
 }
 
+TEST(PlayerControllerTest, PlayFromIdleUsesActivePlaylistCurrentTrack)
+{
+    ensureCoreApplication();
+    SettingsManager settings{QDir::tempPath() + u"/fooyin_playercontroller_play_from_idle_current_track_test.ini"_s};
+    registerControllerSettings(settings);
+    PlaylistHandlerHarness harness{settings};
+    ASSERT_TRUE(harness.dbInitialised);
+
+    auto* playlist = harness.handler.createPlaylist(
+        u"Idle"_s, {makeTrack(u"/tmp/idle-a.flac"_s, 41, 1000), makeTrack(u"/tmp/idle-b.flac"_s, 42, 1000)});
+    ASSERT_NE(playlist, nullptr);
+
+    harness.handler.changeActivePlaylist(playlist);
+    playlist->changeCurrentIndex(0);
+
+    PlayerController controller{&settings, &harness.handler};
+    QSignalSpy requestSpy{&controller, &PlayerController::trackChangeRequested};
+
+    controller.play();
+
+    ASSERT_EQ(requestSpy.count(), 1);
+    const QVariantList requestArgs = requestSpy.takeFirst();
+    ASSERT_EQ(requestArgs.size(), 1);
+    const auto request = requestArgs.front().value<Player::TrackChangeRequest>();
+
+    EXPECT_EQ(request.track.indexInPlaylist, 0);
+    EXPECT_EQ(request.track.track.id(), 41);
+    EXPECT_EQ(playlist->currentTrackIndex(), 0);
+}
+
 TEST(PlayerControllerTest, CommitingQueueTrackDoesNotSyncActivePlaylistIndex)
 {
     ensureCoreApplication();
