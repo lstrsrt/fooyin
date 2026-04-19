@@ -142,7 +142,8 @@ void Widgets::registerWidgets()
     provider->setSubMenus(u"SplitterHorizontal"_s, {tr("Splitters")});
 
     provider->registerWidget(
-        u"PlaylistSwitcher"_s, [this]() { return new PlaylistBox(m_playlistController, m_window); },
+        u"PlaylistSwitcher"_s,
+        [this]() { return new PlaylistBox(m_gui->actionManager(), m_playlistController, m_window); },
         tr("Playlist Switcher"));
 
     provider->registerWidget(

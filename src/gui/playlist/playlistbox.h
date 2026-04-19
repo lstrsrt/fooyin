@@ -23,21 +23,26 @@
 
 #include <QPointer>
 
+class QAction;
 class QComboBox;
 class QPoint;
 
 namespace Fooyin {
+class ActionManager;
+class Command;
 class Playlist;
 class PlaylistController;
 class PlaylistHandler;
 class PopupLineEdit;
+class WidgetContext;
 
 class PlaylistBox : public FyWidget
 {
     Q_OBJECT
 
 public:
-    explicit PlaylistBox(PlaylistController* playlistController, QWidget* parent = nullptr);
+    explicit PlaylistBox(ActionManager* actionManager, PlaylistController* playlistController,
+                         QWidget* parent = nullptr);
 
     [[nodiscard]] QString name() const override;
     [[nodiscard]] QString layoutName() const override;
@@ -58,10 +63,29 @@ public:
     [[nodiscard]] Playlist* currentPlaylist() const;
 
 private:
+    void setupActions();
+    void updateActionState();
+    void editCurrentAutoPlaylist();
+    void removeCurrentPlaylist();
+
+    ActionManager* m_actionManager;
     PlaylistController* m_playlistController;
     PlaylistHandler* m_playlistHandler;
 
     QComboBox* m_playlistBox;
+
+    WidgetContext* m_context;
+    QAction* m_editAutoPlaylistAction;
+    Command* m_editAutoPlaylistCmd;
+    QAction* m_renameAction;
+    Command* m_renameCmd;
+    QAction* m_removeAction;
+    Command* m_removeCmd;
+    QAction* m_newPlaylistAction;
+    Command* m_newPlaylistCmd;
+    QAction* m_newAutoPlaylistAction;
+    Command* m_newAutoPlaylistCmd;
+
     QPointer<PopupLineEdit> m_lineEdit;
     bool m_renameCancelled;
 };

@@ -723,7 +723,8 @@ void GuiApplicationPrivate::registerActions()
 
     auto* removePlaylist = new QAction(GuiApplication::tr("Remove Playlist"), m_mainWindow.get());
     auto* removeCmd      = m_actionManager->registerAction(removePlaylist, Constants::Actions::RemovePlaylist);
-    removeCmd->setCategories({GuiApplication::tr("File")});
+    removeCmd->setCategories({GuiApplication::tr("Playlist")});
+    removeCmd->setDescription(GuiApplication::tr("Remove Current Playlist"));
     removeCmd->setDefaultShortcut(QKeySequence{Qt::CTRL | Qt::Key_W});
     QObject::connect(removePlaylist, &QAction::triggered, m_mainWindow.get(), [this]() {
         if(auto* currentPlaylist = m_playlistController->currentPlaylist()) {

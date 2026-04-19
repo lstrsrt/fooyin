@@ -23,11 +23,18 @@
 #include "playlist/playlistcontroller.h"
 
 #include <core/playlist/playlisthandler.h>
+#include <gui/guiconstants.h>
 #include <gui/widgets/popuplineedit.h>
+#include <utils/actions/actionmanager.h>
+#include <utils/actions/command.h>
+#include <utils/actions/proxyaction.h>
+#include <utils/actions/widgetcontext.h>
+#include <utils/crypto.h>
 #include <utils/utils.h>
 
 #include <QAction>
 #include <QComboBox>
+#include <QKeySequence>
 #include <QMainWindow>
 #include <QMenu>
 #include <QSignalBlocker>
@@ -36,20 +43,41 @@
 using namespace Qt::StringLiterals;
 
 namespace Fooyin {
-PlaylistBox::PlaylistBox(PlaylistController* playlistController, QWidget* parent)
+PlaylistBox::PlaylistBox(ActionManager* actionManager, PlaylistController* playlistController, QWidget* parent)
     : FyWidget{parent}
+    , m_actionManager{actionManager}
     , m_playlistController{playlistController}
     , m_playlistHandler{m_playlistController->playlistHandler()}
     , m_playlistBox{new QComboBox(this)}
-    , m_lineEdit{nullptr}
+    , m_context{new WidgetContext(
+          this,
+          Context{IdList{Constants::Context::PlaylistSwitcher,
+                         Id{Constants::Context::PlaylistSwitcher}.append(Utils::generateUniqueHash())}},
+          this)}
+    , m_editAutoPlaylistAction{new QAction(tr("&Edit autoplaylist"), this)}
+    , m_editAutoPlaylistCmd{m_actionManager->registerAction(m_editAutoPlaylistAction,
+                                                            Constants::Actions::EditAutoPlaylist, m_context->context())}
+    , m_renameAction{new QAction(tr("Re&name playlist"), this)}
+    , m_renameCmd{m_actionManager->registerAction(m_renameAction, Constants::Actions::Rename, m_context->context())}
+    , m_removeAction{new QAction(tr("&Remove playlist"), this)}
+    , m_removeCmd{m_actionManager->registerAction(m_removeAction, Constants::Actions::Remove, m_context->context())}
+    , m_newPlaylistAction{new QAction(tr("Add &new playlist"), this)}
+    , m_newPlaylistCmd{m_actionManager->registerAction(m_newPlaylistAction, Constants::Actions::NewPlaylist,
+                                                       m_context->context())}
+    , m_newAutoPlaylistAction{new QAction(tr("Add new &autoplaylist"), this)}
+    , m_newAutoPlaylistCmd{m_actionManager->registerAction(m_newAutoPlaylistAction, Constants::Actions::NewAutoPlaylist,
+                                                           m_context->context())}
     , m_renameCancelled{false}
 {
     QObject::setObjectName(PlaylistBox::name());
 
     auto* layout = new QVBoxLayout(this);
     layout->setContentsMargins({});
-
     layout->addWidget(m_playlistBox);
+
+    m_actionManager->addContextObject(m_context);
+
+    setupActions();
 
     QObject::connect(m_playlistBox, &QComboBox::currentIndexChanged, this, &PlaylistBox::changePlaylist);
     m_playlistBox->setContextMenuPolicy(Qt::CustomContextMenu);
@@ -63,9 +91,12 @@ PlaylistBox::PlaylistBox(PlaylistController* playlistController, QWidget* parent
     QObject::connect(m_playlistHandler, &PlaylistHandler::playlistRemoved, this, &PlaylistBox::removePlaylist);
     QObject::connect(m_playlistHandler, &PlaylistHandler::playlistRenamed, this,
                      [this](const Playlist* playlist) { playlistRenamed(playlist); });
+    QObject::connect(m_playlistController, &PlaylistController::currentPlaylistChanged, this,
+                     [this](const Playlist*, const Playlist*) { updateActionState(); });
 
     setupBox();
     currentPlaylistChanged(m_playlistController->currentPlaylist());
+    updateActionState();
 }
 
 QString PlaylistBox::name() const
@@ -160,23 +191,46 @@ void PlaylistBox::changePlaylist(int index)
     m_playlistController->changeCurrentPlaylist(id);
 }
 
-void PlaylistBox::showContextMenu(const QPoint& pos)
+void PlaylistBox::setupActions()
 {
-    auto* menu = new QMenu(this);
-    menu->setAttribute(Qt::WA_DeleteOnClose);
+    const Context context = m_context->context();
 
-    auto* createPlaylist = new QAction(tr("Add &new playlist"), menu);
-    QObject::connect(createPlaylist, &QAction::triggered, this, [this]() {
+    const QStringList editCategory{tr("Edit")};
+    const QStringList switcherCategory{tr("Playlist Switcher")};
+
+    m_editAutoPlaylistAction->setStatusTip(tr("Edit the selected autoplaylist"));
+    m_editAutoPlaylistCmd->setCategories(switcherCategory);
+    QObject::connect(m_editAutoPlaylistAction, &QAction::triggered, this, &PlaylistBox::editCurrentAutoPlaylist);
+
+    m_renameAction->setStatusTip(tr("Rename the selected playlist"));
+    m_renameAction->setShortcutVisibleInContextMenu(true);
+    m_renameCmd->setCategories(editCategory);
+    m_renameCmd->setDescription(tr("Rename"));
+    m_renameCmd->setAttribute(ProxyAction::UpdateText);
+    m_renameCmd->setDefaultShortcut(Qt::Key_F2);
+    QObject::connect(m_renameAction, &QAction::triggered, this, &PlaylistBox::showRenameEditor);
+
+    m_removeAction->setStatusTip(tr("Remove the selected playlist"));
+    m_removeAction->setShortcutVisibleInContextMenu(true);
+    m_removeCmd->setCategories(editCategory);
+    m_removeCmd->setDescription(tr("Remove"));
+    m_removeCmd->setAttribute(ProxyAction::UpdateText);
+    m_removeCmd->setDefaultShortcut(QKeySequence::Delete);
+    QObject::connect(m_removeAction, &QAction::triggered, this, &PlaylistBox::removeCurrentPlaylist);
+
+    m_newPlaylistAction->setStatusTip(tr("Create a new empty playlist"));
+    m_newPlaylistAction->setShortcutVisibleInContextMenu(true);
+    QObject::connect(m_newPlaylistAction, &QAction::triggered, this, [this]() {
         closeRenameEditor();
 
         if(auto* playlist = m_playlistHandler->createEmptyPlaylist()) {
             m_playlistController->changeCurrentPlaylist(playlist);
         }
     });
-    menu->addAction(createPlaylist);
 
-    auto* createAutoPlaylist = new QAction(tr("Add new &autoplaylist"), menu);
-    QObject::connect(createAutoPlaylist, &QAction::triggered, this, [this]() {
+    m_newAutoPlaylistAction->setStatusTip(tr("Create a new autoplaylist"));
+    m_newAutoPlaylistCmd->setCategories(switcherCategory);
+    QObject::connect(m_newAutoPlaylistAction, &QAction::triggered, this, [this]() {
         closeRenameEditor();
 
         auto* autoDialog = new AutoPlaylistDialog(Utils::getMainWindow());
@@ -190,38 +244,62 @@ void PlaylistBox::showContextMenu(const QPoint& pos)
                          });
         autoDialog->show();
     });
-    menu->addAction(createAutoPlaylist);
+}
+
+void PlaylistBox::updateActionState()
+{
+    const bool hasPlaylist = currentPlaylist() != nullptr;
+    const bool isAuto      = hasPlaylist && currentPlaylist()->isAutoPlaylist();
+
+    if(m_editAutoPlaylistAction) {
+        m_editAutoPlaylistAction->setEnabled(isAuto);
+    }
+    if(m_renameAction) {
+        m_renameAction->setText(isAuto ? tr("Re&name autoplaylist") : tr("Re&name playlist"));
+        m_renameAction->setEnabled(hasPlaylist);
+    }
+    if(m_removeAction) {
+        m_removeAction->setText(isAuto ? tr("&Remove autoplaylist") : tr("&Remove playlist"));
+        m_removeAction->setEnabled(hasPlaylist);
+    }
+}
+
+void PlaylistBox::showContextMenu(const QPoint& pos)
+{
+    auto* menu = new QMenu(this);
+    menu->setAttribute(Qt::WA_DeleteOnClose);
+
+    updateActionState();
+
+    menu->addAction(m_newPlaylistCmd ? m_newPlaylistCmd->action() : m_newPlaylistAction);
+    menu->addAction(m_newAutoPlaylistCmd ? m_newAutoPlaylistCmd->action() : m_newAutoPlaylistAction);
 
     if(auto* playlist = currentPlaylist()) {
         menu->addSeparator();
 
         if(playlist->isAutoPlaylist()) {
-            auto* editAutoPlaylist = new QAction(tr("&Edit autoplaylist"), menu);
-            QObject::connect(editAutoPlaylist, &QAction::triggered, this, [this, playlist]() {
-                closeRenameEditor();
-
-                auto* autoDialog = new AutoPlaylistDialog(m_playlistHandler, playlist, Utils::getMainWindow());
-                autoDialog->setAttribute(Qt::WA_DeleteOnClose);
-                autoDialog->show();
-            });
-            menu->addAction(editAutoPlaylist);
+            menu->addAction(m_editAutoPlaylistCmd ? m_editAutoPlaylistCmd->action() : m_editAutoPlaylistAction);
         }
 
-        auto* renameAction
-            = new QAction(playlist->isAutoPlaylist() ? tr("Re&name autoplaylist") : tr("Re&name playlist"), menu);
-        QObject::connect(renameAction, &QAction::triggered, this, &PlaylistBox::showRenameEditor);
-        menu->addAction(renameAction);
-
-        auto* removeAction
-            = new QAction(playlist->isAutoPlaylist() ? tr("&Remove autoplaylist") : tr("&Remove playlist"), menu);
-        QObject::connect(removeAction, &QAction::triggered, this, [this, playlist]() {
-            closeRenameEditor();
-            m_playlistHandler->removePlaylist(playlist->id());
-        });
-        menu->addAction(removeAction);
+        menu->addAction(m_renameCmd ? m_renameCmd->action() : m_renameAction);
+        menu->addAction(m_removeCmd ? m_removeCmd->action() : m_removeAction);
     }
 
     menu->popup(m_playlistBox->mapToGlobal(pos));
+}
+
+void PlaylistBox::editCurrentAutoPlaylist()
+{
+    auto* playlist = currentPlaylist();
+    if(!playlist || !playlist->isAutoPlaylist()) {
+        return;
+    }
+
+    closeRenameEditor();
+
+    auto* autoDialog = new AutoPlaylistDialog(m_playlistHandler, playlist, Utils::getMainWindow());
+    autoDialog->setAttribute(Qt::WA_DeleteOnClose);
+    autoDialog->show();
 }
 
 void PlaylistBox::showRenameEditor()
@@ -274,6 +352,14 @@ void PlaylistBox::cancelRenameEditor()
 {
     m_renameCancelled = true;
     closeRenameEditor();
+}
+
+void PlaylistBox::removeCurrentPlaylist()
+{
+    if(auto* playlist = currentPlaylist()) {
+        closeRenameEditor();
+        m_playlistHandler->removePlaylist(playlist->id());
+    }
 }
 
 Playlist* PlaylistBox::currentPlaylist() const

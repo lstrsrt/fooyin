@@ -117,10 +117,11 @@ constexpr auto PlaylistAddTo = "Fooyin.Group.Playlist.AddTo";
 } // namespace Groups
 
 namespace Context {
-constexpr auto TrackSelection = "Fooyin.Context.TrackSelection";
-constexpr auto Playlist       = "Fooyin.Context.Playlist";
-constexpr auto DirBrowser     = "Fooyin.Context.DirBrowser";
-constexpr auto Search         = "Fooyin.Context.Search";
+constexpr auto TrackSelection   = "Fooyin.Context.TrackSelection";
+constexpr auto Playlist         = "Fooyin.Context.Playlist";
+constexpr auto PlaylistSwitcher = "Fooyin.Context.PlaylistSwitcher";
+constexpr auto DirBrowser       = "Fooyin.Context.DirBrowser";
+constexpr auto Search           = "Fooyin.Context.Search";
 } // namespace Context
 
 namespace Actions {
