@@ -49,11 +49,7 @@ PlaylistBox::PlaylistBox(ActionManager* actionManager, PlaylistController* playl
     , m_playlistController{playlistController}
     , m_playlistHandler{m_playlistController->playlistHandler()}
     , m_playlistBox{new QComboBox(this)}
-    , m_context{new WidgetContext(
-          this,
-          Context{IdList{Constants::Context::PlaylistSwitcher,
-                         Id{Constants::Context::PlaylistSwitcher}.append(Utils::generateUniqueHash())}},
-          this)}
+    , m_context{new WidgetContext(this, Context{IdList{Id{"Fooyin.Context.PlaylistSwitcher."}.append(id())}}, this)}
     , m_editAutoPlaylistAction{new QAction(tr("&Edit autoplaylist"), this)}
     , m_editAutoPlaylistCmd{m_actionManager->registerAction(m_editAutoPlaylistAction,
                                                             Constants::Actions::EditAutoPlaylist, m_context->context())}
