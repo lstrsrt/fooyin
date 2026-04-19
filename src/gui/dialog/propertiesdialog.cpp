@@ -547,10 +547,6 @@ void PropertiesDialogWidget::done(int value)
 
 void PropertiesDialogWidget::accept()
 {
-    if(!commitCurrentTabPendingChanges()) {
-        return;
-    }
-
     apply();
     m_closing = true;
     for(PropertiesTab& tab : m_tabs) {
@@ -570,10 +566,6 @@ void PropertiesDialogWidget::reject()
 
 void PropertiesDialogWidget::apply()
 {
-    if(!commitCurrentTabPendingChanges()) {
-        return;
-    }
-
     auto visitedTabs = std::views::filter(m_tabs, [&](const PropertiesTab& tab) { return tab.hasVisited(); });
     for(PropertiesTab& tab : visitedTabs) {
         tab.apply();
