@@ -49,4 +49,4 @@ This document outlines the upcoming features for fooyin.
 | Playback queue viewer | ✅ 0.5.2   |
 | VU meter              | ✅ 0.8.0   |
 | Musical spectrum      | 🚧 0.11.0 |
-| Spectrogram           | ❓ TBD     |
+| Spectrogram           | 🚧 0.12.0  |
