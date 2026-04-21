@@ -21,6 +21,7 @@
 
 #include "lyricscolours.h"
 #include "lyricsconfigwidget.h"
+#include "lyricsconstants.h"
 #include "lyricsdelegate.h"
 #include "lyricseditordialog.h"
 #include "lyricsfinder.h"
@@ -36,6 +37,7 @@
 #include <gui/scripting/scriptformatter.h>
 #include <gui/widgets/colourbutton.h>
 #include <gui/widgets/scriptlineedit.h>
+#include <utils/settings/settingsdialogcontroller.h>
 #include <utils/settings/settingsmanager.h>
 #include <utils/utils.h>
 
@@ -709,7 +711,17 @@ void LyricsWidget::contextMenuEvent(QContextMenuEvent* event)
 
     menu->addAction(showScrollbar);
     menu->addMenu(alignMenu);
-    addConfigureAction(menu);
+    menu->addSeparator();
+
+    auto* lyricsSettings = new QAction(tr("Lyrics settings…"), menu);
+    QObject::connect(lyricsSettings, &QAction::triggered, this, [this]() {
+        if(m_settings && m_settings->settingsDialog()) {
+            m_settings->settingsDialog()->openAtPage(Constants::Page::LyricsSearching);
+        }
+    });
+    menu->addAction(lyricsSettings);
+
+    addConfigureAction(menu, false);
 
     menu->popup(event->globalPos());
 }
