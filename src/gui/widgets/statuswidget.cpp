@@ -134,9 +134,9 @@ StatusWidgetPrivate::StatusWidgetPrivate(StatusWidget* self, PlayerController* p
     , m_selectionText{new StatusLabel(m_self)}
 {
     m_scriptParser.addProvider(playlistVariableProvider());
-    m_environment.setRatingStarSymbols({m_settings->value<Settings::Gui::RatingFullStarSymbol>(),
-                                        m_settings->value<Settings::Gui::RatingHalfStarSymbol>(),
-                                        m_settings->value<Settings::Gui::RatingEmptyStarSymbol>()});
+    m_environment.setRatingStarSymbols({.fullStarSymbol  = m_settings->value<Settings::Gui::RatingFullStarSymbol>(),
+                                        .halfStarSymbol  = m_settings->value<Settings::Gui::RatingHalfStarSymbol>(),
+                                        .emptyStarSymbol = m_settings->value<Settings::Gui::RatingEmptyStarSymbol>()});
     m_environment.setEvaluationPolicy(TrackListContextPolicy::Fallback, {}, true);
     m_scriptContext.environment = &m_environment;
 
@@ -149,6 +149,7 @@ StatusWidgetPrivate::StatusWidgetPrivate(StatusWidget* self, PlayerController* p
     m_scanCancelButton->setAutoRaise(true);
     m_scanCancelButton->setIcon(Gui::iconFromTheme(Constants::Icons::Close));
     m_scanCancelButton->setToolTip(tr("Cancel scan"));
+
     layout->addWidget(m_iconLabel, 0, Qt::AlignLeft);
     layout->addWidget(m_scanCancelButton, 0, Qt::AlignLeft);
     layout->addWidget(m_scanText, 1);
@@ -162,6 +163,9 @@ StatusWidgetPrivate::StatusWidgetPrivate(StatusWidget* self, PlayerController* p
     m_playingText->hide();
     m_messageText->hide();
     m_selectionText->setHidden(!m_settings->value<Settings::Gui::Internal::StatusShowSelection>());
+
+    m_selectionText->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
+    m_selectionText->setElideMode(Qt::ElideNone);
 
     updateActionVisibility();
 

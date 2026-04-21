@@ -97,7 +97,7 @@ PreparedTextLine prepareRichTextLine(const std::vector<RichTextBlock>& blocks, c
         prepared.text   = text;
         prepared.font   = font;
         prepared.colour = resolvedRichTextColour(block.format, baseColour, linkColour);
-        prepared.width  = fm.size(Qt::TextSingleLine, text).width();
+        prepared.width  = fm.horizontalAdvance(text);
         prepared.height = fm.height();
 
         line.totalWidth += prepared.width;
