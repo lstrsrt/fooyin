@@ -965,17 +965,12 @@ ScriptResult ScriptRegistry::function(ScriptFunctionId functionId, const QString
     const Playlist* playlist = subject.playlist ? subject.playlist : m_context.playlist;
 
     if(track == nullptr && subject.tracks != nullptr) {
-        if(subject.tracks->empty()) {
-            return {};
+        if(!subject.tracks->empty()) {
+            track = &subject.tracks->front();
         }
-        track  = &subject.tracks->front();
         tracks = subject.tracks;
     }
     else if(track == nullptr && subject.playlist != nullptr) {
-        if(subject.playlist->tracks().empty()) {
-            return {};
-        }
-
         if(const auto playlistTrack = subject.playlist->currentTrack(); playlistTrack.isValid()) {
             track = &playlistTrack;
         }

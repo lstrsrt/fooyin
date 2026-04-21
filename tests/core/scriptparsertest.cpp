@@ -543,6 +543,20 @@ TEST_F(ScriptParserTest, TrackListTest)
     EXPECT_EQ(u"Pop / Rock", m_parser.evaluate(u"%genres%"_s, tracks));
 }
 
+TEST_F(ScriptParserTest, EmptyTrackListStillEvaluatesGenericFunctions)
+{
+    ScriptParser parser;
+
+    TestPlaylistEnvironment environment;
+    environment.setEvaluationState(TrackListContextPolicy::Fallback);
+
+    ScriptContext context;
+    context.environment = &environment;
+
+    const QString script = u"[%trackcount% $ifequal(%trackcount%,1,Track,Tracks) | %playtime%]$crlf()Test"_s;
+    EXPECT_EQ(u"0 Tracks | 00:00\nTest", parser.evaluate(script, TrackList{}, context));
+}
+
 TEST_F(ScriptParserTest, MetaTest)
 {
     Track track;
