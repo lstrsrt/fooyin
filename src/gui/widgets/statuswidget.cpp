@@ -36,6 +36,7 @@
 #include <gui/trackselectioncontroller.h>
 #include <gui/widgets/clickablelabel.h>
 #include <gui/widgets/elidedlabel.h>
+#include <utils/settings/settingsdialogcontroller.h>
 #include <utils/settings/settingsmanager.h>
 #include <utils/utils.h>
 
@@ -520,6 +521,15 @@ void StatusWidget::contextMenuEvent(QContextMenuEvent* event)
     menu->addAction(showIcon);
     menu->addAction(showSelection);
     menu->addAction(showTips);
+    menu->addSeparator();
+
+    auto* statusSettings = new QAction(tr("Status bar settings…"), menu);
+    QObject::connect(statusSettings, &QAction::triggered, this, [this]() {
+        if(p->m_settings && p->m_settings->settingsDialog()) {
+            p->m_settings->settingsDialog()->openAtPage(Constants::Page::StatusWidget);
+        }
+    });
+    menu->addAction(statusSettings);
 
     const QPoint playingPoint = p->m_playingText->mapFrom(this, event->pos());
     const bool clickedPlaying = p->m_playingText->isVisible() && p->m_playingText->rect().contains(playingPoint);

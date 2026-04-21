@@ -28,8 +28,10 @@
 #include <core/player/playercontroller.h>
 #include <core/track.h>
 #include <gui/coverprovider.h>
+#include <gui/guiconstants.h>
 #include <gui/guisettings.h>
 #include <gui/trackselectioncontroller.h>
+#include <utils/settings/settingsdialogcontroller.h>
 #include <utils/settings/settingsmanager.h>
 
 #include <QAction>
@@ -489,7 +491,17 @@ void CoverWidget::contextMenuEvent(QContextMenuEvent* event)
     menu->addAction(frontCover);
     menu->addAction(backCover);
     menu->addAction(artistCover);
-    addConfigureAction(menu);
+    menu->addSeparator();
+
+    auto* artworkSettings = new QAction(tr("Artwork settings…"), menu);
+    QObject::connect(artworkSettings, &QAction::triggered, this, [this]() {
+        if(m_settings && m_settings->settingsDialog()) {
+            m_settings->settingsDialog()->openAtPage(Constants::Page::ArtworkGeneral);
+        }
+    });
+    menu->addAction(artworkSettings);
+
+    addConfigureAction(menu, false);
 
     if(m_track.isValid()) {
         auto* viewFullSize  = new QAction(tr("View full size"), menu);
