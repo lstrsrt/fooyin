@@ -442,9 +442,10 @@ void PlayerControllerPrivate::syncPlaylistTrackState(const UId& playlistId)
     }
 
     bool playlistTrackChanged{false};
+    bool currentTrackChanged{false};
 
-    const auto syncCurrentTrack = [this, &playlistTrackChanged](const PlaylistTrack& track) {
-        static_cast<void>(m_session.updateCurrentTrack(track.track));
+    const auto syncCurrentTrack = [this, &playlistTrackChanged, &currentTrackChanged](const PlaylistTrack& track) {
+        currentTrackChanged |= m_session.updateCurrentTrack(track.track);
         playlistTrackChanged |= m_session.updateCurrentTrackPlaylist(track.playlistId);
         playlistTrackChanged |= m_session.updateCurrentTrackEntry(track.entryId);
         playlistTrackChanged |= m_session.updateCurrentTrackIndex(track.indexInPlaylist);
@@ -468,6 +469,10 @@ void PlayerControllerPrivate::syncPlaylistTrackState(const UId& playlistId)
         }
 
         syncCommittedPlaylistTrack();
+
+        if(currentTrackChanged) {
+            emit m_self->currentTrackUpdated(m_session.currentTrack().track);
+        }
         if(playlistTrackChanged) {
             emit m_self->playlistTrackUpdated(m_session.currentTrack());
         }
@@ -480,6 +485,9 @@ void PlayerControllerPrivate::syncPlaylistTrackState(const UId& playlistId)
             syncCurrentTrack(*remappedTrack);
             m_session.clearDetachedCurrentPlaylistTrack();
             syncCommittedPlaylistTrack();
+            if(currentTrackChanged) {
+                emit m_self->currentTrackUpdated(m_session.currentTrack().track);
+            }
             if(playlistTrackChanged) {
                 emit m_self->playlistTrackUpdated(m_session.currentTrack());
             }

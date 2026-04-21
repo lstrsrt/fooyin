@@ -585,6 +585,47 @@ TEST(PlayerControllerTest, CommitingPlaylistTrackSyncsActivePlaylistIndex)
     EXPECT_EQ(playlist->currentTrackIndex(), 1);
 }
 
+TEST(PlayerControllerTest, SyncPlaylistTrackStateEmitsCurrentTrackUpdatedForMetadataChanges)
+{
+    ensureCoreApplication();
+    SettingsManager settings{QDir::tempPath() + u"/fooyin_playercontroller_sync_metadata_update_test.ini"_s};
+    registerControllerSettings(settings);
+    PlaylistHandlerHarness harness{settings};
+    ASSERT_TRUE(harness.dbInitialised);
+
+    auto* playlist = harness.handler.createPlaylist(u"Metadata"_s, {makeTrack(u"/tmp/metadata-a.flac"_s, 121, 1000),
+                                                                    makeTrack(u"/tmp/metadata-b.flac"_s, 122, 1000)});
+    ASSERT_NE(playlist, nullptr);
+
+    harness.handler.changeActivePlaylist(playlist);
+    playlist->changeCurrentIndex(0);
+
+    PlayerController controller{&settings, &harness.handler};
+    const auto committedTrack = playlist->playlistTrack(1);
+    ASSERT_TRUE(committedTrack.has_value());
+
+    controller.commitCurrentTrack(Player::TrackChangeRequest{
+        .track        = *committedTrack,
+        .context      = {.reason = Player::AdvanceReason::NaturalEnd, .userInitiated = false},
+        .isQueueTrack = false,
+        .itemId       = 99,
+    });
+
+    QSignalSpy currentTrackUpdatedSpy{&controller, &PlayerController::currentTrackUpdated};
+    QSignalSpy playlistTrackUpdatedSpy{&controller, &PlayerController::playlistTrackUpdated};
+
+    PlaylistTrackList updatedTracks = playlist->playlistTracks();
+    ASSERT_EQ(updatedTracks.size(), 2);
+    updatedTracks[1].track.setTitle(u"Updated Title"_s);
+
+    harness.handler.replacePlaylistTracks(playlist->id(), updatedTracks);
+
+    ASSERT_EQ(currentTrackUpdatedSpy.count(), 1);
+    EXPECT_EQ(currentTrackUpdatedSpy.at(0).at(0).value<Track>().title(), u"Updated Title"_s);
+    EXPECT_EQ(controller.currentTrack().title(), u"Updated Title"_s);
+    EXPECT_EQ(playlistTrackUpdatedSpy.count(), 0);
+}
+
 TEST(PlayerControllerTest, PlayFromIdleUsesActivePlaylistCurrentTrack)
 {
     ensureCoreApplication();
