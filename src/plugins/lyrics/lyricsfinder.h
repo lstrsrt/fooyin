@@ -40,6 +40,7 @@ public:
 
     void findLyrics(const Track& track);
     void findLocalLyrics(const Track& track);
+    void findTagLyrics(const Track& track);
 
     [[nodiscard]] std::vector<LyricSource*> sources() const;
 
@@ -68,6 +69,7 @@ private:
     SearchParams m_params;
     bool m_foundAnyResults;
     bool m_localOnly;
+    bool m_tagOnly;
     int m_currentSourceIndex;
     LyricSource* m_currentSource;
 };

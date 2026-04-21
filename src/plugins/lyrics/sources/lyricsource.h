@@ -47,6 +47,7 @@ struct LyricData
 {
     QString id;   // Used by some services to query lyrics after searching
     QString path; // Only useful for local sources
+    QString tag;  // Only useful for tag sources
     QString data;
 
     QString title;

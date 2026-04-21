@@ -54,22 +54,28 @@ public:
     explicit LyricsSaver(MusicLibrary* library, SettingsManager* settings, QObject* parent = nullptr);
 
     void autoSaveLyrics(const Lyrics& lyrics, const Track& track);
-    void saveLyrics(const Lyrics& lyrics, const Track& track);
+    bool saveLyrics(const Lyrics& lyrics, const Track& track);
+    [[nodiscard]] Lyrics savedLyrics(const Lyrics& lyrics, const Track& track);
     void writeLyricsToTags(const TrackList& tracks);
-    void saveLyricsToFile(const Lyrics& lyrics, const Track& track);
-    void writeLyricsToTag(const Lyrics& lyrics, const Track& track);
+    bool saveLyricsToFile(const Lyrics& lyrics, const Track& track);
+    std::optional<Track> writeLyricsToTag(const Lyrics& lyrics, const Track& track);
     [[nodiscard]] std::optional<Track> updateLyricsTag(const Lyrics& lyrics, const Track& track) const;
     [[nodiscard]] Track restoreLyricsTags(const Track& originalTrack, const Track& track) const;
 
     static QString lyricsToLrc(const Lyrics& lyrics, const SaveOptions& options);
     static void lyricsToLrc(const Lyrics& lyrics, QIODevice* device, const SaveOptions& options);
 
+signals:
+    void lyricsSaved(const Fooyin::Track& track);
+
 protected:
     void timerEvent(QTimerEvent* event) override;
 
 private:
     void clearAutoSaveTimer();
-    void saveToCurrentMethod(const Lyrics& lyrics, const Track& track);
+    [[nodiscard]] QString configuredLyricsFilepath(const Track& track);
+    [[nodiscard]] QString configuredLyricsTag(const Lyrics& lyrics) const;
+    bool saveToConfiguredMethod(const Lyrics& lyrics, const Track& track);
 
     MusicLibrary* m_library;
     SettingsManager* m_settings;

@@ -43,8 +43,10 @@ void TagLyrics::search(const SearchParams& params)
     const auto searchTags = settings()->fileValue(Settings::SearchTags, Defaults::searchTags()).toStringList();
     for(const QString& tag : searchTags) {
         const QStringList lyrics = params.track.extraTag(tag);
+
         if(!lyrics.empty()) {
             LyricData lyricData;
+            lyricData.tag    = tag;
             lyricData.title  = params.title;
             lyricData.album  = params.album;
             lyricData.artist = params.artist;

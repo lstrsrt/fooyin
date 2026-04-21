@@ -55,6 +55,7 @@ constexpr auto SaveSyncedTag   = u"Lyrics/SaveSyncedTag";
 constexpr auto SaveUnsyncedTag = u"Lyrics/SaveUnsyncedTag";
 constexpr auto SaveDir         = u"Lyrics/SaveDir";
 constexpr auto SaveFilename    = u"Lyrics/SaveFilename";
+constexpr auto SaveConflict    = u"Lyrics/SaveConflicts";
 constexpr auto SkipRemaining   = u"Lyrics/SkipRemaining";
 constexpr auto SkipExternal    = u"Lyrics/SkipExternal";
 constexpr auto AutoSearch      = u"Lyrics/AutoSearch";
@@ -95,6 +96,12 @@ enum class SavePrefer : uint8_t
     None = 0,
     Synced,
     Unsynced
+};
+
+enum class SaveConflictPolicy : uint8_t
+{
+    KeepOriginal = 0,
+    RemoveOriginal,
 };
 
 namespace Defaults {

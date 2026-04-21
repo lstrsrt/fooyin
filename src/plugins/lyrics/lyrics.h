@@ -118,6 +118,8 @@ struct Lyrics
     QString data;
     QString source;
     bool isLocal{false};
+    QString tag;      // if tag-based
+    QString filepath; // if local file
     Metadata metadata;
     int64_t offset{0};
     std::vector<ParsedLine> lines;
@@ -125,6 +127,11 @@ struct Lyrics
     [[nodiscard]] bool isValid() const noexcept
     {
         return type != Type::Unknown;
+    }
+
+    [[nodiscard]] bool isEmpty() const noexcept
+    {
+        return data.isEmpty() && lines.empty();
     }
 
     [[nodiscard]] bool isSynced() const

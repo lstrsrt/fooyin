@@ -22,7 +22,7 @@
 #include "lyricscolours.h"
 #include "lyricsconfigwidget.h"
 #include "lyricsdelegate.h"
-#include "lyricseditor.h"
+#include "lyricseditordialog.h"
 #include "lyricsfinder.h"
 #include "lyricsmodel.h"
 #include "lyricssaver.h"
@@ -166,6 +166,11 @@ LyricsWidget::LyricsWidget(PlayerController* playerController, LyricsFinder* lyr
     QObject::connect(m_lyricsView, &LyricsView::viewportResized, this, &LyricsWidget::updateViewportPadding);
     QObject::connect(m_lyricsFinder, &LyricsFinder::lyricsSearchFinished, this,
                      &LyricsWidget::handleLyricsSearchFinished);
+    QObject::connect(m_lyricsSaver, &LyricsSaver::lyricsSaved, this, [this](const Track& updatedTrack) {
+        if(updatedTrack.sameIdentityAs(m_currentTrack)) {
+            m_currentTrack = updatedTrack;
+        }
+    });
 
     QObject::connect(m_lyricsView, &LyricsView::lineClicked, this, &LyricsWidget::seekTo);
     QObject::connect(m_lyricsView, &LyricsView::lineDragSeekRequested, this, &LyricsWidget::seekTo);
@@ -223,8 +228,6 @@ QString LyricsWidget::defaultNoLyricsScript()
 
 void LyricsWidget::updateLyrics(const Track& track, bool force)
 {
-    QObject::disconnect(m_finderConnection);
-
     const Track previousTrack{m_currentTrack};
 
     const bool sameTrack = previousTrack.sameIdentityAs(track);
@@ -233,13 +236,15 @@ void LyricsWidget::updateLyrics(const Track& track, bool force)
 
     m_currentTrack = track;
 
-    if(previousTrack == track && !force) {
+    if(sameTrack && !force) {
         return;
     }
 
     if(preserveLyrics) {
         return;
     }
+
+    QObject::disconnect(m_finderConnection);
 
     m_lyrics.clear();
 
@@ -263,7 +268,7 @@ void LyricsWidget::updateLyrics(const Track& track, bool force)
     m_finderConnection = QObject::connect(m_lyricsFinder, &LyricsFinder::lyricsFound, this,
                                           [this](const Track& /*track*/, const Lyrics& lyrics) { loadLyrics(lyrics); });
 
-    if(m_settings->fileValue(Settings::AutoSearch, false).toBool()) {
+    if(!sameTrack && m_settings->fileValue(Settings::AutoSearch, false).toBool()) {
         m_lyricsFinder->findLyrics(track);
     }
     else {
@@ -771,11 +776,18 @@ void LyricsWidget::changeLyrics(const Lyrics& lyrics)
 
 void LyricsWidget::openEditor(const Lyrics& lyrics)
 {
-    auto* dlg = new LyricsEditorDialog(lyrics, m_playerController, m_lyricsSaver, m_settings, Utils::getMainWindow());
+    auto* dlg
+        = new LyricsEditorDialog(m_currentTrack, lyrics, m_playerController, m_lyricsSaver, Utils::getMainWindow());
     dlg->setAttribute(Qt::WA_DeleteOnClose);
 
     QObject::connect(dlg, &QDialog::finished, dlg, &LyricsEditorDialog::saveState);
-    QObject::connect(dlg->editor(), &LyricsEditor::lyricsEdited, this, &LyricsWidget::changeLyrics);
+    QObject::connect(dlg, &LyricsEditorDialog::lyricsEdited, this, [this](const Lyrics& updatedLyrics) {
+        std::erase_if(m_lyrics, &Lyrics::isLocal);
+        if(updatedLyrics.isValid()) {
+            m_lyrics.insert(m_lyrics.begin(), updatedLyrics);
+        }
+        changeLyrics(updatedLyrics);
+    });
 
     dlg->show();
     dlg->restoreState();

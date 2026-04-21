@@ -56,6 +56,7 @@ LyricsFinder::LyricsFinder(std::shared_ptr<NetworkAccessManager> networkManager,
     , m_settings{settings}
     , m_foundAnyResults{false}
     , m_localOnly{false}
+    , m_tagOnly{false}
     , m_currentSourceIndex{-1}
     , m_currentSource{nullptr}
 {
@@ -65,12 +66,21 @@ LyricsFinder::LyricsFinder(std::shared_ptr<NetworkAccessManager> networkManager,
 void LyricsFinder::findLyrics(const Track& track)
 {
     m_localOnly = false;
+    m_tagOnly   = false;
     startLyricsSearch(track);
 }
 
 void LyricsFinder::findLocalLyrics(const Track& track)
 {
     m_localOnly = true;
+    m_tagOnly   = false;
+    startLyricsSearch(track);
+}
+
+void LyricsFinder::findTagLyrics(const Track& track)
+{
+    m_localOnly = false;
+    m_tagOnly   = true;
     startLyricsSearch(track);
 }
 
@@ -186,10 +196,15 @@ bool LyricsFinder::findNextAvailableSource()
 
     while(std::cmp_less(m_currentSourceIndex, m_sources.size())) {
         auto* source = m_sources.at(m_currentSourceIndex);
-        if(source->enabled() && (!m_localOnly || source->isLocal())) {
+
+        const bool matchesLocalFilter = !m_localOnly || source->isLocal();
+        const bool matchesTagFilter   = !m_tagOnly || source->name() == "Metadata Tags"_L1;
+
+        if(source->enabled() && matchesLocalFilter && matchesTagFilter) {
             m_currentSource = source;
             return true;
         }
+
         ++m_currentSourceIndex;
     }
 
@@ -229,6 +244,8 @@ void LyricsFinder::onSearchResult(const std::vector<LyricData>& data)
             continue;
         }
 
+        lyrics.filepath   = lyricData.path;
+        lyrics.tag        = lyricData.tag;
         lyrics.data       = lyricData.data;
         lyrics.source     = m_currentSource->name();
         lyrics.isLocal    = m_currentSource->isLocal();

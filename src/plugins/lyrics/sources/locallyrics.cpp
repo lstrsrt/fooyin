@@ -74,6 +74,7 @@ void LocalLyrics::search(const SearchParams& params)
             lyricData.data = toUtf8(&lrcFile);
 
             if(!lyricData.data.isEmpty()) {
+                lyricData.path   = file;
                 lyricData.title  = params.title;
                 lyricData.album  = params.album;
                 lyricData.artist = params.artist;

@@ -19,8 +19,8 @@
 
 #include "lyricsplugin.h"
 
-#include "lyricseditor.h"
 #include "lyricsfinder.h"
+#include "lyricspropertiestab.h"
 #include "lyricssaver.h"
 #include "lyricswidget.h"
 #include "settings/lyricssavingpage.h"
@@ -56,10 +56,10 @@ void LyricsPlugin::initialise(const GuiPluginContext& context)
     m_actionManager  = context.actionManager;
     m_widgetProvider = context.widgetProvider;
 
-    context.propertiesDialog->addTab(tr("Lyrics"), [this](const TrackList& tracks) -> LyricsEditor* {
-        return new LyricsEditor(tracks.empty() ? Track{} : tracks.front(), m_networkAccess, m_lyricsSaver,
-                                m_playerController, m_settings,
-                                [this](const Track& track) { return m_audioLoader->canWriteMetadata(track); });
+    context.propertiesDialog->addTab(tr("Lyrics"), [this](const TrackList& tracks) {
+        return new LyricsPropertiesTab(tracks.empty() ? Track{} : tracks.front(), m_networkAccess, m_lyricsSaver,
+                                       m_playerController, m_settings,
+                                       [this](const Track& track) { return m_audioLoader->canWriteMetadata(track); });
     });
 
     m_widgetProvider->registerWidget(

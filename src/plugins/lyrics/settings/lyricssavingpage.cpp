@@ -31,6 +31,7 @@
 
 #include <QAction>
 #include <QCheckBox>
+#include <QComboBox>
 #include <QFileDialog>
 #include <QGridLayout>
 #include <QGroupBox>
@@ -75,6 +76,8 @@ private:
 
     QCheckBox* m_collapse;
     QCheckBox* m_metadata;
+
+    QComboBox* m_conflictPolicy;
 };
 
 LyricsSavingPageWidget::LyricsSavingPageWidget(SettingsManager* settings)
@@ -93,6 +96,7 @@ LyricsSavingPageWidget::LyricsSavingPageWidget(SettingsManager* settings)
     , m_filename{new ScriptLineEdit(this)}
     , m_collapse{new QCheckBox(tr("Collapse duplicate lines"), this)}
     , m_metadata{new QCheckBox(tr("Save metadata"), this)}
+    , m_conflictPolicy{new QComboBox(this)}
 {
     auto* schemeGroup  = new QGroupBox(tr("Save Scheme"), this);
     auto* schemeLayout = new QGridLayout(schemeGroup);
@@ -142,6 +146,21 @@ LyricsSavingPageWidget::LyricsSavingPageWidget(SettingsManager* settings)
     formatLayout->addWidget(m_collapse, row++, 0);
     formatLayout->addWidget(m_metadata, row++, 0);
 
+    auto* optionsGroup  = new QGroupBox(tr("Save Options"), this);
+    auto* optionsLayout = new QGridLayout(optionsGroup);
+
+    m_conflictPolicy->addItem(tr("Keep Original"), static_cast<int>(SaveConflictPolicy::KeepOriginal));
+    m_conflictPolicy->addItem(tr("Remove original"), static_cast<int>(SaveConflictPolicy::RemoveOriginal));
+    m_conflictPolicy->setToolTip(
+        tr("Determines what happens if lyrics are saved to a different location (file ↔ tag).\n"
+           "Keep original: keeps the previous version of the lyrics in its original location.\n"
+           "Remove original: deletes the previous file or tag after saving."));
+
+    row = 0;
+    optionsLayout->addWidget(new QLabel(tr("Conflict policy") + u":"_s), row, 0);
+    optionsLayout->addWidget(m_conflictPolicy, row++, 1);
+    optionsLayout->setColumnStretch(optionsLayout->columnCount(), 1);
+
     auto* layout = new QGridLayout(this);
 
     row = 0;
@@ -150,6 +169,7 @@ LyricsSavingPageWidget::LyricsSavingPageWidget(SettingsManager* settings)
     layout->addWidget(methodGroup, row++, 0, 1, 2);
     layout->addWidget(locationGroup, row++, 0, 1, 2);
     layout->addWidget(formatGroup, row++, 0, 1, 2);
+    layout->addWidget(optionsGroup, row++, 0, 1, 2);
     layout->setRowStretch(layout->rowCount(), 1);
 
     auto* browseAction = new QAction(this);
@@ -203,6 +223,9 @@ void LyricsSavingPageWidget::load()
     const auto opts = static_cast<LyricsSaver::SaveOptions>(m_settings->fileValue(Settings::SaveOptions, 0).toInt());
     m_collapse->setChecked(opts & LyricsSaver::Collapse);
     m_metadata->setChecked(opts & LyricsSaver::Metadata);
+
+    const auto policy = m_settings->fileValue(Settings::SaveConflict, 0).toInt();
+    m_conflictPolicy->setCurrentIndex(m_conflictPolicy->findData(policy));
 }
 
 void LyricsSavingPageWidget::apply()
@@ -254,6 +277,9 @@ void LyricsSavingPageWidget::apply()
         opts |= LyricsSaver::Metadata;
     }
     m_settings->fileSet(Settings::SaveOptions, static_cast<int>(opts));
+
+    const auto policy = m_conflictPolicy->currentData().toInt();
+    m_settings->fileSet(Settings::SaveConflict, policy);
 }
 
 void LyricsSavingPageWidget::reset()
@@ -266,6 +292,7 @@ void LyricsSavingPageWidget::reset()
     m_settings->fileRemove(Settings::SaveDir);
     m_settings->fileRemove(Settings::SaveFilename);
     m_settings->fileRemove(Settings::SaveOptions);
+    m_settings->fileRemove(Settings::SaveConflict);
     load();
 }
 
