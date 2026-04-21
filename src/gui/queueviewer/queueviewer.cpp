@@ -26,6 +26,7 @@
 #include "queueviewermodel.h"
 #include "queueviewerview.h"
 
+#include <core/coresettings.h>
 #include <core/player/playercontroller.h>
 #include <gui/configdialog.h>
 #include <gui/guiconstants.h>
@@ -38,6 +39,7 @@
 #include <utils/crypto.h>
 #include <utils/settings/settingsmanager.h>
 
+#include <QCloseEvent>
 #include <QContextMenuEvent>
 #include <QDialog>
 #include <QDialogButtonBox>
@@ -50,6 +52,7 @@
 #include <QMenu>
 #include <QPushButton>
 #include <QScrollBar>
+#include <QShowEvent>
 #include <ranges>
 
 using namespace Qt::StringLiterals;
@@ -63,6 +66,7 @@ constexpr auto QueueViewerAltColoursKey  = u"PlaybackQueue/AlternatingColours";
 constexpr auto QueueViewerLeftScriptKey  = u"PlaybackQueue/LeftScript";
 constexpr auto QueueViewerRightScriptKey = u"PlaybackQueue/RightScript";
 constexpr auto QueueViewerShowCurrentKey = u"PlaybackQueue/ShowCurrent";
+constexpr auto QueueViewerStateKey       = "PlaybackQueue/State"_L1;
 
 namespace Fooyin {
 QueueViewer::QueueViewer(ActionManager* actionManager, PlaylistInteractor* playlistInteractor,
@@ -75,11 +79,15 @@ QueueViewer::QueueViewer(ActionManager* actionManager, PlaylistInteractor* playl
     , m_view{new QueueViewerView(this)}
     , m_model{new QueueViewerModel(std::move(audioLoader), m_playerController, settings, this)}
     , m_context{new WidgetContext(this, Context{Id{"Context.QueueViewer."}.append(Utils::generateUniqueHash())}, this)}
-    , m_remove{new QAction(tr("Remove"), this)}
+    , m_remove{new QAction(tr("&Remove"), this)}
     , m_removeCmd{nullptr}
     , m_clear{new QAction(tr("&Clear"), this)}
     , m_clearCmd{nullptr}
+    , m_topLevelStateLoaded{false}
 {
+    setObjectName(QueueViewer::name());
+    setWindowTitle(QueueViewer::name());
+
     auto* layout = new QVBoxLayout(this);
     layout->setContentsMargins({});
     layout->addWidget(m_view);
@@ -113,6 +121,29 @@ void QueueViewer::saveLayoutData(QJsonObject& layout)
 void QueueViewer::loadLayoutData(const QJsonObject& layout)
 {
     applyConfig(configFromLayout(layout));
+}
+
+QSize QueueViewer::sizeHint() const
+{
+    return {400, 520};
+}
+
+void QueueViewer::showEvent(QShowEvent* event)
+{
+    if(isWindowWidget() && !m_topLevelStateLoaded) {
+        loadTopLevelState();
+    }
+
+    FyWidget::showEvent(event);
+}
+
+void QueueViewer::closeEvent(QCloseEvent* event)
+{
+    if(isWindowWidget()) {
+        saveTopLevelState();
+    }
+
+    FyWidget::closeEvent(event);
 }
 
 void QueueViewer::contextMenuEvent(QContextMenuEvent* event)
@@ -609,6 +640,40 @@ void QueueViewer::saveConfigToLayout(const ConfigData& config, QJsonObject& layo
     layout["ShowHeader"_L1]      = config.showHeader;
     layout["ShowScrollbar"_L1]   = config.showScrollBar;
     layout["AlternatingRows"_L1] = config.alternatingRows;
+}
+
+void QueueViewer::saveTopLevelState()
+{
+    QJsonObject layoutData;
+    saveLayoutData(layoutData);
+    layoutData["Geometry"_L1] = QString::fromUtf8(saveGeometry().toBase64());
+
+    FyStateSettings stateSettings;
+    stateSettings.setValue(QueueViewerStateKey, layoutData);
+}
+
+void QueueViewer::loadTopLevelState()
+{
+    const FyStateSettings stateSettings;
+
+    const QJsonObject layoutData = stateSettings.value(QueueViewerStateKey).toJsonObject();
+    if(layoutData.isEmpty()) {
+        m_topLevelStateLoaded = true;
+        return;
+    }
+
+    loadLayoutData(layoutData);
+
+    if(layoutData.contains("Geometry"_L1)) {
+        restoreGeometry(QByteArray::fromBase64(layoutData.value("Geometry"_L1).toString().toUtf8()));
+    }
+
+    m_topLevelStateLoaded = true;
+}
+
+bool QueueViewer::isWindowWidget() const
+{
+    return parentWidget() == nullptr;
 }
 
 void QueueViewer::openConfigDialog()

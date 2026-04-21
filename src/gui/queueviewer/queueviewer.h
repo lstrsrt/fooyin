@@ -23,9 +23,11 @@
 #include <core/playlist/playlist.h>
 #include <gui/fywidget.h>
 
+class QCloseEvent;
 class QJsonObject;
 class QModelIndex;
 class QMimeData;
+class QShowEvent;
 
 namespace Fooyin {
 class ActionManager;
@@ -52,6 +54,8 @@ public:
     void saveLayoutData(QJsonObject& layout) override;
     void loadLayoutData(const QJsonObject& layout) override;
 
+    [[nodiscard]] QSize sizeHint() const override;
+
     struct ConfigData
     {
         QString leftScript;
@@ -73,6 +77,8 @@ public:
 
 protected:
     void contextMenuEvent(QContextMenuEvent* event) override;
+    void showEvent(QShowEvent* event) override;
+    void closeEvent(QCloseEvent* event) override;
 
 private:
     struct ViewRowState
@@ -118,6 +124,9 @@ private:
 
     [[nodiscard]] ConfigData configFromLayout(const QJsonObject& layout) const;
     void saveConfigToLayout(const ConfigData& config, QJsonObject& layout) const;
+    void saveTopLevelState();
+    void loadTopLevelState();
+    [[nodiscard]] bool isWindowWidget() const;
     void openConfigDialog() override;
 
     ActionManager* m_actionManager;
@@ -135,5 +144,7 @@ private:
 
     QAction* m_clear;
     Command* m_clearCmd;
+
+    bool m_topLevelStateLoaded;
 };
 } // namespace Fooyin

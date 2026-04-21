@@ -39,6 +39,7 @@
 #include "playlist/playlistcontroller.h"
 #include "playlist/playlistinteractor.h"
 #include "playlist/playlistuicontroller.h"
+#include "queueviewer/queueviewer.h"
 #include "scripting/scriptcommandhandler.h"
 #include "scripting/scriptvariableproviders.h"
 #include "search/searchcontroller.h"
@@ -203,6 +204,7 @@ public:
     void showScriptEditor();
     void showSearchPlaylistDialog();
     void showSearchLibraryDialog();
+    void showPlaybackQueue();
     void showPlaylistManager();
     void focusSearchBar() const;
     void showQuickSearch() const;
@@ -261,6 +263,7 @@ public:
     GuiPluginContext m_guiPluginContext;
 
     std::unique_ptr<LogWidget> m_logWidget;
+    QPointer<QueueViewer> m_playbackQueueWidget;
     QPointer<PlaylistManagerWidget> m_playlistManagerWidget;
     Widgets* m_widgets;
     ScriptParser m_scriptParser;
@@ -435,6 +438,7 @@ void GuiApplicationPrivate::setupConnections()
     QObject::connect(m_libraryMenu, &LibraryMenu::requestSearch, m_self, [this]() { showSearchLibraryDialog(); });
     QObject::connect(m_libraryMenu, &LibraryMenu::requestQuickSearch, m_self, [this]() { showQuickSearch(); });
     QObject::connect(m_viewMenu, &ViewMenu::openQuickSetup, m_editableLayout.get(), &EditableLayout::showQuickSetup);
+    QObject::connect(m_viewMenu, &ViewMenu::openPlaybackQueue, m_self, [this]() { showPlaybackQueue(); });
     QObject::connect(m_viewMenu, &ViewMenu::openPlaylistManager, m_self, [this]() { showPlaylistManager(); });
     QObject::connect(m_viewMenu, &ViewMenu::focusSearchBar, m_self, [this]() { focusSearchBar(); });
     QObject::connect(m_viewMenu, &ViewMenu::openLog, m_logWidget.get(), &LogWidget::show);
@@ -1109,6 +1113,22 @@ void GuiApplicationPrivate::showPlaylistManager()
     m_playlistManagerWidget->finalise();
 
     m_playlistManagerWidget->show();
+}
+
+void GuiApplicationPrivate::showPlaybackQueue()
+{
+    if(m_playbackQueueWidget) {
+        m_playbackQueueWidget->show();
+        m_playbackQueueWidget->raise();
+        m_playbackQueueWidget->activateWindow();
+        return;
+    }
+
+    m_playbackQueueWidget = new QueueViewer(m_actionManager, &m_playlistInteractor, m_core->audioLoader(), m_settings);
+    m_playbackQueueWidget->setAttribute(Qt::WA_DeleteOnClose);
+    m_playbackQueueWidget->finalise();
+
+    m_playbackQueueWidget->show();
 }
 
 void GuiApplicationPrivate::focusSearchBar() const

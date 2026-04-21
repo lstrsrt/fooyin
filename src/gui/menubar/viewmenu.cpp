@@ -39,7 +39,7 @@ ViewMenu::ViewMenu(ActionManager* actionManager, SettingsManager* settings, QObj
 
     const QStringList viewCategory = {tr("View")};
 
-    auto* openQuickSetup = new QAction(tr("&Quick setup"), this);
+    auto* openQuickSetup = new QAction(tr("Quick &setup"), this);
     Gui::setThemeIcon(openQuickSetup, Constants::Icons::QuickSetup);
     openQuickSetup->setStatusTip(tr("Open the quick setup dialog"));
     auto* quickSetupCmd = m_actionManager->registerAction(openQuickSetup, Constants::Actions::QuickSetup);
@@ -70,6 +70,13 @@ ViewMenu::ViewMenu(ActionManager* actionManager, SettingsManager* settings, QObj
     showPlaylistManagerCmd->setCategories(viewCategory);
     viewMenu->addAction(showPlaylistManagerCmd);
     QObject::connect(showPlaylistManager, &QAction::triggered, this, &ViewMenu::openPlaylistManager);
+
+    auto* showPlaybackQueue = new QAction(tr("Playback &Queue"), this);
+    showPlaybackQueue->setStatusTip(tr("Open the playback queue window"));
+    auto* showPlaybackQueueCmd = m_actionManager->registerAction(showPlaybackQueue, Constants::Actions::PlaybackQueue);
+    showPlaybackQueueCmd->setCategories(viewCategory);
+    viewMenu->addAction(showPlaybackQueueCmd);
+    QObject::connect(showPlaybackQueue, &QAction::triggered, this, &ViewMenu::openPlaybackQueue);
 
     viewMenu->addSeparator();
 

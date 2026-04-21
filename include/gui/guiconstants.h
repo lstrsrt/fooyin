@@ -141,6 +141,7 @@ constexpr auto SearchPlaylist            = "Edit.SearchPlaylist";
 constexpr auto LayoutEditing             = "Layout.LayoutEditing";
 constexpr auto LockSplitters             = "Layout.LockSplitters";
 constexpr auto QuickSetup                = "View.QuickSetup";
+constexpr auto PlaybackQueue             = "View.PlaybackQueue";
 constexpr auto PlaylistManager           = "View.PlaylistManager";
 constexpr auto ShowNowPlaying            = "View.ShowNowPlaying";
 constexpr auto FocusSearchBar            = "View.FocusSearchBar";
