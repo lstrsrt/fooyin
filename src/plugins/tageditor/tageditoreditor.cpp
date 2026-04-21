@@ -177,7 +177,7 @@ void TagEditorEditor::configureDelegates(const std::vector<TagEditorField>& item
 
 void TagEditorEditor::refreshModel()
 {
-    const auto items       = m_registry->items();
+    const auto items = m_registry->items();
     m_model->reset(m_tracks, items);
     m_autocompleteDelegate->setTracks(m_tracks);
     updatePendingScopeState();
