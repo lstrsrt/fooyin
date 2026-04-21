@@ -794,7 +794,7 @@ void LyricsWidget::openEditor(const Lyrics& lyrics)
 
     QObject::connect(dlg, &QDialog::finished, dlg, &LyricsEditorDialog::saveState);
     QObject::connect(dlg, &LyricsEditorDialog::lyricsEdited, this, [this](const Lyrics& updatedLyrics) {
-        std::erase_if(m_lyrics, &Lyrics::isLocal);
+        std::erase_if(m_lyrics, [](const Lyrics& existingLyrics) { return existingLyrics.isLocal; });
         if(updatedLyrics.isValid()) {
             m_lyrics.insert(m_lyrics.begin(), updatedLyrics);
         }
