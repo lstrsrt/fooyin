@@ -49,6 +49,7 @@
 
 #include <functional>
 #include <ranges>
+#include <unordered_map>
 
 using namespace Qt::StringLiterals;
 
@@ -1213,8 +1214,26 @@ bool TrackSelectionControllerPrivate::allTracksInSameFolder(const TrackSelection
 
 bool TrackSelectionControllerPrivate::canWrite(const TrackSelection& selection) const
 {
-    return !selection.tracks.empty() && std::ranges::all_of(selection.tracks, [this](const Track& track) {
-        return !track.hasCue() && !track.isInArchive() && m_audioLoader->canWriteMetadata(track);
+    if(selection.tracks.empty()) {
+        return false;
+    }
+
+    std::unordered_map<QString, bool> writableByExtension;
+    writableByExtension.reserve(8);
+
+    return std::ranges::all_of(selection.tracks, [this, &writableByExtension](const Track& track) {
+        if(track.hasCue() || track.isInArchive()) {
+            return false;
+        }
+
+        const QString extension = track.extension().toLower();
+        if(const auto it = writableByExtension.find(extension); it != writableByExtension.cend()) {
+            return it->second;
+        }
+
+        const bool canWrite = m_audioLoader->canWriteMetadata(track);
+        writableByExtension.emplace(extension, canWrite);
+        return canWrite;
     });
 }
 
