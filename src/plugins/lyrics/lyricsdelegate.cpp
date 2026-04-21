@@ -83,8 +83,16 @@ int preferredSplitLength(const QString& text, int maxWidth, const QFontMetrics& 
     return splitLength;
 }
 
-void calculateWordRects(const QModelIndex& index, const QRect& boundingRect, std::vector<LaidOutChunk>& wordRects,
-                        int& totalHeight)
+int textHeight(const QString& text, const QFontMetrics& fm)
+{
+    if(text.isEmpty()) {
+        return fm.height();
+    }
+    return std::max(fm.height(), fm.boundingRect(text).height());
+}
+
+void calculateWordRects(const QModelIndex& index, const QRect& boundingRect, const QFont& baseFont,
+                        std::vector<LaidOutChunk>& wordRects, int& totalHeight)
 {
     const auto lineSpacing = index.data(Fooyin::Lyrics::LyricsModel::LineSpacingRole).toInt();
     const auto alignment   = index.data(Qt::TextAlignmentRole).toInt();
@@ -132,12 +140,12 @@ void calculateWordRects(const QModelIndex& index, const QRect& boundingRect, std
 
     for(size_t i{0}; i < richText.blocks.size(); ++i) {
         const auto& block = richText.blocks[i];
-        const QFontMetrics fm{block.format.font};
-        const int wordHeight{fm.height()};
+        const QFontMetrics fm{Fooyin::resolvedRichTextFont(block.format, baseFont)};
         QString remainingText{block.text};
 
         while(!remainingText.isEmpty()) {
-            const int remainingWidth = fm.horizontalAdvance(remainingText);
+            const int remainingWidth  = fm.horizontalAdvance(remainingText);
+            const int remainingHeight = textHeight(remainingText, fm);
 
             if(currentLineWidth >= rightEdge && !currentLineRects.empty()) {
                 flushLine(true);
@@ -149,10 +157,10 @@ void calculateWordRects(const QModelIndex& index, const QRect& boundingRect, std
             }
 
             if(remainingWidth <= rightEdge - currentLineWidth) {
-                currentLineRects.emplace_back(QRect{0, 0, remainingWidth, wordHeight}, static_cast<int>(i),
+                currentLineRects.emplace_back(QRect{0, 0, remainingWidth, remainingHeight}, static_cast<int>(i),
                                               remainingText);
                 currentLineWidth += remainingWidth;
-                lineHeight = std::max(lineHeight, wordHeight);
+                lineHeight = std::max(lineHeight, remainingHeight);
                 break;
             }
 
@@ -160,15 +168,16 @@ void calculateWordRects(const QModelIndex& index, const QRect& boundingRect, std
             const int segmentLength   = preferredSplitLength(remainingText, availableWidth, fm);
             const QString segmentText = remainingText.left(segmentLength);
             const int segmentWidth    = fm.horizontalAdvance(segmentText);
+            const int segmentHeight   = textHeight(segmentText, fm);
 
             if(currentLineWidth + segmentWidth > rightEdge && !currentLineRects.empty()) {
                 flushLine(true);
                 continue;
             }
 
-            currentLineRects.emplace_back(QRect{0, 0, segmentWidth, wordHeight}, static_cast<int>(i), segmentText);
+            currentLineRects.emplace_back(QRect{0, 0, segmentWidth, segmentHeight}, static_cast<int>(i), segmentText);
             currentLineWidth += segmentWidth;
-            lineHeight = std::max(lineHeight, wordHeight);
+            lineHeight = std::max(lineHeight, segmentHeight);
 
             remainingText.remove(0, segmentLength);
 
@@ -215,7 +224,7 @@ void LyricsDelegate::paint(QPainter* painter, const QStyleOptionViewItem& option
     std::vector<LaidOutChunk> wordRects;
     int totalHeight{0};
 
-    calculateWordRects(index, contentRect, wordRects, totalHeight);
+    calculateWordRects(index, contentRect, option.font, wordRects, totalHeight);
 
     // Offset word rects
     for(auto& chunk : wordRects) {
@@ -268,7 +277,7 @@ QSize LyricsDelegate::sizeHint(const QStyleOptionViewItem& option, const QModelI
 
     std::vector<LaidOutChunk> wordRects;
     int totalHeight{0};
-    calculateWordRects(index, boundingRect, wordRects, totalHeight);
+    calculateWordRects(index, boundingRect, option.font, wordRects, totalHeight);
 
     // Ensure minimum height
     if(totalHeight <= 0) {
@@ -296,7 +305,7 @@ int LyricsDelegate::wordIndexAt(const QModelIndex& index, const QPoint& pos, con
     std::vector<LaidOutChunk> wordRects;
     int totalHeight{0};
 
-    calculateWordRects(index, contentRect, wordRects, totalHeight);
+    calculateWordRects(index, contentRect, opt.font, wordRects, totalHeight);
 
     for(auto& chunk : wordRects) {
         chunk.rect.translate(0, opt.rect.top());
