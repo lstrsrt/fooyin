@@ -1107,7 +1107,7 @@ void Playlist::updateTrackAtIndex(int index, const Track& track)
         return;
     }
 
-    if(p->m_tracks.at(index).uniqueFilepath() == track.uniqueFilepath()) {
+    if(p->m_tracks.at(index).sameIdentityAs(track)) {
         p->m_tracks[index] = track;
     }
 }

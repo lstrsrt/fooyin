@@ -325,4 +325,36 @@ TEST(PlaylistHandlerTest, ReaddingSameNameCancelsPendingRemovedExportOnly)
     EXPECT_EQ(firstPlaylist->name(), u"Session A"_s);
     EXPECT_TRUE(harness.handler.pendingRemovedPlaylists().empty());
 }
+
+TEST(PlaylistHandlerTest, TracksMetadataChangedUpdatesPlaylistTrackWhenFilepathChanges)
+{
+    ensureCoreApplication();
+    SettingsManager settings{QDir::tempPath() + u"/fooyin_playlisthandler_filepath_update_test.ini"_s};
+    registerCoreSettings(settings);
+    PlaylistHandlerHarness harness{settings};
+    ASSERT_TRUE(harness.dbInitialised);
+
+    auto* playlist = harness.handler.createPlaylist(u"Renamed Track"_s, {makeTrack(u"/tmp/original.flac"_s, 1)});
+    ASSERT_NE(playlist, nullptr);
+    ASSERT_EQ(playlist->trackCount(), 1);
+
+    std::vector<int> updatedIndexes;
+    QObject::connect(&harness.handler, &PlaylistHandler::tracksChanged, &harness.handler,
+                     [&updatedIndexes, playlist](Playlist* changedPlaylist, const std::vector<int>& indexes,
+                                                 PlaylistTrackChangeSource) {
+                         if(changedPlaylist == playlist) {
+                             updatedIndexes = indexes;
+                         }
+                     });
+
+    const Track renamedTrack = makeTrack(u"/tmp/renamed.flac"_s, 1);
+    emit harness.library.tracksMetadataChanged({renamedTrack});
+
+    ASSERT_EQ(updatedIndexes, std::vector<int>({0}));
+
+    const auto updatedTrack = playlist->playlistTrack(0);
+    ASSERT_TRUE(updatedTrack.has_value());
+    EXPECT_EQ(updatedTrack->track.id(), renamedTrack.id());
+    EXPECT_EQ(updatedTrack->track.filepath(), renamedTrack.filepath());
+}
 } // namespace Fooyin::Testing
