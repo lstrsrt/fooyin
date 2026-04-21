@@ -33,9 +33,10 @@ RichTextMetrics measureRichTextLine(const RichText& richText, const QFont& baseF
     for(const auto& block : richText.blocks) {
         const QFont font = resolvedRichTextFont(block.format, baseFont);
         const QFontMetrics fm{font};
+        const auto size = fm.size(Qt::TextSingleLine, block.text);
 
-        metrics.width += fm.horizontalAdvance(block.text);
-        metrics.height = std::max(metrics.height, fm.height());
+        metrics.width += size.width();
+        metrics.height = std::max(metrics.height, size.height());
     }
 
     metrics.height = std::max(metrics.height, defaultHeight);
