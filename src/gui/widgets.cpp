@@ -357,7 +357,7 @@ void Widgets::registerDspSettings()
 void Widgets::registerPropertiesTabs()
 {
     m_gui->propertiesDialog()->addTab(tr("Details"), [this](const TrackList& tracks) {
-        return new InfoWidget(tracks, m_core->libraryManager(), m_window);
+        return new InfoPropertiesTab(tracks, m_core->libraryManager(), m_window);
     });
     m_gui->propertiesDialog()->addTab(tr("ReplayGain"), [this](const TrackList& tracks) {
         const bool canWrite = std::ranges::all_of(tracks, [this](const Track& track) {

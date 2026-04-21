@@ -60,16 +60,6 @@ LyricsPropertiesTab::LyricsPropertiesTab(const Track& track, std::shared_ptr<Net
     updateTrack(m_track);
 }
 
-QString LyricsPropertiesTab::name() const
-{
-    return tr("Lyrics Editor");
-}
-
-QString LyricsPropertiesTab::layoutName() const
-{
-    return u"LyricsEditor"_s;
-}
-
 void LyricsPropertiesTab::setTrackScope(const TrackList& tracks)
 {
     if(tracks.size() == 1) {

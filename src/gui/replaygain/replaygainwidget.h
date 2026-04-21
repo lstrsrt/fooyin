@@ -34,9 +34,6 @@ public:
     ReplayGainWidget(MusicLibrary* library, const TrackList& tracks, bool readOnly, SettingsManager* settings,
                      QWidget* parent = nullptr);
 
-    [[nodiscard]] QString name() const override;
-    [[nodiscard]] QString layoutName() const override;
-
     void apply() override;
     void updateTracks(const TrackList& tracks) override;
     void setTrackScope(const TrackList& tracks) override;

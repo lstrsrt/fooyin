@@ -30,6 +30,7 @@
 #include <gui/trackselectioncontroller.h>
 #include <utils/settings/settingsmanager.h>
 
+#include <QBasicTimer>
 #include <QContextMenuEvent>
 #include <QHBoxLayout>
 #include <QHeaderView>
@@ -61,8 +62,57 @@ protected:
     }
 };
 
-InfoWidget::InfoWidget(const TrackList& tracks, LibraryManager* libraryManager, QWidget* parent)
-    : PropertiesTabWidget{parent}
+class InfoPanel : public QWidget
+{
+    Q_OBJECT
+
+public:
+    InfoPanel(const TrackList& tracks, LibraryManager* libraryManager, QWidget* parent = nullptr);
+    InfoPanel(Application* app, TrackSelectionController* selectionController, QWidget* parent = nullptr);
+
+    void saveLayoutData(QJsonObject& layout) const;
+    void loadLayoutData(const QJsonObject& layout);
+    void finalise();
+    void updateTracks(const TrackList& tracks);
+
+protected:
+    void contextMenuEvent(QContextMenuEvent* event) override;
+    void hideEvent(QHideEvent* event) override;
+    void showEvent(QShowEvent* event) override;
+    void timerEvent(QTimerEvent* event) override;
+
+private:
+    void queueViewReset();
+    void resetModel();
+    void resetView();
+
+    TrackSelectionController* m_selectionController;
+    PlayerController* m_playerController;
+    SettingsManager* m_settings;
+
+    InfoView* m_view;
+    InfoFilterModel* m_proxyModel;
+    InfoModel* m_model;
+    QBasicTimer m_resetTimer;
+    SelectionDisplay m_displayOption;
+    int m_scrollPos;
+
+    bool m_showHeader;
+    bool m_showVerticalScrollbar;
+    bool m_showHorizontalScrollbar;
+    bool m_alternatingColours;
+    bool m_pendingViewReset;
+};
+
+void setupInfoHost(QWidget* host, QWidget* panel)
+{
+    auto* layout = new QHBoxLayout(host);
+    layout->setContentsMargins({});
+    layout->addWidget(panel);
+}
+
+InfoPanel::InfoPanel(const TrackList& tracks, LibraryManager* libraryManager, QWidget* parent)
+    : QWidget{parent}
     , m_selectionController{nullptr}
     , m_playerController{nullptr}
     , m_settings{nullptr}
@@ -77,8 +127,6 @@ InfoWidget::InfoWidget(const TrackList& tracks, LibraryManager* libraryManager, 
     , m_alternatingColours{true}
     , m_pendingViewReset{false}
 {
-    setObjectName(InfoWidget::name());
-
     auto* layout = new QHBoxLayout(this);
     layout->setContentsMargins({});
     layout->addWidget(m_view);
@@ -93,8 +141,8 @@ InfoWidget::InfoWidget(const TrackList& tracks, LibraryManager* libraryManager, 
     m_model->resetModel(tracks);
 }
 
-InfoWidget::InfoWidget(Application* app, TrackSelectionController* selectionController, QWidget* parent)
-    : PropertiesTabWidget{parent}
+InfoPanel::InfoPanel(Application* app, TrackSelectionController* selectionController, QWidget* parent)
+    : QWidget{parent}
     , m_selectionController{selectionController}
     , m_playerController{app->playerController()}
     , m_settings{app->settingsManager()}
@@ -107,9 +155,8 @@ InfoWidget::InfoWidget(Application* app, TrackSelectionController* selectionCont
     , m_showVerticalScrollbar{true}
     , m_showHorizontalScrollbar{false}
     , m_alternatingColours{true}
+    , m_pendingViewReset{false}
 {
-    setObjectName(InfoWidget::name());
-
     auto* layout = new QHBoxLayout(this);
     layout->setContentsMargins({});
     layout->addWidget(m_view);
@@ -136,6 +183,22 @@ InfoWidget::InfoWidget(Application* app, TrackSelectionController* selectionCont
     resetModel();
 }
 
+InfoWidget::InfoWidget(const TrackList& tracks, LibraryManager* libraryManager, QWidget* parent)
+    : FyWidget{parent}
+    , m_panel{new InfoPanel(tracks, libraryManager, this)}
+{
+    setObjectName(InfoWidget::name());
+    setupInfoHost(this, m_panel);
+}
+
+InfoWidget::InfoWidget(Application* app, TrackSelectionController* selectionController, QWidget* parent)
+    : FyWidget{parent}
+    , m_panel{new InfoPanel(app, selectionController, this)}
+{
+    setObjectName(InfoWidget::name());
+    setupInfoHost(this, m_panel);
+}
+
 InfoWidget::~InfoWidget() = default;
 
 QString InfoWidget::name() const
@@ -150,6 +213,40 @@ QString InfoWidget::layoutName() const
 
 void InfoWidget::saveLayoutData(QJsonObject& layout)
 {
+    m_panel->saveLayoutData(layout);
+}
+
+void InfoWidget::loadLayoutData(const QJsonObject& layout)
+{
+    m_panel->loadLayoutData(layout);
+}
+
+void InfoWidget::finalise()
+{
+    m_panel->finalise();
+}
+
+InfoPropertiesTab::InfoPropertiesTab(const TrackList& tracks, LibraryManager* libraryManager, QWidget* parent)
+    : PropertiesTabWidget{parent}
+    , m_panel{new InfoPanel(tracks, libraryManager, this)}
+{
+    setupInfoHost(this, m_panel);
+}
+
+InfoPropertiesTab::~InfoPropertiesTab() = default;
+
+void InfoPropertiesTab::updateTracks(const TrackList& tracks)
+{
+    m_panel->updateTracks(tracks);
+}
+
+bool InfoPropertiesTab::canApply() const
+{
+    return false;
+}
+
+void InfoPanel::saveLayoutData(QJsonObject& layout) const
+{
     layout["Options"_L1]                 = static_cast<int>(m_model->options());
     layout["ShowHeader"_L1]              = m_showHeader;
     layout["ShowVerticalScrollbar"_L1]   = m_showVerticalScrollbar;
@@ -158,7 +255,7 @@ void InfoWidget::saveLayoutData(QJsonObject& layout)
     layout["State"_L1]                   = QString::fromUtf8(m_view->header()->saveState().toBase64());
 }
 
-void InfoWidget::loadLayoutData(const QJsonObject& layout)
+void InfoPanel::loadLayoutData(const QJsonObject& layout)
 {
     if(layout.contains("Options"_L1)) {
         const auto options = static_cast<InfoItem::Options>(layout.value("Options"_L1).toInt());
@@ -182,7 +279,7 @@ void InfoWidget::loadLayoutData(const QJsonObject& layout)
     }
 }
 
-void InfoWidget::finalise()
+void InfoPanel::finalise()
 {
     m_view->setHeaderHidden(!m_showHeader);
     m_view->setVerticalScrollBarPolicy(m_showVerticalScrollbar ? Qt::ScrollBarAsNeeded : Qt::ScrollBarAlwaysOff);
@@ -191,7 +288,7 @@ void InfoWidget::finalise()
     m_view->setAlternatingRowColors(m_alternatingColours);
 }
 
-void InfoWidget::updateTracks(const TrackList& tracks)
+void InfoPanel::updateTracks(const TrackList& tracks)
 {
     if(m_selectionController) {
         return;
@@ -200,23 +297,18 @@ void InfoWidget::updateTracks(const TrackList& tracks)
     m_model->resetModel(tracks);
 }
 
-bool InfoWidget::canApply() const
+void InfoPanel::hideEvent(QHideEvent* event)
 {
-    return false;
-}
-
-void InfoWidget::hideEvent(QHideEvent* event)
-{
-    PropertiesTabWidget::hideEvent(event);
+    QWidget::hideEvent(event);
 
     m_view->setUpdatesEnabled(false);
     m_view->viewport()->setUpdatesEnabled(false);
     m_view->header()->setUpdatesEnabled(false);
 }
 
-void InfoWidget::showEvent(QShowEvent* event)
+void InfoPanel::showEvent(QShowEvent* event)
 {
-    PropertiesTabWidget::showEvent(event);
+    QWidget::showEvent(event);
 
     m_view->setUpdatesEnabled(true);
     m_view->viewport()->setUpdatesEnabled(true);
@@ -227,7 +319,7 @@ void InfoWidget::showEvent(QShowEvent* event)
     }
 }
 
-void InfoWidget::queueViewReset()
+void InfoPanel::queueViewReset()
 {
     if(!isVisible()) {
         m_pendingViewReset = true;
@@ -249,7 +341,7 @@ void InfoWidget::queueViewReset()
         Qt::QueuedConnection);
 }
 
-void InfoWidget::contextMenuEvent(QContextMenuEvent* event)
+void InfoPanel::contextMenuEvent(QContextMenuEvent* event)
 {
     if(!m_settings) {
         return;
@@ -368,17 +460,17 @@ void InfoWidget::contextMenuEvent(QContextMenuEvent* event)
     menu->popup(event->globalPos());
 }
 
-void InfoWidget::timerEvent(QTimerEvent* event)
+void InfoPanel::timerEvent(QTimerEvent* event)
 {
     if(event->timerId() == m_resetTimer.timerId()) {
         m_resetTimer.stop();
         resetModel();
     }
 
-    PropertiesTabWidget::timerEvent(event);
+    QWidget::timerEvent(event);
 }
 
-void InfoWidget::resetModel()
+void InfoPanel::resetModel()
 {
     if(!m_playerController || !m_selectionController) {
         return;
@@ -402,7 +494,7 @@ void InfoWidget::resetModel()
     }
 }
 
-void InfoWidget::resetView()
+void InfoPanel::resetView()
 {
     if(m_scrollPos >= 0) {
         m_view->verticalScrollBar()->setValue(std::exchange(m_scrollPos, -1));
@@ -411,3 +503,4 @@ void InfoWidget::resetView()
 } // namespace Fooyin
 
 #include "infowidget.moc"
+#include "moc_infowidget.cpp"

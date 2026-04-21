@@ -47,9 +47,6 @@ public:
 
     void loadTrackArtwork();
 
-    [[nodiscard]] QString name() const override;
-    [[nodiscard]] QString layoutName() const override;
-
     void load() override;
     void apply() override;
 

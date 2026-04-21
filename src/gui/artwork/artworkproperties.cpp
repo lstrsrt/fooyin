@@ -210,16 +210,6 @@ void ArtworkProperties::load()
     loadTrackArtwork();
 }
 
-QString ArtworkProperties::name() const
-{
-    return tr("Artwork Properties");
-}
-
-QString ArtworkProperties::layoutName() const
-{
-    return u"ArtworkProperties"_s;
-}
-
 void ArtworkProperties::apply()
 {
     TrackCoverData coverData;

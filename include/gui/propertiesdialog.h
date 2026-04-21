@@ -22,9 +22,9 @@
 #include "fygui_export.h"
 
 #include <core/track.h>
-#include <gui/fywidget.h>
 
 #include <QPointer>
+#include <QWidget>
 
 #include <set>
 
@@ -59,13 +59,13 @@ private:
     std::set<int> m_activeTrackIndexes;
 };
 
-class FYGUI_EXPORT PropertiesTabWidget : public FyWidget
+class FYGUI_EXPORT PropertiesTabWidget : public QWidget
 {
     Q_OBJECT
 
 public:
     explicit PropertiesTabWidget(QWidget* parent)
-        : FyWidget{parent}
+        : QWidget{parent}
     { }
 
     [[nodiscard]] virtual bool canApply() const;

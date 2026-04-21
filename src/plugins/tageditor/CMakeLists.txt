@@ -25,8 +25,10 @@ create_fooyin_plugin_internal(
             tagfillpreviewmodel.h
             tageditorplugin.cpp
             tageditorplugin.h
+            tageditoreditor.cpp
+            tageditoreditor.h
+            tageditorpropertiestab.cpp
+            tageditorpropertiestab.h
             tageditorview.cpp
             tageditorview.h
-            tageditorwidget.cpp
-            tageditorwidget.h
 )

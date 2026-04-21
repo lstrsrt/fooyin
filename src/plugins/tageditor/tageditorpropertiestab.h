@@ -1,6 +1,6 @@
 /*
  * Fooyin
- * Copyright © 2023, Luke Taylor <LukeT1@proton.me>
+ * Copyright © 2026, Luke Taylor <luket@pm.me>
  *
  * Fooyin is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,46 +19,32 @@
 
 #pragma once
 
-#include "tageditorfield.h"
-
-#include <core/track.h>
-#include <gui/fywidget.h>
 #include <gui/propertiesdialog.h>
 
 #include <QPointer>
-#include <QWidget>
 
 class QDialog;
 
 namespace Fooyin {
 class ActionManager;
-class MultiLineEditDelegate;
 class SettingsManager;
-class StarDelegate;
-class ToolButton;
-class WidgetContext;
 
 namespace TagEditor {
+class TagEditorEditor;
 class TagEditorFieldRegistry;
-class TagEditorAutocompleteDelegate;
-class TagEditorModel;
-class TagEditorView;
 struct FillValuesResult;
 
-class TagEditorWidget : public PropertiesTabWidget
+class TagEditorPropertiesTab : public PropertiesTabWidget
 {
     Q_OBJECT
 
 public:
-    explicit TagEditorWidget(ActionManager* actionManager, TagEditorFieldRegistry* registry, SettingsManager* settings,
-                             QWidget* parent = nullptr);
-    ~TagEditorWidget() override;
+    explicit TagEditorPropertiesTab(ActionManager* actionManager, TagEditorFieldRegistry* registry,
+                                    SettingsManager* settings, QWidget* parent = nullptr);
+    ~TagEditorPropertiesTab() override;
 
     void setTracks(const TrackList& tracks);
     void setReadOnly(bool readOnly);
-
-    [[nodiscard]] QString name() const override;
-    [[nodiscard]] QString layoutName() const override;
 
     void setSession(PropertiesDialogSession* session) override;
     void setTrackScope(const TrackList& tracks) override;
@@ -72,46 +58,23 @@ signals:
     void trackStatsChanged(const Fooyin::TrackList& tracks);
 
 private:
-    void configureDelegates(const std::vector<TagEditorField>& items);
-    void refreshModel();
-    TrackList commitCurrentScopeEdits();
-    void stageTrackChanges(const TrackList& tracks, bool metadataChanges);
     void autoFillValues();
     void handleFillDialogAccepted(const FillValuesResult& result);
-    void updatePendingScopeState();
+    TrackList commitCurrentScopeEdits();
+    void stageTrackChanges(const TrackList& tracks, bool metadataChanges);
+    void refreshTrackScope();
     [[nodiscard]] TrackList activeTracks() const;
     static void mergeTracks(TrackList& destination, const TrackList& source);
 
-    void saveState() const;
-    void restoreState() const;
-
-    TagEditorFieldRegistry* m_registry;
     SettingsManager* m_settings;
     PropertiesDialogSession* m_session;
-
-    bool m_readOnly;
-    TagEditorView* m_view;
-    TagEditorModel* m_model;
-
     TrackList m_tracks;
     TrackList m_pendingTracks;
-
-    bool m_firstReset;
     int m_activeTrackIndex;
-    bool m_hasPendingScopeChanges;
     bool m_hasPendingMetadataChanges;
     bool m_hasPendingStatChanges;
-
-    std::set<int> m_delegateRows;
-    TagEditorAutocompleteDelegate* m_autocompleteDelegate;
-    MultiLineEditDelegate* m_multilineDelegate;
-    StarDelegate* m_starDelegate;
-
-    ToolButton* m_toolsButton;
-    QAction* m_autoTrackNum;
-    QAction* m_autoFillValuesAction;
-    QAction* m_changeFields;
     QPointer<QDialog> m_fillDialog;
+    TagEditorEditor* m_editor;
 };
 } // namespace TagEditor
 } // namespace Fooyin

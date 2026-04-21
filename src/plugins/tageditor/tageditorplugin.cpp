@@ -21,7 +21,7 @@
 
 #include "settings/tageditorfieldregistry.h"
 #include "settings/tageditorpage.h"
-#include "tageditorwidget.h"
+#include "tageditorpropertiestab.h"
 #include "tagfilldialog.h"
 
 #include <core/engine/audioloader.h>
@@ -103,13 +103,14 @@ void TagEditorPlugin::initialise(const GuiPluginContext& context)
         Constants::Menus::Context::TaggingRating);
 }
 
-TagEditorWidget* TagEditorPlugin::createEditor(const TrackList& tracks)
+TagEditorPropertiesTab* TagEditorPlugin::createEditor(const TrackList& tracks)
 {
-    auto* tagEditor = new TagEditorWidget(m_actionManager, m_registry, m_settings);
+    auto* tagEditor = new TagEditorPropertiesTab(m_actionManager, m_registry, m_settings);
     tagEditor->setReadOnly(!canWriteTracks(tracks, m_audioLoader));
     tagEditor->setTracks(tracks);
-    QObject::connect(tagEditor, &TagEditorWidget::trackMetadataChanged, m_library, &MusicLibrary::writeTrackMetadata);
-    QObject::connect(tagEditor, &TagEditorWidget::trackStatsChanged, m_library,
+    QObject::connect(tagEditor, &TagEditorPropertiesTab::trackMetadataChanged, m_library,
+                     &MusicLibrary::writeTrackMetadata);
+    QObject::connect(tagEditor, &TagEditorPropertiesTab::trackStatsChanged, m_library,
                      [this](const TrackList& changedTracks) { m_library->updateTrackStats(changedTracks); });
     return tagEditor;
 }

@@ -17,18 +17,16 @@
  *
  */
 
-#include "tageditorwidget.h"
+#include "tageditoreditor.h"
 
 #include "settings/tageditorfieldregistry.h"
 #include "tageditorautocompletedelegate.h"
 #include "tageditorconstants.h"
 #include "tageditormodel.h"
 #include "tageditorview.h"
-#include "tagfilldialog.h"
 
 #include <core/constants.h>
 #include <core/coresettings.h>
-#include <core/library/libraryutils.h>
 #include <gui/widgets/multilinedelegate.h>
 #include <gui/widgets/toolbutton.h>
 #include <utils/actions/actionmanager.h>
@@ -36,36 +34,25 @@
 #include <utils/settings/settingsmanager.h>
 #include <utils/stardelegate.h>
 
-#include <QCheckBox>
-#include <QContextMenuEvent>
-#include <QDialog>
 #include <QHeaderView>
 #include <QMenu>
-#include <QMessageBox>
 #include <QVBoxLayout>
 
 #include <ranges>
 
 using namespace Qt::StringLiterals;
 
-constexpr auto DontAskAgain    = "TagEditor/DontAskAgain";
 constexpr auto NameColumnWidth = "TagEditor/NameColumnWidth";
 
 namespace Fooyin::TagEditor {
-TagEditorWidget::TagEditorWidget(ActionManager* actionManager, TagEditorFieldRegistry* registry,
+TagEditorEditor::TagEditorEditor(ActionManager* actionManager, TagEditorFieldRegistry* registry,
                                  SettingsManager* settings, QWidget* parent)
-    : PropertiesTabWidget{parent}
+    : QWidget{parent}
     , m_registry{registry}
     , m_settings{settings}
-    , m_session{nullptr}
     , m_readOnly{false}
     , m_view{new TagEditorView(actionManager, this)}
     , m_model{new TagEditorModel(settings, this)}
-    , m_firstReset{true}
-    , m_activeTrackIndex{-1}
-    , m_hasPendingScopeChanges{false}
-    , m_hasPendingMetadataChanges{false}
-    , m_hasPendingStatChanges{false}
     , m_autocompleteDelegate{new TagEditorAutocompleteDelegate(this)}
     , m_multilineDelegate{nullptr}
     , m_starDelegate{nullptr}
@@ -74,10 +61,7 @@ TagEditorWidget::TagEditorWidget(ActionManager* actionManager, TagEditorFieldReg
     , m_autoFillValuesAction{new QAction(tr("Automatically &fill values…"), this)}
     , m_changeFields{new QAction(tr("&Change default fields…"), this)}
 {
-    setObjectName(TagEditorWidget::name());
-    setWindowFlags(Qt::Dialog);
-    resize(600, 720);
-    setMinimumSize(300, 400);
+    setObjectName(u"TagEditorEditor"_s);
 
     auto* layout = new QVBoxLayout(this);
     layout->setContentsMargins({});
@@ -116,27 +100,22 @@ TagEditorWidget::TagEditorWidget(ActionManager* actionManager, TagEditorFieldReg
         m_view->removeRowAction()->setEnabled(!m_readOnly && !selected.empty());
     });
     QObject::connect(m_autoTrackNum, &QAction::triggered, m_model, &TagEditorModel::autoNumberTracks);
-    QObject::connect(m_autoFillValuesAction, &QAction::triggered, this, &TagEditorWidget::autoFillValues);
+    QObject::connect(m_autoFillValuesAction, &QAction::triggered, this, &TagEditorEditor::autoFillValuesRequested);
     QObject::connect(m_changeFields, &QAction::triggered, this,
                      [this]() { m_settings->settingsDialog()->openAtPage(Constants::Page::TagEditorFields); });
 }
 
-TagEditorWidget::~TagEditorWidget()
+TagEditorEditor::~TagEditorEditor()
 {
     saveState();
 }
 
-void TagEditorWidget::setTracks(const TrackList& tracks)
+void TagEditorEditor::setTracks(const TrackList& tracks)
 {
     const auto items = m_registry->items();
     configureDelegates(items);
 
     m_tracks = tracks;
-    m_pendingTracks.clear();
-    m_activeTrackIndex          = -1;
-    m_hasPendingScopeChanges    = false;
-    m_hasPendingMetadataChanges = false;
-    m_hasPendingStatChanges     = false;
 
     refreshModel();
 
@@ -152,7 +131,7 @@ void TagEditorWidget::setTracks(const TrackList& tracks)
     QObject::connect(m_registry, &TagEditorFieldRegistry::itemRemoved, this, refreshEditor);
 }
 
-void TagEditorWidget::setReadOnly(bool readOnly)
+void TagEditorEditor::setReadOnly(bool readOnly)
 {
     m_readOnly = readOnly;
 
@@ -165,7 +144,7 @@ void TagEditorWidget::setReadOnly(bool readOnly)
     m_autoFillValuesAction->setDisabled(readOnly);
 }
 
-void TagEditorWidget::configureDelegates(const std::vector<TagEditorField>& items)
+void TagEditorEditor::configureDelegates(const std::vector<TagEditorField>& items)
 {
     for(const int row : m_delegateRows) {
         m_view->setItemDelegateForRow(row, nullptr);
@@ -196,241 +175,52 @@ void TagEditorWidget::configureDelegates(const std::vector<TagEditorField>& item
     }
 }
 
-void TagEditorWidget::refreshModel()
+void TagEditorEditor::refreshModel()
 {
     const auto items       = m_registry->items();
-    const TrackList tracks = activeTracks();
-    m_model->reset(tracks, items);
-    m_autocompleteDelegate->setTracks(tracks);
+    m_model->reset(m_tracks, items);
+    m_autocompleteDelegate->setTracks(m_tracks);
     updatePendingScopeState();
 }
 
-TrackList TagEditorWidget::commitCurrentScopeEdits()
+bool TagEditorEditor::hasChanges() const
+{
+    return m_model->haveChanges();
+}
+
+bool TagEditorEditor::hasOnlyStatChanges() const
+{
+    return m_model->haveOnlyStatChanges();
+}
+
+TrackList TagEditorEditor::tracks() const
+{
+    return m_model->tracks();
+}
+
+TrackList TagEditorEditor::applyChanges()
 {
     if(!m_model->haveChanges()) {
         return {};
     }
 
-    const bool statOnly = m_model->haveOnlyStatChanges();
-
     m_model->applyChanges();
-
-    const TrackList changedTracks = m_model->tracks();
-    mergeTracks(m_tracks, changedTracks);
-    mergeTracks(m_pendingTracks, changedTracks);
-
-    if(statOnly) {
-        m_hasPendingStatChanges = true;
-    }
-    else {
-        m_hasPendingMetadataChanges = true;
-    }
-
-    return changedTracks;
+    updatePendingScopeState();
+    return m_model->tracks();
 }
 
-void TagEditorWidget::stageTrackChanges(const TrackList& tracks, bool metadataChanges)
+void TagEditorEditor::updatePendingScopeState()
 {
-    if(tracks.empty()) {
-        return;
-    }
-
-    mergeTracks(m_tracks, tracks);
-    mergeTracks(m_pendingTracks, tracks);
-
-    if(metadataChanges) {
-        m_hasPendingMetadataChanges = true;
-    }
-    else {
-        m_hasPendingStatChanges = true;
-    }
-
-    emit tracksChanged(tracks);
-}
-
-void TagEditorWidget::autoFillValues()
-{
-    if(m_fillDialog) {
-        m_fillDialog->raise();
-        m_fillDialog->activateWindow();
-        return;
-    }
-
-    const TrackList committedTracks = commitCurrentScopeEdits();
-    if(!committedTracks.empty()) {
-        emit tracksChanged(committedTracks);
-    }
-
-    const TrackList tracks = activeTracks();
-    if(tracks.empty()) {
-        return;
-    }
-
-    m_fillDialog
-        = openFillDialog(tracks, this, [this](const FillValuesResult& result) { handleFillDialogAccepted(result); });
-}
-
-TrackList TagEditorWidget::activeTracks() const
-{
-    if(m_session) {
-        return m_session->activeTracks();
-    }
-
-    if(m_activeTrackIndex < 0 || std::cmp_greater_equal(m_activeTrackIndex, m_tracks.size())) {
-        return m_tracks;
-    }
-
-    return {m_tracks.at(static_cast<TrackList::size_type>(m_activeTrackIndex))};
-}
-
-bool TagEditorWidget::hasPendingScopeChanges() const
-{
-    return m_hasPendingScopeChanges;
-}
-
-void TagEditorWidget::handleFillDialogAccepted(const FillValuesResult& result)
-{
-    if(result.matchedTracks == 0 && result.unmatchedTracks == 0 && result.changedTracks == 0) {
-        return;
-    }
-
-    if(!result.tracks.empty()) {
-        stageTrackChanges(result.tracks, true);
-        refreshModel();
-    }
-}
-
-void TagEditorWidget::mergeTracks(TrackList& destination, const TrackList& source)
-{
-    for(const Track& updatedTrack : source) {
-        const auto destinationIt = std::ranges::find_if(
-            destination, [&updatedTrack](const Track& track) { return track.sameIdentityAs(updatedTrack); });
-
-        if(destinationIt != destination.end()) {
-            *destinationIt = updatedTrack;
-            continue;
-        }
-
-        destination.emplace_back(updatedTrack);
-    }
-}
-
-QString TagEditorWidget::name() const
-{
-    return u"Tag Editor"_s;
-}
-
-QString TagEditorWidget::layoutName() const
-{
-    return u"TagEditor"_s;
-}
-
-void TagEditorWidget::setSession(PropertiesDialogSession* session)
-{
-    m_session = session;
-}
-
-void TagEditorWidget::setTrackScope(const TrackList& tracks)
-{
-    if(!m_session) {
-        m_tracks           = tracks;
-        m_activeTrackIndex = tracks.size() == 1 ? 0 : -1;
-    }
-
-    refreshModel();
-}
-
-void TagEditorWidget::updatePendingScopeState()
-{
-    const bool hasPendingChanges = m_model->haveChanges();
-    if(m_hasPendingScopeChanges == hasPendingChanges) {
-        return;
-    }
-
-    m_hasPendingScopeChanges = hasPendingChanges;
     emit pendingChangesStateChanged();
 }
 
-bool TagEditorWidget::commitPendingChanges()
-{
-    const TrackList changedTracks = commitCurrentScopeEdits();
-    if(!changedTracks.empty()) {
-        emit tracksChanged(changedTracks);
-    }
-    return true;
-}
-
-void TagEditorWidget::apply()
-{
-    const TrackList changedTracks = commitCurrentScopeEdits();
-    if(!changedTracks.empty()) {
-        emit tracksChanged(changedTracks);
-    }
-
-    if(m_pendingTracks.empty()) {
-        return;
-    }
-
-    const bool updateStats = m_hasPendingStatChanges && !m_hasPendingMetadataChanges;
-
-    auto applyChanges = [this, updateStats]() {
-        if(updateStats) {
-            emit trackStatsChanged(m_pendingTracks);
-        }
-        else {
-            emit trackMetadataChanged(m_pendingTracks);
-        }
-        m_pendingTracks.clear();
-        m_hasPendingMetadataChanges = false;
-        m_hasPendingStatChanges     = false;
-    };
-
-    if(m_settings->fileValue(DontAskAgain).toBool()) {
-        applyChanges();
-        return;
-    }
-
-    QMessageBox message;
-    message.setIcon(QMessageBox::Warning);
-    message.setText(tr("Are you sure?"));
-    message.setInformativeText(tr("Metadata in the associated files will be overwritten."));
-
-    auto* dontAskAgain = new QCheckBox(tr("Don't ask again"), &message);
-    message.setCheckBox(dontAskAgain);
-
-    message.setStandardButtons(QMessageBox::Yes | QMessageBox::No);
-    message.setDefaultButton(QMessageBox::No);
-
-    const int buttonClicked = message.exec();
-
-    if(buttonClicked == QMessageBox::Yes) {
-        if(dontAskAgain->isChecked()) {
-            m_settings->fileSet(DontAskAgain, true);
-        }
-        applyChanges();
-    }
-}
-
-void TagEditorWidget::updateTracks(const TrackList& tracks)
-{
-    if(!m_session) {
-        const TrackList changedTracks = commitCurrentScopeEdits();
-        if(!changedTracks.empty()) {
-            emit tracksChanged(changedTracks);
-        }
-        mergeTracks(m_tracks, tracks);
-    }
-
-    refreshModel();
-}
-
-void TagEditorWidget::saveState() const
+void TagEditorEditor::saveState() const
 {
     FyStateSettings stateSettings;
     stateSettings.setValue(NameColumnWidth, m_view->horizontalHeader()->sectionSize(0));
 }
 
-void TagEditorWidget::restoreState() const
+void TagEditorEditor::restoreState() const
 {
     const FyStateSettings stateSettings;
     const int nameColumnWidth        = stateSettings.value(NameColumnWidth).toInt();
@@ -444,4 +234,4 @@ void TagEditorWidget::restoreState() const
 }
 } // namespace Fooyin::TagEditor
 
-#include "moc_tageditorwidget.cpp"
+#include "moc_tageditoreditor.cpp"

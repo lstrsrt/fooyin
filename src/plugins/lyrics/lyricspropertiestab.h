@@ -43,9 +43,6 @@ public:
                         LyricsSaver* lyricsSaver, PlayerController* playerController, SettingsManager* settings,
                         TrackEditable canEditTrack = {}, QWidget* parent = nullptr);
 
-    [[nodiscard]] QString name() const override;
-    [[nodiscard]] QString layoutName() const override;
-
     void setTrackScope(const TrackList& tracks) override;
     [[nodiscard]] bool isAvailableForScope(const TrackList& tracks) const override;
     [[nodiscard]] bool hasPendingScopeChanges() const override;

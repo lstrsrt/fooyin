@@ -21,22 +21,18 @@
 
 #include "internalguisettings.h"
 
+#include <gui/fywidget.h>
 #include <gui/propertiesdialog.h>
 
-#include <QBasicTimer>
-#include <QWidget>
+class QJsonObject;
 
 namespace Fooyin {
 class Application;
-class InfoFilterModel;
-class InfoModel;
-class InfoView;
+class InfoPanel;
 class LibraryManager;
-class PlayerController;
-class SettingsManager;
 class TrackSelectionController;
 
-class InfoWidget : public PropertiesTabWidget
+class InfoWidget : public FyWidget
 {
     Q_OBJECT
 
@@ -51,35 +47,22 @@ public:
     void loadLayoutData(const QJsonObject& layout) override;
     void finalise() override;
 
+private:
+    InfoPanel* m_panel;
+};
+
+class InfoPropertiesTab : public PropertiesTabWidget
+{
+    Q_OBJECT
+
+public:
+    InfoPropertiesTab(const TrackList& tracks, LibraryManager* libraryManager, QWidget* parent = nullptr);
+    ~InfoPropertiesTab() override;
+
     void updateTracks(const TrackList& tracks) override;
     [[nodiscard]] bool canApply() const override;
 
-protected:
-    void contextMenuEvent(QContextMenuEvent* event) override;
-    void hideEvent(QHideEvent* event) override;
-    void showEvent(QShowEvent* event) override;
-    void timerEvent(QTimerEvent* event) override;
-
 private:
-    void queueViewReset();
-    void resetModel();
-    void resetView();
-
-    TrackSelectionController* m_selectionController;
-    PlayerController* m_playerController;
-    SettingsManager* m_settings;
-
-    InfoView* m_view;
-    InfoFilterModel* m_proxyModel;
-    InfoModel* m_model;
-    QBasicTimer m_resetTimer;
-    SelectionDisplay m_displayOption;
-    int m_scrollPos;
-
-    bool m_showHeader;
-    bool m_showVerticalScrollbar;
-    bool m_showHorizontalScrollbar;
-    bool m_alternatingColours;
-    bool m_pendingViewReset;
+    InfoPanel* m_panel;
 };
 } // namespace Fooyin

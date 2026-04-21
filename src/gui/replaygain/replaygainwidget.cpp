@@ -83,16 +83,6 @@ ReplayGainWidget::ReplayGainWidget(MusicLibrary* library, const TrackList& track
     updateHeaderModes();
 }
 
-QString ReplayGainWidget::name() const
-{
-    return tr("ReplayGain Editor");
-}
-
-QString ReplayGainWidget::layoutName() const
-{
-    return u"ReplayGainEditor"_s;
-}
-
 void ReplayGainWidget::apply()
 {
     commitPendingChanges();
