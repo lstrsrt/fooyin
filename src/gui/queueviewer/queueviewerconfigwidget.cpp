@@ -88,6 +88,11 @@ QueueViewerConfigDialog::QueueViewerConfigDialog(QueueViewer* queueViewer, QWidg
     layout->setColumnStretch(0, 1);
     layout->setRowStretch(2, 1);
 
+    if(queueViewer->isWindowWidget()) {
+        m_headers->setChecked(false);
+        m_headers->setEnabled(false);
+    }
+
     loadCurrentConfig();
 }
 

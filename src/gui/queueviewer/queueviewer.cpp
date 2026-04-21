@@ -128,6 +128,11 @@ QSize QueueViewer::sizeHint() const
     return {400, 520};
 }
 
+bool QueueViewer::isWindowWidget() const
+{
+    return parentWidget() == nullptr;
+}
+
 void QueueViewer::showEvent(QShowEvent* event)
 {
     if(isWindowWidget() && !m_topLevelStateLoaded) {
@@ -580,6 +585,10 @@ void QueueViewer::applyConfig(const ConfigData& config)
 {
     m_config = config;
 
+    if(isWindowWidget()) {
+        m_config.showHeader = false;
+    }
+
     m_model->setScripts(m_config.leftScript, m_config.rightScript);
     m_model->setShowCurrent(m_config.showCurrent);
     m_model->setShowIcon(m_config.showIcon);
@@ -669,11 +678,6 @@ void QueueViewer::loadTopLevelState()
     }
 
     m_topLevelStateLoaded = true;
-}
-
-bool QueueViewer::isWindowWidget() const
-{
-    return parentWidget() == nullptr;
 }
 
 void QueueViewer::openConfigDialog()

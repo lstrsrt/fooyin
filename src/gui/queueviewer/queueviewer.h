@@ -56,6 +56,8 @@ public:
 
     [[nodiscard]] QSize sizeHint() const override;
 
+    [[nodiscard]] bool isWindowWidget() const;
+
     struct ConfigData
     {
         QString leftScript;
@@ -126,7 +128,6 @@ private:
     void saveConfigToLayout(const ConfigData& config, QJsonObject& layout) const;
     void saveTopLevelState();
     void loadTopLevelState();
-    [[nodiscard]] bool isWindowWidget() const;
     void openConfigDialog() override;
 
     ActionManager* m_actionManager;
