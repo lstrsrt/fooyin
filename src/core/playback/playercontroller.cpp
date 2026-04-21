@@ -678,8 +678,8 @@ void PlayerControllerPrivate::restoreActiveTrack() const
             }
 
             if(const auto track = playlist->playlistTrack(*lastIndex); track.has_value() && track->isValid()) {
-                m_self->commitCurrentTrack(*track);
-                m_self->changeCurrentTrack(*track);
+                m_self->changeCurrentTrack(*track,
+                                           {.reason = Player::AdvanceReason::StartupRestore, .userInitiated = false});
             }
         }
         else {
@@ -1069,6 +1069,16 @@ void PlayerController::setCurrentPosition(uint64_t ms)
     p->emitPositionSignals(update);
 }
 
+void PlayerController::restoreCurrentPosition(uint64_t ms)
+{
+    p->emitPositionSignals(p->m_progressTracker.restorePosition(ms));
+}
+
+void PlayerController::restorePlaybackProgress(uint64_t positionMs, uint64_t timeListenedMs)
+{
+    p->emitPositionSignals(p->m_progressTracker.restoreProgress(positionMs, timeListenedMs));
+}
+
 void PlayerController::setBitrate(int bitrate)
 {
     if(p->updateBitrate(bitrate)) {
@@ -1291,6 +1301,16 @@ Playlist::PlayModes PlayerController::playMode() const
 uint64_t PlayerController::currentPosition() const
 {
     return p->m_progressTracker.position();
+}
+
+uint64_t PlayerController::currentTimeListened() const
+{
+    return p->m_progressTracker.timeListened();
+}
+
+bool PlayerController::playedThresholdReached() const
+{
+    return p->m_progressTracker.playedThresholdReached();
 }
 
 int PlayerController::bitrate() const

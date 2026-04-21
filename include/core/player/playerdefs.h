@@ -39,6 +39,7 @@ Q_ENUM_NS(PlayState)
 enum class AdvanceReason : uint8_t
 {
     Unknown = 0,
+    StartupRestore,
     ManualSelection,
     ManualNext,
     ManualPrevious,

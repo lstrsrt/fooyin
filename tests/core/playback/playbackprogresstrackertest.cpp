@@ -91,6 +91,24 @@ TEST(PlaybackProgressTrackerTest, ResetAndBitrateUpdatesBehaveAsExpected)
     EXPECT_EQ(tracker.bitrate(), 320);
 }
 
+TEST(PlaybackProgressTrackerTest, RestoredProgressPreservesPartialThresholdProgress)
+{
+    PlaybackProgressTracker tracker;
+    tracker.onTrackCommitted(1000, 0.5);
+
+    const auto restoredUpdate = tracker.restoreProgress(500, 350);
+    EXPECT_EQ(restoredUpdate.positionMs, 500);
+    ASSERT_TRUE(restoredUpdate.positionSeconds.has_value());
+    EXPECT_EQ(*restoredUpdate.positionSeconds, 0);
+    EXPECT_EQ(tracker.timeListened(), 350);
+    EXPECT_FALSE(tracker.playedThresholdReached());
+
+    const auto nextUpdate = tracker.updatePosition(560);
+    EXPECT_TRUE(nextUpdate.reachedPlayedThreshold);
+    EXPECT_TRUE(tracker.playedThresholdReached());
+    EXPECT_EQ(tracker.timeListened(), 410);
+}
+
 TEST(PlaybackProgressTrackerTest, ResetPositionPreventsLateEndSampleFromCountingSkippedTrackTime)
 {
     PlaybackProgressTracker tracker;

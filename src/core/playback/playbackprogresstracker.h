@@ -40,6 +40,8 @@ public:
     void reset();
     void onTrackCommitted(uint64_t totalDurationMs, double playedThresholdFraction);
 
+    [[nodiscard]] PositionUpdate restorePosition(uint64_t posMs);
+    [[nodiscard]] PositionUpdate restoreProgress(uint64_t posMs, uint64_t timeListenedMs);
     [[nodiscard]] PositionUpdate updatePosition(uint64_t posMs);
     [[nodiscard]] PositionUpdate resetPosition();
 
@@ -50,6 +52,7 @@ public:
     [[nodiscard]] uint64_t position() const;
     [[nodiscard]] uint64_t timeListened() const;
     [[nodiscard]] uint64_t playedThreshold() const;
+    [[nodiscard]] bool playedThresholdReached() const;
     [[nodiscard]] int bitrate() const;
 
 private:

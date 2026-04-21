@@ -51,6 +51,10 @@ public:
 
     /** Returns the current playback position in ms. */
     [[nodiscard]] uint64_t currentPosition() const;
+    /** Returns the listened playback time in ms used for playcount thresholding. */
+    [[nodiscard]] uint64_t currentTimeListened() const;
+    /** Returns whether the current track has already crossed the played threshold. */
+    [[nodiscard]] bool playedThresholdReached() const;
     /** Returns the current bitrate. */
     [[nodiscard]] int bitrate() const;
 
@@ -93,6 +97,8 @@ public:
     void startPlayback(const UId& playlistId);
     void startPlayback(Playlist* playlist);
 
+    void restoreCurrentPosition(uint64_t ms);
+    void restorePlaybackProgress(uint64_t positionMs, uint64_t timeListenedMs);
     void setCurrentPosition(uint64_t ms);
     void setBitrate(int bitrate);
 

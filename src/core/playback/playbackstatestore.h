@@ -37,6 +37,10 @@ void savePlaybackPosition(uint64_t position);
 void clearPlaybackPosition();
 std::optional<uint64_t> playbackPosition();
 
+void savePlaybackTimeListened(uint64_t timeListenedMs);
+void clearPlaybackTimeListened();
+std::optional<uint64_t> playbackTimeListened();
+
 void savePlaybackState(Player::PlayState state);
 void clearPlaybackState();
 std::optional<Player::PlayState> playbackState();

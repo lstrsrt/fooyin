@@ -74,8 +74,6 @@ EngineHandler::EngineHandler(std::shared_ptr<AudioLoader> audioLoader, PlayerCon
     , m_playerController{playerController}
     , m_settings{settings}
     , m_engine{new AudioEngine(std::move(audioLoader), settings, dspRegistry)}
-    , m_restoreStartup{m_settings->fileValue(Settings::Core::Internal::SaveActivePlaylistState, false).toBool()
-                       && m_settings->fileValue(Settings::Core::Internal::SavePlaybackState, false).toBool()}
     , m_levelReadyRelayConnected{false}
     , m_currentTrackItemId{0}
     , m_engineOwnedTransitionItemId{9}
@@ -152,6 +150,7 @@ EngineHandler::EngineHandler(std::shared_ptr<AudioLoader> audioLoader, PlayerCon
     m_settings->subscribe<Settings::Core::OutputVolume>(this, &EngineHandler::updateVolume);
 
     m_settings->subscribe<Settings::Core::Shutdown>(this, &EngineHandler::savePlaybackState);
+    m_pendingStartupRestore = readStartupRestoreState();
 }
 
 EngineHandler::~EngineHandler()
@@ -307,6 +306,13 @@ void EngineHandler::handleTrackChangeRequest(const Player::TrackChangeRequest& r
     const Track& track = request.track.track;
     if(!track.isValid()) {
         return;
+    }
+
+    if(request.context.reason == Player::AdvanceReason::StartupRestore && m_pendingStartupRestore.has_value()) {
+        m_pendingStartupRestoreItemId = request.itemId;
+    }
+    else if(m_pendingStartupRestore.has_value()) {
+        clearStartupRestore();
     }
 
     clearNextTrackReadiness();
@@ -509,6 +515,12 @@ void EngineHandler::handleTrackCommitted(const Engine::TrackCommitContext& conte
         m_playerController->commitCurrentTrack(*m_pendingTrackChange);
         m_pendingTrackChange.reset();
         clearEngineOwnedTransition();
+
+        if(m_pendingStartupRestore.has_value() && m_pendingStartupRestoreItemId == context.itemId) {
+            const StartupRestoreState restore = *m_pendingStartupRestore;
+            clearStartupRestore();
+            applyStartupRestore(restore);
+        }
         return;
     }
 
@@ -540,6 +552,7 @@ void EngineHandler::handleTrackStatus(Engine::TrackStatus status, const Track& t
             clearPendingBoundaryAdvance();
             clearEngineOwnedTransition();
             m_pendingTrackChange.reset();
+            clearStartupRestore();
             m_playerController->syncPlayStateFromEngine(Player::PlayState::Stopped);
             break;
         case Engine::TrackStatus::End:
@@ -575,6 +588,10 @@ void EngineHandler::handleTrackStatus(Engine::TrackStatus status, const Track& t
             clearPositionAcceptanceFloor();
             clearPendingBoundaryAdvance();
             clearEngineOwnedTransition();
+            if(m_pendingTrackChange.has_value()
+               && m_pendingTrackChange->context.reason == Player::AdvanceReason::StartupRestore) {
+                clearStartupRestore();
+            }
             if(m_pendingTrackChange.has_value() && sameTrackIdentity(m_pendingTrackChange->track.track, track)) {
                 // Failed loads never emit trackCommitted(), so adopt the attempted track here to
                 // clear the pending reques.
@@ -582,12 +599,9 @@ void EngineHandler::handleTrackStatus(Engine::TrackStatus status, const Track& t
                 m_pendingTrackChange.reset();
             }
             break;
+        case Engine::TrackStatus::Loading:
         case Engine::TrackStatus::Loaded:
         case Engine::TrackStatus::Buffered:
-            if(m_restoreStartup) {
-                loadPlaybackState();
-            }
-        case Engine::TrackStatus::Loading:
         case Engine::TrackStatus::Unreadable:
             break;
     }
@@ -832,9 +846,17 @@ void EngineHandler::savePlaybackState() const
     if(m_settings->fileValue(Settings::Core::Internal::SaveActivePlaylistState, false).toBool()) {
         const auto lastPos = static_cast<quint64>(m_playerController->currentPosition());
         PlaybackState::savePlaybackPosition(lastPos);
+
+        if(m_playerController->currentTrack().isValid() && !m_playerController->playedThresholdReached()) {
+            PlaybackState::savePlaybackTimeListened(m_playerController->currentTimeListened());
+        }
+        else {
+            PlaybackState::clearPlaybackTimeListened();
+        }
     }
     else {
         PlaybackState::clearPlaybackPosition();
+        PlaybackState::clearPlaybackTimeListened();
     }
 
     if(m_settings->fileValue(Settings::Core::Internal::SavePlaybackState, false).toBool()) {
@@ -845,43 +867,55 @@ void EngineHandler::savePlaybackState() const
     }
 }
 
-void EngineHandler::loadPlaybackState()
+std::optional<EngineHandler::StartupRestoreState> EngineHandler::readStartupRestoreState() const
 {
-    if(!m_restoreStartup) {
-        return;
-    }
-    m_restoreStartup = false;
-
-    if(!m_playerController->currentTrack().isValid()) {
-        return;
-    }
-
     if(!m_settings->fileValue(Settings::Core::Internal::SaveActivePlaylistState, false).toBool()) {
-        return;
+        return {};
     }
     if(!m_settings->fileValue(Settings::Core::Internal::SavePlaybackState, false).toBool()) {
-        return;
+        return {};
     }
 
     const auto state = PlaybackState::playbackState();
     if(!state.has_value()) {
-        return;
+        return {};
     }
 
     const auto pos = PlaybackState::playbackPosition();
     if(!pos.has_value()) {
-        return;
+        return {};
     }
 
-    switch(*state) {
+    const auto timeListened = PlaybackState::playbackTimeListened();
+
+    return StartupRestoreState{
+        .playState      = *state,
+        .positionMs     = *pos,
+        .timeListenedMs = timeListened,
+    };
+}
+
+void EngineHandler::applyStartupRestore(const StartupRestoreState& restore)
+{
+    const auto restoreProgress = [this, &restore](bool pause) {
+        if(restore.timeListenedMs.has_value()) {
+            m_playerController->restorePlaybackProgress(restore.positionMs, *restore.timeListenedMs);
+            dispatchCommand(&AudioEngine::restorePosition, restore.positionMs, pause);
+            return;
+        }
+
+        restorePosition(restore.positionMs, pause);
+    };
+
+    switch(restore.playState) {
         case Player::PlayState::Paused:
             qCDebug(ENG_HANDLER) << "Restoring paused state…";
-            restorePosition(*pos, true);
+            restoreProgress(true);
             break;
         case Player::PlayState::Playing:
             qCDebug(ENG_HANDLER) << "Restoring playing state…";
-            if(pos > 0) {
-                restorePosition(*pos, false);
+            if(restore.positionMs > 0) {
+                restoreProgress(false);
             }
             m_playerController->play();
             break;
@@ -889,6 +923,12 @@ void EngineHandler::loadPlaybackState()
             qCDebug(ENG_HANDLER) << "Restoring stopped state…";
             break;
     }
+}
+
+void EngineHandler::clearStartupRestore()
+{
+    m_pendingStartupRestore.reset();
+    m_pendingStartupRestoreItemId.reset();
 }
 
 void EngineHandler::setup()
@@ -924,6 +964,7 @@ void EngineHandler::updateLiveDspSettings(const Engine::LiveDspSettingsUpdate& u
 
 void EngineHandler::restorePosition(uint64_t positionMs, bool pause) const
 {
+    m_playerController->restoreCurrentPosition(positionMs);
     dispatchCommand(&AudioEngine::restorePosition, positionMs, pause);
 }
 

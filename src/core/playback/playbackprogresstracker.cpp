@@ -63,6 +63,32 @@ void PlaybackProgressTracker::onTrackCommitted(uint64_t totalDurationMs, double 
     }
 }
 
+PlaybackProgressTracker::PositionUpdate PlaybackProgressTracker::restorePosition(uint64_t posMs)
+{
+    m_position = posMs;
+    m_seeking  = false;
+    return currentPositionUpdate();
+}
+
+PlaybackProgressTracker::PositionUpdate PlaybackProgressTracker::restoreProgress(uint64_t posMs,
+                                                                                 uint64_t timeListenedMs)
+{
+    m_position       = posMs;
+    m_timeListened   = timeListenedMs;
+    m_trackingActive = true;
+    m_seeking        = false;
+    m_counted        = false;
+
+    if(m_playedThreshold > 0 && m_timeListened >= m_playedThreshold) {
+        m_timeListened = m_playedThreshold - 1;
+    }
+    else if(m_playedThreshold == 0) {
+        m_timeListened = 0;
+    }
+
+    return currentPositionUpdate();
+}
+
 PlaybackProgressTracker::PositionUpdate PlaybackProgressTracker::updatePosition(uint64_t posMs)
 {
     if(m_trackingActive && !m_seeking && posMs > m_position) {
@@ -123,6 +149,11 @@ uint64_t PlaybackProgressTracker::timeListened() const
 uint64_t PlaybackProgressTracker::playedThreshold() const
 {
     return m_playedThreshold;
+}
+
+bool PlaybackProgressTracker::playedThresholdReached() const
+{
+    return m_counted;
 }
 
 int PlaybackProgressTracker::bitrate() const

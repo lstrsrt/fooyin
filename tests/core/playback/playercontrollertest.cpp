@@ -21,6 +21,7 @@
 
 #include <core/coresettings.h>
 #include <core/engine/audioloader.h>
+#include <core/internalcoresettings.h>
 #include <core/library/musiclibrary.h>
 #include <core/player/playerdefs.h>
 #include <core/playlist/playlisthandler.h>
@@ -29,6 +30,7 @@
 #include <utils/database/dbconnectionpool.h>
 #include <utils/database/dbconnectionprovider.h>
 #include <utils/database/dbquery.h>
+#include <utils/enum.h>
 #include <utils/settings/settingsmanager.h>
 
 #include <QCoreApplication>
@@ -43,6 +45,11 @@ using namespace Qt::StringLiterals;
 
 namespace Fooyin::Testing {
 namespace {
+constexpr auto ActiveTrackIndexKey      = "Playlist/ActiveTrackIndex"_L1;
+constexpr auto LastPlaybackPosition     = "Player/LastPosition"_L1;
+constexpr auto LastPlaybackTimeListened = "Player/LastTimeListened"_L1;
+constexpr auto LastPlaybackState        = "Player/LastState"_L1;
+
 QCoreApplication* ensureCoreApplication()
 {
     QStandardPaths::setTestModeEnabled(true);
@@ -353,6 +360,95 @@ TEST(PlayerControllerTest, TrackPlayedEmitsOnceAfterCrossingThreshold)
     const QVariantList playedArgs = playedSpy.takeFirst();
     ASSERT_EQ(playedArgs.size(), 1);
     EXPECT_EQ(playedArgs.front().value<Track>(), makeTrack(u"/tmp/played.flac"_s, 13, 1000));
+}
+
+TEST(PlayerControllerTest, RestoringPastThresholdDoesNotEmitTrackPlayed)
+{
+    ensureCoreApplication();
+    SettingsManager settings{QDir::tempPath() + u"/fooyin_playercontroller_restore_threshold_test.ini"_s};
+    registerControllerSettings(settings);
+    PlayerController controller{&settings, nullptr};
+
+    const QSignalSpy playedSpy{&controller, &PlayerController::trackPlayed};
+
+    controller.commitCurrentTrack(makeTrack(u"/tmp/restored-played.flac"_s, 14, 1000));
+    controller.restoreCurrentPosition(500);
+    controller.setCurrentPosition(550);
+
+    EXPECT_EQ(playedSpy.count(), 0);
+}
+
+TEST(PlayerControllerTest, RestoringPartialPlaybackProgressCountsOnlyRemainingListenedTime)
+{
+    ensureCoreApplication();
+    SettingsManager settings{QDir::tempPath() + u"/fooyin_playercontroller_restore_progress_test.ini"_s};
+    registerControllerSettings(settings);
+    PlayerController controller{&settings, nullptr};
+
+    QSignalSpy playedSpy{&controller, &PlayerController::trackPlayed};
+
+    controller.commitCurrentTrack(makeTrack(u"/tmp/restored-progress.flac"_s, 18, 1000));
+    controller.restorePlaybackProgress(500, 350);
+    controller.setCurrentPosition(540);
+    EXPECT_EQ(playedSpy.count(), 0);
+
+    controller.setCurrentPosition(560);
+    EXPECT_EQ(playedSpy.count(), 1);
+}
+
+TEST(PlayerControllerTest, RestoringStartupTrackRequestsEngineLoadWithoutPrecommit)
+{
+    ensureCoreApplication();
+    {
+        FyStateSettings stateSettings;
+        stateSettings.remove(ActiveTrackIndexKey);
+        stateSettings.remove(LastPlaybackPosition);
+        stateSettings.remove(LastPlaybackTimeListened);
+        stateSettings.remove(LastPlaybackState);
+    }
+
+    SettingsManager settings{QDir::tempPath() + u"/fooyin_playercontroller_startup_restore_request_test.ini"_s};
+    registerControllerSettings(settings);
+    settings.fileSet(Settings::Core::Internal::SaveActivePlaylistState, true);
+
+    PlaylistHandlerHarness harness{settings};
+    ASSERT_TRUE(harness.dbInitialised);
+
+    auto* playlist
+        = harness.handler.createPlaylist(u"StartupRestore"_s, {makeTrack(u"/tmp/startup-a.flac"_s, 201, 1000),
+                                                               makeTrack(u"/tmp/startup-b.flac"_s, 202, 1000)});
+    ASSERT_NE(playlist, nullptr);
+    harness.handler.changeActivePlaylist(playlist);
+
+    {
+        FyStateSettings stateSettings;
+        stateSettings.setValue(ActiveTrackIndexKey, 1);
+        stateSettings.setValue(LastPlaybackPosition, QVariant::fromValue(uint64_t{450}));
+        stateSettings.setValue(LastPlaybackTimeListened, QVariant::fromValue(uint64_t{320}));
+        stateSettings.setValue(LastPlaybackState, Utils::Enum::toString(Player::PlayState::Paused));
+    }
+
+    const PlayerController controller{&settings, &harness.handler};
+    QSignalSpy requestSpy{&controller, &PlayerController::trackChangeRequested};
+
+    ASSERT_TRUE(QMetaObject::invokeMethod(&harness.handler, "playlistsPopulated", Qt::DirectConnection));
+
+    ASSERT_EQ(requestSpy.count(), 1);
+    const auto request = requestSpy.takeFirst().front().value<Player::TrackChangeRequest>();
+    EXPECT_EQ(request.context.reason, Player::AdvanceReason::StartupRestore);
+    EXPECT_FALSE(request.context.userInitiated);
+    EXPECT_EQ(request.track.indexInPlaylist, 1);
+    EXPECT_EQ(request.track.track.id(), 202);
+    EXPECT_FALSE(controller.currentTrack().isValid());
+    EXPECT_EQ(playlist->currentTrackIndex(), 1);
+
+    {
+        FyStateSettings stateSettings;
+        stateSettings.remove(ActiveTrackIndexKey);
+        stateSettings.remove(LastPlaybackPosition);
+        stateSettings.remove(LastPlaybackTimeListened);
+        stateSettings.remove(LastPlaybackState);
+    }
 }
 
 TEST(PlayerControllerTest, NextClearsStopAfterCurrentWhenResetEnabled)

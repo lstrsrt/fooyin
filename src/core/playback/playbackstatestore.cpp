@@ -24,10 +24,11 @@
 
 using namespace Qt::StringLiterals;
 
-constexpr auto ActivePlaylistDbIdKey = "Playlist/ActiveId"_L1;
-constexpr auto ActiveTrackIndexKey   = "Playlist/ActiveTrackIndex"_L1;
-constexpr auto LastPlaybackPosition  = "Player/LastPosition"_L1;
-constexpr auto LastPlaybackState     = "Player/LastState"_L1;
+constexpr auto ActivePlaylistDbIdKey    = "Playlist/ActiveId"_L1;
+constexpr auto ActiveTrackIndexKey      = "Playlist/ActiveTrackIndex"_L1;
+constexpr auto LastPlaybackPosition     = "Player/LastPosition"_L1;
+constexpr auto LastPlaybackTimeListened = "Player/LastTimeListened"_L1;
+constexpr auto LastPlaybackState        = "Player/LastState"_L1;
 
 namespace Fooyin::PlaybackState {
 void saveActivePlaylistDbId(int dbId)
@@ -91,6 +92,28 @@ std::optional<uint64_t> playbackPosition()
     const FyStateSettings stateSettings;
     if(stateSettings.contains(LastPlaybackPosition)) {
         return stateSettings.value(LastPlaybackPosition).value<uint64_t>();
+    }
+
+    return {};
+}
+
+void savePlaybackTimeListened(uint64_t timeListenedMs)
+{
+    FyStateSettings stateSettings;
+    stateSettings.setValue(LastPlaybackTimeListened, QVariant::fromValue(timeListenedMs));
+}
+
+void clearPlaybackTimeListened()
+{
+    FyStateSettings stateSettings;
+    stateSettings.remove(LastPlaybackTimeListened);
+}
+
+std::optional<uint64_t> playbackTimeListened()
+{
+    const FyStateSettings stateSettings;
+    if(stateSettings.contains(LastPlaybackTimeListened)) {
+        return stateSettings.value(LastPlaybackTimeListened).value<uint64_t>();
     }
 
     return {};

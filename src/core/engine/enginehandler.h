@@ -100,6 +100,13 @@ protected:
     void disconnectNotify(const QMetaMethod& signal) override;
 
 private:
+    struct StartupRestoreState
+    {
+        Player::PlayState playState{Player::PlayState::Stopped};
+        uint64_t positionMs{0};
+        std::optional<uint64_t> timeListenedMs;
+    };
+
     struct CurrentOutput
     {
         QString name;
@@ -171,17 +178,17 @@ private:
     void handleNextTrackReadiness(const Engine::PlaybackItem& item, bool ready, uint64_t requestId);
     [[nodiscard]] bool cachedNextTrackReadyFor(const Engine::PlaybackItem& item) const;
     void clearNextTrackReadiness();
+    [[nodiscard]] std::optional<StartupRestoreState> readStartupRestoreState() const;
+    void applyStartupRestore(const StartupRestoreState& restore);
+    void clearStartupRestore();
 
     void savePlaybackState() const;
-    void loadPlaybackState();
 
     PlayerController* m_playerController;
     SettingsManager* m_settings;
 
     QThread m_engineThread;
     AudioEngine* m_engine;
-
-    bool m_restoreStartup;
 
     std::map<QString, OutputCreator> m_outputs;
     CurrentOutput m_currentOutput;
@@ -205,5 +212,7 @@ private:
     uint64_t m_nextSeekRequestId;
     PositionContext m_positionContextWatermark;
     std::optional<PositionContext> m_positionAcceptanceFloor;
+    std::optional<StartupRestoreState> m_pendingStartupRestore;
+    std::optional<uint64_t> m_pendingStartupRestoreItemId;
 };
 } // namespace Fooyin
