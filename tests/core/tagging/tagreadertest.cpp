@@ -22,6 +22,8 @@
 #include <core/engine/input/taglibparser.h>
 #include <core/track.h>
 
+#include <taglib/mp4file.h>
+
 #include <gtest/gtest.h>
 
 // clazy:excludeall=returning-void-expression
@@ -33,6 +35,39 @@ class TagReaderTest : public ::testing::Test
 protected:
     TagLibReader m_parser;
 };
+
+namespace {
+constexpr auto Mp4AlbumGain    = "----:com.apple.iTunes:replaygain_album_gain";
+constexpr auto Mp4AlbumGainAlt = "----:com.apple.iTunes:REPLAYGAIN_ALBUM_GAIN";
+constexpr auto Mp4AlbumPeak    = "----:com.apple.iTunes:replaygain_album_peak";
+constexpr auto Mp4AlbumPeakAlt = "----:com.apple.iTunes:REPLAYGAIN_ALBUM_PEAK";
+constexpr auto Mp4TrackGain    = "----:com.apple.iTunes:replaygain_track_gain";
+constexpr auto Mp4TrackGainAlt = "----:com.apple.iTunes:REPLAYGAIN_TRACK_GAIN";
+constexpr auto Mp4TrackPeak    = "----:com.apple.iTunes:replaygain_track_peak";
+constexpr auto Mp4TrackPeakAlt = "----:com.apple.iTunes:REPLAYGAIN_TRACK_PEAK";
+
+void clearMp4ReplayGainItems(TagLib::MP4::Tag* tag)
+{
+    ASSERT_NE(tag, nullptr);
+
+    tag->removeItem(Mp4AlbumGain);
+    tag->removeItem(Mp4AlbumGainAlt);
+    tag->removeItem(Mp4AlbumPeak);
+    tag->removeItem(Mp4AlbumPeakAlt);
+    tag->removeItem(Mp4TrackGain);
+    tag->removeItem(Mp4TrackGainAlt);
+    tag->removeItem(Mp4TrackPeak);
+    tag->removeItem(Mp4TrackPeakAlt);
+}
+
+void setMp4StringItem(TagLib::MP4::Tag* tag, const char* key, const QString& value)
+{
+    ASSERT_NE(tag, nullptr);
+
+    const QByteArray utf8 = value.toUtf8();
+    tag->setItem(key, {TagLib::String(utf8.constData(), TagLib::String::UTF8)});
+}
+} // namespace
 
 TEST_F(TagReaderTest, AiffRead)
 {
@@ -121,6 +156,82 @@ TEST_F(TagReaderTest, M4aRead)
     const auto testTag = track.extraTag(u"TEST"_s);
     ASSERT_TRUE(!testTag.isEmpty());
     EXPECT_EQ(testTag.front(), u"A custom tag"_s);
+}
+
+TEST_F(TagReaderTest, M4aReadLowercaseReplayGain)
+{
+    const QString filepath = u":/audio/audiotest.m4a"_s;
+    TempResource file{filepath};
+    file.checkValid();
+
+    const QByteArray localPath = file.fileName().toLocal8Bit();
+    {
+        TagLib::MP4::File mp4File(localPath.constData());
+        ASSERT_TRUE(mp4File.isValid());
+        ASSERT_TRUE(mp4File.tag());
+
+        clearMp4ReplayGainItems(mp4File.tag());
+        setMp4StringItem(mp4File.tag(), Mp4TrackGain, QStringLiteral("-7.25 dB"));
+        setMp4StringItem(mp4File.tag(), Mp4TrackPeak, QStringLiteral("0.987654"));
+        setMp4StringItem(mp4File.tag(), Mp4AlbumGain, QStringLiteral("-6.50 dB"));
+        setMp4StringItem(mp4File.tag(), Mp4AlbumPeak, QStringLiteral("0.876543"));
+        ASSERT_TRUE(mp4File.save());
+    }
+
+    Track track{file.fileName()};
+    ASSERT_TRUE(m_parser.readTrack({filepath, &file, nullptr}, track));
+
+    EXPECT_TRUE(track.hasTrackGain());
+    EXPECT_TRUE(track.hasTrackPeak());
+    EXPECT_TRUE(track.hasAlbumGain());
+    EXPECT_TRUE(track.hasAlbumPeak());
+    EXPECT_FLOAT_EQ(track.rgTrackGain(), -7.25F);
+    EXPECT_FLOAT_EQ(track.rgTrackPeak(), 0.987654F);
+    EXPECT_FLOAT_EQ(track.rgAlbumGain(), -6.50F);
+    EXPECT_FLOAT_EQ(track.rgAlbumPeak(), 0.876543F);
+
+    EXPECT_TRUE(track.extraTag(QStringLiteral("REPLAYGAIN_TRACK_GAIN")).isEmpty());
+    EXPECT_TRUE(track.extraTag(QStringLiteral("REPLAYGAIN_TRACK_PEAK")).isEmpty());
+    EXPECT_TRUE(track.extraTag(QStringLiteral("REPLAYGAIN_ALBUM_GAIN")).isEmpty());
+    EXPECT_TRUE(track.extraTag(QStringLiteral("REPLAYGAIN_ALBUM_PEAK")).isEmpty());
+}
+
+TEST_F(TagReaderTest, M4aReadUppercaseReplayGain)
+{
+    const QString filepath = u":/audio/audiotest.m4a"_s;
+    TempResource file{filepath};
+    file.checkValid();
+
+    const QByteArray localPath = file.fileName().toLocal8Bit();
+    {
+        TagLib::MP4::File mp4File(localPath.constData());
+        ASSERT_TRUE(mp4File.isValid());
+        ASSERT_TRUE(mp4File.tag());
+
+        clearMp4ReplayGainItems(mp4File.tag());
+        setMp4StringItem(mp4File.tag(), Mp4TrackGainAlt, QStringLiteral("-8.00 dB"));
+        setMp4StringItem(mp4File.tag(), Mp4TrackPeakAlt, QStringLiteral("0.765432"));
+        setMp4StringItem(mp4File.tag(), Mp4AlbumGainAlt, QStringLiteral("-7.50 dB"));
+        setMp4StringItem(mp4File.tag(), Mp4AlbumPeakAlt, QStringLiteral("0.654321"));
+        ASSERT_TRUE(mp4File.save());
+    }
+
+    Track track{file.fileName()};
+    ASSERT_TRUE(m_parser.readTrack({filepath, &file, nullptr}, track));
+
+    EXPECT_TRUE(track.hasTrackGain());
+    EXPECT_TRUE(track.hasTrackPeak());
+    EXPECT_TRUE(track.hasAlbumGain());
+    EXPECT_TRUE(track.hasAlbumPeak());
+    EXPECT_FLOAT_EQ(track.rgTrackGain(), -8.00F);
+    EXPECT_FLOAT_EQ(track.rgTrackPeak(), 0.765432F);
+    EXPECT_FLOAT_EQ(track.rgAlbumGain(), -7.50F);
+    EXPECT_FLOAT_EQ(track.rgAlbumPeak(), 0.654321F);
+
+    EXPECT_TRUE(track.extraTag(QStringLiteral("REPLAYGAIN_TRACK_GAIN")).isEmpty());
+    EXPECT_TRUE(track.extraTag(QStringLiteral("REPLAYGAIN_TRACK_PEAK")).isEmpty());
+    EXPECT_TRUE(track.extraTag(QStringLiteral("REPLAYGAIN_ALBUM_GAIN")).isEmpty());
+    EXPECT_TRUE(track.extraTag(QStringLiteral("REPLAYGAIN_ALBUM_PEAK")).isEmpty());
 }
 
 TEST_F(TagReaderTest, Mp3Read)

@@ -23,6 +23,7 @@
 #include <core/engine/input/taglibparser.h>
 #include <core/track.h>
 
+#include <taglib/mp4file.h>
 #include <taglib/opusfile.h>
 
 #include <QBuffer>
@@ -44,6 +45,15 @@ protected:
 };
 
 namespace {
+constexpr auto Mp4AlbumGain    = "----:com.apple.iTunes:replaygain_album_gain";
+constexpr auto Mp4AlbumPeak    = "----:com.apple.iTunes:replaygain_album_peak";
+constexpr auto Mp4TrackGain    = "----:com.apple.iTunes:replaygain_track_gain";
+constexpr auto Mp4TrackPeak    = "----:com.apple.iTunes:replaygain_track_peak";
+constexpr auto Mp4AlbumGainAlt = "----:com.apple.iTunes:REPLAYGAIN_ALBUM_GAIN";
+constexpr auto Mp4AlbumPeakAlt = "----:com.apple.iTunes:REPLAYGAIN_ALBUM_PEAK";
+constexpr auto Mp4TrackGainAlt = "----:com.apple.iTunes:REPLAYGAIN_TRACK_GAIN";
+constexpr auto Mp4TrackPeakAlt = "----:com.apple.iTunes:REPLAYGAIN_TRACK_PEAK";
+
 QByteArray createPngCover(const QSize& size)
 {
     QImage image(size, QImage::Format_ARGB32);
@@ -63,6 +73,15 @@ QByteArray createPngCover(const QSize& size)
     }
 
     return data;
+}
+QString mp4StringItem(const TagLib::MP4::ItemMap& items, const char* key)
+{
+    if(!items.contains(key)) {
+        return {};
+    }
+
+    const auto value = items[key].toStringList().toString("\n");
+    return QString::fromUtf8(value.toCString(true));
 }
 } // namespace
 
@@ -270,6 +289,50 @@ TEST_F(TagWriterTest, M4aWrite)
         const auto writeTag = track.extraTag(u"WRITETEST"_s);
         ASSERT_TRUE(!writeTag.isEmpty());
         EXPECT_EQ(writeTag.front(), u"Success"_s);
+    }
+}
+
+TEST_F(TagWriterTest, M4aWriteReplayGain)
+{
+    const QString filepath = u":/audio/audiotest.m4a"_s;
+    TempResource file{filepath};
+    file.checkValid();
+
+    AudioSource source;
+    source.filepath = file.fileName();
+    source.device   = &file;
+
+    {
+        Track track{file.fileName()};
+        ASSERT_TRUE(m_parser.readTrack(source, track));
+
+        track.setId(0);
+        track.setRGTrackGain(-7.25F);
+        track.setRGTrackPeak(0.987654F);
+        track.setRGAlbumGain(-6.50F);
+        track.setRGAlbumPeak(0.876543F);
+
+        ASSERT_TRUE(m_parser.writeTrack(source, track, Flags));
+    }
+
+    ASSERT_TRUE(file.flush());
+
+    const QByteArray localPath = file.fileName().toLocal8Bit();
+    {
+        const TagLib::MP4::File mp4File(localPath.constData());
+        ASSERT_TRUE(mp4File.isValid());
+        ASSERT_TRUE(mp4File.tag());
+
+        const auto& items = mp4File.tag()->itemMap();
+        EXPECT_EQ(mp4StringItem(items, Mp4TrackGain), QStringLiteral("-7.25 dB"));
+        EXPECT_EQ(mp4StringItem(items, Mp4TrackPeak), QStringLiteral("0.987654"));
+        EXPECT_EQ(mp4StringItem(items, Mp4AlbumGain), QStringLiteral("-6.50 dB"));
+        EXPECT_EQ(mp4StringItem(items, Mp4AlbumPeak), QStringLiteral("0.876543"));
+
+        EXPECT_FALSE(items.contains(Mp4TrackGainAlt));
+        EXPECT_FALSE(items.contains(Mp4TrackPeakAlt));
+        EXPECT_FALSE(items.contains(Mp4AlbumGainAlt));
+        EXPECT_FALSE(items.contains(Mp4AlbumPeakAlt));
     }
 }
 
