@@ -26,6 +26,8 @@
 #include <core/player/playercontroller.h>
 #include <utils/settings/settingsmanager.h>
 
+#include <ranges>
+
 using namespace Qt::StringLiterals;
 
 namespace {
