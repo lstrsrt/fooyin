@@ -27,6 +27,7 @@
 #include "lyricsfinder.h"
 #include "lyricsmodel.h"
 #include "lyricssaver.h"
+#include "lyricssearchdialog.h"
 #include "lyricsview.h"
 
 #include <core/engine/enginecontroller.h>
@@ -168,11 +169,7 @@ LyricsWidget::LyricsWidget(PlayerController* playerController, LyricsFinder* lyr
     QObject::connect(m_lyricsView, &LyricsView::viewportResized, this, &LyricsWidget::updateViewportPadding);
     QObject::connect(m_lyricsFinder, &LyricsFinder::lyricsSearchFinished, this,
                      &LyricsWidget::handleLyricsSearchFinished);
-    QObject::connect(m_lyricsSaver, &LyricsSaver::lyricsSaved, this, [this](const Track& updatedTrack) {
-        if(updatedTrack.sameIdentityAs(m_currentTrack)) {
-            m_currentTrack = updatedTrack;
-        }
-    });
+    QObject::connect(m_lyricsSaver, &LyricsSaver::lyricsSaved, this, &LyricsWidget::handleSavedLyrics);
 
     QObject::connect(m_lyricsView, &LyricsView::lineClicked, this, &LyricsWidget::seekTo);
     QObject::connect(m_lyricsView, &LyricsView::lineDragSeekRequested, this, &LyricsWidget::seekTo);
@@ -641,7 +638,7 @@ void LyricsWidget::contextMenuEvent(QContextMenuEvent* event)
         menu->addMenu(selectLyrics);
     }
 
-    auto* searchLyrics = new QAction(tr("Search for lyrics"), menu);
+    auto* searchLyrics = new QAction(tr("Auto-search for lyrics"), menu);
     searchLyrics->setStatusTip(tr("Search for lyrics for the current track"));
     QObject::connect(searchLyrics, &QAction::triggered, this, [this]() {
         QObject::disconnect(m_finderConnection);
@@ -652,6 +649,12 @@ void LyricsWidget::contextMenuEvent(QContextMenuEvent* event)
         m_lyricsFinder->findLyrics(m_currentTrack);
     });
     menu->addAction(searchLyrics);
+
+    auto* searchLyricsDialog = new QAction(tr("Search for lyrics…"), menu);
+    searchLyricsDialog->setStatusTip(tr("Open the lyrics search dialog for the current track"));
+    QObject::connect(searchLyricsDialog, &QAction::triggered, this, &LyricsWidget::openSearchDialog);
+    searchLyricsDialog->setEnabled(m_currentTrack.isValid() && !m_currentTrack.isInArchive());
+    menu->addAction(searchLyricsDialog);
 
     auto* editLyrics = new QAction(tr("Edit lyrics"), menu);
     editLyrics->setStatusTip(tr("Open editor for the current lyrics"));
@@ -764,6 +767,23 @@ void LyricsWidget::handleLyricsSearchFinished(const Track& track, bool foundAny)
     updateViewportPadding();
 }
 
+void LyricsWidget::handleSavedLyrics(const Track& track, const Lyrics& lyrics)
+{
+    if(!track.sameIdentityAs(m_currentTrack)) {
+        return;
+    }
+
+    m_currentTrack = track;
+
+    std::erase_if(m_lyrics, [](const Lyrics& existingLyrics) { return existingLyrics.isLocal; });
+
+    if(lyrics.isValid()) {
+        m_lyrics.insert(m_lyrics.begin(), lyrics);
+    }
+
+    changeLyrics(lyrics);
+}
+
 void LyricsWidget::changeLyrics(const Lyrics& lyrics)
 {
     m_currentLyrics = lyrics;
@@ -803,6 +823,18 @@ void LyricsWidget::openEditor(const Lyrics& lyrics)
 
     dlg->show();
     dlg->restoreState();
+}
+
+void LyricsWidget::openSearchDialog()
+{
+    if(!m_currentTrack.isValid() || m_currentTrack.isInArchive()) {
+        return;
+    }
+
+    auto* dialog = new LyricsSearchDialog(m_currentTrack, m_lyricsFinder->networkManager(), m_lyricsSaver, m_settings,
+                                          Utils::getMainWindow());
+    dialog->setAttribute(Qt::WA_DeleteOnClose);
+    dialog->open();
 }
 
 void LyricsWidget::playStateChanged(Player::PlayState state)

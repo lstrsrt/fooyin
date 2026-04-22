@@ -401,12 +401,25 @@ bool LyricsSaver::saveToConfiguredMethod(const Lyrics& lyrics, const Track& trac
                 return false;
             }
 
-            if(removeOriginal && !lyrics.filepath.isEmpty()) {
-                qCInfo(LYRICS) << "Removing original lyrics file" << lyrics.filepath << "for" << track.prettyFilepath();
-                QFile{lyrics.filepath}.moveToTrash();
+            if(removeOriginal) {
+                QStringList filesToRemove;
+                filesToRemove.append(configuredLyricsFilepath(track));
+                if(!lyrics.filepath.isEmpty()) {
+                    filesToRemove.append(lyrics.filepath);
+                }
+                filesToRemove.removeAll(QString{});
+                filesToRemove.removeDuplicates();
+
+                for(const QString& filepath : std::as_const(filesToRemove)) {
+                    if(QFile::exists(filepath)) {
+                        qCInfo(LYRICS) << "Removing original lyrics file" << filepath << "for"
+                                       << track.prettyFilepath();
+                        QFile{filepath}.moveToTrash();
+                    }
+                }
             }
 
-            emit lyricsSaved(*updatedTrack);
+            emit lyricsSaved(*updatedTrack, savedLyrics(lyrics, *updatedTrack));
             break;
         }
         case SaveMethod::Directory: {
@@ -415,13 +428,31 @@ bool LyricsSaver::saveToConfiguredMethod(const Lyrics& lyrics, const Track& trac
             }
 
             Track updatedTrack{track};
-            if(removeOriginal && !lyrics.tag.isEmpty()) {
-                qCInfo(LYRICS) << "Removing original lyrics tag" << lyrics.tag << "for" << track.prettyFilepath();
-                updatedTrack.removeExtraTag(lyrics.tag);
+            bool tagsChanged = false;
+
+            if(removeOriginal) {
+                QStringList tagsToRemove;
+                tagsToRemove.append(configuredLyricsTag(lyrics));
+                if(!lyrics.tag.isEmpty()) {
+                    tagsToRemove.append(lyrics.tag);
+                }
+                tagsToRemove.removeAll(QString{});
+                tagsToRemove.removeDuplicates();
+
+                for(const QString& tag : std::as_const(tagsToRemove)) {
+                    if(updatedTrack.hasExtraTag(tag)) {
+                        qCInfo(LYRICS) << "Removing original lyrics tag" << tag << "for" << track.prettyFilepath();
+                        updatedTrack.removeExtraTag(tag);
+                        tagsChanged = true;
+                    }
+                }
+            }
+
+            if(tagsChanged) {
                 m_library->writeTrackMetadata({updatedTrack});
             }
 
-            emit lyricsSaved(updatedTrack);
+            emit lyricsSaved(updatedTrack, savedLyrics(lyrics, updatedTrack));
             break;
         }
     }

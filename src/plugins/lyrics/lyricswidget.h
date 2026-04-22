@@ -101,8 +101,10 @@ protected:
 private:
     void loadLyrics(const Lyrics& lyrics);
     void handleLyricsSearchFinished(const Track& track, bool foundAny);
+    void handleSavedLyrics(const Track& track, const Lyrics& lyrics);
     void changeLyrics(const Lyrics& lyrics);
     void openEditor(const Lyrics& lyrics);
+    void openSearchDialog();
 
     [[nodiscard]] ConfigData configFromLayout(const QJsonObject& layout) const;
     void saveConfigToLayout(const ConfigData& config, QJsonObject& layout) const;

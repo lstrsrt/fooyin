@@ -66,7 +66,7 @@ public:
     static void lyricsToLrc(const Lyrics& lyrics, QIODevice* device, const SaveOptions& options);
 
 signals:
-    void lyricsSaved(const Fooyin::Track& track);
+    void lyricsSaved(const Fooyin::Track& track, const Fooyin::Lyrics::Lyrics& lyrics);
 
 protected:
     void timerEvent(QTimerEvent* event) override;

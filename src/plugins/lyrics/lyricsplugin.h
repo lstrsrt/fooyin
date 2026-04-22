@@ -25,11 +25,14 @@
 
 namespace Fooyin {
 class FyWidget;
+class Track;
+class TrackSelectionController;
 
 namespace Lyrics {
 class LyricsFinder;
 class LyricsSaver;
 class LyricsSettings;
+struct Lyrics;
 
 class LyricsPlugin : public QObject,
                      public Plugin,
@@ -46,10 +49,17 @@ public:
     void shutdown() override;
 
 private:
+    [[nodiscard]] Track selectedTrack() const;
+    void openSearchDialog(const Track& track) const;
+    void quickSearchLyrics(const Track& track);
+    void openLyricsDialog(const Track& track, const Lyrics& lyrics);
+    void loadTrackLyricsAndOpenDialog(const Track& track);
+
     ActionManager* m_actionManager;
     PlayerController* m_playerController;
     std::shared_ptr<AudioLoader> m_audioLoader;
     std::shared_ptr<NetworkAccessManager> m_networkAccess;
+    TrackSelectionController* m_trackSelection;
     WidgetProvider* m_widgetProvider;
     SettingsManager* m_settings;
 

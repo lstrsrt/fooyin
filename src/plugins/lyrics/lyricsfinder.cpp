@@ -55,33 +55,55 @@ LyricsFinder::LyricsFinder(std::shared_ptr<NetworkAccessManager> networkManager,
     , m_networkManager{std::move(networkManager)}
     , m_settings{settings}
     , m_foundAnyResults{false}
-    , m_localOnly{false}
-    , m_tagOnly{false}
+    , m_foundLocalResults{false}
     , m_currentSourceIndex{-1}
     , m_currentSource{nullptr}
 {
     loadDefaults();
 }
 
+void LyricsFinder::findLyrics(const LyricsSearchRequest& request)
+{
+    m_request = request;
+    startLyricsSearch(m_request.track);
+}
+
 void LyricsFinder::findLyrics(const Track& track)
 {
-    m_localOnly = false;
-    m_tagOnly   = false;
-    startLyricsSearch(track);
+    findLyrics(
+        {.track     = track,
+         .title     = m_parser.evaluate(m_settings->fileValue(Settings::TitleField, u"%title%"_s).toString(), track),
+         .album     = m_parser.evaluate(m_settings->fileValue(Settings::AlbumField, u"%album%"_s).toString(), track),
+         .artist    = m_parser.evaluate(m_settings->fileValue(Settings::ArtistField, u"%artist%"_s).toString(), track),
+         .localOnly = false,
+         .tagOnly   = false,
+         .stopOnFirstResult             = m_settings->fileValue(Settings::SkipRemaining, true).toBool(),
+         .skipExternalAfterLocalResults = m_settings->fileValue(Settings::SkipExternal, true).toBool()});
 }
 
 void LyricsFinder::findLocalLyrics(const Track& track)
 {
-    m_localOnly = true;
-    m_tagOnly   = false;
-    startLyricsSearch(track);
+    findLyrics(
+        {.track     = track,
+         .title     = m_parser.evaluate(m_settings->fileValue(Settings::TitleField, u"%title%"_s).toString(), track),
+         .album     = m_parser.evaluate(m_settings->fileValue(Settings::AlbumField, u"%album%"_s).toString(), track),
+         .artist    = m_parser.evaluate(m_settings->fileValue(Settings::ArtistField, u"%artist%"_s).toString(), track),
+         .localOnly = true});
 }
 
 void LyricsFinder::findTagLyrics(const Track& track)
 {
-    m_localOnly = false;
-    m_tagOnly   = true;
-    startLyricsSearch(track);
+    findLyrics(
+        {.track   = track,
+         .title   = m_parser.evaluate(m_settings->fileValue(Settings::TitleField, u"%title%"_s).toString(), track),
+         .album   = m_parser.evaluate(m_settings->fileValue(Settings::AlbumField, u"%album%"_s).toString(), track),
+         .artist  = m_parser.evaluate(m_settings->fileValue(Settings::ArtistField, u"%artist%"_s).toString(), track),
+         .tagOnly = true});
+}
+
+std::shared_ptr<NetworkAccessManager> LyricsFinder::networkManager() const
+{
+    return m_networkManager;
 }
 
 std::vector<LyricSource*> LyricsFinder::sources() const
@@ -162,13 +184,10 @@ void LyricsFinder::startLyricsSearch(const Track& track)
         QObject::disconnect(source, nullptr, this, nullptr);
     }
 
-    m_params
-        = {.track  = track,
-           .title  = m_parser.evaluate(m_settings->fileValue(Settings::TitleField, u"%title%"_s).toString(), track),
-           .album  = m_parser.evaluate(m_settings->fileValue(Settings::AlbumField, u"%album%"_s).toString(), track),
-           .artist = m_parser.evaluate(m_settings->fileValue(Settings::ArtistField, u"%artist%"_s).toString(), track)};
+    m_params = {.track = track, .title = m_request.title, .album = m_request.album, .artist = m_request.artist};
 
     m_foundAnyResults    = false;
+    m_foundLocalResults  = false;
     m_currentSourceIndex = -1;
     m_currentSource      = nullptr;
     finishOrStartNextSource();
@@ -197,10 +216,12 @@ bool LyricsFinder::findNextAvailableSource()
     while(std::cmp_less(m_currentSourceIndex, m_sources.size())) {
         auto* source = m_sources.at(m_currentSourceIndex);
 
-        const bool matchesLocalFilter = !m_localOnly || source->isLocal();
-        const bool matchesTagFilter   = !m_tagOnly || source->name() == "Metadata Tags"_L1;
+        const bool matchesLocalFilter = !m_request.localOnly || source->isLocal();
+        const bool matchesTagFilter   = !m_request.tagOnly || source->name() == "Metadata Tags"_L1;
+        const bool skipExternalAfterLocal
+            = m_request.skipExternalAfterLocalResults && m_foundLocalResults && !source->isLocal();
 
-        if(source->enabled() && matchesLocalFilter && matchesTagFilter) {
+        if(source->enabled() && matchesLocalFilter && matchesTagFilter && !skipExternalAfterLocal) {
             m_currentSource = source;
             return true;
         }
@@ -227,6 +248,8 @@ void LyricsFinder::onSearchResult(const std::vector<LyricData>& data)
         }
         return Utils::similarityRatio(param, lyricParam, Qt::CaseInsensitive) >= matchThreshold;
     };
+
+    std::vector<Lyrics> emittedLyrics;
 
     for(const auto& lyricData : data) {
         if(!isSimilar(m_params.title, lyricData.title)) {
@@ -261,13 +284,23 @@ void LyricsFinder::onSearchResult(const std::vector<LyricData>& data)
             lyrics.metadata.artist = lyricData.artist;
         }
 
+        const bool isDuplicate = std::ranges::any_of(emittedLyrics, [&lyrics](const Lyrics& existingLyrics) {
+            return existingLyrics.source == lyrics.source && existingLyrics.metadata.title == lyrics.metadata.title
+                && existingLyrics.metadata.album == lyrics.metadata.album
+                && existingLyrics.metadata.artist == lyrics.metadata.artist && existingLyrics == lyrics;
+        });
+        if(isDuplicate) {
+            continue;
+        }
+
+        emittedLyrics.emplace_back(lyrics);
         emit lyricsFound(m_params.track, lyrics);
     }
 
-    const bool foundLocal    = m_currentSource->isLocal();
-    const bool skipExternal  = m_settings->fileValue(Settings::SkipExternal, true).toBool();
-    const bool skipRemaining = m_settings->fileValue(Settings::SkipRemaining, true).toBool();
+    if(!emittedLyrics.empty() && m_currentSource->isLocal()) {
+        m_foundLocalResults = true;
+    }
 
-    finishOrStartNextSource(skipRemaining || (skipExternal && foundLocal));
+    finishOrStartNextSource(m_request.stopOnFirstResult);
 }
 } // namespace Fooyin::Lyrics

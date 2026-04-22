@@ -30,6 +30,18 @@ class Track;
 namespace Lyrics {
 struct Lyrics;
 
+struct LyricsSearchRequest
+{
+    Track track;
+    QString title;
+    QString album;
+    QString artist;
+    bool localOnly{false};
+    bool tagOnly{false};
+    bool stopOnFirstResult{false};
+    bool skipExternalAfterLocalResults{false};
+};
+
 class LyricsFinder : public QObject
 {
     Q_OBJECT
@@ -38,10 +50,12 @@ public:
     explicit LyricsFinder(std::shared_ptr<NetworkAccessManager> networkManager, SettingsManager* settings,
                           QObject* parent = nullptr);
 
+    void findLyrics(const LyricsSearchRequest& request);
     void findLyrics(const Track& track);
     void findLocalLyrics(const Track& track);
     void findTagLyrics(const Track& track);
 
+    [[nodiscard]] std::shared_ptr<NetworkAccessManager> networkManager() const;
     [[nodiscard]] std::vector<LyricSource*> sources() const;
 
     void saveState();
@@ -67,9 +81,9 @@ private:
 
     ScriptParser m_parser;
     SearchParams m_params;
+    LyricsSearchRequest m_request;
     bool m_foundAnyResults;
-    bool m_localOnly;
-    bool m_tagOnly;
+    bool m_foundLocalResults;
     int m_currentSourceIndex;
     LyricSource* m_currentSource;
 };
