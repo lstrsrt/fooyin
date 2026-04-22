@@ -116,10 +116,13 @@ GuiSettings::GuiSettings(SettingsManager* settingsManager)
     m_settings->createSetting<Internal::PlaylistScrollBar>(true, u"PlaylistWidget/Scrollbar"_s);
     m_settings->createSetting<Internal::StatusShowIcon>(false, u"StatusWidget/ShowIcon"_s);
     m_settings->createSetting<Internal::StatusShowSelection>(false, u"StatusWidget/ShowSelection"_s);
+    m_settings->createSetting<Internal::StatusShowPlaylist>(false, u"StatusWidget/ShowPlaylist"_s);
     m_settings->createSetting<Internal::StatusPlayingScript>(StatusWidget::defaultPlayingScript(),
                                                              u"StatusWidget/PlayingScript"_s);
     m_settings->createSetting<Internal::StatusSelectionScript>(StatusWidget::defaultSelectionScript(),
                                                                u"StatusWidget/SelectionScript"_s);
+    m_settings->createSetting<Internal::StatusPlaylistScript>(StatusWidget::defaultPlaylistScript(),
+                                                              u"StatusWidget/PlaylistScript"_s);
 
     m_settings->createTempSetting<Internal::SystemIconTheme>(QIcon::themeName());
     m_settings->createSetting<Internal::WindowTitleTrackScript>(u"[%albumartist% - ]%title% \"[fooyin]\""_s,

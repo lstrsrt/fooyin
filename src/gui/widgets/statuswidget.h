@@ -48,6 +48,7 @@ public:
 
     static QString defaultPlayingScript();
     static QString defaultSelectionScript();
+    static QString defaultPlaylistScript();
 
     void showMessage(const QString& message);
     void showTempMessage(const QString& message);
