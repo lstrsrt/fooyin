@@ -859,7 +859,7 @@ int Playlist::index() const
     return p->m_index;
 }
 
-TrackList Playlist::tracks() const
+const TrackList& Playlist::tracks() const
 {
     return p->m_tracks;
 }

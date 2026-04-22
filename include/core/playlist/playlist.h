@@ -108,7 +108,7 @@ public:
     [[nodiscard]] QString name() const;
     [[nodiscard]] int index() const;
 
-    [[nodiscard]] TrackList tracks() const;
+    [[nodiscard]] const TrackList& tracks() const;
     [[nodiscard]] PlaylistTrackList playlistTracks() const;
     [[nodiscard]] std::optional<Track> track(int index) const;
     [[nodiscard]] std::optional<PlaylistTrack> playlistTrack(int index) const;
