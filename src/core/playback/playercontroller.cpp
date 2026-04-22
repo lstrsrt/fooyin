@@ -1351,7 +1351,7 @@ Player::PlaybackSnapshot PlayerController::playbackSnapshot() const
     };
 }
 
-PlaybackQueue PlayerController::playbackQueue() const
+const PlaybackQueue& PlayerController::playbackQueue() const
 {
     return p->m_queue;
 }

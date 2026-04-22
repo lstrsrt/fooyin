@@ -125,7 +125,7 @@ public:
     [[nodiscard]] Player::TrackChangeContext lastTrackChangeContext() const;
     [[nodiscard]] Player::PlaybackSnapshot playbackSnapshot() const;
 
-    [[nodiscard]] PlaybackQueue playbackQueue() const;
+    [[nodiscard]] const PlaybackQueue& playbackQueue() const;
     [[nodiscard]] int queuedTracksCount() const;
 
     /** Queues the @p track to be played at the end of the current track. */
