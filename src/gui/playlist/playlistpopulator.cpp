@@ -130,7 +130,6 @@ public:
     ContainerKeyMap m_headers;
     PlaylistTrackList m_tracks;
     Playlist* m_playlist{nullptr};
-    PlaylistTrackIndexes m_playlistQueue;
     qsizetype m_nextTrack{0};
 };
 
@@ -144,8 +143,7 @@ void PlaylistPopulatorPrivate::resetState()
     m_prevBaseHeaderKey = nullptr;
     m_prevHeaderKey     = {};
     m_tracks.clear();
-    m_playlist = nullptr;
-    m_playlistQueue.clear();
+    m_playlist     = nullptr;
     m_nextTrack    = 0;
     m_parsedHeader = {};
     m_parsedSubheaders.clear();
@@ -232,7 +230,7 @@ const ScriptContext& PlaylistPopulatorPrivate::makeContext(int index, int depth)
         }
     }
 
-    m_scriptEnvironment.setPlaylistData(m_playlist, &m_playlistQueue, nullptr,
+    m_scriptEnvironment.setPlaylistData(m_playlist, &m_playerController->playbackQueue(), nullptr,
                                         m_playerController ? m_playerController->queuedTracksCount() : 0);
     m_scriptEnvironment.setTrackState(index, currentPlayingTrackIndex, currentPlayingTrackId, depth);
     m_scriptEnvironment.setPlaybackState(m_playerController ? m_playerController->currentPosition() : 0,
@@ -626,8 +624,6 @@ void PlaylistPopulator::run(Playlist* playlist, const PlaylistPreset& preset, co
     p->m_columns       = columns;
     p->m_tracks        = tracks;
     p->m_playlist      = playlist;
-    p->m_playlistQueue
-        = playlist ? p->m_playerController->playbackQueue().indexesForPlaylist(playlist->id()) : PlaylistTrackIndexes{};
     p->prepareScripts();
 
     const int preloadCount = p->m_preloadCount > 0 ? p->m_preloadCount : static_cast<int>(tracks.size());
@@ -653,8 +649,6 @@ void PlaylistPopulator::runTracks(Playlist* playlist, const PlaylistPreset& pres
     p->m_currentPreset = preset;
     p->m_columns       = columns;
     p->m_playlist      = playlist;
-    p->m_playlistQueue
-        = playlist ? p->m_playerController->playbackQueue().indexesForPlaylist(playlist->id()) : PlaylistTrackIndexes{};
     p->prepareScripts();
 
     p->runTracksGroup(tracks);
@@ -671,8 +665,6 @@ void PlaylistPopulator::updateTracks(Playlist* playlist, const PlaylistPreset& p
     p->m_currentPreset = preset;
     p->m_columns       = columns;
     p->m_playlist      = playlist;
-    p->m_playlistQueue
-        = playlist ? p->m_playerController->playbackQueue().indexesForPlaylist(playlist->id()) : PlaylistTrackIndexes{};
     p->prepareScripts();
 
     ItemList updatedTracks;
@@ -718,8 +710,6 @@ void PlaylistPopulator::updateHeaders(Playlist* playlist, const PlaylistPreset& 
 
     p->m_currentPreset = preset;
     p->m_playlist      = playlist;
-    p->m_playlistQueue
-        = playlist ? p->m_playerController->playbackQueue().indexesForPlaylist(playlist->id()) : PlaylistTrackIndexes{};
     p->prepareScripts();
 
     ItemKeyMap updatedHeaders;

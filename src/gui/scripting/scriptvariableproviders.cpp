@@ -131,7 +131,7 @@ QString playingQueue(const Fooyin::ScriptContext& context)
 namespace Fooyin {
 PlaylistScriptEnvironment::PlaylistScriptEnvironment()
     : m_playlist{nullptr}
-    , m_playlistQueue{nullptr}
+    , m_playbackQueue{nullptr}
     , m_tracks{nullptr}
     , m_playlistTrackIndex{-1}
     , m_currentPlayingTrackIndex{-1}
@@ -149,13 +149,14 @@ PlaylistScriptEnvironment::PlaylistScriptEnvironment()
     , m_hasDirectQueueState{false}
 { }
 
-void PlaylistScriptEnvironment::setPlaylistData(const Playlist* playlist, const PlaylistTrackIndexes* playlistQueue,
+void PlaylistScriptEnvironment::setPlaylistData(const Playlist* playlist, const PlaybackQueue* playbackQueue,
                                                 const TrackList* tracks, const int queueTotal)
 {
     m_playlist      = playlist;
-    m_playlistQueue = playlistQueue;
+    m_playbackQueue = playbackQueue;
     m_tracks        = tracks;
     m_queueTotal    = queueTotal;
+    m_currentQueueIndexes.clear();
     m_directQueueIndexes.clear();
     m_hasDirectQueueState = false;
 }
@@ -252,15 +253,12 @@ std::span<const int> PlaylistScriptEnvironment::currentQueueIndexes() const
         return m_directQueueIndexes;
     }
 
-    if(!m_playlistQueue) {
+    if(!m_playbackQueue || !m_playlist || m_playlistTrackIndex < 0) {
         return Empty;
     }
 
-    if(const auto it = m_playlistQueue->find(m_playlistTrackIndex); it != m_playlistQueue->cend()) {
-        return it->second;
-    }
-
-    return Empty;
+    m_currentQueueIndexes = m_playbackQueue->indexesForTrack(m_playlist->id(), m_playlistTrackIndex);
+    return m_currentQueueIndexes.empty() ? std::span{Empty} : std::span<const int>{m_currentQueueIndexes};
 }
 
 int PlaylistScriptEnvironment::currentQueueTotal() const
@@ -335,58 +333,23 @@ bool PlaylistScriptEnvironment::hasDirectQueueState() const
     return m_hasDirectQueueState;
 }
 
-PlaybackScriptContextData::PlaybackScriptContextData()
+PlaybackScriptContext::PlaybackScriptContext()
 {
     context.environment = &environment;
 }
 
-PlaybackScriptContextData::PlaybackScriptContextData(PlaybackScriptContextData&& other) noexcept
-    : playlistQueue{std::move(other.playlistQueue)}
-    , tracks{std::move(other.tracks)}
-    , environment{std::move(other.environment)}
+PlaybackScriptContext::PlaybackScriptContext(PlaybackScriptContext&& other) noexcept
+    : environment{std::move(other.environment)}
     , context{other.context}
 {
-    const bool hasDirectQueueState = environment.hasDirectQueueState();
-    const int queueTotal           = environment.currentQueueTotal();
-
-    std::vector<int> directQueueIndexes;
-    if(hasDirectQueueState) {
-        const auto queueIndexes = environment.currentQueueIndexes();
-        directQueueIndexes.assign(queueIndexes.begin(), queueIndexes.end());
-    }
-
-    environment.setPlaylistData(context.playlist, &playlistQueue, tracks.empty() ? nullptr : &tracks, queueTotal);
-
-    if(hasDirectQueueState) {
-        environment.setQueueState(directQueueIndexes, queueTotal);
-    }
-
     context.environment = &environment;
 }
 
-PlaybackScriptContextData& PlaybackScriptContextData::operator=(PlaybackScriptContextData&& other) noexcept
+PlaybackScriptContext& PlaybackScriptContext::operator=(PlaybackScriptContext&& other) noexcept
 {
     if(this != &other) {
-        playlistQueue = std::move(other.playlistQueue);
-        tracks        = std::move(other.tracks);
-        environment   = std::move(other.environment);
-        context       = other.context;
-
-        const bool hasDirectQueueState = environment.hasDirectQueueState();
-        const int queueTotal           = environment.currentQueueTotal();
-
-        std::vector<int> directQueueIndexes;
-        if(hasDirectQueueState) {
-            const auto queueIndexes = environment.currentQueueIndexes();
-            directQueueIndexes.assign(queueIndexes.begin(), queueIndexes.end());
-        }
-
-        environment.setPlaylistData(context.playlist, &playlistQueue, tracks.empty() ? nullptr : &tracks, queueTotal);
-
-        if(hasDirectQueueState) {
-            environment.setQueueState(directQueueIndexes, queueTotal);
-        }
-
+        environment         = std::move(other.environment);
+        context             = other.context;
         context.environment = &environment;
     }
     return *this;
@@ -416,18 +379,12 @@ const ScriptVariableProvider& playlistVariableProvider()
     return Provider;
 }
 
-PlaybackScriptContextData makePlaybackScriptContext(PlayerController* playerController, Playlist* playlist,
-                                                    TrackListContextPolicy policy, QString placeholder,
-                                                    bool escapeRichText, bool useVariousArtists,
-                                                    const RatingStarSymbols& ratingSymbols)
+PlaybackScriptContext makePlaybackScriptContext(PlayerController* playerController, Playlist* playlist,
+                                                TrackListContextPolicy policy, QString placeholder, bool escapeRichText,
+                                                bool useVariousArtists, const RatingStarSymbols& ratingSymbols)
 {
-    PlaybackScriptContextData data;
+    PlaybackScriptContext data;
     data.context.playlist = playlist;
-
-    if(playlist && playerController) {
-        data.playlistQueue = playerController->playbackQueue().indexesForPlaylist(playlist->id());
-        data.tracks        = playlist->tracks();
-    }
 
     int playlistTrackIndex{-1};
     uint64_t currentPosition{0};
@@ -443,7 +400,8 @@ PlaybackScriptContextData makePlaybackScriptContext(PlayerController* playerCont
         playState            = playerController->playState();
     }
 
-    data.environment.setPlaylistData(playlist, &data.playlistQueue, data.tracks.empty() ? nullptr : &data.tracks,
+    data.environment.setPlaylistData(playlist, playerController ? &playerController->playbackQueue() : nullptr,
+                                     playlist ? &playlist->tracks() : nullptr,
                                      playerController ? playerController->queuedTracksCount() : 0);
     data.environment.setTrackState(playlistTrackIndex, playlistTrackIndex,
                                    playerController ? playerController->currentTrackId() : -1, 0);

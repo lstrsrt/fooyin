@@ -92,11 +92,11 @@ std::span<const int> queueIndexesFor(const QueueIndexLookup& queueIndexes, const
     return {};
 }
 
-PlaybackScriptContextData makeQueueScriptContext(PlayerController* playerController, SettingsManager* settings,
-                                                 const PlaylistTrack& queueTrack, std::span<const int> queueIndexes,
-                                                 int queueTotal)
+PlaybackScriptContext makeQueueScriptContext(PlayerController* playerController, SettingsManager* settings,
+                                             const PlaylistTrack& queueTrack, std::span<const int> queueIndexes,
+                                             int queueTotal)
 {
-    PlaybackScriptContextData data;
+    PlaybackScriptContext data;
 
     uint64_t currentPosition{0};
     uint64_t currentTrackDuration{0};

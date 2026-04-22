@@ -37,7 +37,7 @@ class PlaylistScriptEnvironment : public ScriptEnvironment,
 public:
     PlaylistScriptEnvironment();
 
-    void setPlaylistData(const Playlist* playlist, const PlaylistTrackIndexes* playlistQueue,
+    void setPlaylistData(const Playlist* playlist, const PlaybackQueue* playbackQueue,
                          const TrackList* tracks = nullptr, int queueTotal = 0);
     void setQueueState(std::span<const int> queueIndexes, int queueTotal);
     void setTrackState(int playlistTrackIndex, int currentPlayingTrackIndex, int currentPlayingTrackId, int trackDepth);
@@ -76,9 +76,10 @@ public:
 
 private:
     const Playlist* m_playlist;
-    const PlaylistTrackIndexes* m_playlistQueue;
+    const PlaybackQueue* m_playbackQueue;
     const TrackList* m_tracks;
     std::vector<int> m_directQueueIndexes;
+    mutable std::vector<int> m_currentQueueIndexes;
     int m_playlistTrackIndex;
     int m_currentPlayingTrackIndex;
     int m_currentPlayingTrackId;
@@ -96,25 +97,23 @@ private:
     bool m_hasDirectQueueState;
 };
 
-struct PlaybackScriptContextData
+struct PlaybackScriptContext
 {
-    PlaylistTrackIndexes playlistQueue;
-    TrackList tracks;
     PlaylistScriptEnvironment environment;
     ScriptContext context;
 
-    PlaybackScriptContextData();
-    PlaybackScriptContextData(const PlaybackScriptContextData&)            = delete;
-    PlaybackScriptContextData& operator=(const PlaybackScriptContextData&) = delete;
-    PlaybackScriptContextData(PlaybackScriptContextData&& other) noexcept;
-    PlaybackScriptContextData& operator=(PlaybackScriptContextData&& other) noexcept;
+    PlaybackScriptContext();
+    PlaybackScriptContext(const PlaybackScriptContext&)            = delete;
+    PlaybackScriptContext& operator=(const PlaybackScriptContext&) = delete;
+    PlaybackScriptContext(PlaybackScriptContext&& other) noexcept;
+    PlaybackScriptContext& operator=(PlaybackScriptContext&& other) noexcept;
 };
 
 [[nodiscard]] const ScriptVariableProvider& artworkMarkerVariableProvider();
 [[nodiscard]] const ScriptVariableProvider& playlistVariableProvider();
-[[nodiscard]] PlaybackScriptContextData makePlaybackScriptContext(PlayerController* playerController,
-                                                                  Playlist* playlist, TrackListContextPolicy policy,
-                                                                  QString placeholder = {}, bool escapeRichText = false,
-                                                                  bool useVariousArtists                 = false,
-                                                                  const RatingStarSymbols& ratingSymbols = {});
+[[nodiscard]] PlaybackScriptContext makePlaybackScriptContext(PlayerController* playerController, Playlist* playlist,
+                                                              TrackListContextPolicy policy, QString placeholder = {},
+                                                              bool escapeRichText                    = false,
+                                                              bool useVariousArtists                 = false,
+                                                              const RatingStarSymbols& ratingSymbols = {});
 } // namespace Fooyin
