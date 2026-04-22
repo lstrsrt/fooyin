@@ -17,6 +17,7 @@ set(SOURCES
     ${CMAKE_SOURCE_DIR}/include/core/engine/inputplugin.h
     ${CMAKE_SOURCE_DIR}/include/core/engine/levelframe.h
     ${CMAKE_SOURCE_DIR}/include/core/engine/outputplugin.h
+    ${CMAKE_SOURCE_DIR}/include/core/engine/pcmframe.h
     ${CMAKE_SOURCE_DIR}/include/core/library/libraryinfo.h
     ${CMAKE_SOURCE_DIR}/include/core/library/libraryutils.h
     ${CMAKE_SOURCE_DIR}/include/core/library/musiclibrary.h

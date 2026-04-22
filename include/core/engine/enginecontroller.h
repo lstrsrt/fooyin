@@ -24,6 +24,7 @@
 #include <core/engine/audiooutput.h>
 #include <core/engine/enginedefs.h>
 #include <core/engine/levelframe.h>
+#include <core/engine/pcmframe.h>
 
 #include <QByteArray>
 #include <QObject>
@@ -77,8 +78,10 @@ signals:
     //! Track-status transitions with stable generation identifier.
     void trackStatusContextChanged(const Fooyin::Engine::TrackStatusContext& context);
 
-    //! Fixed-hop level analysis snapshots.
+    //! Push-style fixed-hop level analysis snapshots for general consumers.
     void levelReady(const Fooyin::LevelFrame& frame);
+    //! Push-style fixed-hop PCM analysis snapshots for general consumers.
+    void pcmReady(const Fooyin::PcmFrame& frame);
 
     //! Metadata/context update for currently active track.
     void trackChanged(const Fooyin::Track& track);

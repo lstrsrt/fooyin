@@ -21,6 +21,7 @@
 
 #include <core/engine/enginedefs.h>
 #include <core/engine/levelframe.h>
+#include <core/engine/pcmframe.h>
 #include <utils/compatutils.h>
 #include <utils/lockfreeringbuffer.h>
 
@@ -33,10 +34,15 @@
 
 namespace Fooyin {
 /*!
- * Background audio-analysis bus.
+ * Background push-analysis bus.
  *
  * `push()` is safe for the audio thread.
  * Handler callbacks run on the analysis worker thread.
+ *
+ * This path is the engine's push API for fixed-hop analysis frames such as
+ * `LevelFrame` and `PcmFrame`. It is intended for generic subscribers that
+ * want snapshots as they become available.
+ *
  */
 class AudioAnalysisBus
 {
@@ -55,6 +61,7 @@ public:
     [[nodiscard]] bool hasSubscription(Engine::AnalysisDataType subscription) const;
 
     using LevelReadyHandler = std::function<void(const LevelFrame&)>;
+    using PcmReadyHandler   = std::function<void(const PcmFrame&)>;
 
     void setLevelReadyHandler(LevelReadyHandler handler);
     void clearLevelReadyHandler()
@@ -74,23 +81,40 @@ public:
         setLevelReadyHandler([receiver, method](const LevelFrame& frame) { std::invoke(method, *receiver, frame); });
     }
 
-    void push(std::span<const float> samples, int channelCount, int sampleRate, uint64_t streamTimeMs,
-              TimePoint presentationTime);
+    void setPcmReadyHandler(PcmReadyHandler handler);
+    void clearPcmReadyHandler()
+    {
+        setPcmReadyHandler(PcmReadyHandler{});
+    }
+
+    template <typename Receiver, typename Method>
+        requires std::invocable<Method, Receiver&, const PcmFrame&>
+    void setPcmReadyHandler(Receiver* receiver, Method method)
+    {
+        if(!receiver) {
+            clearPcmReadyHandler();
+            return;
+        }
+
+        setPcmReadyHandler([receiver, method](const PcmFrame& frame) { std::invoke(method, *receiver, frame); });
+    }
+
+    void push(std::span<const float> samples, AudioFormat format, uint64_t streamTimeMs, TimePoint presentationTime);
     //! Drop queued analysis data and request hop-state reset.
     void flush();
 
 private:
     static constexpr int HopFrames         = 1024;
-    static constexpr int MaxSamplesPerSlot = HopFrames * LevelFrame::MaxChannels;
+    static constexpr int MaxSamplesPerSlot = PcmFrame::MaxSamples;
 
     struct AudioAnalysisSlot
     {
         std::array<float, MaxSamplesPerSlot> samples;
+        AudioFormat format{SampleFormat::F32, 0, 0};
         int sampleCount{0};
-        int channelCount{0};
-        int sampleRate{0};
         uint64_t streamTimeMs{0};
         TimePoint presentationTime;
+        bool discontinuityBefore{false};
     };
 
     void signalWorker();
@@ -100,17 +124,22 @@ private:
     void emitCompletedHop();
     void resetHopState();
     void emitLevelFrame(const LevelFrame& frame);
+    void emitPcmFrame(const PcmFrame& frame);
+    [[nodiscard]] bool hasAnyActiveConsumer() const;
 
     LockFreeRingBuffer<AudioAnalysisSlot> m_slots;
 
-    std::atomic<bool> m_resetRequested;
+    std::atomic<bool> m_flushRequested;
+    std::atomic<bool> m_discontinuityPending;
     std::atomic<uint64_t> m_wakeCounter;
 
     std::atomic<uint32_t> m_subscriptionMask;
     std::atomic<bool> m_hasLevelHandler;
+    std::atomic<bool> m_hasPcmHandler;
     std::jthread m_worker;
 
     AtomicSharedPtr<LevelReadyHandler> m_levelReadyHandler;
+    AtomicSharedPtr<PcmReadyHandler> m_pcmReadyHandler;
 
     std::array<float, MaxSamplesPerSlot> m_hopSamples;
     int m_hopFrames;
@@ -118,5 +147,6 @@ private:
     int m_hopSampleRate;
     uint64_t m_hopStreamTimeMs;
     TimePoint m_hopPresentationTime;
+    AudioFormat m_hopFormat;
 };
 } // namespace Fooyin

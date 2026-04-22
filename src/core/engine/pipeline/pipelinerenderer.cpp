@@ -764,10 +764,12 @@ void PipelineRenderer::rebuildProcessChunksFromMixerRead(const AudioMixer::ReadR
 
 void PipelineRenderer::tapAnalysis(AudioAnalysisBus* analysisBus, uint64_t playbackDelayMs)
 {
-    if(!analysisBus || !analysisBus->hasSubscription(Engine::AnalysisDataType::LevelFrameData)) {
+    if(!analysisBus
+       || (!analysisBus->hasSubscription(Engine::AnalysisDataType::LevelFrameData)
+           && !analysisBus->hasSubscription(Engine::AnalysisDataType::PcmFrameData))) {
         return;
     }
-
+    
     if(m_processChunks.count() == 0) {
         return;
     }
@@ -777,6 +779,7 @@ void PipelineRenderer::tapAnalysis(AudioAnalysisBus* analysisBus, uint64_t playb
     uint64_t streamTimeMs{0};
     bool haveTiming{false};
     size_t totalSamples{0};
+    AudioFormat analysisFormat;
 
     for(size_t i{0}; i < m_processChunks.count(); ++i) {
         const auto* chunk = m_processChunks.item(i);
@@ -786,15 +789,17 @@ void PipelineRenderer::tapAnalysis(AudioAnalysisBus* analysisBus, uint64_t playb
 
         const auto format = chunk->format();
         if(!format.isValid() || format.sampleFormat() != SampleFormat::F64 || format.channelCount() <= 0
-           || format.channelCount() > LevelFrame::MaxChannels || format.sampleRate() <= 0) {
+           || format.channelCount() > PcmFrame::MaxChannels || format.sampleRate() <= 0) {
             continue;
         }
 
         if(!haveTiming) {
-            channelCount = format.channelCount();
-            sampleRate   = format.sampleRate();
-            streamTimeMs = chunk->startTimeNs() / Time::NsPerMs;
-            haveTiming   = true;
+            channelCount   = format.channelCount();
+            sampleRate     = format.sampleRate();
+            streamTimeMs   = chunk->startTimeNs() / Time::NsPerMs;
+            analysisFormat = format;
+            analysisFormat.setSampleFormat(SampleFormat::F32);
+            haveTiming = true;
         }
         else if(format.channelCount() != channelCount || format.sampleRate() != sampleRate) {
             return;
@@ -836,7 +841,7 @@ void PipelineRenderer::tapAnalysis(AudioAnalysisBus* analysisBus, uint64_t playb
     }
 
     const auto presentationTime = AudioAnalysisBus::Clock::now() + std::chrono::milliseconds{playbackDelayMs};
-    analysisBus->push(std::span<const float>{m_analysisScratch.data(), writeOffset}, channelCount, sampleRate,
-                      streamTimeMs, presentationTime);
+    analysisBus->push(std::span<const float>{m_analysisScratch.data(), writeOffset}, analysisFormat, streamTimeMs,
+                      presentationTime);
 }
 } // namespace Fooyin

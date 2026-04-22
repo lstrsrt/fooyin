@@ -174,7 +174,7 @@ private:
     void clearPositionAcceptanceFloor();
     [[nodiscard]] static bool contextLess(const PositionContext& lhs, const PositionContext& rhs);
     void advancePositionContextWatermark(const PositionContext& context);
-    void updateLevelReadyRelay();
+    void updateAnalysisRelays();
     void handleNextTrackReadiness(const Engine::PlaybackItem& item, bool ready, uint64_t requestId);
     [[nodiscard]] bool cachedNextTrackReadyFor(const Engine::PlaybackItem& item) const;
     void clearNextTrackReadiness();
@@ -193,7 +193,9 @@ private:
     std::map<QString, OutputCreator> m_outputs;
     CurrentOutput m_currentOutput;
     QMetaObject::Connection m_levelReadyRelayConnection;
+    QMetaObject::Connection m_pcmReadyRelayConnection;
     bool m_levelReadyRelayConnected;
+    bool m_pcmReadyRelayConnected;
 
     std::optional<Player::TrackChangeRequest> m_pendingTrackChange;
     Player::UpcomingTrack m_upcomingTrack;

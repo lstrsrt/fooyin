@@ -24,6 +24,7 @@
 #include <core/engine/audioformat.h>
 #include <core/engine/audiooutput.h>
 #include <core/engine/enginedefs.h>
+#include <core/engine/pcmframe.h>
 #include <core/track.h>
 #include <utils/lockfreeringbuffer.h>
 
@@ -183,6 +184,7 @@ signals:
     void bitrateChanged(int bitrate);
 
     void levelReady(const Fooyin::LevelFrame& frame);
+    void pcmReady(const Fooyin::PcmFrame& frame);
 
     void trackAboutToFinish(const Fooyin::Track& track, uint64_t generation);
     void trackReadyToSwitch(const Fooyin::Track& track, uint64_t generation);
@@ -275,7 +277,9 @@ private:
     void handleTimerTick(int timerId);
     void clearPendingAnalysisData();
     void onLevelFrameReady(const LevelFrame& frame);
+    void onPcmFrameReady(const PcmFrame& frame);
     void dispatchPendingLevelFrames();
+    void dispatchPendingPcmFrames();
     void schedulePipelineWakeDrainTask();
     void handlePipelineWakeSignals(const AudioPipeline::PendingSignals& pendingSignals);
     void handleOutputStateChange(AudioOutput::State state);
@@ -388,7 +392,9 @@ private:
     PreparedGaplessTransition m_preparedGaplessTransition;
 
     LockFreeRingBuffer<LevelFrame> m_levelFrameMailbox;
+    LockFreeRingBuffer<PcmFrame> m_pcmFrameMailbox;
     std::atomic<bool> m_levelFrameDispatchQueued;
+    std::atomic<bool> m_pcmFrameDispatchQueued;
     std::atomic<bool> m_pipelineWakeTaskQueued;
     std::atomic<bool> m_outputReconnectQueued;
 

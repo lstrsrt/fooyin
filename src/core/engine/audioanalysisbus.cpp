@@ -24,25 +24,15 @@
 #include <cmath>
 #include <memory>
 
-namespace {
-constexpr uint32_t analysisMask(const Fooyin::Engine::AnalysisDataTypes subscriptions)
-{
-    return static_cast<uint32_t>(subscriptions.toInt());
-}
-
-constexpr uint32_t analysisMask(const Fooyin::Engine::AnalysisDataType subscription)
-{
-    return static_cast<uint32_t>(subscription);
-}
-} // namespace
-
 namespace Fooyin {
 AudioAnalysisBus::AudioAnalysisBus(size_t slotCapacity)
     : m_slots{std::max(static_cast<size_t>(1), slotCapacity)}
-    , m_resetRequested{false}
+    , m_flushRequested{false}
+    , m_discontinuityPending{false}
     , m_wakeCounter{0}
-    , m_subscriptionMask{analysisMask(Engine::AnalysisDataTypes{})}
+    , m_subscriptionMask{Engine::NoAnalysisData}
     , m_hasLevelHandler{false}
+    , m_hasPcmHandler{false}
     , m_hopSamples{}
     , m_hopFrames{0}
     , m_hopChannels{0}
@@ -61,14 +51,15 @@ AudioAnalysisBus::~AudioAnalysisBus()
 
 void AudioAnalysisBus::setSubscriptions(const Engine::AnalysisDataTypes subscriptions)
 {
-    const uint32_t newMask = analysisMask(subscriptions);
-    const uint32_t oldMask = m_subscriptionMask.exchange(newMask, std::memory_order_relaxed);
+    const uint32_t oldMask = m_subscriptionMask.exchange(subscriptions, std::memory_order_relaxed);
 
-    if(oldMask == newMask) {
+    if(oldMask == subscriptions) {
         return;
     }
 
-    if((newMask & analysisMask(Engine::AnalysisDataType::LevelFrameData)) == 0) {
+    static constexpr uint32_t analysisFrameMask
+        = Engine::AnalysisDataType::LevelFrameData | Engine::AnalysisDataType::PcmFrameData;
+    if((subscriptions & analysisFrameMask) == 0 && (oldMask & analysisFrameMask) != 0) {
         flush();
     }
 
@@ -83,7 +74,7 @@ Engine::AnalysisDataTypes AudioAnalysisBus::subscriptions() const
 bool AudioAnalysisBus::hasSubscription(const Engine::AnalysisDataType subscription) const
 {
     const uint32_t mask = m_subscriptionMask.load(std::memory_order_relaxed);
-    return (mask & analysisMask(subscription)) != 0U;
+    return (mask & subscription) != Engine::NoAnalysisData;
 }
 
 void AudioAnalysisBus::setLevelReadyHandler(LevelReadyHandler handler)
@@ -94,22 +85,40 @@ void AudioAnalysisBus::setLevelReadyHandler(LevelReadyHandler handler)
     auto handlerPtr = hasHandler ? std::make_shared<LevelReadyHandler>(std::move(handler)) : nullptr;
     m_levelReadyHandler.store(std::move(handlerPtr), std::memory_order_release);
 
-    if(!hasHandler) {
+    if(!hasAnyActiveConsumer()) {
         flush();
     }
 
     signalWorker();
 }
 
-void AudioAnalysisBus::push(const std::span<const float> samples, int channelCount, int sampleRate,
-                            uint64_t streamTimeMs, const TimePoint presentationTime)
+void AudioAnalysisBus::setPcmReadyHandler(PcmReadyHandler handler)
 {
-    if(!hasSubscription(Engine::AnalysisDataType::LevelFrameData)
-       || !m_hasLevelHandler.load(std::memory_order_relaxed)) {
+    const bool hasHandler = static_cast<bool>(handler);
+    m_hasPcmHandler.store(hasHandler, std::memory_order_relaxed);
+
+    auto handlerPtr = hasHandler ? std::make_shared<PcmReadyHandler>(std::move(handler)) : nullptr;
+    m_pcmReadyHandler.store(std::move(handlerPtr), std::memory_order_release);
+
+    if(!hasAnyActiveConsumer()) {
+        flush();
+    }
+
+    signalWorker();
+}
+
+void AudioAnalysisBus::push(const std::span<const float> samples, AudioFormat format, uint64_t streamTimeMs,
+                            const TimePoint presentationTime)
+{
+    if(!hasAnyActiveConsumer()) {
         return;
     }
 
-    if(samples.empty() || channelCount <= 0 || channelCount > LevelFrame::MaxChannels || sampleRate <= 0) {
+    format.setSampleFormat(SampleFormat::F32);
+    const int channelCount = format.channelCount();
+    const int sampleRate   = format.sampleRate();
+
+    if(samples.empty() || channelCount <= 0 || channelCount > PcmFrame::MaxChannels || sampleRate <= 0) {
         return;
     }
 
@@ -138,15 +147,20 @@ void AudioAnalysisBus::push(const std::span<const float> samples, int channelCou
 
         const auto reservation = writer.reserveOne();
         if(!reservation) {
+            m_discontinuityPending.store(true, std::memory_order_relaxed);
+            if(!wakeSignalled) {
+                signalWorker();
+                wakeSignalled = true;
+            }
             break;
         }
 
-        AudioAnalysisSlot* slot = reservation.data;
-        slot->sampleCount       = static_cast<int>(slotSampleCount);
-        slot->channelCount      = channelCount;
-        slot->sampleRate        = sampleRate;
-        slot->streamTimeMs      = streamTimeMs + offsetMs;
-        slot->presentationTime  = presentationTime + std::chrono::milliseconds{offsetMs};
+        AudioAnalysisSlot* slot   = reservation.data;
+        slot->sampleCount         = static_cast<int>(slotSampleCount);
+        slot->format              = format;
+        slot->streamTimeMs        = streamTimeMs + offsetMs;
+        slot->presentationTime    = presentationTime + std::chrono::milliseconds{offsetMs};
+        slot->discontinuityBefore = m_discontinuityPending.exchange(false, std::memory_order_relaxed);
         std::copy_n(samples.data() + static_cast<std::ptrdiff_t>(sampleOffset), slotSampleCount, slot->samples.data());
 
         writer.commitOne(reservation);
@@ -162,7 +176,8 @@ void AudioAnalysisBus::push(const std::span<const float> samples, int channelCou
 
 void AudioAnalysisBus::flush()
 {
-    m_resetRequested.store(true, std::memory_order_relaxed);
+    m_flushRequested.store(true, std::memory_order_relaxed);
+    m_discontinuityPending.store(false, std::memory_order_relaxed);
     signalWorker();
 }
 
@@ -176,9 +191,12 @@ void AudioAnalysisBus::run(const std::stop_token& stopToken)
 {
     AudioAnalysisSlot slot;
 
-    const auto canProcessLevelFrames = [this]() {
-        return hasSubscription(Engine::AnalysisDataType::LevelFrameData)
-            && m_hasLevelHandler.load(std::memory_order_relaxed);
+    const auto canProcessAnyFrames = [this]() {
+        const bool levelRequested = hasSubscription(Engine::AnalysisDataType::LevelFrameData)
+                                 && m_hasLevelHandler.load(std::memory_order_relaxed);
+        const bool pcmRequested   = hasSubscription(Engine::AnalysisDataType::PcmFrameData)
+                                 && m_hasPcmHandler.load(std::memory_order_relaxed);
+        return levelRequested || pcmRequested;
     };
 
     const auto hasPendingFrames = [this]() {
@@ -188,21 +206,21 @@ void AudioAnalysisBus::run(const std::stop_token& stopToken)
     auto reader = m_slots.reader();
 
     while(!stopToken.stop_requested()) {
-        if(m_resetRequested.exchange(false, std::memory_order_relaxed)) {
+        if(m_flushRequested.exchange(false, std::memory_order_relaxed)) {
             resetHopState();
             reader.skip(reader.readAvailable());
         }
 
-        if(!canProcessLevelFrames()) {
-            if(stopToken.stop_requested() || hasPendingFrames() || m_resetRequested.load(std::memory_order_relaxed)
-               || canProcessLevelFrames()) {
+        if(!canProcessAnyFrames()) {
+            if(stopToken.stop_requested() || hasPendingFrames() || m_flushRequested.load(std::memory_order_relaxed)
+               || canProcessAnyFrames()) {
                 continue;
             }
 
             const uint64_t wakeSnapshot = m_wakeCounter.load(std::memory_order_relaxed);
 
-            if(stopToken.stop_requested() || hasPendingFrames() || m_resetRequested.load(std::memory_order_relaxed)
-               || canProcessLevelFrames()) {
+            if(stopToken.stop_requested() || hasPendingFrames() || m_flushRequested.load(std::memory_order_relaxed)
+               || canProcessAnyFrames()) {
                 continue;
             }
 
@@ -222,15 +240,15 @@ void AudioAnalysisBus::run(const std::stop_token& stopToken)
             continue;
         }
 
-        if(stopToken.stop_requested() || hasPendingFrames() || m_resetRequested.load(std::memory_order_relaxed)
-           || !canProcessLevelFrames()) {
+        if(stopToken.stop_requested() || hasPendingFrames() || m_flushRequested.load(std::memory_order_relaxed)
+           || !canProcessAnyFrames()) {
             continue;
         }
 
         const uint64_t wakeSnapshot = m_wakeCounter.load(std::memory_order_relaxed);
 
-        if(stopToken.stop_requested() || hasPendingFrames() || m_resetRequested.load(std::memory_order_relaxed)
-           || !canProcessLevelFrames()) {
+        if(stopToken.stop_requested() || hasPendingFrames() || m_flushRequested.load(std::memory_order_relaxed)
+           || !canProcessAnyFrames()) {
             continue;
         }
 
@@ -240,17 +258,23 @@ void AudioAnalysisBus::run(const std::stop_token& stopToken)
 
 void AudioAnalysisBus::processSlot(const AudioAnalysisSlot& slot)
 {
-    if(slot.sampleCount <= 0 || slot.channelCount <= 0 || slot.channelCount > LevelFrame::MaxChannels
-       || slot.sampleRate <= 0) {
+    const int channelCount = slot.format.channelCount();
+    const int sampleRate   = slot.format.sampleRate();
+
+    if(slot.sampleCount <= 0 || channelCount <= 0 || channelCount > PcmFrame::MaxChannels || sampleRate <= 0) {
         return;
     }
 
-    const int slotFrames = slot.sampleCount / slot.channelCount;
+    const int slotFrames = slot.sampleCount / channelCount;
     if(slotFrames <= 0) {
         return;
     }
 
-    if(m_hopFrames > 0 && (m_hopChannels != slot.channelCount || m_hopSampleRate != slot.sampleRate)) {
+    if(slot.discontinuityBefore) {
+        resetHopState();
+    }
+
+    if(m_hopFrames > 0 && (m_hopChannels != channelCount || m_hopSampleRate != sampleRate)) {
         resetHopState();
     }
 
@@ -258,16 +282,17 @@ void AudioAnalysisBus::processSlot(const AudioAnalysisSlot& slot)
     while(consumedFrames < slotFrames) {
         if(m_hopFrames == 0) {
             const uint64_t offsetMs
-                = (static_cast<uint64_t>(consumedFrames) * 1000ULL) / static_cast<uint64_t>(slot.sampleRate);
-            m_hopChannels         = slot.channelCount;
-            m_hopSampleRate       = slot.sampleRate;
+                = (static_cast<uint64_t>(consumedFrames) * 1000ULL) / static_cast<uint64_t>(sampleRate);
+            m_hopChannels         = channelCount;
+            m_hopSampleRate       = sampleRate;
             m_hopStreamTimeMs     = slot.streamTimeMs + offsetMs;
             m_hopPresentationTime = slot.presentationTime + std::chrono::milliseconds{offsetMs};
+            m_hopFormat           = slot.format;
         }
 
         const int availableFrames = slotFrames - consumedFrames;
         const int copyFrames      = std::min(HopFrames - m_hopFrames, availableFrames);
-        const auto channels       = static_cast<size_t>(slot.channelCount);
+        const auto channels       = static_cast<size_t>(channelCount);
 
         const auto sourceOffsetSamples = static_cast<size_t>(consumedFrames) * channels;
         const auto destOffsetSamples   = static_cast<size_t>(m_hopFrames) * channels;
@@ -288,34 +313,57 @@ void AudioAnalysisBus::processSlot(const AudioAnalysisSlot& slot)
 
 void AudioAnalysisBus::emitCompletedHop()
 {
-    if(m_hopFrames != HopFrames || m_hopChannels <= 0 || m_hopChannels > LevelFrame::MaxChannels) {
+    if(m_hopFrames != HopFrames || m_hopChannels <= 0 || m_hopChannels > PcmFrame::MaxChannels) {
         return;
     }
 
-    LevelFrame frame;
-    frame.channelCount     = m_hopChannels;
-    frame.streamTimeMs     = m_hopStreamTimeMs;
-    frame.presentationTime = m_hopPresentationTime;
+    const bool emitLevel = hasSubscription(Engine::AnalysisDataType::LevelFrameData)
+                        && m_hasLevelHandler.load(std::memory_order_relaxed);
+    const bool emitPcm
+        = hasSubscription(Engine::AnalysisDataType::PcmFrameData) && m_hasPcmHandler.load(std::memory_order_relaxed);
 
-    const auto channels = static_cast<size_t>(m_hopChannels);
-    for(size_t channel{0}; channel < channels; ++channel) {
-        float peak{0.0F};
-        double rms{0.0};
-
-        for(int frameIndex{0}; frameIndex < HopFrames; ++frameIndex) {
-            const size_t sampleIndex = (static_cast<size_t>(frameIndex) * channels) + channel;
-            const float sample       = m_hopSamples[sampleIndex];
-            const float absolute     = std::abs(sample);
-
-            peak = std::max(peak, absolute);
-            rms += static_cast<double>(sample) * static_cast<double>(sample);
-        }
-
-        frame.peak[channel] = peak;
-        frame.rms[channel]  = static_cast<float>(std::sqrt(rms / static_cast<double>(HopFrames)));
+    if(!emitLevel && !emitPcm) {
+        return;
     }
 
-    emitLevelFrame(frame);
+    if(emitPcm) {
+        PcmFrame frame;
+        frame.format           = m_hopFormat;
+        frame.frameCount       = m_hopFrames;
+        frame.streamTimeMs     = m_hopStreamTimeMs;
+        frame.presentationTime = m_hopPresentationTime;
+
+        const auto sampleCount = static_cast<size_t>(m_hopFrames) * static_cast<size_t>(m_hopChannels);
+        std::copy_n(m_hopSamples.data(), sampleCount, frame.samples.data());
+
+        emitPcmFrame(frame);
+    }
+
+    if(emitLevel) {
+        LevelFrame frame;
+        frame.channelCount     = m_hopChannels;
+        frame.streamTimeMs     = m_hopStreamTimeMs;
+        frame.presentationTime = m_hopPresentationTime;
+
+        for(size_t channel{0}; std::cmp_less(channel, m_hopChannels); ++channel) {
+            float peak{0.0F};
+            double rms{0.0};
+
+            for(int frameIndex{0}; frameIndex < HopFrames; ++frameIndex) {
+                const size_t sampleIndex = (static_cast<size_t>(frameIndex) * m_hopChannels) + channel;
+                const float sample       = m_hopSamples[sampleIndex];
+                const float absolute     = std::abs(sample);
+
+                peak = std::max(peak, absolute);
+                rms += static_cast<double>(sample) * static_cast<double>(sample);
+            }
+
+            frame.peak[channel] = peak;
+            frame.rms[channel]  = static_cast<float>(std::sqrt(rms / static_cast<double>(HopFrames)));
+        }
+
+        emitLevelFrame(frame);
+    }
 }
 
 void AudioAnalysisBus::resetHopState()
@@ -325,6 +373,7 @@ void AudioAnalysisBus::resetHopState()
     m_hopSampleRate       = 0;
     m_hopStreamTimeMs     = 0;
     m_hopPresentationTime = {};
+    m_hopFormat           = {};
 }
 
 void AudioAnalysisBus::emitLevelFrame(const LevelFrame& frame)
@@ -335,5 +384,25 @@ void AudioAnalysisBus::emitLevelFrame(const LevelFrame& frame)
     }
 
     (*handler)(frame);
+}
+
+void AudioAnalysisBus::emitPcmFrame(const PcmFrame& frame)
+{
+    const auto handler = m_pcmReadyHandler.load(std::memory_order_acquire);
+    if(!handler || !(*handler)) {
+        return;
+    }
+
+    (*handler)(frame);
+}
+
+bool AudioAnalysisBus::hasAnyActiveConsumer() const
+{
+    const bool levelRequested = hasSubscription(Engine::AnalysisDataType::LevelFrameData)
+                             && m_hasLevelHandler.load(std::memory_order_relaxed);
+    const bool pcmRequested
+        = hasSubscription(Engine::AnalysisDataType::PcmFrameData) && m_hasPcmHandler.load(std::memory_order_relaxed);
+
+    return levelRequested || pcmRequested;
 }
 } // namespace Fooyin

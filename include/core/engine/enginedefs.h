@@ -22,6 +22,7 @@
 #include <core/engine/audiooutput.h>
 #include <core/engine/fadingdefs.h>
 #include <core/engine/levelframe.h>
+#include <core/engine/pcmframe.h>
 #include <core/track.h>
 #include <utils/datastream.h>
 
@@ -120,6 +121,7 @@ enum AnalysisDataType : uint8_t
 {
     NoAnalysisData = 0,
     LevelFrameData = 1 << 0,
+    PcmFrameData   = 1 << 1,
 };
 Q_DECLARE_FLAGS(AnalysisDataTypes, AnalysisDataType)
 Q_FLAG_NS(AnalysisDataTypes)
@@ -314,6 +316,7 @@ Q_DECLARE_METATYPE(Fooyin::Engine::PlaybackItem)
 Q_DECLARE_METATYPE(Fooyin::Engine::TrackCommitContext)
 Q_DECLARE_METATYPE(Fooyin::Engine::AnalysisDataTypes)
 Q_DECLARE_METATYPE(Fooyin::LevelFrame)
+Q_DECLARE_METATYPE(Fooyin::PcmFrame)
 Q_DECLARE_METATYPE(Fooyin::Engine::LiveDspSettingsUpdate)
 Q_DECLARE_METATYPE(Fooyin::Engine::OutputDeviceProfiles)
 Q_DECLARE_METATYPE(Fooyin::Engine::OutputProfileRequest)

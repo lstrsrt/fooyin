@@ -296,7 +296,9 @@ AudioEngine::AudioEngine(std::shared_ptr<AudioLoader> audioLoader, SettingsManag
     , m_nextTransitionId{1}
     , m_decoder{this}
     , m_levelFrameMailbox{8}
+    , m_pcmFrameMailbox{8}
     , m_levelFrameDispatchQueued{false}
+    , m_pcmFrameDispatchQueued{false}
     , m_pipelineWakeTaskQueued{false}
     , m_outputReconnectQueued{false}
     , m_fadeController{&m_pipeline}
@@ -374,6 +376,7 @@ AudioEngine::AudioEngine(std::shared_ptr<AudioLoader> audioLoader, SettingsManag
 
     m_analysisBus = std::make_unique<AudioAnalysisBus>();
     m_analysisBus->setLevelReadyHandler(this, &AudioEngine::onLevelFrameReady);
+    m_analysisBus->setPcmReadyHandler(this, &AudioEngine::onPcmFrameReady);
 
     m_pipeline.start();
     m_pipeline.setFaderCurve(m_fadingValues.pause.curve);
@@ -406,6 +409,7 @@ AudioEngine::~AudioEngine()
     if(m_analysisBus) {
         m_analysisBus->setSubscriptions(Engine::AnalysisDataTypes{});
         m_analysisBus->setLevelReadyHandler({});
+        m_analysisBus->setPcmReadyHandler({});
     }
 
     m_pipeline.setAnalysisBus(nullptr);
@@ -2230,7 +2234,9 @@ void AudioEngine::clearPendingAnalysisData()
     }
 
     m_levelFrameMailbox.requestReset();
+    m_pcmFrameMailbox.requestReset();
     m_levelFrameDispatchQueued.store(false, std::memory_order_relaxed);
+    m_pcmFrameDispatchQueued.store(false, std::memory_order_relaxed);
 }
 
 void AudioEngine::onLevelFrameReady(const LevelFrame& frame)
@@ -2244,6 +2250,21 @@ void AudioEngine::onLevelFrameReady(const LevelFrame& frame)
 
     if(!m_levelFrameDispatchQueued.exchange(true, std::memory_order_relaxed)) {
         QMetaObject::invokeMethod(this, [this]() { dispatchPendingLevelFrames(); }, Qt::QueuedConnection);
+        QMetaObject::invokeMethod(this, &AudioEngine::dispatchPendingLevelFrames, Qt::QueuedConnection);
+    }
+}
+
+void AudioEngine::onPcmFrameReady(const PcmFrame& frame)
+{
+    auto writer              = m_pcmFrameMailbox.writer();
+    const size_t framesWrote = writer.write(&frame, 1, RingBufferOverflowPolicy::OverwriteOldest);
+
+    if(framesWrote == 0) {
+        return;
+    }
+
+    if(!m_pcmFrameDispatchQueued.exchange(true, std::memory_order_relaxed)) {
+        QMetaObject::invokeMethod(this, &AudioEngine::dispatchPendingPcmFrames, Qt::QueuedConnection);
     }
 }
 
@@ -2262,7 +2283,7 @@ void AudioEngine::dispatchPendingLevelFrames()
     auto reader = m_levelFrameMailbox.reader();
 
     LevelFrame latestFrame;
-    bool hasFrame = false;
+    bool hasFrame{false};
 
     while(reader.read(&latestFrame, 1) == 1) {
         hasFrame = true;
@@ -2277,6 +2298,28 @@ void AudioEngine::dispatchPendingLevelFrames()
     if(m_levelFrameMailbox.readAvailable() > 0
        && !m_levelFrameDispatchQueued.exchange(true, std::memory_order_relaxed)) {
         QMetaObject::invokeMethod(this, [this]() { dispatchPendingLevelFrames(); }, Qt::QueuedConnection);
+    }
+}
+
+void AudioEngine::dispatchPendingPcmFrames()
+{
+    auto reader = m_pcmFrameMailbox.reader();
+
+    PcmFrame latestFrame;
+    bool hasFrame{false};
+
+    while(reader.read(&latestFrame, 1) == 1) {
+        hasFrame = true;
+    }
+
+    if(hasFrame) {
+        emit pcmReady(latestFrame);
+    }
+
+    m_pcmFrameDispatchQueued.store(false, std::memory_order_relaxed);
+
+    if(m_pcmFrameMailbox.readAvailable() > 0 && !m_pcmFrameDispatchQueued.exchange(true, std::memory_order_relaxed)) {
+        QMetaObject::invokeMethod(this, [this]() { dispatchPendingPcmFrames(); }, Qt::QueuedConnection);
     }
 }
 

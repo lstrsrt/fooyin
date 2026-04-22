@@ -75,6 +75,7 @@ EngineHandler::EngineHandler(std::shared_ptr<AudioLoader> audioLoader, PlayerCon
     , m_settings{settings}
     , m_engine{new AudioEngine(std::move(audioLoader), settings, dspRegistry)}
     , m_levelReadyRelayConnected{false}
+    , m_pcmReadyRelayConnected{false}
     , m_currentTrackItemId{0}
     , m_engineOwnedTransitionItemId{9}
     , m_engineOwnedTransitionGen{0}
@@ -127,7 +128,9 @@ EngineHandler::EngineHandler(std::shared_ptr<AudioLoader> audioLoader, PlayerCon
                      });
 
     m_engineThread.start();
-    updateLevelReadyRelay();
+
+    updateAnalysisRelays();
+
     dispatchCommand(&AudioEngine::setTrackEndAutoTransitionEnabled,
                     m_playerController->trackEndAutoTransitionsEnabled());
 
@@ -164,8 +167,9 @@ void EngineHandler::connectNotify(const QMetaMethod& signal)
 {
     EngineController::connectNotify(signal);
 
-    if(signal == QMetaMethod::fromSignal(&EngineController::levelReady)) {
-        QMetaObject::invokeMethod(this, &EngineHandler::updateLevelReadyRelay, Qt::QueuedConnection);
+    if(signal == QMetaMethod::fromSignal(&EngineController::levelReady)
+       || signal == QMetaMethod::fromSignal(&EngineController::pcmReady)) {
+        QMetaObject::invokeMethod(this, &EngineHandler::updateAnalysisRelays, Qt::QueuedConnection);
     }
 }
 
@@ -173,8 +177,9 @@ void EngineHandler::disconnectNotify(const QMetaMethod& signal)
 {
     EngineController::disconnectNotify(signal);
 
-    if(signal == QMetaMethod::fromSignal(&EngineController::levelReady)) {
-        QMetaObject::invokeMethod(this, &EngineHandler::updateLevelReadyRelay, Qt::QueuedConnection);
+    if(signal == QMetaMethod::fromSignal(&EngineController::levelReady)
+       || signal == QMetaMethod::fromSignal(&EngineController::pcmReady)) {
+        QMetaObject::invokeMethod(this, &EngineHandler::updateAnalysisRelays, Qt::QueuedConnection);
     }
 }
 
@@ -625,24 +630,40 @@ void EngineHandler::requestStop() const
     dispatchCommand(&AudioEngine::stop);
 }
 
-void EngineHandler::updateLevelReadyRelay()
+void EngineHandler::updateAnalysisRelays()
 {
-    const bool hasSubscribers = isSignalConnected(QMetaMethod::fromSignal(&EngineController::levelReady));
-    Engine::AnalysisDataTypes subscriptions;
+    const bool hasLevelSubscribers = isSignalConnected(QMetaMethod::fromSignal(&EngineController::levelReady));
+    const bool hasPcmSubscribers   = isSignalConnected(QMetaMethod::fromSignal(&EngineController::pcmReady));
 
-    if(hasSubscribers) {
+    Engine::AnalysisDataTypes subscriptions;
+    
+    if(hasLevelSubscribers) {
         subscriptions.setFlag(Engine::AnalysisDataType::LevelFrameData);
     }
+    if(hasPcmSubscribers) {
+        subscriptions.setFlag(Engine::AnalysisDataType::PcmFrameData);
+    }
 
-    if(hasSubscribers && !m_levelReadyRelayConnected) {
+    if(hasLevelSubscribers && !m_levelReadyRelayConnected) {
         m_levelReadyRelayConnection
             = QObject::connect(m_engine, &AudioEngine::levelReady, this, &EngineController::levelReady);
         m_levelReadyRelayConnected = true;
     }
-    else if(!hasSubscribers && m_levelReadyRelayConnected) {
+    else if(!hasLevelSubscribers && m_levelReadyRelayConnected) {
         QObject::disconnect(m_levelReadyRelayConnection);
         m_levelReadyRelayConnection = {};
         m_levelReadyRelayConnected  = false;
+    }
+
+    if(hasPcmSubscribers && !m_pcmReadyRelayConnected) {
+        m_pcmReadyRelayConnection
+            = QObject::connect(m_engine, &AudioEngine::pcmReady, this, &EngineController::pcmReady);
+        m_pcmReadyRelayConnected = true;
+    }
+    else if(!hasPcmSubscribers && m_pcmReadyRelayConnected) {
+        QObject::disconnect(m_pcmReadyRelayConnection);
+        m_pcmReadyRelayConnection = {};
+        m_pcmReadyRelayConnected  = false;
     }
 
     dispatchCommand(&AudioEngine::setAnalysisDataSubscriptions, subscriptions);
