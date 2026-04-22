@@ -636,7 +636,7 @@ void EngineHandler::updateAnalysisRelays()
     const bool hasPcmSubscribers   = isSignalConnected(QMetaMethod::fromSignal(&EngineController::pcmReady));
 
     Engine::AnalysisDataTypes subscriptions;
-    
+
     if(hasLevelSubscribers) {
         subscriptions.setFlag(Engine::AnalysisDataType::LevelFrameData);
     }

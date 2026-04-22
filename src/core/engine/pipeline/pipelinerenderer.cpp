@@ -769,7 +769,7 @@ void PipelineRenderer::tapAnalysis(AudioAnalysisBus* analysisBus, uint64_t playb
            && !analysisBus->hasSubscription(Engine::AnalysisDataType::PcmFrameData))) {
         return;
     }
-    
+
     if(m_processChunks.count() == 0) {
         return;
     }
