@@ -40,12 +40,14 @@ public:
 
     [[nodiscard]] bool empty() const;
 
-    [[nodiscard]] QueueTracks tracks() const;
+    [[nodiscard]] const QueueTracks& tracks() const;
     [[nodiscard]] PlaylistTrack track(int index) const;
     [[nodiscard]] int trackCount() const;
     [[nodiscard]] int freeSpace() const;
+
     [[nodiscard]] PlaylistIndexes playlistIndexes() const;
     [[nodiscard]] PlaylistTrackIndexes indexesForPlaylist(const UId& id) const;
+    std::vector<int> indexesForTrack(const UId& playlistId, int playlistTrackIndex) const;
 
     [[nodiscard]] PlaylistTrack nextTrack() const;
     PlaylistTrack nextTrackChange();

@@ -29,7 +29,7 @@ bool PlaybackQueue::empty() const
     return m_tracks.empty();
 }
 
-QueueTracks PlaybackQueue::tracks() const
+const QueueTracks& PlaybackQueue::tracks() const
 {
     return m_tracks;
 }
@@ -73,6 +73,20 @@ PlaylistTrackIndexes PlaybackQueue::indexesForPlaylist(const UId& id) const
             indexes[track.indexInPlaylist].emplace_back(i);
         }
         ++i;
+    }
+
+    return indexes;
+}
+
+std::vector<int> PlaybackQueue::indexesForTrack(const UId& playlistId, const int playlistTrackIndex) const
+{
+    std::vector<int> indexes;
+
+    for(auto queueIndex{0}; const auto& track : m_tracks) {
+        if(track.playlistId == playlistId && track.indexInPlaylist == playlistTrackIndex) {
+            indexes.emplace_back(queueIndex);
+        }
+        ++queueIndex;
     }
 
     return indexes;
