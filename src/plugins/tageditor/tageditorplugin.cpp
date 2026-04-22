@@ -77,12 +77,12 @@ void TagEditorPlugin::initialise(const GuiPluginContext& context)
 
     auto* autoFillValuesAction = new QAction(tr("Automatically fill values…"), this);
     QObject::connect(autoFillValuesAction, &QAction::triggered, this, [this]() {
-        const TrackSelection selection = m_trackSelection->selectedSelection();
-        if(!canWriteTracks(selection.tracks, m_audioLoader)) {
+        const auto* selection = m_trackSelection->selectedSelection();
+        if(!selection || !canWriteTracks(selection->tracks, m_audioLoader)) {
             return;
         }
 
-        openFillDialog(selection.tracks, Utils::getMainWindow(), [this](const FillValuesResult& result) {
+        openFillDialog(selection->tracks, Utils::getMainWindow(), [this](const FillValuesResult& result) {
             if(!result.tracks.empty()) {
                 m_library->writeTrackMetadata(result.tracks);
             }

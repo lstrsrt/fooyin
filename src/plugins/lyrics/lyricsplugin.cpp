@@ -149,12 +149,12 @@ void LyricsPlugin::shutdown()
 
 Track LyricsPlugin::selectedTrack() const
 {
-    const TrackSelection selection = m_trackSelection->selectedSelection();
-    if(selection.tracks.size() != 1) {
+    const auto* selection = m_trackSelection->selectedSelection();
+    if(!selection || selection->tracks.size() != 1) {
         return {};
     }
 
-    return selection.tracks.front();
+    return selection->tracks.front();
 }
 
 void LyricsPlugin::openSearchDialog(const Track& track) const

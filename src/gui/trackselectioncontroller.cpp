@@ -316,9 +316,8 @@ void TrackSelectionControllerPrivate::setupBuiltInMenus()
     auto* addQueueCmd = m_actionManager->registerAction(m_addToQueue, Constants::Actions::AddToQueue);
     addQueueCmd->setCategories(tracksCategory);
     QObject::connect(m_addToQueue, &QAction::triggered, m_self, [this]() {
-        if(hasTracks()) {
-            const auto selection = m_self->selectedSelection();
-            m_playlistController->playerController()->queueTracks(queueTracksForSelection(selection));
+        if(const auto* selection = m_self->selectedSelection()) {
+            m_playlistController->playerController()->queueTracks(queueTracksForSelection(*selection));
             updateActionState();
         }
     });
@@ -329,9 +328,8 @@ void TrackSelectionControllerPrivate::setupBuiltInMenus()
     auto* queueNextCmd = m_actionManager->registerAction(m_queueNext, Constants::Actions::QueueNext);
     queueNextCmd->setCategories(tracksCategory);
     QObject::connect(m_queueNext, &QAction::triggered, m_self, [this]() {
-        if(hasTracks()) {
-            const auto selection = m_self->selectedSelection();
-            m_playlistController->playerController()->queueTracksNext(queueTracksForSelection(selection));
+        if(const auto* selection = m_self->selectedSelection()) {
+            m_playlistController->playerController()->queueTracksNext(queueTracksForSelection(*selection));
             updateActionState();
         }
     });
@@ -342,9 +340,8 @@ void TrackSelectionControllerPrivate::setupBuiltInMenus()
     auto* removeQueueCmd = m_actionManager->registerAction(m_removeFromQueue, Constants::Actions::RemoveFromQueue);
     removeQueueCmd->setCategories(tracksCategory);
     QObject::connect(m_removeFromQueue, &QAction::triggered, m_self, [this]() {
-        if(hasTracks()) {
-            const auto selection = m_self->selectedSelection();
-            m_playlistController->playerController()->dequeueTracks(queueTracksForSelection(selection));
+        if(const auto* selection = m_self->selectedSelection()) {
+            m_playlistController->playerController()->dequeueTracks(queueTracksForSelection(*selection));
             updateActionState();
         }
     });
@@ -359,8 +356,8 @@ void TrackSelectionControllerPrivate::setupBuiltInMenus()
     auto* openFolderCmd = m_actionManager->registerAction(m_openFolder, Constants::Actions::OpenFolder);
     openFolderCmd->setCategories(tracksCategory);
     QObject::connect(m_openFolder, &QAction::triggered, m_self, [this]() {
-        if(hasTracks()) {
-            openFolder(m_self->selectedSelection());
+        if(const auto* selection = m_self->selectedSelection()) {
+            openFolder(*selection);
         }
     });
     registerAction(m_self, TrackContextMenuArea::Track, m_trackRoot.id, Constants::Actions::OpenFolder,
@@ -370,8 +367,8 @@ void TrackSelectionControllerPrivate::setupBuiltInMenus()
     auto* copyLocationCmd = m_actionManager->registerAction(m_copyLocation, Constants::Actions::CopyLocation);
     copyLocationCmd->setCategories(tracksCategory);
     QObject::connect(m_copyLocation, &QAction::triggered, m_self, [this]() {
-        if(hasTracks()) {
-            copyLocation(m_self->selectedSelection());
+        if(const auto* selection = m_self->selectedSelection()) {
+            copyLocation(*selection);
         }
     });
     registerAction(m_self, TrackContextMenuArea::Track, m_trackRoot.id, Constants::Actions::CopyLocation,
@@ -383,8 +380,8 @@ void TrackSelectionControllerPrivate::setupBuiltInMenus()
         = m_actionManager->registerAction(m_copyDirectoryPath, Constants::Actions::CopyDirectoryPath);
     copyDirectoryPathCmd->setCategories(tracksCategory);
     QObject::connect(m_copyDirectoryPath, &QAction::triggered, m_self, [this]() {
-        if(hasTracks()) {
-            copyDirectoryPath(m_self->selectedSelection());
+        if(const auto* selection = m_self->selectedSelection()) {
+            copyDirectoryPath(*selection);
         }
     });
     registerAction(m_self, TrackContextMenuArea::Track, m_trackRoot.id, Constants::Actions::CopyDirectoryPath,
@@ -398,8 +395,8 @@ void TrackSelectionControllerPrivate::setupBuiltInMenus()
     auto* searchArtworkCmd = m_actionManager->registerAction(m_searchArtwork, Constants::Actions::SearchArtwork);
     searchArtworkCmd->setCategories(tracksCategory);
     QObject::connect(m_searchArtwork, &QAction::triggered, m_self, [this]() {
-        if(hasTracks()) {
-            searchArtwork(m_self->selectedSelection(), false);
+        if(const auto* selection = m_self->selectedSelection()) {
+            searchArtwork(*selection, false);
         }
     });
     registerAction(m_self, TrackContextMenuArea::Track, Constants::Menus::Context::Artwork,
@@ -414,8 +411,8 @@ void TrackSelectionControllerPrivate::setupBuiltInMenus()
     auto* extractArtworkCmd = m_actionManager->registerAction(m_extractArtwork, Constants::Actions::ExportArtwork);
     extractArtworkCmd->setCategories(tracksCategory);
     QObject::connect(m_extractArtwork, &QAction::triggered, m_self, [this]() {
-        if(hasTracks()) {
-            extractArtwork(m_self->selectedSelection());
+        if(const auto* selection = m_self->selectedSelection()) {
+            extractArtwork(*selection);
         }
     });
     registerAction(m_self, TrackContextMenuArea::Track, Constants::Menus::Context::Artwork,
@@ -427,10 +424,11 @@ void TrackSelectionControllerPrivate::setupBuiltInMenus()
 
     m_attachFrontArtwork->setStatusTip(tr("Attach an image file as the front cover for the selected tracks"));
     QObject::connect(m_attachFrontArtwork, &QAction::triggered, m_self, [this]() {
-        if(!hasTracks()) {
+        const auto* selection = m_self->selectedSelection();
+        if(!selection) {
             return;
         }
-        attachArtwork(m_self->selectedSelection(), Track::Cover::Front, Utils::getMainWindow());
+        attachArtwork(*selection, Track::Cover::Front, Utils::getMainWindow());
     });
     registerAction(m_self, TrackContextMenuArea::Track, Constants::Menus::Context::ArtworkAttach,
                    Id{u"%1.Front"_s.arg(QString::fromLatin1(Constants::Menus::Context::ArtworkAttach))},
@@ -439,10 +437,11 @@ void TrackSelectionControllerPrivate::setupBuiltInMenus()
 
     m_attachBackArtwork->setStatusTip(tr("Attach an image file as the back cover for the selected tracks"));
     QObject::connect(m_attachBackArtwork, &QAction::triggered, m_self, [this]() {
-        if(!hasTracks()) {
+        const auto* selection = m_self->selectedSelection();
+        if(!selection) {
             return;
         }
-        attachArtwork(m_self->selectedSelection(), Track::Cover::Back, Utils::getMainWindow());
+        attachArtwork(*selection, Track::Cover::Back, Utils::getMainWindow());
     });
     registerAction(m_self, TrackContextMenuArea::Track, Constants::Menus::Context::ArtworkAttach,
                    Id{u"%1.Back"_s.arg(QString::fromLatin1(Constants::Menus::Context::ArtworkAttach))},
@@ -451,10 +450,11 @@ void TrackSelectionControllerPrivate::setupBuiltInMenus()
 
     m_attachArtistArtwork->setStatusTip(tr("Attach an image file as the artist picture for the selected tracks"));
     QObject::connect(m_attachArtistArtwork, &QAction::triggered, m_self, [this]() {
-        if(!hasTracks()) {
+        const auto* selection = m_self->selectedSelection();
+        if(!selection) {
             return;
         }
-        attachArtwork(m_self->selectedSelection(), Track::Cover::Artist, Utils::getMainWindow());
+        attachArtwork(*selection, Track::Cover::Artist, Utils::getMainWindow());
     });
     registerAction(m_self, TrackContextMenuArea::Track, Constants::Menus::Context::ArtworkAttach,
                    Id{u"%1.Artist"_s.arg(QString::fromLatin1(Constants::Menus::Context::ArtworkAttach))},
@@ -468,8 +468,8 @@ void TrackSelectionControllerPrivate::setupBuiltInMenus()
     auto* removeArtworkCmd = m_actionManager->registerAction(m_removeArtwork, Constants::Actions::RemoveArtwork);
     removeArtworkCmd->setCategories(tracksCategory);
     QObject::connect(m_removeArtwork, &QAction::triggered, m_self, [this]() {
-        if(hasTracks()) {
-            removeArtwork(m_self->selectedSelection());
+        if(const auto* selection = m_self->selectedSelection()) {
+            removeArtwork(*selection);
         }
     });
     registerAction(m_self, TrackContextMenuArea::Track, Constants::Menus::Context::Artwork,
@@ -481,8 +481,11 @@ void TrackSelectionControllerPrivate::setupBuiltInMenus()
     m_openProperties->setStatusTip(tr("Open the properties dialog"));
     auto* openPropsCmd = m_actionManager->registerAction(m_openProperties, Constants::Actions::OpenProperties);
     openPropsCmd->setCategories(tracksCategory);
-    QObject::connect(m_openProperties, &QAction::triggered, m_self,
-                     [this]() { openProperties(m_self->selectedSelection()); });
+    QObject::connect(m_openProperties, &QAction::triggered, m_self, [this]() {
+        if(const auto* selection = m_self->selectedSelection()) {
+            openProperties(*selection);
+        }
+    });
     registerAction(m_self, TrackContextMenuArea::Track, m_trackRoot.id, Constants::Actions::OpenProperties,
                    m_openProperties->text(),
                    [this](QMenu* menu, const TrackSelection&) { menu->addAction(m_openProperties); });
@@ -1301,20 +1304,15 @@ bool TrackSelectionController::hasTracks() const
     return p->hasTracks();
 }
 
-TrackSelection TrackSelectionController::selectedSelection() const
+const TrackSelection* TrackSelectionController::selectedSelection() const
 {
-    if(const auto* selection = p->currentSelection()) {
-        return *selection;
-    }
-
-    return {};
+    return p->currentSelection();
 }
 
 Track TrackSelectionController::selectedTrack() const
 {
-    const auto selection = selectedSelection();
-    if(!selection.tracks.empty()) {
-        return selection.tracks.front();
+    if(const auto* selection = selectedSelection(); selection && !selection->tracks.empty()) {
+        return selection->tracks.front();
     }
 
     return {};
@@ -1322,12 +1320,20 @@ Track TrackSelectionController::selectedTrack() const
 
 TrackList TrackSelectionController::selectedTracks() const
 {
-    return selectedSelection().tracks;
+    if(const auto* selection = selectedSelection()) {
+        return selection->tracks;
+    }
+
+    return {};
 }
 
 int TrackSelectionController::selectedTrackCount() const
 {
-    return static_cast<int>(selectedSelection().tracks.size());
+    if(const auto* selection = selectedSelection()) {
+        return static_cast<int>(selection->tracks.size());
+    }
+
+    return 0;
 }
 
 void TrackSelectionController::changeSelectedTracks(WidgetContext* context, const TrackSelection& selection)
@@ -1377,7 +1383,7 @@ void TrackSelectionController::changePlaybackOnSend(WidgetContext* context, bool
 
 void TrackSelectionController::addTrackContextMenu(QMenu* menu) const
 {
-    p->renderArea(menu, TrackContextMenuArea::Track, selectedSelection());
+    p->renderArea(menu, TrackContextMenuArea::Track, selectedSelection() ? *selectedSelection() : TrackSelection{});
 }
 
 void TrackSelectionController::addTrackContextMenu(QMenu* menu, const TrackSelection& selection) const
@@ -1387,7 +1393,7 @@ void TrackSelectionController::addTrackContextMenu(QMenu* menu, const TrackSelec
 
 void TrackSelectionController::addTrackQueueContextMenu(QMenu* menu) const
 {
-    p->renderArea(menu, TrackContextMenuArea::Queue, selectedSelection());
+    p->renderArea(menu, TrackContextMenuArea::Queue, selectedSelection() ? *selectedSelection() : TrackSelection{});
 }
 
 void TrackSelectionController::addTrackPlaylistContextMenu(QMenu* menu) const
@@ -1405,7 +1411,7 @@ void TrackSelectionController::addTrackPlaylistContextMenu(QMenu* menu) const
 
     const auto beforeRenderCount = static_cast<int>(menu->actions().size());
 
-    p->renderArea(menu, TrackContextMenuArea::Playlist, selectedSelection());
+    p->renderArea(menu, TrackContextMenuArea::Playlist, selectedSelection() ? *selectedSelection() : TrackSelection{});
 
     const auto actions = menu->actions();
 

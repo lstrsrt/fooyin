@@ -108,7 +108,7 @@ public:
 
     [[nodiscard]] bool hasTracks() const;
 
-    [[nodiscard]] TrackSelection selectedSelection() const;
+    [[nodiscard]] const TrackSelection* selectedSelection() const;
     [[nodiscard]] Track selectedTrack() const;
     [[nodiscard]] TrackList selectedTracks() const;
     [[nodiscard]] int selectedTrackCount() const;

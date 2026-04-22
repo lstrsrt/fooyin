@@ -151,13 +151,13 @@ void FileOpsPlugin::setupMenu()
     deleteCmd->setCategories({tr("Edit")});
 
     QObject::connect(deleteAction, &QAction::triggered, deleteAction, [this]() {
-        const auto selection = m_trackSelectionController->selectedSelection();
-        if(!canOperateOnTracks(selection.tracks)) {
+        const auto* selection = m_trackSelectionController->selectedSelection();
+        if(!selection || !canOperateOnTracks(selection->tracks)) {
             return;
         }
 
-        const auto runDelete = [this, selection]() {
-            auto* worker = new FileOpsWorker(m_library, selection.tracks, m_settings);
+        const auto runDelete = [this, tracks = selection->tracks]() {
+            auto* worker = new FileOpsWorker(m_library, tracks, m_settings);
             auto* thread = new QThread(this);
             worker->moveToThread(thread);
 
@@ -177,9 +177,9 @@ void FileOpsPlugin::setupMenu()
 
         const bool confirm = m_settings->fileValue(Settings::ConfirmDelete, true).toBool();
         if(confirm) {
-            auto* dialog = new FileOpsDeleteDialog(selection.tracks, m_settings, Utils::getMainWindow());
+            auto* dialog = new FileOpsDeleteDialog(selection->tracks, m_settings, Utils::getMainWindow());
             dialog->setAttribute(Qt::WA_DeleteOnClose);
-            QObject::connect(dialog, &QDialog::accepted, dialog, [runDelete]() { runDelete(); });
+            QObject::connect(dialog, &QDialog::accepted, dialog, runDelete);
             dialog->open();
         }
         else {
