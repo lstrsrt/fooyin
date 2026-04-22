@@ -3,7 +3,7 @@ find_package(ZLIB REQUIRED)
 create_fooyin_plugin_internal(
     lyrics
     DEPENDS Fooyin::Gui
-        ZLIB::ZLIB
+            ZLIB::ZLIB
     SOURCES lyrics.h
             lyricscolours.h
             lyricsconstants.h
@@ -23,6 +23,10 @@ create_fooyin_plugin_internal(
             lyricsplugin.h
             lyricspropertiestab.cpp
             lyricspropertiestab.h
+            lyricssearchdialog.cpp
+            lyricssearchdialog.h
+            lyricssearchmodel.cpp
+            lyricssearchmodel.h
             lyricssaver.cpp
             lyricssaver.h
             lyricsview.cpp
