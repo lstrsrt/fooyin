@@ -82,6 +82,10 @@ public:
     void pause();
     void previous();
     void next();
+    void randomTrack();
+    void randomAlbum();
+    void previousAlbum();
+    void nextAlbum();
     void advance(Player::AdvanceReason reason);
     void stop();
     /*! Synchronise UI/controller state from engine without issuing transport requests. */

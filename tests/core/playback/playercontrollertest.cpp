@@ -96,6 +96,14 @@ Track makeTrack(const QString& path, int id, uint64_t durationMs)
     return track;
 }
 
+Track makeAlbumTrack(const QString& path, int id, uint64_t durationMs, const QString& album, const QString& trackNumber)
+{
+    Track track = makeTrack(path, id, durationMs);
+    track.setAlbum(album);
+    track.setTrackNumber(trackNumber);
+    return track;
+}
+
 bool createPlaylistTables(const DbConnectionPoolPtr& dbPool)
 {
     const DbConnectionProvider dbProvider{dbPool};
@@ -498,6 +506,139 @@ TEST(PlayerControllerTest, PreviousCapabilityIncludesRewindingCurrentTrack)
     controller.setCurrentPosition(6000);
 
     EXPECT_TRUE(controller.hasPreviousTrack());
+}
+
+TEST(PlayerControllerTest, RandomTrackRequestsDifferentTrackWhenPossible)
+{
+    ensureCoreApplication();
+    SettingsManager settings{QDir::tempPath() + u"/fooyin_playercontroller_random_track_test.ini"_s};
+    registerControllerSettings(settings);
+    PlaylistHandlerHarness harness{settings};
+    ASSERT_TRUE(harness.dbInitialised);
+
+    auto* playlist
+        = harness.handler.createPlaylist(u"RandomTrack"_s, {makeTrack(u"/tmp/random-track-a.flac"_s, 31, 1000),
+                                                            makeTrack(u"/tmp/random-track-b.flac"_s, 32, 1000)});
+    ASSERT_NE(playlist, nullptr);
+
+    harness.handler.changeActivePlaylist(playlist);
+    playlist->changeCurrentIndex(0);
+
+    PlayerController controller{&settings, &harness.handler};
+    const auto committedTrack = playlist->playlistTrack(0);
+    ASSERT_TRUE(committedTrack.has_value());
+    controller.commitCurrentTrack(*committedTrack);
+
+    QSignalSpy requestSpy{&controller, &PlayerController::trackChangeRequested};
+
+    controller.randomTrack();
+
+    ASSERT_EQ(requestSpy.count(), 1);
+    const auto request = requestSpy.takeFirst().front().value<Player::TrackChangeRequest>();
+    EXPECT_EQ(request.track.indexInPlaylist, 1);
+    EXPECT_EQ(request.context.reason, Player::AdvanceReason::ManualSelection);
+    EXPECT_TRUE(request.context.userInitiated);
+}
+
+TEST(PlayerControllerTest, RandomAlbumRequestsDifferentAlbumWhenPossible)
+{
+    ensureCoreApplication();
+    SettingsManager settings{QDir::tempPath() + u"/fooyin_playercontroller_random_album_test.ini"_s};
+    registerControllerSettings(settings);
+    PlaylistHandlerHarness harness{settings};
+    ASSERT_TRUE(harness.dbInitialised);
+
+    auto* playlist = harness.handler.createPlaylist(
+        u"RandomAlbum"_s, {makeAlbumTrack(u"/tmp/random-album-a1.flac"_s, 41, 1000, u"Album A"_s, u"1"_s),
+                           makeAlbumTrack(u"/tmp/random-album-a2.flac"_s, 42, 1000, u"Album A"_s, u"2"_s),
+                           makeAlbumTrack(u"/tmp/random-album-b1.flac"_s, 43, 1000, u"Album B"_s, u"1"_s)});
+    ASSERT_NE(playlist, nullptr);
+
+    harness.handler.changeActivePlaylist(playlist);
+    playlist->changeCurrentIndex(1);
+
+    PlayerController controller{&settings, &harness.handler};
+    const auto committedTrack = playlist->playlistTrack(1);
+    ASSERT_TRUE(committedTrack.has_value());
+    controller.commitCurrentTrack(*committedTrack);
+
+    QSignalSpy requestSpy{&controller, &PlayerController::trackChangeRequested};
+
+    controller.randomAlbum();
+
+    ASSERT_EQ(requestSpy.count(), 1);
+    const auto request = requestSpy.takeFirst().front().value<Player::TrackChangeRequest>();
+    EXPECT_EQ(request.track.indexInPlaylist, 2);
+    EXPECT_EQ(request.context.reason, Player::AdvanceReason::ManualSelection);
+    EXPECT_TRUE(request.context.userInitiated);
+}
+
+TEST(PlayerControllerTest, PreviousAlbumRequestsFirstTrackOfPreviousAlbum)
+{
+    ensureCoreApplication();
+    SettingsManager settings{QDir::tempPath() + u"/fooyin_playercontroller_previous_album_test.ini"_s};
+    registerControllerSettings(settings);
+    PlaylistHandlerHarness harness{settings};
+    ASSERT_TRUE(harness.dbInitialised);
+
+    auto* playlist = harness.handler.createPlaylist(
+        u"PreviousAlbum"_s, {makeAlbumTrack(u"/tmp/previous-album-a1.flac"_s, 51, 1000, u"Album A"_s, u"1"_s),
+                             makeAlbumTrack(u"/tmp/previous-album-a2.flac"_s, 52, 1000, u"Album A"_s, u"2"_s),
+                             makeAlbumTrack(u"/tmp/previous-album-b1.flac"_s, 53, 1000, u"Album B"_s, u"1"_s),
+                             makeAlbumTrack(u"/tmp/previous-album-b2.flac"_s, 54, 1000, u"Album B"_s, u"2"_s)});
+    ASSERT_NE(playlist, nullptr);
+
+    harness.handler.changeActivePlaylist(playlist);
+    playlist->changeCurrentIndex(3);
+
+    PlayerController controller{&settings, &harness.handler};
+    const auto committedTrack = playlist->playlistTrack(3);
+    ASSERT_TRUE(committedTrack.has_value());
+    controller.commitCurrentTrack(*committedTrack);
+
+    QSignalSpy requestSpy{&controller, &PlayerController::trackChangeRequested};
+
+    controller.previousAlbum();
+
+    ASSERT_EQ(requestSpy.count(), 1);
+    const auto request = requestSpy.takeFirst().front().value<Player::TrackChangeRequest>();
+    EXPECT_EQ(request.track.indexInPlaylist, 0);
+    EXPECT_EQ(request.context.reason, Player::AdvanceReason::ManualPrevious);
+    EXPECT_TRUE(request.context.userInitiated);
+}
+
+TEST(PlayerControllerTest, NextAlbumRequestsFirstTrackOfNextAlbum)
+{
+    ensureCoreApplication();
+    SettingsManager settings{QDir::tempPath() + u"/fooyin_playercontroller_next_album_test.ini"_s};
+    registerControllerSettings(settings);
+    PlaylistHandlerHarness harness{settings};
+    ASSERT_TRUE(harness.dbInitialised);
+
+    auto* playlist = harness.handler.createPlaylist(
+        u"NextAlbum"_s, {makeAlbumTrack(u"/tmp/next-album-a1.flac"_s, 61, 1000, u"Album A"_s, u"1"_s),
+                         makeAlbumTrack(u"/tmp/next-album-a2.flac"_s, 62, 1000, u"Album A"_s, u"2"_s),
+                         makeAlbumTrack(u"/tmp/next-album-b1.flac"_s, 63, 1000, u"Album B"_s, u"1"_s),
+                         makeAlbumTrack(u"/tmp/next-album-b2.flac"_s, 64, 1000, u"Album B"_s, u"2"_s)});
+    ASSERT_NE(playlist, nullptr);
+
+    harness.handler.changeActivePlaylist(playlist);
+    playlist->changeCurrentIndex(1);
+
+    PlayerController controller{&settings, &harness.handler};
+    const auto committedTrack = playlist->playlistTrack(1);
+    ASSERT_TRUE(committedTrack.has_value());
+    controller.commitCurrentTrack(*committedTrack);
+
+    QSignalSpy requestSpy{&controller, &PlayerController::trackChangeRequested};
+
+    controller.nextAlbum();
+
+    ASSERT_EQ(requestSpy.count(), 1);
+    const auto request = requestSpy.takeFirst().front().value<Player::TrackChangeRequest>();
+    EXPECT_EQ(request.track.indexInPlaylist, 2);
+    EXPECT_EQ(request.context.reason, Player::AdvanceReason::ManualNext);
+    EXPECT_TRUE(request.context.userInitiated);
 }
 
 TEST(PlayerControllerTest, CommittingQueueTrackOnlyRemovesFirstDuplicateQueueEntry)

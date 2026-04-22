@@ -143,6 +143,10 @@ public:
     int nextIndexFrom(int currentIndex, int delta, PlayModes mode);
     int firstIndex(PlayModes mode);
     int lastIndex(PlayModes mode);
+    int randomTrackIndexFrom(int currentIndex);
+    int randomAlbumIndexFrom(int currentIndex);
+    int previousAlbumIndexFrom(int currentIndex, PlayModes mode);
+    int nextAlbumIndexFrom(int currentIndex, PlayModes mode);
     /*!
      * Returns the next track to be played based on the @p delta from the current
      * index and the @p mode.

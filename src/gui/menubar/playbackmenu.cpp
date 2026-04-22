@@ -45,6 +45,10 @@ PlaybackMenu::PlaybackMenu(ActionManager* actionManager, PlayerController* playe
     , m_playPause{new QAction(tr("&Play"), this)}
     , m_previous{new QAction(tr("P&revious"), this)}
     , m_next{new QAction(tr("&Next"), this)}
+    , m_previousAlbum{new QAction(tr("&Previous album"), this)}
+    , m_nextAlbum{new QAction(tr("&Next album"), this)}
+    , m_randomTrack{new QAction(tr("Random &track"), this)}
+    , m_randomAlbum{new QAction(tr("Random &album"), this)}
     , m_defaultPlayback{new QAction(tr("&Default"), this)}
     , m_repeatTrack{new QAction(tr("Repeat &track"), this)}
     , m_repeatAlbum{new QAction(tr("Repeat &album"), this)}
@@ -95,10 +99,46 @@ PlaybackMenu::PlaybackMenu(ActionManager* actionManager, PlayerController* playe
     prevCmd->setAttribute(ProxyAction::UpdateText);
     playbackMenu->addAction(prevCmd);
 
+    auto* randomMenu = m_actionManager->createMenu(Constants::Menus::PlaybackRandom);
+    randomMenu->menu()->setTitle(tr("Ra&ndom"));
+    playbackMenu->addMenu(randomMenu);
+
+    m_randomTrack->setStatusTip(tr("Start playing a random track in the current playlist"));
+    auto* randomTrackCmd = actionManager->registerAction(m_randomTrack, Constants::Actions::RandomTrack);
+    randomTrackCmd->setCategories(playbackCategory);
+    randomTrackCmd->setDescription(tr("Random Track"));
+    randomMenu->addAction(randomTrackCmd);
+
+    m_randomAlbum->setStatusTip(tr("Start playing the first track of a random album in the current playlist"));
+    auto* randomAlbumCmd = actionManager->registerAction(m_randomAlbum, Constants::Actions::RandomAlbum);
+    randomAlbumCmd->setCategories(playbackCategory);
+    randomAlbumCmd->setDescription(tr("Random Album"));
+    randomMenu->addAction(randomAlbumCmd);
+
+    auto* skipToMenu = m_actionManager->createMenu(Constants::Menus::PlaybackSkipTo);
+    skipToMenu->menu()->setTitle(tr("Skip &to"));
+    playbackMenu->addMenu(skipToMenu);
+
+    m_nextAlbum->setStatusTip(tr("Start playing the first track of the next album in the current playlist"));
+    auto* nextAlbumCmd = actionManager->registerAction(m_nextAlbum, Constants::Actions::NextAlbum);
+    nextAlbumCmd->setCategories(playbackCategory);
+    nextAlbumCmd->setDescription(tr("Next Album"));
+    skipToMenu->addAction(nextAlbumCmd);
+
+    m_previousAlbum->setStatusTip(tr("Start playing the first track of the previous album in the current playlist"));
+    auto* previousAlbumCmd = actionManager->registerAction(m_previousAlbum, Constants::Actions::PreviousAlbum);
+    previousAlbumCmd->setCategories(playbackCategory);
+    previousAlbumCmd->setDescription(tr("Previous Album"));
+    skipToMenu->addAction(previousAlbumCmd);
+
     QObject::connect(m_stop, &QAction::triggered, playerController, &PlayerController::stop);
     QObject::connect(m_playPause, &QAction::triggered, playerController, &PlayerController::playPause);
     QObject::connect(m_next, &QAction::triggered, playerController, &PlayerController::next);
     QObject::connect(m_previous, &QAction::triggered, playerController, &PlayerController::previous);
+    QObject::connect(m_previousAlbum, &QAction::triggered, playerController, &PlayerController::previousAlbum);
+    QObject::connect(m_nextAlbum, &QAction::triggered, playerController, &PlayerController::nextAlbum);
+    QObject::connect(m_randomTrack, &QAction::triggered, playerController, &PlayerController::randomTrack);
+    QObject::connect(m_randomAlbum, &QAction::triggered, playerController, &PlayerController::randomAlbum);
 
     playbackMenu->addSeparator();
 

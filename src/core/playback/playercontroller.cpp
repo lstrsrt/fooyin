@@ -106,6 +106,8 @@ public:
     [[nodiscard]] bool trackEndAutoTransitionsEnabled() const;
     [[nodiscard]] bool canRewindCurrentTrack() const;
     [[nodiscard]] bool canPerformPrevious() const;
+    [[nodiscard]] Playlist* targetPlaybackPlaylist() const;
+    [[nodiscard]] int targetPlaybackIndex(Playlist* playlist) const;
 
     [[nodiscard]] Player::UpcomingTrack resolveUpcomingTrack() const;
     void emitUpcomingTrackChangedIfNeeded();
@@ -126,6 +128,8 @@ public:
     bool requestSelectedTrack(const std::optional<RequestedTrack>& selection);
     bool requestSelectedTrack(const std::optional<RequestedTrack>& selection,
                               const Player::TrackChangeContext& context);
+    [[nodiscard]] std::optional<RequestedTrack> requestedPlaylistTrack(Playlist* playlist, int index) const;
+    bool requestPlaylistTrack(Playlist* playlist, int index, const Player::TrackChangeContext& context);
     bool requestBoundaryRestart(PlaybackOrderNavigator::RestartTarget target);
     bool requestBoundaryRestart(PlaybackOrderNavigator::RestartTarget target,
                                 const Player::TrackChangeContext& context);
@@ -258,6 +262,29 @@ bool PlayerControllerPrivate::canPerformPrevious() const
     }
 
     return m_navigator.previewPlaybackRelativeTrack(-1).isValid();
+}
+
+Playlist* PlayerControllerPrivate::targetPlaybackPlaylist() const
+{
+    if(auto* playlist = m_navigator.playbackPlaylist()) {
+        return playlist;
+    }
+
+    return m_playlistHandler ? m_playlistHandler->activePlaylist() : nullptr;
+}
+
+int PlayerControllerPrivate::targetPlaybackIndex(Playlist* playlist) const
+{
+    if(!playlist) {
+        return -1;
+    }
+
+    if(m_session.currentTrack().isValid() && !m_session.isQueueTrack()
+       && m_session.currentTrack().playlistId == playlist->id()) {
+        return m_session.currentTrack().indexInPlaylist;
+    }
+
+    return playlist->currentTrackIndex();
 }
 
 Player::UpcomingTrack PlayerControllerPrivate::resolveUpcomingTrack() const
@@ -590,6 +617,39 @@ bool PlayerControllerPrivate::requestSelectedTrack(const std::optional<Requested
                                                    const Player::TrackChangeContext& context)
 {
     return selection.has_value() && requestSelectedTrack(*selection, context);
+}
+
+std::optional<PlayerControllerPrivate::RequestedTrack>
+PlayerControllerPrivate::requestedPlaylistTrack(Playlist* playlist, int index) const
+{
+    if(!playlist || index < 0) {
+        return {};
+    }
+
+    if(const auto track = playlist->playlistTrack(index); track && track->isValid()) {
+        return RequestedTrack{
+            .track        = *track,
+            .isQueueTrack = false,
+        };
+    }
+
+    return {};
+}
+
+bool PlayerControllerPrivate::requestPlaylistTrack(Playlist* playlist, const int index,
+                                                   const Player::TrackChangeContext& context)
+{
+    const auto selection = requestedPlaylistTrack(playlist, index);
+    if(!selection || !m_session.canAcceptRequest()) {
+        return false;
+    }
+
+    if(m_playlistHandler->activePlaylist() != playlist) {
+        m_playlistHandler->changeActivePlaylist(playlist);
+    }
+
+    playlist->changeCurrentIndex(index);
+    return requestSelectedTrack(*selection, context);
 }
 
 bool PlayerControllerPrivate::requestBoundaryRestart(PlaybackOrderNavigator::RestartTarget target)
@@ -1007,6 +1067,86 @@ void PlayerController::next()
     p->clearStopAfterCurrentForManualSkip();
 
     advance(Player::AdvanceReason::ManualNext);
+}
+
+void PlayerController::randomTrack()
+{
+    p->clearStopAfterCurrentForManualSkip();
+
+    auto* playlist = p->targetPlaybackPlaylist();
+    if(!playlist) {
+        return;
+    }
+
+    const int targetIndex = playlist->randomTrackIndexFrom(p->targetPlaybackIndex(playlist));
+    if(targetIndex < 0) {
+        return;
+    }
+
+    if(p->requestPlaylistTrack(playlist, targetIndex,
+                               {.reason = Player::AdvanceReason::ManualSelection, .userInitiated = true})) {
+        play();
+    }
+}
+
+void PlayerController::randomAlbum()
+{
+    p->clearStopAfterCurrentForManualSkip();
+
+    auto* playlist = p->targetPlaybackPlaylist();
+    if(!playlist) {
+        return;
+    }
+
+    const int targetIndex = playlist->randomAlbumIndexFrom(p->targetPlaybackIndex(playlist));
+    if(targetIndex < 0) {
+        return;
+    }
+
+    if(p->requestPlaylistTrack(playlist, targetIndex,
+                               {.reason = Player::AdvanceReason::ManualSelection, .userInitiated = true})) {
+        play();
+    }
+}
+
+void PlayerController::previousAlbum()
+{
+    p->clearStopAfterCurrentForManualSkip();
+
+    auto* playlist = p->targetPlaybackPlaylist();
+    if(!playlist) {
+        return;
+    }
+
+    const int targetIndex = playlist->previousAlbumIndexFrom(p->targetPlaybackIndex(playlist), p->m_playMode);
+    if(targetIndex < 0) {
+        return;
+    }
+
+    if(p->requestPlaylistTrack(playlist, targetIndex,
+                               {.reason = Player::AdvanceReason::ManualPrevious, .userInitiated = true})) {
+        play();
+    }
+}
+
+void PlayerController::nextAlbum()
+{
+    p->clearStopAfterCurrentForManualSkip();
+
+    auto* playlist = p->targetPlaybackPlaylist();
+    if(!playlist) {
+        return;
+    }
+
+    const int targetIndex = playlist->nextAlbumIndexFrom(p->targetPlaybackIndex(playlist), p->m_playMode);
+    if(targetIndex < 0) {
+        return;
+    }
+
+    if(p->requestPlaylistTrack(playlist, targetIndex,
+                               {.reason = Player::AdvanceReason::ManualNext, .userInitiated = true})) {
+        play();
+    }
 }
 
 void PlayerController::advance(Player::AdvanceReason reason)

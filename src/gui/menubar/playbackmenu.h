@@ -51,6 +51,10 @@ private:
     QAction* m_playPause;
     QAction* m_previous;
     QAction* m_next;
+    QAction* m_previousAlbum;
+    QAction* m_nextAlbum;
+    QAction* m_randomTrack;
+    QAction* m_randomAlbum;
 
     QAction* m_defaultPlayback;
     QAction* m_repeatTrack;

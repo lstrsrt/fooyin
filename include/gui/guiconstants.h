@@ -70,16 +70,18 @@ constexpr auto SidebarRight  = "sidebar-right";
 constexpr auto MenuBar = "Fooyin.MenuBar";
 
 namespace Menus {
-constexpr auto File          = "Fooyin.Menu.File";
-constexpr auto Edit          = "Fooyin.Menu.Edit";
-constexpr auto View          = "Fooyin.Menu.View";
-constexpr auto Layout        = "Fooyin.Menu.Layout";
-constexpr auto Playback      = "Fooyin.Menu.Playback";
-constexpr auto PlaybackOrder = "Fooyin.Menu.Playback.Order";
-constexpr auto Library       = "Fooyin.Menu.Library";
-constexpr auto Database      = "Fooyin.Menu.Database";
-constexpr auto SwitchLibrary = "Fooyin.Menu.Library.Switch";
-constexpr auto Help          = "Fooyin.Menu.Help";
+constexpr auto File           = "Fooyin.Menu.File";
+constexpr auto Edit           = "Fooyin.Menu.Edit";
+constexpr auto View           = "Fooyin.Menu.View";
+constexpr auto Layout         = "Fooyin.Menu.Layout";
+constexpr auto Playback       = "Fooyin.Menu.Playback";
+constexpr auto PlaybackRandom = "Fooyin.Menu.Playback.Random";
+constexpr auto PlaybackSkipTo = "Fooyin.Menu.Playback.SkipTo";
+constexpr auto PlaybackOrder  = "Fooyin.Menu.Playback.Order";
+constexpr auto Library        = "Fooyin.Menu.Library";
+constexpr auto Database       = "Fooyin.Menu.Database";
+constexpr auto SwitchLibrary  = "Fooyin.Menu.Library.Switch";
+constexpr auto Help           = "Fooyin.Menu.Help";
 
 namespace Context {
 constexpr auto Layout              = "Fooyin.Menu.Layout";
@@ -153,6 +155,10 @@ constexpr auto Stop                      = "Playback.Stop";
 constexpr auto PlayPause                 = "Playback.PlayPause";
 constexpr auto Next                      = "Playback.Next";
 constexpr auto Previous                  = "Playback.Previous";
+constexpr auto RandomTrack               = "Playback.RandomTrack";
+constexpr auto RandomAlbum               = "Playback.RandomAlbum";
+constexpr auto PreviousAlbum             = "Playback.PreviousAlbum";
+constexpr auto NextAlbum                 = "Playback.NextAlbum";
 constexpr auto PlaybackDefault           = "Playback.Order.Default";
 constexpr auto RepeatTrack               = "Playback.Order.RepeatTrack";
 constexpr auto RepeatAlbum               = "Playback.Order.RepeatAlbum";
