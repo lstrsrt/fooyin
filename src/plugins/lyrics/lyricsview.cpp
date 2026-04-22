@@ -353,6 +353,22 @@ int LyricsView::edgeFadeHeight() const
     return std::clamp((viewportHeight * m_edgeFadeSizePercent) / 100, 1, viewportHeight / 2);
 }
 
+int LyricsView::visiblePaddingHeight(const bool top) const
+{
+    if(!model() || model()->rowCount({}) <= 1) {
+        return 0;
+    }
+
+    const int row                  = top ? 0 : model()->rowCount({}) - 1;
+    const QModelIndex paddingIndex = model()->index(row, 0);
+    if(!paddingIndex.isValid() || !paddingIndex.data(LyricsModel::IsPaddingRole).toBool()) {
+        return 0;
+    }
+
+    const QRect visibleRect = visualRect(paddingIndex).intersected(viewport()->rect());
+    return std::max(0, visibleRect.height());
+}
+
 void LyricsView::paintEdgeFade(QPainter& painter) const
 {
     if(!model() || model()->rowCount({}) <= 0) {
@@ -377,18 +393,44 @@ void LyricsView::paintEdgeFade(QPainter& painter) const
     QColor centreColour{edgeColour};
     centreColour.setAlpha(0);
 
-    const QRect topRect{viewportRect.left(), viewportRect.top(), viewportRect.width(), fadeHeight};
-    QLinearGradient topGradient{topRect.topLeft(), topRect.bottomLeft()};
-    topGradient.setColorAt(0.0, edgeColour);
-    topGradient.setColorAt(1.0, centreColour);
-    painter.fillRect(topRect, topGradient);
+    if(!verticalScrollBar()) {
+        return;
+    }
 
-    const QRect bottomRect{viewportRect.left(), viewportRect.bottom() - fadeHeight + 1, viewportRect.width(),
-                           fadeHeight};
-    QLinearGradient bottomGradient{bottomRect.topLeft(), bottomRect.bottomLeft()};
-    bottomGradient.setColorAt(0.0, centreColour);
-    bottomGradient.setColorAt(1.0, edgeColour);
-    painter.fillRect(bottomRect, bottomGradient);
+    int topFadeHeight{0};
+    const int topPadding = visiblePaddingHeight(true);
+    if(topPadding > 0) {
+        topFadeHeight = std::min(fadeHeight, topPadding);
+    }
+    else {
+        topFadeHeight = std::min(fadeHeight, verticalScrollBar()->value());
+    }
+
+    if(topFadeHeight > 0) {
+        const QRect topRect{viewportRect.left(), viewportRect.top(), viewportRect.width(), topFadeHeight};
+        QLinearGradient topGradient{topRect.topLeft(), topRect.bottomLeft()};
+        topGradient.setColorAt(0.0, edgeColour);
+        topGradient.setColorAt(1.0, centreColour);
+        painter.fillRect(topRect, topGradient);
+    }
+
+    int bottomFadeHeight{0};
+    const int bottomPadding = visiblePaddingHeight(false);
+    if(bottomPadding > 0) {
+        bottomFadeHeight = std::min(fadeHeight, bottomPadding);
+    }
+    else {
+        bottomFadeHeight = std::min(fadeHeight, verticalScrollBar()->maximum() - verticalScrollBar()->value());
+    }
+
+    if(bottomFadeHeight > 0) {
+        const QRect bottomRect{viewportRect.left(), viewportRect.bottom() - bottomFadeHeight + 1, viewportRect.width(),
+                               bottomFadeHeight};
+        QLinearGradient bottomGradient{bottomRect.topLeft(), bottomRect.bottomLeft()};
+        bottomGradient.setColorAt(0.0, centreColour);
+        bottomGradient.setColorAt(1.0, edgeColour);
+        painter.fillRect(bottomRect, bottomGradient);
+    }
 }
 
 QModelIndex LyricsView::seekableIndexAt(const QPoint& pos) const

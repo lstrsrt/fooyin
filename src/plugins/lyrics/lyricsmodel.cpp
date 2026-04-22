@@ -27,7 +27,8 @@
 namespace Fooyin::Lyrics {
 LyricsModel::LyricsModel(QObject* parent)
     : QAbstractListModel{parent}
-    , m_viewportPadding{0}
+    , m_topViewportPadding{0}
+    , m_bottomViewportPadding{0}
     , m_alignment{Qt::AlignCenter}
     , m_lineSpacing{5}
     , m_currentTime{0}
@@ -82,12 +83,16 @@ void LyricsModel::setMargins(const QMargins& margins)
     }
 }
 
-void LyricsModel::setViewportPadding(int padding)
+void LyricsModel::setViewportPadding(int topPadding, int bottomPadding)
 {
-    padding = std::max(padding, 0);
-    if(std::exchange(m_viewportPadding, padding) == padding) {
+    topPadding    = std::max(topPadding, 0);
+    bottomPadding = std::max(bottomPadding, 0);
+    if(m_topViewportPadding == topPadding && m_bottomViewportPadding == bottomPadding) {
         return;
     }
+
+    m_topViewportPadding    = topPadding;
+    m_bottomViewportPadding = bottomPadding;
 
     if(rowCount({}) > 0) {
         emit dataChanged(index(0, 0), index(0, 0));
@@ -212,9 +217,9 @@ QVariant LyricsModel::data(const QModelIndex& index, int role) const
     if(isPadding) {
         if(role == Qt::SizeHintRole) {
             if(isTopPadding) {
-                return QSize(0, m_margins.top() + m_viewportPadding);
+                return QSize(0, m_margins.top() + m_topViewportPadding);
             }
-            return QSize(0, m_margins.bottom() + m_viewportPadding);
+            return QSize(0, m_margins.bottom() + m_bottomViewportPadding);
         }
         return {};
     }

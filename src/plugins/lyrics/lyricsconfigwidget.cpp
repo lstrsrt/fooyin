@@ -51,6 +51,8 @@ LyricsConfigDialog::LyricsConfigDialog(LyricsWidget* lyricsWidget, QWidget* pare
     , m_scrollSynced{new QRadioButton(tr("Synced"), this)}
     , m_scrollAutomatic{new QRadioButton(tr("Automatic"), this)}
     , m_showScrollbar{new QCheckBox(tr("Show scrollbar"), this)}
+    , m_centreFirstSyncedLine{new QCheckBox(tr("Centre first synced line"), this)}
+    , m_centreLastSyncedLine{new QCheckBox(tr("Centre last synced line"), this)}
     , m_alignment{new QComboBox(this)}
     , m_lineSpacing{new QSpinBox(this)}
     , m_leftMargin{new QSpinBox(this)}
@@ -160,6 +162,8 @@ LyricsConfigDialog::LyricsConfigDialog(LyricsWidget* lyricsWidget, QWidget* pare
 
     auto* marginsGroup  = new QGroupBox(tr("Margins"), layoutPage);
     auto* marginsLayout = new QGridLayout(marginsGroup);
+    auto* syncedGroup   = new QGroupBox(tr("Synced"), layoutPage);
+    auto* syncedLayout  = new QGridLayout(syncedGroup);
 
     for(auto* spin : {m_leftMargin, m_topMargin, m_rightMargin, m_bottomMargin}) {
         spin->setRange(0, 100);
@@ -175,13 +179,26 @@ LyricsConfigDialog::LyricsConfigDialog(LyricsWidget* lyricsWidget, QWidget* pare
     marginsLayout->addWidget(m_topMargin, row, 1);
     marginsLayout->addWidget(new QLabel(tr("Bottom") + u":"_s, layoutPage), row, 2);
     marginsLayout->addWidget(m_bottomMargin, row++, 3);
-    marginsLayout->addWidget(
-        new QLabel(u"🛈 "_s + tr("Top and bottom margins only apply to unsynced lyrics."), layoutPage), row++, 0, 1, 5);
+    marginsLayout->addWidget(new QLabel(u"🛈 "_s
+                                            + tr("Top and bottom margins apply to unsynced lyrics, and to synced "
+                                                 "lyrics when centring is disabled for that edge."),
+                                        layoutPage),
+                             row++, 0, 1, 5);
     marginsLayout->setColumnStretch(4, 1);
+
+    row = 0;
+    syncedLayout->addWidget(m_centreFirstSyncedLine, row++, 0, 1, 2);
+    syncedLayout->addWidget(m_centreLastSyncedLine, row++, 0, 1, 2);
+    syncedLayout->addWidget(
+        new QLabel(u"🛈 "_s + tr("These options control whether the first and last synced lines are centred in view."),
+                   layoutPage),
+        row++, 0, 1, 2);
+    syncedLayout->setColumnStretch(1, 1);
 
     auto* layoutPageLayout = new QVBoxLayout(layoutPage);
     layoutPageLayout->addWidget(layoutGeneralGroup);
     layoutPageLayout->addWidget(fadeGroup);
+    layoutPageLayout->addWidget(syncedGroup);
     layoutPageLayout->addWidget(marginsGroup);
     layoutPageLayout->addStretch();
 
@@ -278,15 +295,17 @@ LyricsConfigDialog::LyricsConfigDialog(LyricsWidget* lyricsWidget, QWidget* pare
 LyricsWidget::ConfigData LyricsConfigDialog::config() const
 {
     LyricsWidget::ConfigData config{
-        .seekOnClick    = m_seekOnClick->isChecked(),
-        .noLyricsScript = m_noLyricsScript->text(),
-        .scrollDuration = m_scrollDuration->value(),
-        .scrollMode     = static_cast<int>(scrollMode()),
-        .edgeFadeMode   = m_edgeFadeMode->currentData().toInt(),
-        .edgeFadeSize   = m_edgeFadeSize->value(),
-        .showScrollbar  = m_showScrollbar->isChecked(),
-        .alignment      = m_alignment->currentData().toInt(),
-        .lineSpacing    = m_lineSpacing->value(),
+        .seekOnClick           = m_seekOnClick->isChecked(),
+        .noLyricsScript        = m_noLyricsScript->text(),
+        .scrollDuration        = m_scrollDuration->value(),
+        .scrollMode            = static_cast<int>(scrollMode()),
+        .edgeFadeMode          = m_edgeFadeMode->currentData().toInt(),
+        .edgeFadeSize          = m_edgeFadeSize->value(),
+        .showScrollbar         = m_showScrollbar->isChecked(),
+        .alignment             = m_alignment->currentData().toInt(),
+        .lineSpacing           = m_lineSpacing->value(),
+        .centreFirstSyncedLine = m_centreFirstSyncedLine->isChecked(),
+        .centreLastSyncedLine  = m_centreLastSyncedLine->isChecked(),
         .margins      = {m_leftMargin->value(), m_topMargin->value(), m_rightMargin->value(), m_bottomMargin->value()},
         .colours      = QVariant{},
         .baseFont     = m_baseFont->isChecked() ? m_baseFontBtn->buttonFont().toString() : QString{},
@@ -335,6 +354,8 @@ void LyricsConfigDialog::setConfig(const LyricsWidget::ConfigData& config)
 
     m_showScrollbar->setChecked(config.showScrollbar);
     m_lineSpacing->setValue(config.lineSpacing);
+    m_centreFirstSyncedLine->setChecked(config.centreFirstSyncedLine);
+    m_centreLastSyncedLine->setChecked(config.centreLastSyncedLine);
 
     int alignIdx = m_alignment->findData(config.alignment);
     if(alignIdx < 0) {

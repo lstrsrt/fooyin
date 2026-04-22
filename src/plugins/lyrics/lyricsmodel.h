@@ -49,7 +49,7 @@ public:
     [[nodiscard]] Lyrics lyrics() const;
 
     void setMargins(const QMargins& margins);
-    void setViewportPadding(int padding);
+    void setViewportPadding(int topPadding, int bottomPadding);
     void setAlignment(Qt::Alignment alignment);
     void setLineSpacing(int spacing);
     void setColours(const Colours& colours);
@@ -76,7 +76,8 @@ private:
 
     Lyrics m_lyrics;
     QMargins m_margins;
-    int m_viewportPadding;
+    int m_topViewportPadding;
+    int m_bottomViewportPadding;
     Qt::Alignment m_alignment;
     int m_lineSpacing;
     uint64_t m_currentTime;

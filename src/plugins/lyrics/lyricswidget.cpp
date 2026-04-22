@@ -310,6 +310,9 @@ LyricsWidget::ConfigData LyricsWidget::defaultConfig() const
     config.showScrollbar = m_settings->fileValue(Settings::ShowScrollbar, config.showScrollbar).toBool();
     config.alignment     = m_settings->fileValue(Settings::Alignment, config.alignment).toInt();
     config.lineSpacing   = m_settings->fileValue(Settings::LineSpacing, config.lineSpacing).toInt();
+    config.centreFirstSyncedLine
+        = m_settings->fileValue(Settings::CentreFirstLine, config.centreFirstSyncedLine).toBool();
+    config.centreLastSyncedLine = m_settings->fileValue(Settings::CentreLastLine, config.centreLastSyncedLine).toBool();
 
     const QVariant margins = m_settings->fileValue(Settings::Margins);
     if(margins.isValid() && margins.canConvert<QMargins>()) {
@@ -327,23 +330,7 @@ LyricsWidget::ConfigData LyricsWidget::defaultConfig() const
 
 LyricsWidget::ConfigData LyricsWidget::factoryConfig() const
 {
-    return {
-        .seekOnClick    = true,
-        .noLyricsScript = defaultNoLyricsScript(),
-        .scrollDuration = 500,
-        .scrollMode     = static_cast<int>(ScrollMode::Synced),
-        .edgeFadeMode   = static_cast<int>(EdgeFadeMode::SyncedOnly),
-        .edgeFadeSize   = 10,
-        .showScrollbar  = true,
-        .alignment      = static_cast<int>(Qt::AlignCenter),
-        .lineSpacing    = 5,
-        .margins        = Defaults::margins(),
-        .colours        = QVariant{},
-        .baseFont       = {},
-        .lineFont       = {},
-        .wordLineFont   = {},
-        .wordFont       = {},
-    };
+    return {};
 }
 
 const LyricsWidget::ConfigData& LyricsWidget::currentConfig() const
@@ -382,6 +369,8 @@ void LyricsWidget::saveDefaults(const ConfigData& config) const
     m_settings->fileSet(Settings::ShowScrollbar, validated.showScrollbar);
     m_settings->fileSet(Settings::Alignment, validated.alignment);
     m_settings->fileSet(Settings::LineSpacing, validated.lineSpacing);
+    m_settings->fileSet(Settings::CentreFirstLine, validated.centreFirstSyncedLine);
+    m_settings->fileSet(Settings::CentreLastLine, validated.centreLastSyncedLine);
     m_settings->fileSet(Settings::Margins, QVariant::fromValue(validated.margins));
     m_settings->fileSet(Settings::Colours, validated.colours);
     m_settings->fileSet(Settings::BaseFont, validated.baseFont);
@@ -401,6 +390,8 @@ void LyricsWidget::clearSavedDefaults() const
     m_settings->fileRemove(Settings::ShowScrollbar);
     m_settings->fileRemove(Settings::Alignment);
     m_settings->fileRemove(Settings::LineSpacing);
+    m_settings->fileRemove(Settings::CentreFirstLine);
+    m_settings->fileRemove(Settings::CentreLastLine);
     m_settings->fileRemove(Settings::Margins);
     m_settings->fileRemove(Settings::Colours);
     m_settings->fileRemove(Settings::BaseFont);
@@ -481,6 +472,12 @@ LyricsWidget::ConfigData LyricsWidget::configFromLayout(const QJsonObject& layou
     if(layout.contains("LineSpacing"_L1)) {
         config.lineSpacing = layout.value("LineSpacing"_L1).toInt();
     }
+    if(layout.contains("CentreFirstSyncedLine"_L1)) {
+        config.centreFirstSyncedLine = layout.value("CentreFirstSyncedLine"_L1).toBool();
+    }
+    if(layout.contains("CentreLastSyncedLine"_L1)) {
+        config.centreLastSyncedLine = layout.value("CentreLastSyncedLine"_L1).toBool();
+    }
 
     QMargins margins{config.margins};
     if(layout.contains("LeftMargin"_L1)) {
@@ -544,19 +541,21 @@ LyricsWidget::ConfigData LyricsWidget::configFromLayout(const QJsonObject& layou
 
 void LyricsWidget::saveConfigToLayout(const ConfigData& config, QJsonObject& layout) const
 {
-    layout["SeekOnClick"_L1]    = config.seekOnClick;
-    layout["NoLyricsScript"_L1] = config.noLyricsScript;
-    layout["ScrollDuration"_L1] = config.scrollDuration;
-    layout["ScrollMode"_L1]     = config.scrollMode;
-    layout["EdgeFadeMode"_L1]   = config.edgeFadeMode;
-    layout["EdgeFadeSize"_L1]   = config.edgeFadeSize;
-    layout["ShowScrollbar"_L1]  = config.showScrollbar;
-    layout["Alignment"_L1]      = config.alignment;
-    layout["LineSpacing"_L1]    = config.lineSpacing;
-    layout["LeftMargin"_L1]     = config.margins.left();
-    layout["TopMargin"_L1]      = config.margins.top();
-    layout["RightMargin"_L1]    = config.margins.right();
-    layout["BottomMargin"_L1]   = config.margins.bottom();
+    layout["SeekOnClick"_L1]           = config.seekOnClick;
+    layout["NoLyricsScript"_L1]        = config.noLyricsScript;
+    layout["ScrollDuration"_L1]        = config.scrollDuration;
+    layout["ScrollMode"_L1]            = config.scrollMode;
+    layout["EdgeFadeMode"_L1]          = config.edgeFadeMode;
+    layout["EdgeFadeSize"_L1]          = config.edgeFadeSize;
+    layout["ShowScrollbar"_L1]         = config.showScrollbar;
+    layout["Alignment"_L1]             = config.alignment;
+    layout["LineSpacing"_L1]           = config.lineSpacing;
+    layout["CentreFirstSyncedLine"_L1] = config.centreFirstSyncedLine;
+    layout["CentreLastSyncedLine"_L1]  = config.centreLastSyncedLine;
+    layout["LeftMargin"_L1]            = config.margins.left();
+    layout["TopMargin"_L1]             = config.margins.top();
+    layout["RightMargin"_L1]           = config.margins.right();
+    layout["BottomMargin"_L1]          = config.margins.bottom();
 
     const bool customColours      = config.colours.isValid() && config.colours.canConvert<Colours>()
                                  && !config.colours.value<Colours>().isEmpty();
@@ -889,14 +888,23 @@ RichText LyricsWidget::noLyricsDisplayText(const Track& track)
 
 void LyricsWidget::updateViewportPadding()
 {
-    auto margins = m_config.margins;
+    QMargins margins{m_config.margins};
+    int topPadding{0};
+    int bottomPadding{0};
+
     if(m_currentLyrics.isSynced()) {
-        margins.setTop(0);
-        margins.setBottom(0);
+        if(m_config.centreFirstSyncedLine) {
+            margins.setTop(0);
+            topPadding = m_lyricsView->viewport()->height() / 2;
+        }
+        if(m_config.centreLastSyncedLine) {
+            margins.setBottom(0);
+            bottomPadding = m_lyricsView->viewport()->height() / 2;
+        }
     }
 
     m_model->setMargins(margins);
-    m_model->setViewportPadding(m_currentLyrics.isSynced() ? m_lyricsView->viewport()->height() / 2 : 0);
+    m_model->setViewportPadding(topPadding, bottomPadding);
 
     if(m_currentLyrics.isSynced()) {
         m_currentLineStart = -1;

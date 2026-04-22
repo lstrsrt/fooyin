@@ -68,15 +68,17 @@ public:
     struct ConfigData
     {
         bool seekOnClick{true};
-        QString noLyricsScript;
+        QString noLyricsScript{defaultNoLyricsScript()};
         int scrollDuration{500};
         int scrollMode{static_cast<int>(ScrollMode::Synced)};
-        int edgeFadeMode{static_cast<int>(EdgeFadeMode::SyncedOnly)};
+        int edgeFadeMode{static_cast<int>(EdgeFadeMode::Off)};
         int edgeFadeSize{10};
         bool showScrollbar{true};
-        int alignment{static_cast<int>(Qt::AlignCenter)};
+        int alignment{Qt::AlignCenter};
         int lineSpacing{5};
-        QMargins margins{20, 20, 20, 20};
+        bool centreFirstSyncedLine{false};
+        bool centreLastSyncedLine{true};
+        QMargins margins{Defaults::margins()};
         QVariant colours;
         QString baseFont;
         QString lineFont;

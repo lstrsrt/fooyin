@@ -74,6 +74,7 @@ private:
     [[nodiscard]] bool isSeekableIndex(const QModelIndex& index) const;
     [[nodiscard]] QColor backgroundColour() const;
     [[nodiscard]] int edgeFadeHeight() const;
+    [[nodiscard]] int visiblePaddingHeight(bool top) const;
 
     void updateScrollSingleStep();
     void paintEdgeFade(QPainter& painter) const;
