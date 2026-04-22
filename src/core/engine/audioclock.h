@@ -79,6 +79,9 @@ public:
     [[nodiscard]] uint64_t position() const;
     //! Monotonic context generation from producer updates.
     [[nodiscard]] uint64_t generation() const;
+    //! Convert rendered source position to audible/presented position.
+    [[nodiscard]] static uint64_t presentedFromSource(uint64_t sourcePositionMs, uint64_t outputDelayMs,
+                                                      double delayToSourceScale);
 
 signals:
     //! Request immediate sync sample from pipeline/engine.
@@ -92,9 +95,6 @@ protected:
 private:
     using Clock     = std::chrono::steady_clock;
     using TimePoint = Clock::time_point;
-
-    [[nodiscard]] static uint64_t presentedFromSource(uint64_t sourcePositionMs, uint64_t outputDelayMs,
-                                                      double delayToSourceScale);
     [[nodiscard]] static double clampRate(double rate);
     [[nodiscard]] static uint64_t toPositionMs(double positionMs);
     [[nodiscard]] double predictedPositionMs(TimePoint now) const;

@@ -168,6 +168,15 @@ uint64_t AudioClock::generation() const
     return m_generation;
 }
 
+uint64_t AudioClock::presentedFromSource(uint64_t sourcePositionMs, uint64_t outputDelayMs, double delayToSourceScale)
+{
+    const double scale       = std::clamp(delayToSourceScale, MinDelayToSourceRate, MaxDelayToSourceRate);
+    const double delaySource = static_cast<double>(outputDelayMs) * scale;
+    const auto delayMs       = static_cast<uint64_t>(std::llround(std::max(0.0, delaySource)));
+
+    return saturatingSub(sourcePositionMs, delayMs);
+}
+
 void AudioClock::timerEvent(QTimerEvent* event)
 {
     const int timerId = event->timerId();
@@ -221,15 +230,6 @@ void AudioClock::timerEvent(QTimerEvent* event)
     }
 
     QObject::timerEvent(event);
-}
-
-uint64_t AudioClock::presentedFromSource(uint64_t sourcePositionMs, uint64_t outputDelayMs, double delayToSourceScale)
-{
-    const double scale       = std::clamp(delayToSourceScale, MinDelayToSourceRate, MaxDelayToSourceRate);
-    const double delaySource = static_cast<double>(outputDelayMs) * scale;
-    const auto delayMs       = static_cast<uint64_t>(std::llround(std::max(0.0, delaySource)));
-
-    return saturatingSub(sourcePositionMs, delayMs);
 }
 
 double AudioClock::clampRate(double rate)
