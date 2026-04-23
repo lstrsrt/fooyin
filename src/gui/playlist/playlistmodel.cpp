@@ -2914,6 +2914,7 @@ void PlaylistModel::mergeHeaders()
                 const int lastRow        = rightSibling->childCount() - 1;
 
                 if(movePlaylistRows(rightIndex, 0, lastRow, leftIndex, targetRow, rightChildren)) {
+                    rightSibling->clearChildren();
                     std::erase(headers, rightSibling);
                     removePlaylistRows(rightSibling->row(), 1, rightIndex.parent());
                 }
@@ -3002,7 +3003,9 @@ void PlaylistModel::deleteNodes(PlaylistItem* node)
 
     const auto children = node->children();
     for(PlaylistItem* child : children) {
-        deleteNodes(child);
+        if(child && child->parent() == node) {
+            deleteNodes(child);
+        }
     }
 
     m_nodes.erase(node->key());
