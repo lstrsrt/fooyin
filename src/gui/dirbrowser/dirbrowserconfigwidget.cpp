@@ -80,11 +80,13 @@ DirBrowserConfigDialog::DirBrowserConfigDialog(DirBrowser* browser, QWidget* par
     displayOptionsLayout->addWidget(m_showLocation, 4, 0);
 
     auto* mainLayout = contentLayout();
-    mainLayout->addWidget(clickBehaviour, 0, 0);
+    mainLayout->addWidget(clickBehaviour, 0, 0, 1, 2);
     mainLayout->addWidget(browserMode, 1, 0);
-    mainLayout->addWidget(browserFilters, 2, 0);
-    mainLayout->addWidget(displayOptions, 3, 0);
-    mainLayout->setRowStretch(mainLayout->rowCount(), 1);
+    mainLayout->addWidget(browserFilters, 1, 1);
+    mainLayout->addWidget(displayOptions, 2, 0, 1, 2);
+    mainLayout->setColumnStretch(0, 1);
+    mainLayout->setColumnStretch(1, 1);
+    mainLayout->setRowStretch(3, 1);
 
     auto addTrackAction = [](QComboBox* box, const QString& text, TrackAction action) {
         box->addItem(text, static_cast<int>(action));
