@@ -295,7 +295,7 @@ const std::vector<ScriptReferenceEntry>& scriptReferenceEntries()
                       QT_TRANSLATE_NOOP("Fooyin", "String")),
         functionEntry("insert", u"$insert(text,insert,pos)"_s,
                       QT_TRANSLATE_NOOP("Fooyin", "Inserts text at a position"), QT_TRANSLATE_NOOP("Fooyin", "String")),
-        functionEntry("substr", u"$substr(text,start,length)"_s, QT_TRANSLATE_NOOP("Fooyin", "Returns a substring"),
+        functionEntry("substr", u"$substr(text,start,end)"_s, QT_TRANSLATE_NOOP("Fooyin", "Returns a substring"),
                       QT_TRANSLATE_NOOP("Fooyin", "String")),
         functionEntry("strstr", u"$strstr(text,needle)"_s, QT_TRANSLATE_NOOP("Fooyin", "Finds a substring position"),
                       QT_TRANSLATE_NOOP("Fooyin", "String")),

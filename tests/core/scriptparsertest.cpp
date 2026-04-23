@@ -398,6 +398,9 @@ TEST_F(ScriptParserTest, StringTest)
     EXPECT_EQ(u"est", m_parser.evaluate(u"$right(Right test,3)"_s));
     EXPECT_EQ(u"", m_parser.evaluate(u"$right()"_s));
     EXPECT_EQ(u"", m_parser.evaluate(u"$right(1,2,3,4,5)"_s));
+    EXPECT_EQ(u"slice", m_parser.evaluate(u"$substr(A slice test,2,6)"_s));
+    EXPECT_EQ(u"s", m_parser.evaluate(u"$substr(A slice test,2,2)"_s));
+    EXPECT_EQ(u"", m_parser.evaluate(u"$substr()"_s));
     EXPECT_EQ(u"a  ", m_parser.evaluate(u"[$pad(a,3)]"_s));
     EXPECT_EQ(u"  a", m_parser.evaluate(u"[$padright(a,3)]"_s));
     EXPECT_EQ(u"x", m_parser.evaluate(u"[$if2(,x)]"_s));
