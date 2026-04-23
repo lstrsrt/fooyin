@@ -33,6 +33,7 @@
 #include <QPushButton>
 #include <QRadioButton>
 #include <QSpinBox>
+#include <QTabWidget>
 #include <QVBoxLayout>
 
 using namespace Qt::StringLiterals;
@@ -77,21 +78,33 @@ WaveBarConfigDialog::WaveBarConfigDialog(WaveBarWidget* waveBar, QWidget* parent
     , m_numSamples{new QComboBox(this)}
     , m_clearCacheButton{new QPushButton(tr("Clear Cache"), this)}
 {
-    auto* appearanceGroup  = new QGroupBox(tr("Appearance"), this);
+    auto* tabs = new QTabWidget(this);
+
+    auto* displayPage = new QWidget(tabs);
+    auto* coloursPage = new QWidget(tabs);
+    auto* globalPage  = new QWidget(tabs);
+
+    tabs->addTab(displayPage, tr("Display"));
+    tabs->addTab(coloursPage, tr("Colours"));
+    tabs->addTab(globalPage, tr("Global"));
+
+    auto* appearanceGroup  = new QGroupBox(tr("Appearance"), displayPage);
     auto* appearanceLayout = new QVBoxLayout(appearanceGroup);
     appearanceLayout->addWidget(m_showLabels);
     appearanceLayout->addWidget(m_showRemainingTime);
 
-    auto* modeGroup  = new QGroupBox(tr("Display"), this);
+    auto* modeGroup  = new QGroupBox(tr("Display"), displayPage);
     auto* modeLayout = new QVBoxLayout(modeGroup);
     m_silence->setToolTip(tr("Draw a line in place of silence"));
+
     modeLayout->addWidget(m_minMax);
     modeLayout->addWidget(m_rms);
     modeLayout->addWidget(m_silence);
 
-    auto* downmixGroupBox = new QGroupBox(tr("Downmix"), this);
+    auto* downmixGroupBox = new QGroupBox(tr("Downmix"), displayPage);
     auto* downmixGroup    = new QButtonGroup(this);
     auto* downmixLayout   = new QVBoxLayout(downmixGroupBox);
+
     downmixGroup->addButton(m_downmixOff);
     downmixGroup->addButton(m_downmixStereo);
     downmixGroup->addButton(m_downmixMono);
@@ -99,17 +112,20 @@ WaveBarConfigDialog::WaveBarConfigDialog(WaveBarWidget* waveBar, QWidget* parent
     downmixLayout->addWidget(m_downmixStereo);
     downmixLayout->addWidget(m_downmixMono);
 
-    auto* cursorGroup       = new QGroupBox(tr("Cursor"), this);
+    auto* cursorGroup       = new QGroupBox(tr("Cursor"), displayPage);
     auto* cursorGroupLayout = new QGridLayout(cursorGroup);
+
     m_cursorWidth->setRange(1, 20);
     m_cursorWidth->setSuffix(u" px"_s);
+
     cursorGroupLayout->addWidget(m_showCursor, 0, 0, 1, 2);
     cursorGroupLayout->addWidget(new QLabel(tr("Cursor width") + u":"_s, this), 1, 0);
     cursorGroupLayout->addWidget(m_cursorWidth, 1, 1);
     cursorGroupLayout->setColumnStretch(2, 1);
 
-    auto* scaleGroup       = new QGroupBox(tr("Scale"), this);
+    auto* scaleGroup       = new QGroupBox(tr("Scale"), displayPage);
     auto* scaleGroupLayout = new QGridLayout(scaleGroup);
+
     m_channelScale->setRange(0.0, 1.0);
     m_channelScale->setSingleStep(0.1);
     m_channelScale->setPrefix(u"x"_s);
@@ -139,14 +155,16 @@ WaveBarConfigDialog::WaveBarConfigDialog(WaveBarWidget* waveBar, QWidget* parent
     scaleGroupLayout->addWidget(m_supersampleFactor, 2, 1);
     scaleGroupLayout->setColumnStretch(2, 1);
 
-    auto* dimensionGroup       = new QGroupBox(tr("Dimension"), this);
+    auto* dimensionGroup       = new QGroupBox(tr("Dimension"), displayPage);
     auto* dimensionGroupLayout = new QGridLayout(dimensionGroup);
+
     m_barWidth->setRange(1, 50);
     m_barWidth->setSuffix(u" px"_s);
     m_barGap->setRange(0, 50);
     m_barGap->setSuffix(u" px"_s);
     m_centreGap->setRange(0, 10);
     m_centreGap->setSuffix(u" px"_s);
+
     dimensionGroupLayout->addWidget(new QLabel(tr("Bar width") + u":"_s, this), 0, 0);
     dimensionGroupLayout->addWidget(m_barWidth, 0, 1);
     dimensionGroupLayout->addWidget(new QLabel(tr("Bar gap") + u":"_s, this), 1, 0);
@@ -190,7 +208,7 @@ WaveBarConfigDialog::WaveBarConfigDialog(WaveBarWidget* waveBar, QWidget* parent
     coloursLayout->setColumnStretch(2, 1);
     coloursLayout->setColumnStretch(3, 1);
 
-    auto* cacheGroup       = new QGroupBox(tr("Cache"), this);
+    auto* cacheGroup       = new QGroupBox(tr("Cache"), globalPage);
     auto* cacheGroupLayout = new QGridLayout(cacheGroup);
     const QString numSamplesTip{tr("Number of samples (per channel) to use for waveform data.\n"
                                    "Higher values produce a more accurate and detailed waveform, "
@@ -211,17 +229,29 @@ WaveBarConfigDialog::WaveBarConfigDialog(WaveBarWidget* waveBar, QWidget* parent
     cacheGroupLayout->addWidget(m_clearCacheButton, 2, 1);
     cacheGroupLayout->setColumnStretch(2, 1);
 
-    auto* layout = contentLayout();
+    auto* displayLayout = new QGridLayout(displayPage);
+    displayLayout->addWidget(appearanceGroup, 0, 0);
+    displayLayout->addWidget(modeGroup, 0, 1);
+    displayLayout->addWidget(downmixGroupBox, 1, 0);
+    displayLayout->addWidget(cursorGroup, 1, 1);
+    displayLayout->addWidget(dimensionGroup, 2, 0);
+    displayLayout->addWidget(scaleGroup, 2, 1);
+    displayLayout->setColumnStretch(0, 1);
+    displayLayout->setColumnStretch(1, 1);
+    displayLayout->setRowStretch(3, 1);
 
-    layout->addWidget(appearanceGroup, 0, 0);
-    layout->addWidget(modeGroup, 0, 1);
-    layout->addWidget(downmixGroupBox, 1, 0);
-    layout->addWidget(cursorGroup, 1, 1);
-    layout->addWidget(dimensionGroup, 2, 0);
-    layout->addWidget(scaleGroup, 2, 1);
-    layout->addWidget(m_colourGroup, 3, 0, 1, 2);
-    layout->addWidget(cacheGroup, 4, 0, 1, 2);
-    layout->setRowStretch(layout->rowCount(), 1);
+    auto* coloursLayoutPage = new QVBoxLayout(coloursPage);
+    coloursLayoutPage->addWidget(m_colourGroup);
+    coloursLayoutPage->addStretch();
+
+    auto* globalLayout = new QVBoxLayout(globalPage);
+    globalLayout->addWidget(cacheGroup);
+    globalLayout->addStretch();
+
+    auto* layout = contentLayout();
+    layout->addWidget(tabs, 0, 0);
+    layout->setColumnStretch(0, 1);
+    layout->setRowStretch(0, 1);
 
     QObject::connect(m_clearCacheButton, &QPushButton::clicked, this, [this]() {
         widget()->requestClearCache();
