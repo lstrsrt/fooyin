@@ -442,7 +442,9 @@ void LibraryTreeWidget::setupHeaderContextMenu(const QPoint& pos)
     menu->setAttribute(Qt::WA_DeleteOnClose);
 
     addGroupMenu(menu);
-    menu->popup(this->mapToGlobal(pos));
+    addConfigureAction(menu);
+
+    menu->popup(m_libraryTree->header()->viewport()->mapToGlobal(pos));
 }
 
 void LibraryTreeWidget::populateContextMenu(QMenu* menu)
