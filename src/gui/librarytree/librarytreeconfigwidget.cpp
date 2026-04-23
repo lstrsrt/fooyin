@@ -31,6 +31,7 @@
 #include <QLineEdit>
 #include <QPushButton>
 #include <QSpinBox>
+#include <QTabWidget>
 
 using namespace Qt::StringLiterals;
 
@@ -60,38 +61,48 @@ LibraryTreeConfigDialog::LibraryTreeConfigDialog(LibraryTreeWidget* libraryTree,
     m_playbackOnSend->setToolTip(
         tr(R"(For "Replace current playlist" and "Create new playlist", start playback immediately.)"));
 
-    auto* clickBehaviour       = new QGroupBox(tr("Click Behaviour"), this);
+    auto* tabs = new QTabWidget(this);
+
+    auto* generalTab = new QWidget(tabs);
+    auto* styleTab   = new QWidget(tabs);
+
+    tabs->addTab(generalTab, tr("General"));
+    tabs->addTab(styleTab, tr("Appearance"));
+
+    auto* clickBehaviour       = new QGroupBox(tr("Click Behaviour"), generalTab);
     auto* clickBehaviourLayout = new QGridLayout(clickBehaviour);
 
-    clickBehaviourLayout->addWidget(new QLabel(tr("Double-click") + u":"_s, this), 0, 0);
-    clickBehaviourLayout->addWidget(m_doubleClick, 0, 1);
-    clickBehaviourLayout->addWidget(new QLabel(tr("Middle-click") + u":"_s, this), 1, 0);
-    clickBehaviourLayout->addWidget(m_middleClick, 1, 1);
-    clickBehaviourLayout->addWidget(m_playbackOnSend, 2, 0, 1, 2);
+    int row{0};
+    clickBehaviourLayout->addWidget(new QLabel(tr("Double-click") + u":"_s, this), row, 0);
+    clickBehaviourLayout->addWidget(m_doubleClick, row++, 1);
+    clickBehaviourLayout->addWidget(new QLabel(tr("Middle-click") + u":"_s, this), row, 0);
+    clickBehaviourLayout->addWidget(m_middleClick, row++, 1);
+    clickBehaviourLayout->addWidget(m_playbackOnSend, row++, 0, 1, 2);
     clickBehaviourLayout->setColumnStretch(clickBehaviourLayout->columnCount(), 1);
 
-    auto* selectionPlaylist       = new QGroupBox(tr("Library Selection Playlist"), this);
+    auto* selectionPlaylist       = new QGroupBox(tr("Library Selection Playlist"), generalTab);
     auto* selectionPlaylistLayout = new QGridLayout(selectionPlaylist);
 
     m_keepAlive->setToolTip(tr("If this is the active playlist, keep it alive when changing selection"));
 
-    selectionPlaylistLayout->addWidget(m_playlistEnabled, 0, 0, 1, 3);
-    selectionPlaylistLayout->addWidget(m_autoSwitch, 1, 0, 1, 3);
-    selectionPlaylistLayout->addWidget(m_keepAlive, 2, 0, 1, 3);
-    selectionPlaylistLayout->addWidget(new QLabel(tr("Name") + u":"_s, this), 3, 0);
-    selectionPlaylistLayout->addWidget(m_playlistName, 3, 1, 1, 2);
+    row = 0;
+    selectionPlaylistLayout->addWidget(m_playlistEnabled, row++, 0, 1, 3);
+    selectionPlaylistLayout->addWidget(m_autoSwitch, row++, 0, 1, 3);
+    selectionPlaylistLayout->addWidget(m_keepAlive, row++, 0, 1, 3);
+    selectionPlaylistLayout->addWidget(new QLabel(tr("Name") + u":"_s, this), row, 0);
+    selectionPlaylistLayout->addWidget(m_playlistName, row++, 1, 1, 2);
     selectionPlaylistLayout->setColumnStretch(2, 1);
 
-    auto* generalGroup       = new QGroupBox(tr("General"), this);
+    auto* generalGroup       = new QGroupBox(tr("General"), generalTab);
     auto* generalGroupLayout = new QGridLayout(generalGroup);
 
     generalGroupLayout->addWidget(m_restoreState);
     generalGroupLayout->addWidget(m_manageGroupings, 2, 0);
 
-    auto* appearanceGroup       = new QGroupBox(tr("Appearance"), this);
+    auto* appearanceGroup       = new QGroupBox(tr("Appearance"), styleTab);
     auto* appearanceGroupLayout = new QGridLayout(appearanceGroup);
 
-    auto* iconGroup       = new QGroupBox(tr("Icon"), this);
+    auto* iconGroup       = new QGroupBox(tr("Icon"), styleTab);
     auto* iconGroupLayout = new QGridLayout(iconGroup);
 
     m_iconWidth->setSuffix(u" px"_s);
@@ -104,7 +115,7 @@ LibraryTreeConfigDialog::LibraryTreeConfigDialog(LibraryTreeWidget* libraryTree,
     auto* iconSizeHint = new QLabel(u"🛈 "_s + tr("Use <b>Ctrl+Scroll</b> in the widget to resize icons."), this);
     iconSizeHint->setTextFormat(Qt::RichText);
 
-    int row{0};
+    row = 0;
     iconGroupLayout->addWidget(new QLabel(tr("Width") + u":"_s, this), row, 0);
     iconGroupLayout->addWidget(m_iconWidth, row++, 1);
     iconGroupLayout->addWidget(new QLabel(tr("Height") + u":"_s, this), row, 0);
@@ -126,12 +137,27 @@ LibraryTreeConfigDialog::LibraryTreeConfigDialog(LibraryTreeWidget* libraryTree,
     appearanceGroupLayout->setColumnStretch(appearanceGroupLayout->columnCount() - 1, 1);
     appearanceGroupLayout->setRowStretch(appearanceGroupLayout->rowCount(), 1);
 
-    auto* mainLayout = contentLayout();
-    mainLayout->addWidget(generalGroup, 0, 0);
-    mainLayout->addWidget(clickBehaviour, 1, 0);
-    mainLayout->addWidget(selectionPlaylist, 2, 0);
-    mainLayout->addWidget(appearanceGroup, 3, 0);
-    mainLayout->setRowStretch(mainLayout->rowCount(), 1);
+    auto* generalLayout = new QGridLayout(generalTab);
+
+    row = 0;
+    generalLayout->addWidget(generalGroup, row++, 0);
+    generalLayout->addWidget(clickBehaviour, row++, 0);
+    generalLayout->addWidget(selectionPlaylist, row++, 0);
+    generalLayout->setColumnStretch(0, 1);
+    generalLayout->setRowStretch(3, 1);
+
+    auto* styleLayout = new QGridLayout(styleTab);
+
+    row = 0;
+    styleLayout->addWidget(appearanceGroup, row++, 0);
+    styleLayout->setColumnStretch(0, 1);
+    styleLayout->setRowStretch(1, 1);
+
+    auto* mainLayout{contentLayout()};
+    row = 0;
+    mainLayout->addWidget(tabs, row++, 0);
+    mainLayout->setColumnStretch(0, 1);
+    mainLayout->setRowStretch(0, 1);
 
     auto addTrackAction = [](QComboBox* box, const QString& text, TrackAction action) {
         box->addItem(text, static_cast<int>(action));
