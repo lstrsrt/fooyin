@@ -39,7 +39,7 @@ public:
 
     explicit EditableTabBar(QWidget* parent = nullptr);
 
-    void showEditor();
+    void showEditor(int index);
     void closeEditor();
 
     void setEditTitle(const QString& title);

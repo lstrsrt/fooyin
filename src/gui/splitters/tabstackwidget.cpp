@@ -328,7 +328,8 @@ void TabStackWidget::contextMenuEvent(QContextMenuEvent* event)
     posMenu->addAction(west);
 
     auto* rename = new QAction(tr("&Rename"), menu);
-    QObject::connect(rename, &QAction::triggered, m_tabs->editableTabBar(), &EditableTabBar::showEditor);
+    QObject::connect(rename, &QAction::triggered, m_tabs->editableTabBar(),
+                     [this, index] { m_tabs->editableTabBar()->showEditor(index); });
 
     auto* remove = new QAction(tr("Re&move"), menu);
     QObject::connect(remove, &QAction::triggered, this, [this, index]() { removeWidget(index); });
