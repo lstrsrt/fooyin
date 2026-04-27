@@ -1166,7 +1166,7 @@ void readId3Tags(const TagLib::ID3v2::Tag* id3Tags, Fooyin::Track& track)
         }
     }
 
-    if(frames.contains("FMPS_Rating") && track.rating() <= 0) {
+    if(frames.contains("FMPS_Rating")) {
         const TagLib::ID3v2::FrameList& ratingFrame = frames["FMPS_Rating"];
         if(!ratingFrame.isEmpty()) {
             const float rating = convertString(ratingFrame.front()->toString()).toFloat();
@@ -1176,7 +1176,7 @@ void readId3Tags(const TagLib::ID3v2::Tag* id3Tags, Fooyin::Track& track)
         }
     }
 
-    if(frames.contains("FMPS_Playcount") && track.playCount() <= 0) {
+    if(frames.contains("FMPS_Playcount")) {
         const TagLib::ID3v2::FrameList& countFrame = frames["FMPS_Playcount"];
         if(!countFrame.isEmpty()) {
             const int count = convertString(countFrame.front()->toString()).toInt();
@@ -1380,14 +1380,14 @@ void readApeTags(const TagLib::APE::Tag* apeTags, Fooyin::Track& track)
         }
     }
 
-    if(items.contains("FMPS_RATING") && track.rating() <= 0) {
+    if(items.contains("FMPS_RATING")) {
         const float rating = convertString(items["FMPS_RATING"].toString()).toFloat();
         if(rating > 0 && rating <= 1.0) {
             track.setRating(rating);
         }
     }
 
-    if(items.contains("FMPS_PLAYCOUNT") && track.rating() <= 0) {
+    if(items.contains("FMPS_PLAYCOUNT")) {
         const int count = convertString(items["FMPS_PLAYCOUNT"].toString()).toInt();
         if(count > 0) {
             track.setPlayCount(count);
@@ -2006,7 +2006,7 @@ void readXiphComment(const TagLib::Ogg::XiphComment* xiphTags, Fooyin::Track& tr
         }
     }
 
-    if(fields.contains("FMPS_RATING") && track.rating() <= 0) {
+    if(fields.contains("FMPS_RATING")) {
         const TagLib::StringList& ratings = fields["FMPS_RATING"];
         if(!ratings.isEmpty()) {
             const float rating = convertString(ratings.front()).toFloat();
@@ -2016,7 +2016,7 @@ void readXiphComment(const TagLib::Ogg::XiphComment* xiphTags, Fooyin::Track& tr
         }
     }
 
-    if(fields.contains("FMPS_PLAYCOUNT") && track.playCount() <= 0) {
+    if(fields.contains("FMPS_PLAYCOUNT")) {
         const TagLib::StringList& countList = fields["FMPS_PLAYCOUNT"];
         if(!countList.isEmpty()) {
             const int count = convertString(countList.front()).toInt();

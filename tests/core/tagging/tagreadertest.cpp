@@ -22,7 +22,9 @@
 #include <core/engine/input/taglibparser.h>
 #include <core/track.h>
 
+#include <taglib/flacfile.h>
 #include <taglib/mp4file.h>
+#include <taglib/vorbisfile.h>
 
 #include <gtest/gtest.h>
 
@@ -66,6 +68,14 @@ void setMp4StringItem(TagLib::MP4::Tag* tag, const char* key, const QString& val
 
     const QByteArray utf8 = value.toUtf8();
     tag->setItem(key, {TagLib::String(utf8.constData(), TagLib::String::UTF8)});
+}
+
+void setXiphRatingFields(TagLib::Ogg::XiphComment* tag, const QString& rating, const QString& fmpsRating)
+{
+    ASSERT_NE(tag, nullptr);
+
+    tag->addField("RATING", TagLib::String{rating.toUtf8().constData(), TagLib::String::UTF8}, true);
+    tag->addField("FMPS_RATING", TagLib::String{fmpsRating.toUtf8().constData(), TagLib::String::UTF8}, true);
 }
 } // namespace
 
@@ -127,6 +137,28 @@ TEST_F(TagReaderTest, FlacRead)
     const auto testTag = track.extraTag(u"TEST"_s);
     ASSERT_TRUE(!testTag.isEmpty());
     EXPECT_EQ(testTag.front(), u"A custom tag"_s);
+}
+
+TEST_F(TagReaderTest, FlacReadPrefersFmpsRatingOverRating)
+{
+    const QString filepath = u":/audio/audiotest.flac"_s;
+    TempResource file{filepath};
+    file.checkValid();
+
+    {
+        const QByteArray localPath = file.fileName().toLocal8Bit();
+        TagLib::FLAC::File flacFile{localPath.constData()};
+        ASSERT_TRUE(flacFile.isValid());
+        ASSERT_NE(flacFile.xiphComment(true), nullptr);
+
+        setXiphRatingFields(flacFile.xiphComment(), u"1"_s, u"0.8"_s);
+        ASSERT_TRUE(flacFile.save());
+    }
+
+    Track track{file.fileName()};
+    ASSERT_TRUE(m_parser.readTrack({filepath, &file, nullptr}, track));
+
+    EXPECT_FLOAT_EQ(track.rating(), 0.8F);
 }
 
 TEST_F(TagReaderTest, M4aRead)
@@ -292,6 +324,28 @@ TEST_F(TagReaderTest, OggRead)
     const auto testTag = track.extraTag(u"TEST"_s);
     ASSERT_TRUE(!testTag.isEmpty());
     EXPECT_EQ(testTag.front(), u"A custom tag"_s);
+}
+
+TEST_F(TagReaderTest, OggReadPrefersFmpsRatingOverRating)
+{
+    const QString filepath = u":/audio/audiotest.ogg"_s;
+    TempResource file{filepath};
+    file.checkValid();
+
+    {
+        const QByteArray localPath = file.fileName().toLocal8Bit();
+        TagLib::Ogg::Vorbis::File oggFile{localPath.constData()};
+        ASSERT_TRUE(oggFile.isValid());
+        ASSERT_NE(oggFile.tag(), nullptr);
+
+        setXiphRatingFields(oggFile.tag(), u"1"_s, u"0.8"_s);
+        ASSERT_TRUE(oggFile.save());
+    }
+
+    Track track{file.fileName()};
+    ASSERT_TRUE(m_parser.readTrack({filepath, &file, nullptr}, track));
+
+    EXPECT_FLOAT_EQ(track.rating(), 0.8F);
 }
 
 TEST_F(TagReaderTest, OpusRead)
