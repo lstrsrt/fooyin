@@ -458,7 +458,6 @@ void VuMeterWidgetPrivate::ensureStaticLayer()
     m_staticLayer = QPixmap{static_cast<int>(static_cast<qreal>(targetSize.width()) * targetDpr),
                             static_cast<int>(static_cast<qreal>(targetSize.height()) * targetDpr)};
 
-    m_staticLayer.setDevicePixelRatio(targetDpr);
     m_staticLayer.fill(m_colours.colour(Colours::Type::Background, m_self->palette()));
 
     QPainter staticPainter{&m_staticLayer};
