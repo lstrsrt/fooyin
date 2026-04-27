@@ -106,6 +106,10 @@ protected:
     void contextMenuEvent(QContextMenuEvent* event) override;
     void keyPressEvent(QKeyEvent* event) override;
 
+    [[nodiscard]] ConfigData configFromLayout(const QJsonObject& layout) const;
+    static void saveConfigToLayout(const ConfigData& config, QJsonObject& layout);
+    void openConfigDialog() override;
+
 private:
     void setupConnections();
     void reset() const;
@@ -141,10 +145,6 @@ private:
     [[nodiscard]] QByteArray saveState() const;
     void restoreIndexState(const QByteArray& topKey, const std::vector<QByteArray>& keys, int currentIndex = 0);
     void restoreState(const QByteArray& state);
-
-    [[nodiscard]] ConfigData configFromLayout(const QJsonObject& layout) const;
-    static void saveConfigToLayout(const ConfigData& config, QJsonObject& layout);
-    void openConfigDialog() override;
 
     ActionManager* m_actionManager;
     MusicLibrary* m_library;

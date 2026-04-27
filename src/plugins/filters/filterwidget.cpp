@@ -49,7 +49,6 @@
 
 using namespace Qt::StringLiterals;
 
-namespace {
 constexpr auto FilterDoubleClickKey       = u"Filters/DoubleClickBehaviour";
 constexpr auto FilterMiddleClickKey       = u"Filters/MiddleClickBehaviour";
 constexpr auto FilterPlaylistEnabledKey   = u"Filters/SelectionPlaylistEnabled";
@@ -61,7 +60,6 @@ constexpr auto FilterKeepAliveKey         = u"Filters/KeepAlive";
 constexpr auto FilterIconSizeKey          = u"Filters/IconSize";
 constexpr auto FilterIconHorizontalGapKey = u"Filters/IconHorizontalGap";
 constexpr auto FilterIconVerticalGapKey   = u"Filters/IconVerticalGap";
-} // namespace
 
 namespace Fooyin::Filters {
 class FilterView : public ExpandedTreeView

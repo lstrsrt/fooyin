@@ -115,6 +115,11 @@ public:
         return {};
     }
 
+    [[nodiscard]] TrackList libraryTracks() const override
+    {
+        return {};
+    }
+
     [[nodiscard]] Track trackForId(int /*id*/) const override
     {
         return {};

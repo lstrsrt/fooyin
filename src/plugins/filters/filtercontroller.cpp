@@ -554,7 +554,8 @@ void FilterControllerPrivate::handleLibraryTracksPatched(const TrackList& change
         return;
     }
 
-    const TrackList sourceTracks = m_library->tracks();
+    const TrackList sourceTracks = m_library->libraryTracks();
+
     TrackIds changedTrackIds;
     changedTrackIds.reserve(changedTracks.size());
     for(const Track& track : changedTracks) {
@@ -622,7 +623,7 @@ void FilterControllerPrivate::recomputeGroup(const Id& groupId)
     }
 
     auto& group        = m_groups.at(groupId);
-    group.sourceTracks = m_library->tracks();
+    group.sourceTracks = m_library->libraryTracks();
     group.finalFilteredTracks.clear();
     group.hasActiveStages = false;
     ++group.revision;

@@ -754,6 +754,11 @@ TrackList UnifiedMusicLibrary::tracks() const
     return p->m_tracks;
 }
 
+TrackList UnifiedMusicLibrary::libraryTracks() const
+{
+    return p->m_tracks | std::views::filter(&Track::isInLibrary) | std::ranges::to<TrackList>();
+}
+
 Track UnifiedMusicLibrary::trackForId(int id) const
 {
     auto trackIt = std::ranges::find_if(p->m_tracks, [id](const Track& track) { return track.id() == id; });

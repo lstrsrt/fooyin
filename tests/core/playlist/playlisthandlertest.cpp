@@ -178,6 +178,11 @@ public:
         return m_tracks;
     }
 
+    TrackList libraryTracks() const override
+    {
+        return m_tracks;
+    }
+
     Track trackForId(int id) const override
     {
         for(const auto& track : m_tracks) {

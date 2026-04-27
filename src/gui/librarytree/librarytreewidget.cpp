@@ -257,10 +257,265 @@ LibraryTreeWidget::LibraryTreeWidget(ActionManager* actionManager, PlaylistContr
     setupConnections();
 }
 
+LibraryTreeWidget::~LibraryTreeWidget()
+{
+    QObject::disconnect(m_resetThrottler, nullptr, this, nullptr);
+}
+
+QString LibraryTreeWidget::name() const
+{
+    return tr("Library Tree");
+}
+
+QString LibraryTreeWidget::layoutName() const
+{
+    return u"LibraryTree"_s;
+}
+
+void LibraryTreeWidget::saveLayoutData(QJsonObject& layout)
+{
+    saveConfigToLayout(m_config, layout);
+    layout["Grouping"_L1] = m_grouping.id;
+    layout["State"_L1]    = QString::fromUtf8(saveState().toBase64());
+}
+
+void LibraryTreeWidget::loadLayoutData(const QJsonObject& layout)
+{
+    applyConfig(configFromLayout(layout));
+
+    if(layout.contains("Grouping"_L1)) {
+        if(const auto grouping = m_groupsRegistry->itemById(layout.value("Grouping"_L1).toInt())) {
+            if(grouping->isValid()) {
+                changeGrouping(grouping.value());
+            }
+        }
+    }
+
+    if(layout.contains("State"_L1)) {
+        m_pendingState = QByteArray::fromBase64(layout.value("State"_L1).toString().toUtf8());
+        if(!m_pendingState.isEmpty() && m_config.restoreState) {
+            m_libraryTree->setLoading(true);
+        }
+    }
+}
+
+void LibraryTreeWidget::searchEvent(const SearchRequest& request)
+{
+    searchChanged(request);
+}
+
+LibraryTreeWidget::ConfigData LibraryTreeWidget::factoryConfig() const
+{
+    return {
+        .doubleClickAction = 0,
+        .middleClickAction = 0,
+        .sendPlayback      = true,
+        .playlistEnabled   = false,
+        .autoSwitch        = true,
+        .keepAlive         = false,
+        .playlistName      = LibraryTreeController::defaultPlaylistName(),
+        .restoreState      = true,
+        .animated          = true,
+        .showHeader        = true,
+        .showScrollbar     = true,
+        .alternatingRows   = false,
+        .rowHeight         = 0,
+        .iconSize          = QSize{36, 36},
+    };
+}
+
+LibraryTreeWidget::ConfigData LibraryTreeWidget::defaultConfig() const
+{
+    auto config{factoryConfig()};
+
+    config.doubleClickAction = m_settings->fileValue(LibTreeDoubleClickKey, config.doubleClickAction).toInt();
+    config.middleClickAction = m_settings->fileValue(LibTreeMiddleClickKey, config.middleClickAction).toInt();
+    config.sendPlayback      = m_settings->fileValue(LibTreeSendPlaybackKey, config.sendPlayback).toBool();
+    config.playlistEnabled   = m_settings->fileValue(LibTreePlaylistEnabledKey, config.playlistEnabled).toBool();
+    config.autoSwitch        = m_settings->fileValue(LibTreeAutoSwitchKey, config.autoSwitch).toBool();
+    config.keepAlive         = m_settings->fileValue(LibTreeKeepAliveKey, config.keepAlive).toBool();
+    config.playlistName      = m_settings->fileValue(LibTreeAutoPlaylistKey, config.playlistName).toString();
+    config.restoreState      = m_settings->fileValue(LibTreeRestoreStateKey, config.restoreState).toBool();
+    config.animated          = m_settings->fileValue(LibTreeAnimatedKey, config.animated).toBool();
+    config.showHeader        = m_settings->fileValue(LibTreeHeaderKey, config.showHeader).toBool();
+    config.showScrollbar     = m_settings->fileValue(LibTreeScrollBarKey, config.showScrollbar).toBool();
+    config.alternatingRows   = m_settings->fileValue(LibTreeAltColoursKey, config.alternatingRows).toBool();
+    config.rowHeight         = m_settings->fileValue(LibTreeRowHeightKey, config.rowHeight).toInt();
+    config.iconSize          = m_settings->value<LibTreeIconSize>().toSize();
+
+    return config;
+}
+
+const LibraryTreeWidget::ConfigData& LibraryTreeWidget::currentConfig() const
+{
+    return m_config;
+}
+
+void LibraryTreeWidget::saveDefaults(const ConfigData& config) const
+{
+    m_settings->fileSet(LibTreeDoubleClickKey, config.doubleClickAction);
+    m_settings->fileSet(LibTreeMiddleClickKey, config.middleClickAction);
+    m_settings->fileSet(LibTreeSendPlaybackKey, config.sendPlayback);
+    m_settings->fileSet(LibTreePlaylistEnabledKey, config.playlistEnabled);
+    m_settings->fileSet(LibTreeAutoSwitchKey, config.autoSwitch);
+    m_settings->fileSet(LibTreeKeepAliveKey, config.keepAlive);
+    m_settings->fileSet(LibTreeAutoPlaylistKey, config.playlistName);
+    m_settings->fileSet(LibTreeRestoreStateKey, config.restoreState);
+    m_settings->fileSet(LibTreeAnimatedKey, config.animated);
+    m_settings->fileSet(LibTreeHeaderKey, config.showHeader);
+    m_settings->fileSet(LibTreeScrollBarKey, config.showScrollbar);
+    m_settings->fileSet(LibTreeAltColoursKey, config.alternatingRows);
+    m_settings->fileSet(LibTreeRowHeightKey, config.rowHeight);
+    m_settings->set<LibTreeIconSize>(config.iconSize);
+}
+
+void LibraryTreeWidget::clearSavedDefaults() const
+{
+    m_settings->fileRemove(LibTreeDoubleClickKey);
+    m_settings->fileRemove(LibTreeMiddleClickKey);
+    m_settings->fileRemove(LibTreeSendPlaybackKey);
+    m_settings->fileRemove(LibTreePlaylistEnabledKey);
+    m_settings->fileRemove(LibTreeAutoSwitchKey);
+    m_settings->fileRemove(LibTreeKeepAliveKey);
+    m_settings->fileRemove(LibTreeAutoPlaylistKey);
+    m_settings->fileRemove(LibTreeRestoreStateKey);
+    m_settings->fileRemove(LibTreeAnimatedKey);
+    m_settings->fileRemove(LibTreeHeaderKey);
+    m_settings->fileRemove(LibTreeScrollBarKey);
+    m_settings->fileRemove(LibTreeAltColoursKey);
+    m_settings->fileRemove(LibTreeRowHeightKey);
+    m_settings->reset<LibTreeIconSize>();
+}
+
+void LibraryTreeWidget::applyConfig(const ConfigData& config)
+{
+    m_config = config;
+
+    if(!m_config.iconSize.isValid()) {
+        m_config.iconSize = factoryConfig().iconSize;
+    }
+
+    m_config.rowHeight = std::max(m_config.rowHeight, 0);
+
+    m_doubleClickAction = static_cast<TrackAction>(m_config.doubleClickAction);
+    m_middleClickAction = static_cast<TrackAction>(m_config.middleClickAction);
+
+    m_libraryTree->setExpandsOnDoubleClick(m_doubleClickAction == TrackAction::None
+                                           || m_doubleClickAction == TrackAction::Play);
+    m_trackSelection->changePlaybackOnSend(m_widgetContext, m_config.sendPlayback);
+    m_libraryTree->setAnimated(m_config.animated);
+    m_libraryTree->setHeaderHidden(!m_config.showHeader);
+    setScrollbarEnabled(m_config.showScrollbar);
+    m_libraryTree->setAlternatingRowColors(m_config.alternatingRows);
+    m_model->setRowHeight(m_config.rowHeight);
+    m_libraryTree->setIconSize(m_config.iconSize);
+
+    QMetaObject::invokeMethod(m_libraryTree->itemDelegate(), "sizeHintChanged", Q_ARG(QModelIndex, {}));
+}
+
+void LibraryTreeWidget::contextMenuEvent(QContextMenuEvent* event)
+{
+    auto* menu = new QMenu(this);
+    menu->setAttribute(Qt::WA_DeleteOnClose);
+
+    populateContextMenu(menu);
+    menu->popup(event->globalPos());
+}
+
+void LibraryTreeWidget::keyPressEvent(QKeyEvent* event)
+{
+    const auto key = event->key();
+    if(key == Qt::Key_Enter || key == Qt::Key_Return) {
+        handleDoubleClick(m_libraryTree->currentIndex());
+    }
+
+    FyWidget::keyPressEvent(event);
+}
+
+LibraryTreeWidget::ConfigData LibraryTreeWidget::configFromLayout(const QJsonObject& layout) const
+{
+    ConfigData config{defaultConfig()};
+
+    if(layout.contains("DoubleClickAction"_L1)) {
+        config.doubleClickAction = layout.value("DoubleClickAction"_L1).toInt();
+    }
+    if(layout.contains("MiddleClickAction"_L1)) {
+        config.middleClickAction = layout.value("MiddleClickAction"_L1).toInt();
+    }
+    if(layout.contains("SendPlayback"_L1)) {
+        config.sendPlayback = layout.value("SendPlayback"_L1).toBool();
+    }
+    if(layout.contains("PlaylistEnabled"_L1)) {
+        config.playlistEnabled = layout.value("PlaylistEnabled"_L1).toBool();
+    }
+    if(layout.contains("AutoSwitch"_L1)) {
+        config.autoSwitch = layout.value("AutoSwitch"_L1).toBool();
+    }
+    if(layout.contains("KeepAlive"_L1)) {
+        config.keepAlive = layout.value("KeepAlive"_L1).toBool();
+    }
+    if(layout.contains("PlaylistName"_L1)) {
+        config.playlistName = layout.value("PlaylistName"_L1).toString();
+    }
+    if(layout.contains("RestoreState"_L1)) {
+        config.restoreState = layout.value("RestoreState"_L1).toBool();
+    }
+    if(layout.contains("Animated"_L1)) {
+        config.animated = layout.value("Animated"_L1).toBool();
+    }
+    if(layout.contains("ShowHeader"_L1)) {
+        config.showHeader = layout.value("ShowHeader"_L1).toBool();
+    }
+    if(layout.contains("ShowScrollbar"_L1)) {
+        config.showScrollbar = layout.value("ShowScrollbar"_L1).toBool();
+    }
+    if(layout.contains("AlternatingRows"_L1)) {
+        config.alternatingRows = layout.value("AlternatingRows"_L1).toBool();
+    }
+    if(layout.contains("RowHeight"_L1)) {
+        config.rowHeight = layout.value("RowHeight"_L1).toInt();
+    }
+    if(layout.contains("IconWidth"_L1) && layout.contains("IconHeight"_L1)) {
+        config.iconSize = {layout.value("IconWidth"_L1).toInt(), layout.value("IconHeight"_L1).toInt()};
+    }
+
+    if(!config.iconSize.isValid()) {
+        config.iconSize = factoryConfig().iconSize;
+    }
+
+    config.rowHeight = std::max(config.rowHeight, 0);
+
+    return config;
+}
+
+void LibraryTreeWidget::saveConfigToLayout(const ConfigData& config, QJsonObject& layout)
+{
+    layout["DoubleClickAction"_L1] = config.doubleClickAction;
+    layout["MiddleClickAction"_L1] = config.middleClickAction;
+    layout["SendPlayback"_L1]      = config.sendPlayback;
+    layout["PlaylistEnabled"_L1]   = config.playlistEnabled;
+    layout["AutoSwitch"_L1]        = config.autoSwitch;
+    layout["KeepAlive"_L1]         = config.keepAlive;
+    layout["PlaylistName"_L1]      = config.playlistName;
+    layout["RestoreState"_L1]      = config.restoreState;
+    layout["Animated"_L1]          = config.animated;
+    layout["ShowHeader"_L1]        = config.showHeader;
+    layout["ShowScrollbar"_L1]     = config.showScrollbar;
+    layout["AlternatingRows"_L1]   = config.alternatingRows;
+    layout["RowHeight"_L1]         = config.rowHeight;
+    layout["IconWidth"_L1]         = config.iconSize.width();
+    layout["IconHeight"_L1]        = config.iconSize.height();
+}
+
+void LibraryTreeWidget::openConfigDialog()
+{
+    showConfigDialog(new LibraryTreeConfigDialog(this, m_groupsRegistry, this));
+}
+
 void LibraryTreeWidget::setupConnections()
 {
     const auto resetModel = [this]() {
-        m_model->reset(m_library->tracks());
+        m_model->reset(m_library->libraryTracks());
     };
 
     QObject::connect(m_resetThrottler, &SignalThrottler::triggered, this, resetModel);
@@ -569,7 +824,7 @@ void LibraryTreeWidget::selectionChanged(const QItemSelection& selected, const Q
         return index.isValid() && index.data(LibraryTreeItem::Level).toInt() == -1;
     });
     if(summaryNodeIt != filteredIndexes.cend()) {
-        applySelectedTracks(m_library->tracks());
+        applySelectedTracks(m_library->libraryTracks());
         return;
     }
 
@@ -663,7 +918,7 @@ void LibraryTreeWidget::searchChanged(const SearchRequest& request)
         }
         else {
             m_filteredTracks.clear();
-            m_model->reset(m_library->tracks());
+            m_model->reset(m_library->libraryTracks());
         }
         return;
     }
@@ -999,261 +1254,6 @@ void LibraryTreeWidget::restoreState(const QByteArray& state)
     stream >> keysToRestore;
 
     restoreIndexState(topKey, keysToRestore);
-}
-
-LibraryTreeWidget::ConfigData LibraryTreeWidget::defaultConfig() const
-{
-    auto config{factoryConfig()};
-
-    config.doubleClickAction = m_settings->fileValue(LibTreeDoubleClickKey, config.doubleClickAction).toInt();
-    config.middleClickAction = m_settings->fileValue(LibTreeMiddleClickKey, config.middleClickAction).toInt();
-    config.sendPlayback      = m_settings->fileValue(LibTreeSendPlaybackKey, config.sendPlayback).toBool();
-    config.playlistEnabled   = m_settings->fileValue(LibTreePlaylistEnabledKey, config.playlistEnabled).toBool();
-    config.autoSwitch        = m_settings->fileValue(LibTreeAutoSwitchKey, config.autoSwitch).toBool();
-    config.keepAlive         = m_settings->fileValue(LibTreeKeepAliveKey, config.keepAlive).toBool();
-    config.playlistName      = m_settings->fileValue(LibTreeAutoPlaylistKey, config.playlistName).toString();
-    config.restoreState      = m_settings->fileValue(LibTreeRestoreStateKey, config.restoreState).toBool();
-    config.animated          = m_settings->fileValue(LibTreeAnimatedKey, config.animated).toBool();
-    config.showHeader        = m_settings->fileValue(LibTreeHeaderKey, config.showHeader).toBool();
-    config.showScrollbar     = m_settings->fileValue(LibTreeScrollBarKey, config.showScrollbar).toBool();
-    config.alternatingRows   = m_settings->fileValue(LibTreeAltColoursKey, config.alternatingRows).toBool();
-    config.rowHeight         = m_settings->fileValue(LibTreeRowHeightKey, config.rowHeight).toInt();
-    config.iconSize          = m_settings->value<LibTreeIconSize>().toSize();
-
-    return config;
-}
-
-LibraryTreeWidget::ConfigData LibraryTreeWidget::factoryConfig() const
-{
-    return {
-        .doubleClickAction = 0,
-        .middleClickAction = 0,
-        .sendPlayback      = true,
-        .playlistEnabled   = false,
-        .autoSwitch        = true,
-        .keepAlive         = false,
-        .playlistName      = LibraryTreeController::defaultPlaylistName(),
-        .restoreState      = true,
-        .animated          = true,
-        .showHeader        = true,
-        .showScrollbar     = true,
-        .alternatingRows   = false,
-        .rowHeight         = 0,
-        .iconSize          = QSize{36, 36},
-    };
-}
-
-const LibraryTreeWidget::ConfigData& LibraryTreeWidget::currentConfig() const
-{
-    return m_config;
-}
-
-void LibraryTreeWidget::saveDefaults(const ConfigData& config) const
-{
-    m_settings->fileSet(LibTreeDoubleClickKey, config.doubleClickAction);
-    m_settings->fileSet(LibTreeMiddleClickKey, config.middleClickAction);
-    m_settings->fileSet(LibTreeSendPlaybackKey, config.sendPlayback);
-    m_settings->fileSet(LibTreePlaylistEnabledKey, config.playlistEnabled);
-    m_settings->fileSet(LibTreeAutoSwitchKey, config.autoSwitch);
-    m_settings->fileSet(LibTreeKeepAliveKey, config.keepAlive);
-    m_settings->fileSet(LibTreeAutoPlaylistKey, config.playlistName);
-    m_settings->fileSet(LibTreeRestoreStateKey, config.restoreState);
-    m_settings->fileSet(LibTreeAnimatedKey, config.animated);
-    m_settings->fileSet(LibTreeHeaderKey, config.showHeader);
-    m_settings->fileSet(LibTreeScrollBarKey, config.showScrollbar);
-    m_settings->fileSet(LibTreeAltColoursKey, config.alternatingRows);
-    m_settings->fileSet(LibTreeRowHeightKey, config.rowHeight);
-    m_settings->set<LibTreeIconSize>(config.iconSize);
-}
-
-void LibraryTreeWidget::clearSavedDefaults() const
-{
-    m_settings->fileRemove(LibTreeDoubleClickKey);
-    m_settings->fileRemove(LibTreeMiddleClickKey);
-    m_settings->fileRemove(LibTreeSendPlaybackKey);
-    m_settings->fileRemove(LibTreePlaylistEnabledKey);
-    m_settings->fileRemove(LibTreeAutoSwitchKey);
-    m_settings->fileRemove(LibTreeKeepAliveKey);
-    m_settings->fileRemove(LibTreeAutoPlaylistKey);
-    m_settings->fileRemove(LibTreeRestoreStateKey);
-    m_settings->fileRemove(LibTreeAnimatedKey);
-    m_settings->fileRemove(LibTreeHeaderKey);
-    m_settings->fileRemove(LibTreeScrollBarKey);
-    m_settings->fileRemove(LibTreeAltColoursKey);
-    m_settings->fileRemove(LibTreeRowHeightKey);
-    m_settings->reset<LibTreeIconSize>();
-}
-
-void LibraryTreeWidget::applyConfig(const ConfigData& config)
-{
-    m_config = config;
-
-    if(!m_config.iconSize.isValid()) {
-        m_config.iconSize = factoryConfig().iconSize;
-    }
-
-    m_config.rowHeight = std::max(m_config.rowHeight, 0);
-
-    m_doubleClickAction = static_cast<TrackAction>(m_config.doubleClickAction);
-    m_middleClickAction = static_cast<TrackAction>(m_config.middleClickAction);
-
-    m_libraryTree->setExpandsOnDoubleClick(m_doubleClickAction == TrackAction::None
-                                           || m_doubleClickAction == TrackAction::Play);
-    m_trackSelection->changePlaybackOnSend(m_widgetContext, m_config.sendPlayback);
-    m_libraryTree->setAnimated(m_config.animated);
-    m_libraryTree->setHeaderHidden(!m_config.showHeader);
-    setScrollbarEnabled(m_config.showScrollbar);
-    m_libraryTree->setAlternatingRowColors(m_config.alternatingRows);
-    m_model->setRowHeight(m_config.rowHeight);
-    m_libraryTree->setIconSize(m_config.iconSize);
-
-    QMetaObject::invokeMethod(m_libraryTree->itemDelegate(), "sizeHintChanged", Q_ARG(QModelIndex, {}));
-}
-
-LibraryTreeWidget::ConfigData LibraryTreeWidget::configFromLayout(const QJsonObject& layout) const
-{
-    ConfigData config{defaultConfig()};
-
-    if(layout.contains("DoubleClickAction"_L1)) {
-        config.doubleClickAction = layout.value("DoubleClickAction"_L1).toInt();
-    }
-    if(layout.contains("MiddleClickAction"_L1)) {
-        config.middleClickAction = layout.value("MiddleClickAction"_L1).toInt();
-    }
-    if(layout.contains("SendPlayback"_L1)) {
-        config.sendPlayback = layout.value("SendPlayback"_L1).toBool();
-    }
-    if(layout.contains("PlaylistEnabled"_L1)) {
-        config.playlistEnabled = layout.value("PlaylistEnabled"_L1).toBool();
-    }
-    if(layout.contains("AutoSwitch"_L1)) {
-        config.autoSwitch = layout.value("AutoSwitch"_L1).toBool();
-    }
-    if(layout.contains("KeepAlive"_L1)) {
-        config.keepAlive = layout.value("KeepAlive"_L1).toBool();
-    }
-    if(layout.contains("PlaylistName"_L1)) {
-        config.playlistName = layout.value("PlaylistName"_L1).toString();
-    }
-    if(layout.contains("RestoreState"_L1)) {
-        config.restoreState = layout.value("RestoreState"_L1).toBool();
-    }
-    if(layout.contains("Animated"_L1)) {
-        config.animated = layout.value("Animated"_L1).toBool();
-    }
-    if(layout.contains("ShowHeader"_L1)) {
-        config.showHeader = layout.value("ShowHeader"_L1).toBool();
-    }
-    if(layout.contains("ShowScrollbar"_L1)) {
-        config.showScrollbar = layout.value("ShowScrollbar"_L1).toBool();
-    }
-    if(layout.contains("AlternatingRows"_L1)) {
-        config.alternatingRows = layout.value("AlternatingRows"_L1).toBool();
-    }
-    if(layout.contains("RowHeight"_L1)) {
-        config.rowHeight = layout.value("RowHeight"_L1).toInt();
-    }
-    if(layout.contains("IconWidth"_L1) && layout.contains("IconHeight"_L1)) {
-        config.iconSize = {layout.value("IconWidth"_L1).toInt(), layout.value("IconHeight"_L1).toInt()};
-    }
-
-    if(!config.iconSize.isValid()) {
-        config.iconSize = factoryConfig().iconSize;
-    }
-
-    config.rowHeight = std::max(config.rowHeight, 0);
-
-    return config;
-}
-
-void LibraryTreeWidget::saveConfigToLayout(const ConfigData& config, QJsonObject& layout)
-{
-    layout["DoubleClickAction"_L1] = config.doubleClickAction;
-    layout["MiddleClickAction"_L1] = config.middleClickAction;
-    layout["SendPlayback"_L1]      = config.sendPlayback;
-    layout["PlaylistEnabled"_L1]   = config.playlistEnabled;
-    layout["AutoSwitch"_L1]        = config.autoSwitch;
-    layout["KeepAlive"_L1]         = config.keepAlive;
-    layout["PlaylistName"_L1]      = config.playlistName;
-    layout["RestoreState"_L1]      = config.restoreState;
-    layout["Animated"_L1]          = config.animated;
-    layout["ShowHeader"_L1]        = config.showHeader;
-    layout["ShowScrollbar"_L1]     = config.showScrollbar;
-    layout["AlternatingRows"_L1]   = config.alternatingRows;
-    layout["RowHeight"_L1]         = config.rowHeight;
-    layout["IconWidth"_L1]         = config.iconSize.width();
-    layout["IconHeight"_L1]        = config.iconSize.height();
-}
-
-void LibraryTreeWidget::openConfigDialog()
-{
-    showConfigDialog(new LibraryTreeConfigDialog(this, m_groupsRegistry, this));
-}
-
-LibraryTreeWidget::~LibraryTreeWidget()
-{
-    QObject::disconnect(m_resetThrottler, nullptr, this, nullptr);
-}
-
-QString LibraryTreeWidget::name() const
-{
-    return tr("Library Tree");
-}
-
-QString LibraryTreeWidget::layoutName() const
-{
-    return u"LibraryTree"_s;
-}
-
-void LibraryTreeWidget::saveLayoutData(QJsonObject& layout)
-{
-    saveConfigToLayout(m_config, layout);
-    layout["Grouping"_L1] = m_grouping.id;
-    layout["State"_L1]    = QString::fromUtf8(saveState().toBase64());
-}
-
-void LibraryTreeWidget::loadLayoutData(const QJsonObject& layout)
-{
-    applyConfig(configFromLayout(layout));
-
-    if(layout.contains("Grouping"_L1)) {
-        if(const auto grouping = m_groupsRegistry->itemById(layout.value("Grouping"_L1).toInt())) {
-            if(grouping->isValid()) {
-                changeGrouping(grouping.value());
-            }
-        }
-    }
-
-    if(layout.contains("State"_L1)) {
-        m_pendingState = QByteArray::fromBase64(layout.value("State"_L1).toString().toUtf8());
-        if(!m_pendingState.isEmpty() && m_config.restoreState) {
-            m_libraryTree->setLoading(true);
-        }
-    }
-}
-
-void LibraryTreeWidget::searchEvent(const SearchRequest& request)
-{
-    searchChanged(request);
-}
-
-void LibraryTreeWidget::contextMenuEvent(QContextMenuEvent* event)
-{
-    auto* menu = new QMenu(this);
-    menu->setAttribute(Qt::WA_DeleteOnClose);
-
-    populateContextMenu(menu);
-    menu->popup(event->globalPos());
-}
-
-void LibraryTreeWidget::keyPressEvent(QKeyEvent* event)
-{
-    const auto key = event->key();
-    if(key == Qt::Key_Enter || key == Qt::Key_Return) {
-        handleDoubleClick(m_libraryTree->currentIndex());
-    }
-
-    FyWidget::keyPressEvent(event);
 }
 } // namespace Fooyin
 

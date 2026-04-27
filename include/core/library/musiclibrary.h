@@ -183,8 +183,10 @@ public:
      */
     virtual ScanRequest loadPlaylist(const QList<QUrl>& files) = 0;
 
-    /** Returns all tracks for all libraries */
+    /** Returns all tracks, including non-library tracks loaded from playlists or external files. */
     [[nodiscard]] virtual TrackList tracks() const = 0;
+    /** Returns all tracks that belong to a music library. */
+    [[nodiscard]] virtual TrackList libraryTracks() const = 0;
     /** Returns the track with an id of @p id, or an invalid track if not found.  */
     [[nodiscard]] virtual Track trackForId(int id) const = 0;
     /** Returns a TrackList containing each track (if) found with an id from @p ids  */

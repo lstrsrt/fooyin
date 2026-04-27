@@ -194,6 +194,11 @@ public:
         return m_tracks;
     }
 
+    TrackList libraryTracks() const override
+    {
+        return m_tracks;
+    }
+
     Track trackForId(int id) const override
     {
         const auto it = std::ranges::find_if(m_tracks, [id](const Track& track) { return track.id() == id; });
