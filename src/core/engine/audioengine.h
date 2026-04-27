@@ -55,6 +55,7 @@ class AudioLoader;
 class AudioAnalysisBus;
 class DspRegistry;
 class SettingsManager;
+class VisualisationBackend;
 class AudioEngine;
 namespace Testing {
 class AudioEngineTestAccessor;
@@ -124,7 +125,7 @@ public:
     Q_ENUM(DrainFillPrepareDiagnosticReason)
 
     AudioEngine(std::shared_ptr<AudioLoader> audioLoader, SettingsManager* settings, DspRegistry* dspRegistry,
-                QObject* parent = nullptr);
+                std::shared_ptr<VisualisationBackend> visualisationBackend, QObject* parent = nullptr);
     ~AudioEngine() override;
 
     AudioEngine(const AudioEngine&)            = delete;
@@ -393,6 +394,7 @@ private:
 
     LockFreeRingBuffer<LevelFrame> m_levelFrameMailbox;
     LockFreeRingBuffer<PcmFrame> m_pcmFrameMailbox;
+    std::shared_ptr<VisualisationBackend> m_visualisationBackend;
     std::atomic<bool> m_levelFrameDispatchQueued;
     std::atomic<bool> m_pcmFrameDispatchQueued;
     std::atomic<bool> m_pipelineWakeTaskQueued;

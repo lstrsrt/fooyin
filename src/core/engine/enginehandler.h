@@ -23,6 +23,7 @@
 
 #include <core/engine/enginecontroller.h>
 #include <core/engine/enginedefs.h>
+#include <core/engine/visualisationservice.h>
 #include <core/player/playerdefs.h>
 
 #include <QMetaMethod>
@@ -86,6 +87,8 @@ public:
     [[nodiscard]] OutputDevices getOutputDevices(const QString& output) const override;
 
     void applyOutputProfile(const Engine::OutputProfileRequest& request) override;
+
+    [[nodiscard]] VisualisationService* visualisationService() const override;
 
     //! Register an audio output
     void addOutput(const QString& name, OutputCreator output) override;
@@ -188,6 +191,7 @@ private:
     SettingsManager* m_settings;
 
     QThread m_engineThread;
+    std::unique_ptr<VisualisationService> m_visualisationService;
     AudioEngine* m_engine;
 
     std::map<QString, OutputCreator> m_outputs;

@@ -32,6 +32,7 @@
 namespace Fooyin {
 struct AudioOutputBuilder;
 class AudioBuffer;
+class VisualisationService;
 
 using OutputNames = std::vector<QString>;
 
@@ -58,6 +59,15 @@ public:
     [[nodiscard]] virtual OutputDevices getOutputDevices(const QString& output) const = 0;
     //! Apply a combined output/device/DSP/bitdepth profile.
     virtual void applyOutputProfile(const Engine::OutputProfileRequest& request) = 0;
+    /*!
+     * Pull-based visualisation API backed by shared post-master PCM history.
+     *
+     * This is intended for in-app visual widgets that query PCM or spectrum
+     * windows on their own repaint schedule.
+     *
+     * For push-style consumers such as meters, use the analysis signals below instead.
+     */
+    [[nodiscard]] virtual VisualisationService* visualisationService() const = 0;
 
     /*!
      * Registers an audio output backend factory under @p name.

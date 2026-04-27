@@ -11,6 +11,7 @@ set(SOURCES
     ${CMAKE_SOURCE_DIR}/include/core/engine/dsp/dspplugin.h
     ${CMAKE_SOURCE_DIR}/include/core/engine/dsp/processingbuffer.h
     ${CMAKE_SOURCE_DIR}/include/core/engine/dsp/processingbufferlist.h
+    ${CMAKE_SOURCE_DIR}/include/core/engine/dsp/realfft.h
     ${CMAKE_SOURCE_DIR}/include/core/engine/enginecontroller.h
     ${CMAKE_SOURCE_DIR}/include/core/engine/enginedefs.h
     ${CMAKE_SOURCE_DIR}/include/core/engine/fadingdefs.h
@@ -18,6 +19,7 @@ set(SOURCES
     ${CMAKE_SOURCE_DIR}/include/core/engine/levelframe.h
     ${CMAKE_SOURCE_DIR}/include/core/engine/outputplugin.h
     ${CMAKE_SOURCE_DIR}/include/core/engine/pcmframe.h
+    ${CMAKE_SOURCE_DIR}/include/core/engine/visualisationservice.h
     ${CMAKE_SOURCE_DIR}/include/core/library/libraryinfo.h
     ${CMAKE_SOURCE_DIR}/include/core/library/libraryutils.h
     ${CMAKE_SOURCE_DIR}/include/core/library/musiclibrary.h
@@ -105,6 +107,7 @@ set(SOURCES
     engine/dsp/dspchainstore.cpp
     engine/dsp/dspchainstore.h
     engine/dsp/dspnode.cpp
+    engine/dsp/realfft.cpp
     engine/dsp/dspregistry.cpp
     engine/dsp/dspregistry.h
     engine/dsp/monotostereodsp.cpp
@@ -123,6 +126,9 @@ set(SOURCES
     engine/enginehandler.h
     engine/enginehelpers.cpp
     engine/enginehelpers.h
+    engine/visualisationbackend.cpp
+    engine/visualisationbackend.h
+    engine/visualisationservice.cpp
     engine/fadingdefs.cpp
     engine/input/archiveinput.cpp
     engine/input/archiveinput.h
@@ -284,10 +290,11 @@ create_fooyin_library(
 
 target_link_libraries(
     fooyin_core
-    PRIVATE fooyin_version 
+    PRIVATE fooyin_version
             fooyin_config
-        QCoro6::Core
+            QCoro6::Core
             ${FFMPEG_LIBRARIES}
+            PFFFT::PFFFT
     PUBLIC Qt6::Core
            Qt6::Widgets
            Qt6::Sql

@@ -19,6 +19,7 @@
 
 #include "core/engine/audioengine.h"
 #include "core/engine/decode/decodercontext.h"
+#include "core/engine/visualisationbackend.h"
 
 #include "core/engine/dsp/dspregistry.h"
 #include "core/internalcoresettings.h"
@@ -197,6 +198,8 @@ void registerMinimalEngineSettings(SettingsManager& settings, bool enablePauseSt
     qRegisterMetaType<Engine::CrossfadingValues>("CrossfadingValues");
 
     settings.createSetting<Settings::Core::PlayMode>(0, QString::fromLatin1(Settings::Core::PlayModeKey));
+    settings.createSetting<Settings::Core::StopAfterCurrent>(false, u"Playback/StopAfterCurrent"_s);
+    settings.createSetting<Settings::Core::ResetStopAfterCurrent>(false, u"Playback/ResetStopAfterCurrent"_s);
     settings.createSetting<Settings::Core::OutputVolume>(1.0, u"Engine/OutputVolume"_s);
     settings.createSetting<Settings::Core::GaplessPlayback>(false, u"Engine/GaplessPlayback"_s);
     settings.createSetting<Settings::Core::BufferLength>(4000, u"Engine/BufferLength"_s);
@@ -486,7 +489,8 @@ struct EngineHarness
         , decoderStats{std::make_shared<DecoderStats>()}
         , outputStats{std::make_shared<OutputStats>()}
         , loader{std::make_shared<AudioLoader>()}
-        , engine{loader, &settings, &registry}
+        , visualisationBackend{std::make_shared<VisualisationBackend>()}
+        , engine{loader, &settings, &registry, visualisationBackend}
     {
         registerMinimalEngineSettings(settings, enablePauseStopFade, enableManualCrossfade);
 
@@ -508,6 +512,7 @@ struct EngineHarness
     std::shared_ptr<OutputStats> outputStats;
     std::shared_ptr<AudioLoader> loader;
     DspRegistry registry;
+    std::shared_ptr<VisualisationBackend> visualisationBackend;
     AudioEngine engine;
 };
 
@@ -598,6 +603,22 @@ public:
     static uint64_t overlapMidpointLeadMs(const AudioEngine& engine)
     {
         return engine.m_preparedCrossfadeTransition.overlapMidpointLeadMs;
+    }
+
+    static void deliverPcmFrame(AudioEngine& engine, const PcmFrame& frame)
+    {
+        engine.onPcmFrameReady(frame);
+    }
+
+    static void publishPosition(AudioEngine& engine, uint64_t sourcePositionMs, uint64_t outputDelayMs,
+                                double delayToSourceScale, AudioClock::UpdateMode mode, bool emitNow)
+    {
+        engine.publishPosition(sourcePositionMs, outputDelayMs, delayToSourceScale, mode, emitNow);
+    }
+
+    static uint64_t visualisationCurrentTimeMs(const AudioEngine& engine)
+    {
+        return engine.m_visualisationBackend ? engine.m_visualisationBackend->currentTimeMs() : 0;
     }
 
     static void installPreparedCrossfade(AudioEngine& engine, const Engine::PlaybackItem& item, uint64_t generation,
@@ -995,11 +1016,12 @@ FOOYIN_AUDIOENGINE_SENSITIVE_TEST(AudioEngineTest, SeekInvalidatesArmedPreparedC
     settings.set<Settings::Core::Internal::CrossfadeSwitchPolicy>(
         static_cast<int>(Engine::CrossfadeSwitchPolicy::OverlapStart));
 
-    auto decoderStats = std::make_shared<DecoderStats>();
-    auto outputStats  = std::make_shared<OutputStats>();
-    auto loader       = std::make_shared<AudioLoader>();
+    auto decoderStats         = std::make_shared<DecoderStats>();
+    auto outputStats          = std::make_shared<OutputStats>();
+    auto loader               = std::make_shared<AudioLoader>();
+    auto visualisationBackend = std::make_shared<VisualisationBackend>();
     DspRegistry registry;
-    AudioEngine engine{loader, &settings, &registry};
+    AudioEngine engine{loader, &settings, &registry, visualisationBackend};
 
     loader->addDecoder(u"FakeDecoder"_s, [decoderStats]() { return std::make_unique<FakeDecoder>(decoderStats); });
     engine.setAudioOutput([outputStats]() { return std::make_unique<FakeAudioOutput>(outputStats); }, QString{});
@@ -1173,11 +1195,12 @@ FOOYIN_AUDIOENGINE_SENSITIVE_TEST(AudioEngineTest, ZeroVbrIntervalDisablesLiveBi
     SettingsManager settings{tempDir.filePath(u"settings.ini"_s)};
     registerMinimalEngineSettings(settings, false, false);
 
-    auto decoderStats = std::make_shared<DecoderStats>();
-    auto outputStats  = std::make_shared<OutputStats>();
-    auto loader       = std::make_shared<AudioLoader>();
+    auto decoderStats         = std::make_shared<DecoderStats>();
+    auto outputStats          = std::make_shared<OutputStats>();
+    auto loader               = std::make_shared<AudioLoader>();
+    auto visualisationBackend = std::make_shared<VisualisationBackend>();
     DspRegistry registry;
-    AudioEngine engine{loader, &settings, &registry};
+    AudioEngine engine{loader, &settings, &registry, visualisationBackend};
 
     loader->addDecoder(u"FakeDecoder"_s, [stats = decoderStats]() { return std::make_unique<FakeDecoder>(stats); });
     engine.setAudioOutput([stats = outputStats]() { return std::make_unique<FakeAudioOutput>(stats); }, QString{});
@@ -1210,11 +1233,12 @@ FOOYIN_AUDIOENGINE_SENSITIVE_TEST(AudioEngineTest, PositiveVbrIntervalAllowsLive
     SettingsManager settings{tempDir.filePath(u"settings.ini"_s)};
     registerMinimalEngineSettings(settings, false, false);
 
-    auto decoderStats = std::make_shared<DecoderStats>();
-    auto outputStats  = std::make_shared<OutputStats>();
-    auto loader       = std::make_shared<AudioLoader>();
+    auto decoderStats         = std::make_shared<DecoderStats>();
+    auto outputStats          = std::make_shared<OutputStats>();
+    auto loader               = std::make_shared<AudioLoader>();
+    auto visualisationBackend = std::make_shared<VisualisationBackend>();
     DspRegistry registry;
-    AudioEngine engine{loader, &settings, &registry};
+    AudioEngine engine{loader, &settings, &registry, visualisationBackend};
 
     loader->addDecoder(u"FakeDecoder"_s, [stats = decoderStats]() { return std::make_unique<FakeDecoder>(stats); });
     engine.setAudioOutput([stats = outputStats]() { return std::make_unique<FakeAudioOutput>(stats); }, QString{});
@@ -1248,11 +1272,12 @@ FOOYIN_AUDIOENGINE_SENSITIVE_TEST(AudioEngineTest, DisablingVbrUpdatesRestoresSt
     SettingsManager settings{tempDir.filePath(u"settings.ini"_s)};
     registerMinimalEngineSettings(settings, false, false);
 
-    auto decoderStats = std::make_shared<DecoderStats>();
-    auto outputStats  = std::make_shared<OutputStats>();
-    auto loader       = std::make_shared<AudioLoader>();
+    auto decoderStats         = std::make_shared<DecoderStats>();
+    auto outputStats          = std::make_shared<OutputStats>();
+    auto loader               = std::make_shared<AudioLoader>();
+    auto visualisationBackend = std::make_shared<VisualisationBackend>();
     DspRegistry registry;
-    AudioEngine engine{loader, &settings, &registry};
+    AudioEngine engine{loader, &settings, &registry, visualisationBackend};
 
     loader->addDecoder(u"FakeDecoder"_s, [stats = decoderStats]() { return std::make_unique<FakeDecoder>(stats); });
     engine.setAudioOutput([stats = outputStats]() { return std::make_unique<FakeAudioOutput>(stats); }, QString{});
@@ -1374,11 +1399,12 @@ FOOYIN_AUDIOENGINE_SENSITIVE_TEST(AudioEngineTest, BufferLengthChangeReconfigure
     SettingsManager settings{tempDir.filePath(u"settings.ini"_s)};
     registerMinimalEngineSettings(settings, false, false);
 
-    auto decoderStats = std::make_shared<DecoderStats>();
-    auto outputStats  = std::make_shared<OutputStats>();
-    auto loader       = std::make_shared<AudioLoader>();
+    auto decoderStats         = std::make_shared<DecoderStats>();
+    auto outputStats          = std::make_shared<OutputStats>();
+    auto loader               = std::make_shared<AudioLoader>();
+    auto visualisationBackend = std::make_shared<VisualisationBackend>();
     DspRegistry registry;
-    AudioEngine engine{loader, &settings, &registry};
+    AudioEngine engine{loader, &settings, &registry, visualisationBackend};
 
     loader->addDecoder(u"FakeDecoder"_s, [decoderStats]() { return std::make_unique<FakeDecoder>(decoderStats); });
     engine.setAudioOutput([outputStats]() { return std::make_unique<FakeAudioOutput>(outputStats); }, QString{});
@@ -1513,9 +1539,80 @@ FOOYIN_AUDIOENGINE_REGULAR_TEST(AudioEngineTest, SetAnalysisDataSubscriptionsAcc
     EngineHarness harness{false};
 
     harness.engine.setAnalysisDataSubscriptions(Engine::AnalysisDataTypes{Engine::AnalysisDataType::LevelFrameData});
+    harness.engine.setAnalysisDataSubscriptions(Engine::AnalysisDataTypes{Engine::AnalysisDataType::PcmFrameData});
     harness.engine.setAnalysisDataSubscriptions(Engine::AnalysisDataTypes{});
 
     SUCCEED();
+}
+
+FOOYIN_AUDIOENGINE_SENSITIVE_TEST(AudioEngineTest, AudioEngineDispatchesPcmFrames)
+{
+    ensureCoreApplication();
+    EngineHarness harness{false};
+
+    std::mutex mutex;
+    std::optional<PcmFrame> receivedFrame;
+
+    QObject::connect(&harness.engine, &AudioEngine::pcmReady, &harness.engine,
+                     [&mutex, &receivedFrame](const PcmFrame& frame) {
+                         const std::scoped_lock lock{mutex};
+                         receivedFrame = frame;
+                     });
+
+    PcmFrame expectedFrame;
+    expectedFrame.format = AudioFormat{SampleFormat::F32, 1000, 2};
+    expectedFrame.format.setChannelLayout(
+        {AudioFormat::ChannelPosition::FrontLeft, AudioFormat::ChannelPosition::FrontRight});
+    expectedFrame.frameCount   = PcmFrame::MaxFrames;
+    expectedFrame.streamTimeMs = 123;
+    std::ranges::fill(expectedFrame.samples, 0.1F);
+
+    AudioEngineTestAccessor::deliverPcmFrame(harness.engine, expectedFrame);
+
+    ASSERT_TRUE(pumpUntil(
+        [&mutex, &receivedFrame]() {
+            const std::scoped_lock lock{mutex};
+            return receivedFrame.has_value();
+        },
+        1000ms));
+
+    const PcmFrame frame = [&mutex, &receivedFrame]() {
+        const std::scoped_lock lock{mutex};
+        return *receivedFrame;
+    }();
+
+    EXPECT_EQ(frame.frameCount, PcmFrame::MaxFrames);
+    EXPECT_EQ(frame.format.sampleFormat(), SampleFormat::F32);
+    EXPECT_EQ(frame.format.channelCount(), 2);
+    EXPECT_EQ(frame.format.sampleRate(), 1000);
+    EXPECT_EQ(frame.streamTimeMs, 123);
+    EXPECT_TRUE(frame.format.hasChannelLayout());
+    ASSERT_EQ(frame.format.channelLayoutView().size(), 2);
+    EXPECT_EQ(frame.format.channelLayoutView()[0], AudioFormat::ChannelPosition::FrontLeft);
+    EXPECT_EQ(frame.format.channelLayoutView()[1], AudioFormat::ChannelPosition::FrontRight);
+    EXPECT_EQ(frame.sampleCount(), static_cast<size_t>(PcmFrame::MaxFrames) * 2);
+    EXPECT_FALSE(frame.interleavedSamples().empty());
+    EXPECT_FLOAT_EQ(frame.interleavedSamples().front(), 0.1F);
+    EXPECT_FLOAT_EQ(frame.interleavedSamples().back(), 0.1F);
+}
+
+FOOYIN_AUDIOENGINE_REGULAR_TEST(AudioEngineTest, VisualisationBackendUsesPresentedPosition)
+{
+    ensureCoreApplication();
+
+    const QTemporaryDir tempDir;
+    const QString settingsPath = tempDir.filePath(u"settings.ini"_s);
+    SettingsManager settings{settingsPath};
+    registerMinimalEngineSettings(settings, false, false);
+
+    auto loader = std::make_shared<AudioLoader>();
+    DspRegistry registry;
+    auto visualisationBackend = std::make_shared<VisualisationBackend>();
+    AudioEngine engine{loader, &settings, &registry, visualisationBackend};
+
+    AudioEngineTestAccessor::publishPosition(engine, 1000, 120, 1.0, AudioClock::UpdateMode::Discontinuity, false);
+
+    EXPECT_EQ(AudioEngineTestAccessor::visualisationCurrentTimeMs(engine), 880);
 }
 
 FOOYIN_AUDIOENGINE_REGULAR_TEST(AudioEngineTest, UpdateLiveDspSettingsHandlesUnknownInstanceGracefully)

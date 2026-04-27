@@ -36,6 +36,7 @@
 #include "playbacktransitioncoordinator.h"
 #include "seekplanner.h"
 #include "trackloadplanner.h"
+#include "visualisationbackend.h"
 
 #include <core/coresettings.h>
 #include <core/engine/audioloader.h>
@@ -282,7 +283,7 @@ namespace Fooyin {
 using EngineTaskType = EngineTaskQueue::TaskType;
 
 AudioEngine::AudioEngine(std::shared_ptr<AudioLoader> audioLoader, SettingsManager* settings, DspRegistry* dspRegistry,
-                         QObject* parent)
+                         std::shared_ptr<VisualisationBackend> visualisationBackend, QObject* parent)
     : QObject{parent}
     , m_settings{settings}
     , m_dspRegistry{dspRegistry}
@@ -297,6 +298,7 @@ AudioEngine::AudioEngine(std::shared_ptr<AudioLoader> audioLoader, SettingsManag
     , m_decoder{this}
     , m_levelFrameMailbox{8}
     , m_pcmFrameMailbox{8}
+    , m_visualisationBackend{std::move(visualisationBackend)}
     , m_levelFrameDispatchQueued{false}
     , m_pcmFrameDispatchQueued{false}
     , m_pipelineWakeTaskQueued{false}
@@ -1301,6 +1303,9 @@ void AudioEngine::logGaplessBoundaryDiagnostic(const char* reason, StreamId trig
 void AudioEngine::publishPosition(uint64_t sourcePositionMs, uint64_t outputDelayMs, double delayToSourceScale,
                                   AudioClock::UpdateMode mode, bool emitNow)
 {
+    m_visualisationBackend->setCurrentTimeMs(
+        AudioClock::presentedFromSource(sourcePositionMs, outputDelayMs, delayToSourceScale));
+
     m_audioClock.applyPosition(sourcePositionMs, outputDelayMs, delayToSourceScale, m_trackGeneration, mode, emitNow);
     if(mode == AudioClock::UpdateMode::Discontinuity) {
         m_positionCoordinator.notePublishedDiscontinuity(sourcePositionMs);
@@ -2232,6 +2237,9 @@ void AudioEngine::clearPendingAnalysisData()
     if(m_analysisBus) {
         m_analysisBus->flush();
     }
+    if(m_visualisationBackend) {
+        m_visualisationBackend->reset();
+    }
 
     m_levelFrameMailbox.requestReset();
     m_pcmFrameMailbox.requestReset();
@@ -2249,13 +2257,14 @@ void AudioEngine::onLevelFrameReady(const LevelFrame& frame)
     }
 
     if(!m_levelFrameDispatchQueued.exchange(true, std::memory_order_relaxed)) {
-        QMetaObject::invokeMethod(this, [this]() { dispatchPendingLevelFrames(); }, Qt::QueuedConnection);
         QMetaObject::invokeMethod(this, &AudioEngine::dispatchPendingLevelFrames, Qt::QueuedConnection);
     }
 }
 
 void AudioEngine::onPcmFrameReady(const PcmFrame& frame)
 {
+    m_visualisationBackend->appendFrame(frame);
+
     auto writer              = m_pcmFrameMailbox.writer();
     const size_t framesWrote = writer.write(&frame, 1, RingBufferOverflowPolicy::OverwriteOldest);
 
@@ -2563,21 +2572,25 @@ void AudioEngine::updatePlaybackState(Engine::PlaybackState state)
     if(prevState != state) {
         switch(state) {
             case Engine::PlaybackState::Playing:
+                m_visualisationBackend->setPlaying();
                 m_audioClock.setPlaying(m_audioClock.position());
                 if(!isCrossfading(m_phase) && !isFadingTransport(m_phase) && m_phase != Playback::Phase::Seeking) {
                     setPhase(Playback::Phase::Playing, PhaseChangeReason::PlaybackStatePlaying);
                 }
                 break;
             case Engine::PlaybackState::Paused:
+                m_visualisationBackend->setPaused();
                 m_audioClock.setPaused();
                 setPhase(Playback::Phase::Paused, PhaseChangeReason::PlaybackStatePaused);
                 break;
             case Engine::PlaybackState::Stopped:
                 setPhase(Playback::Phase::Stopped, PhaseChangeReason::PlaybackStateStopped);
+                m_visualisationBackend->setStopped();
                 m_audioClock.setStopped();
                 break;
             case Engine::PlaybackState::Error:
                 setPhase(Playback::Phase::Error, PhaseChangeReason::PlaybackStateError);
+                m_visualisationBackend->setStopped();
                 m_audioClock.setStopped();
                 break;
         }

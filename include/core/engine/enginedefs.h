@@ -117,7 +117,7 @@ Q_DECLARE_FLAGS(RGProcessing, RGProcess)
 Q_FLAG_NS(RGProcessing)
 
 //! Analysis frame types produced by the analysis bus.
-enum AnalysisDataType : uint8_t
+enum AnalysisDataType : uint32_t
 {
     NoAnalysisData = 0,
     LevelFrameData = 1 << 0,

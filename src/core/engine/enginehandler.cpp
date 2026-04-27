@@ -73,7 +73,8 @@ EngineHandler::EngineHandler(std::shared_ptr<AudioLoader> audioLoader, PlayerCon
     : EngineController{parent}
     , m_playerController{playerController}
     , m_settings{settings}
-    , m_engine{new AudioEngine(std::move(audioLoader), settings, dspRegistry)}
+    , m_visualisationService{std::make_unique<VisualisationService>(this)}
+    , m_engine{new AudioEngine(std::move(audioLoader), settings, dspRegistry, m_visualisationService->backend())}
     , m_levelReadyRelayConnected{false}
     , m_pcmReadyRelayConnected{false}
     , m_currentTrackItemId{0}
@@ -115,6 +116,9 @@ EngineHandler::EngineHandler(std::shared_ptr<AudioLoader> audioLoader, PlayerCon
     QObject::connect(m_engine, &AudioEngine::trackCommitted, this, &EngineHandler::handleTrackCommitted);
     QObject::connect(m_engine, &AudioEngine::trackStatusContextChanged, this, &EngineHandler::handleTrackStatus);
     QObject::connect(m_engine, &AudioEngine::nextTrackReadiness, this, &EngineHandler::handleNextTrackReadiness);
+    QObject::connect(m_visualisationService.get(), &VisualisationService::sessionActivityChanged, this, [this]() {
+        QMetaObject::invokeMethod(this, &EngineHandler::updateAnalysisRelays, Qt::QueuedConnection);
+    });
 
     QObject::connect(m_playerController, &PlayerController::trackChangeRequested, this,
                      &EngineHandler::handleTrackChangeRequest);
@@ -632,15 +636,16 @@ void EngineHandler::requestStop() const
 
 void EngineHandler::updateAnalysisRelays()
 {
-    const bool hasLevelSubscribers = isSignalConnected(QMetaMethod::fromSignal(&EngineController::levelReady));
-    const bool hasPcmSubscribers   = isSignalConnected(QMetaMethod::fromSignal(&EngineController::pcmReady));
+    const bool hasLevelSubscribers      = isSignalConnected(QMetaMethod::fromSignal(&EngineController::levelReady));
+    const bool hasPcmSubscribers        = isSignalConnected(QMetaMethod::fromSignal(&EngineController::pcmReady));
+    const bool hasVisualisationSessions = m_visualisationService && m_visualisationService->hasActiveSessions();
 
     Engine::AnalysisDataTypes subscriptions;
 
     if(hasLevelSubscribers) {
         subscriptions.setFlag(Engine::AnalysisDataType::LevelFrameData);
     }
-    if(hasPcmSubscribers) {
+    if(hasPcmSubscribers || hasVisualisationSessions) {
         subscriptions.setFlag(Engine::AnalysisDataType::PcmFrameData);
     }
 
@@ -667,6 +672,11 @@ void EngineHandler::updateAnalysisRelays()
     }
 
     dispatchCommand(&AudioEngine::setAnalysisDataSubscriptions, subscriptions);
+}
+
+VisualisationService* EngineHandler::visualisationService() const
+{
+    return m_visualisationService.get();
 }
 
 void EngineHandler::changeOutput(const QString& output)
