@@ -2470,6 +2470,25 @@ void ExpandedTreeViewPrivate::select(const QModelIndex& topIndex, const QModelIn
     m_self->selectionModel()->select(selection, command);
 }
 
+void ExpandedTreeViewPrivate::selectIncludingChildren(const QModelIndex& firstIndex, const QModelIndex& secondIndex,
+                                                      QItemSelectionModel::SelectionFlags command) const
+{
+    const int first  = viewIndex(firstIndex);
+    const int second = viewIndex(secondIndex);
+
+    if(first < 0 || second < 0) {
+        return;
+    }
+
+    const int firstEnd  = first + m_viewItems.at(first).childCount;
+    const int secondEnd = second + m_viewItems.at(second).childCount;
+
+    const int top    = std::min(first, second);
+    const int bottom = std::max(firstEnd, secondEnd);
+
+    select(modelIndex(top), modelIndex(bottom), command);
+}
+
 void ExpandedTreeViewPrivate::resizeColumnToContents(int column) const
 {
     layoutItems();
@@ -3651,8 +3670,9 @@ void ExpandedTreeView::mousePressEvent(QMouseEvent* event)
         return;
     }
 
-    const QPoint pos        = event->position().toPoint();
-    const QModelIndex index = indexAt(pos);
+    const QPoint pos            = event->position().toPoint();
+    const QModelIndex index     = indexAt(pos);
+    const QModelIndex prevIndex = currentIndex().siblingAtColumn(0);
 
     if(!index.isValid()) {
         QAbstractItemView::mousePressEvent(event);
@@ -3677,11 +3697,17 @@ void ExpandedTreeView::mousePressEvent(QMouseEvent* event)
 
     setDragEnabled(true);
 
+    const auto command = selectionCommand(index, event);
+
     QAbstractItemView::mousePressEvent(event);
 
     if(p->m_model->hasChildren(modelIndex)) {
+        if(event->modifiers().testFlag(Qt::ShiftModifier) && prevIndex.isValid()) {
+            p->selectIncludingChildren(prevIndex, modelIndex, command);
+            return;
+        }
+
         const QItemSelection selection = selectRecursively(p->m_model, {modelIndex, modelIndex});
-        const auto command             = selectionCommand(index, event);
         selectModel->select(selection, command);
     }
 }

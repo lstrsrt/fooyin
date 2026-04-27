@@ -80,6 +80,8 @@ public:
     QModelIndex modelIndex(int i, int column = 0) const;
     void select(const QModelIndex& topIndex, const QModelIndex& bottomIndex,
                 QItemSelectionModel::SelectionFlags command) const;
+    void selectIncludingChildren(const QModelIndex& firstIndex, const QModelIndex& secondIndex,
+                                 QItemSelectionModel::SelectionFlags command) const;
     void resizeColumnToContents(int column) const;
     void columnCountChanged(int oldCount, int newCount) const;
     void columnResized(int logical, int oldSize, int newSize);
