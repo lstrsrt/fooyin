@@ -25,6 +25,7 @@
 #include "fileopsdialog.h"
 #include "fileopssettings.h"
 
+#include <core/engine/audioloader.h>
 #include <gui/guiconstants.h>
 #include <gui/statusevent.h>
 #include <gui/trackselectioncontroller.h>
@@ -49,6 +50,12 @@ bool canOperateOnTracks(const Fooyin::TrackList& tracks)
         && std::ranges::all_of(tracks, [](const Fooyin::Track& track) { return !track.isInArchive(); });
 }
 
+bool canExtractTracks(const Fooyin::TrackList& tracks)
+{
+    return !tracks.empty()
+        && std::ranges::all_of(tracks, [](const Fooyin::Track& track) { return track.isInArchive(); });
+}
+
 class FileOpsPluginSettingsProvider : public Fooyin::PluginSettingsProvider
 {
 public:
@@ -71,6 +78,7 @@ private:
 namespace Fooyin::FileOps {
 FileOpsPlugin::FileOpsPlugin()
     : m_actionManager{nullptr}
+    , m_audioLoader{nullptr}
     , m_library{nullptr}
     , m_trackSelectionController{nullptr}
     , m_settings{nullptr}
@@ -78,8 +86,9 @@ FileOpsPlugin::FileOpsPlugin()
 
 void FileOpsPlugin::initialise(const CorePluginContext& context)
 {
-    m_library  = context.library;
-    m_settings = context.settingsManager;
+    m_audioLoader = context.audioLoader;
+    m_library     = context.library;
+    m_settings    = context.settingsManager;
 }
 
 void FileOpsPlugin::initialise(const GuiPluginContext& context)
@@ -102,17 +111,19 @@ void FileOpsPlugin::setupMenu()
         tr("File operations"), Constants::Menus::Context::Utilities);
 
     const auto openDialog = [this](const TrackSelection& selection, Operation op, const QString& presetName = {}) {
-        auto* dialog = new FileOpsDialog(m_library, selection.tracks, op, m_settings, Utils::getMainWindow());
+        auto* dialog
+            = new FileOpsDialog(m_library, m_audioLoader, selection.tracks, op, m_settings, Utils::getMainWindow());
         dialog->setAttribute(Qt::WA_DeleteOnClose);
         dialog->loadPreset(presetName);
         dialog->open();
     };
 
-    const auto registerOpSubmenu = [this, openDialog](Operation op, const Id& id, const QString& title) {
-        m_trackSelectionController->registerTrackContextDynamicSubmenu(
+    const auto registerOpEntry = [this, openDialog](Operation op, const Id& id, const QString& title,
+                                                    const auto& canUseTracks) {
+        m_trackSelectionController->registerTrackContextAction(
             this, TrackContextMenuArea::Track, "FileOperations", id, title,
-            [openDialog, op, title](QMenu* menu, const TrackSelection& selection) {
-                if(!canOperateOnTracks(selection.tracks)) {
+            [openDialog, op, title, canUseTracks](QMenu* menu, const TrackSelection& selection) {
+                if(!canUseTracks(selection.tracks)) {
                     return;
                 }
 
@@ -125,25 +136,28 @@ void FileOpsPlugin::setupMenu()
                     return;
                 }
 
+                auto* submenu = new QMenu(title, menu);
                 for(const auto& preset : presets.at(op)) {
-                    auto* presetAction = new QAction(preset.name, menu);
+                    auto* presetAction = new QAction(preset.name, submenu);
                     QObject::connect(presetAction, &QAction::triggered, presetAction,
                                      [openDialog, op, preset, selection]() { openDialog(selection, op, preset.name); });
-                    menu->addAction(presetAction);
+                    submenu->addAction(presetAction);
                 }
 
-                menu->addSeparator();
+                submenu->addSeparator();
 
-                auto* action = new QAction(u"…"_s, menu);
+                auto* action = new QAction(u"…"_s, submenu);
                 QObject::connect(action, &QAction::triggered, action,
                                  [openDialog, op, selection]() { openDialog(selection, op); });
-                menu->addAction(action);
+                submenu->addAction(action);
+                menu->addMenu(submenu);
             });
     };
 
-    registerOpSubmenu(Operation::Copy, "FileOps.Copy", tr("&Copy to…"));
-    registerOpSubmenu(Operation::Move, "FileOps.Move", tr("&Move to…"));
-    registerOpSubmenu(Operation::Rename, "FileOps.Rename", tr("&Rename to…"));
+    registerOpEntry(Operation::Copy, "FileOps.Copy", tr("&Copy to…"), canOperateOnTracks);
+    registerOpEntry(Operation::Move, "FileOps.Move", tr("&Move to…"), canOperateOnTracks);
+    registerOpEntry(Operation::Rename, "FileOps.Rename", tr("&Rename to…"), canOperateOnTracks);
+    registerOpEntry(Operation::Extract, "FileOps.Extract", tr("&Extract to…"), canExtractTracks);
 
     auto* deleteAction = new QAction(tr("&Delete"), this);
     auto* deleteCmd
@@ -157,7 +171,7 @@ void FileOpsPlugin::setupMenu()
         }
 
         const auto runDelete = [this, tracks = selection->tracks]() {
-            auto* worker = new FileOpsWorker(m_library, tracks, m_settings);
+            auto* worker = new FileOpsWorker(m_library, m_audioLoader, tracks, m_settings);
             auto* thread = new QThread(this);
             worker->moveToThread(thread);
 

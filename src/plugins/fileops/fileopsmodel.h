@@ -25,7 +25,10 @@
 #include <QAbstractItemModel>
 #include <QThread>
 
+#include <memory>
+
 namespace Fooyin {
+class AudioLoader;
 class MusicLibrary;
 
 namespace FileOps {
@@ -36,7 +39,8 @@ class FileOpsModel : public QAbstractItemModel
     Q_OBJECT
 
 public:
-    FileOpsModel(MusicLibrary* library, TrackList tracks, SettingsManager* settings, QObject* parent = nullptr);
+    FileOpsModel(MusicLibrary* library, std::shared_ptr<AudioLoader> audioLoader, TrackList tracks,
+                 SettingsManager* settings, QObject* parent = nullptr);
     ~FileOpsModel() override;
 
     void simulate(const FileOpPreset& preset);

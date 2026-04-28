@@ -25,7 +25,10 @@
 
 #include <QDialog>
 
+#include <memory>
+
 namespace Fooyin {
+class AudioLoader;
 class MusicLibrary;
 class SettingsManager;
 
@@ -37,8 +40,8 @@ class FileOpsDialog : public QDialog
     Q_OBJECT
 
 public:
-    FileOpsDialog(MusicLibrary* library, const TrackList& tracks, Operation operation, SettingsManager* settings,
-                  QWidget* parent = nullptr);
+    FileOpsDialog(MusicLibrary* library, std::shared_ptr<AudioLoader> audioLoader, const TrackList& tracks,
+                  Operation operation, SettingsManager* settings, QWidget* parent = nullptr);
 
     void loadPreset(const QString& name);
 

@@ -56,11 +56,12 @@ class FileOpsDialogPrivate : public QObject
 
 public:
     FileOpsDialogPrivate(FileOpsDialog* self, MusicLibrary* library, const TrackList& tracks, Operation operation,
-                         SettingsManager* settings);
+                         std::shared_ptr<AudioLoader> audioLoader, SettingsManager* settings);
 
     void setup();
 
     void changeOperation(Operation operation);
+    void updateOptionState() const;
     void updateButtonState() const;
 
     [[nodiscard]] FileOpPreset currentPreset() const;
@@ -89,11 +90,13 @@ public:
     QRadioButton* m_copyOp;
     QRadioButton* m_moveOp;
     QRadioButton* m_renameOp;
+    QRadioButton* m_extractOp;
 
     QLineEdit* m_destination;
     ScriptLineEdit* m_filename;
     QCheckBox* m_entireSource;
     QCheckBox* m_removeEmpty;
+    QCheckBox* m_removeArchive;
 
     QComboBox* m_presetBox;
     QPushButton* m_loadButton;
@@ -106,30 +109,37 @@ public:
     QPushButton* m_runButton{nullptr};
 
     std::vector<FileOpPreset> m_presets;
+    bool m_supportsFileOperations{false};
+    bool m_supportsExtract{false};
     bool m_loading{false};
     bool m_running{false};
     bool m_presetsChanged{false};
 };
 
 FileOpsDialogPrivate::FileOpsDialogPrivate(FileOpsDialog* self, MusicLibrary* library, const TrackList& tracks,
-                                           Operation operation, SettingsManager* settings)
+                                           Operation operation, std::shared_ptr<AudioLoader> audioLoader,
+                                           SettingsManager* settings)
     : m_self{self}
     , m_settings{settings}
     , m_operation{operation}
     , m_copyOp{new QRadioButton(FileOpsDialog::tr("Copy"), self)}
     , m_moveOp{new QRadioButton(FileOpsDialog::tr("Move"), self)}
     , m_renameOp{new QRadioButton(FileOpsDialog::tr("Rename"), self)}
+    , m_extractOp{new QRadioButton(FileOpsDialog::tr("Extract"), self)}
     , m_destination{new QLineEdit(self)}
     , m_filename{new ScriptLineEdit(u"%filename%"_s, tracks.front(), self)}
     , m_entireSource{new QCheckBox(self)}
     , m_removeEmpty{new QCheckBox(FileOpsDialog::tr("Remove empty source folders"), self)}
+    , m_removeArchive{new QCheckBox(FileOpsDialog::tr("Delete archive after extraction"), self)}
     , m_presetBox{new QComboBox(self)}
     , m_loadButton{new QPushButton(FileOpsDialog::tr("&Load"), self)}
     , m_saveButton{new QPushButton(FileOpsDialog::tr("&Save"), self)}
     , m_deleteButton{new QPushButton(FileOpsDialog::tr("&Delete"), self)}
     , m_resultsTable{new QTreeView(self)}
-    , m_model{new FileOpsModel(library, tracks, m_settings, self)}
+    , m_model{new FileOpsModel(library, std::move(audioLoader), tracks, m_settings, self)}
     , m_status{new QLabel(self)}
+    , m_supportsFileOperations{std::ranges::all_of(tracks, [](const Track& track) { return !track.isInArchive(); })}
+    , m_supportsExtract{std::ranges::all_of(tracks, [](const Track& track) { return track.isInArchive(); })}
 { }
 
 void FileOpsDialogPrivate::setup()
@@ -153,6 +163,11 @@ void FileOpsDialogPrivate::setup()
     m_copyOp->setChecked(m_operation == Operation::Copy);
     m_moveOp->setChecked(m_operation == Operation::Move);
     m_renameOp->setChecked(m_operation == Operation::Rename);
+    m_extractOp->setChecked(m_operation == Operation::Extract);
+    m_copyOp->setEnabled(m_supportsFileOperations);
+    m_moveOp->setEnabled(m_supportsFileOperations);
+    m_renameOp->setEnabled(m_supportsFileOperations);
+    m_extractOp->setEnabled(m_supportsExtract);
 
     m_presetBox->setEditable(true);
 
@@ -191,11 +206,13 @@ void FileOpsDialogPrivate::setup()
     opLayout->addWidget(m_copyOp);
     opLayout->addWidget(m_moveOp);
     opLayout->addWidget(m_renameOp);
+    opLayout->addWidget(m_extractOp);
 
     auto* optionsLayout = new QHBoxLayout();
 
     optionsLayout->addWidget(m_entireSource);
     optionsLayout->addWidget(m_removeEmpty);
+    optionsLayout->addWidget(m_removeArchive);
     optionsLayout->addStretch();
 
     int row{0};
@@ -215,10 +232,15 @@ void FileOpsDialogPrivate::setup()
     QObject::connect(m_copyOp, &QRadioButton::clicked, m_model, [this]() { changeOperation(Operation::Copy); });
     QObject::connect(m_moveOp, &QRadioButton::clicked, m_model, [this]() { changeOperation(Operation::Move); });
     QObject::connect(m_renameOp, &QRadioButton::clicked, m_model, [this]() { changeOperation(Operation::Rename); });
+    QObject::connect(m_extractOp, &QRadioButton::clicked, m_model, [this]() { changeOperation(Operation::Extract); });
     QObject::connect(m_destination, &QLineEdit::textChanged, this, &FileOpsDialogPrivate::simulateOp);
     QObject::connect(m_filename, &QLineEdit::textChanged, this, &FileOpsDialogPrivate::simulateOp);
-    QObject::connect(m_entireSource, &QCheckBox::clicked, this, &FileOpsDialogPrivate::simulateOp);
+    QObject::connect(m_entireSource, &QCheckBox::clicked, this, [this]() {
+        updateOptionState();
+        simulateOp();
+    });
     QObject::connect(m_removeEmpty, &QCheckBox::clicked, this, &FileOpsDialogPrivate::simulateOp);
+    QObject::connect(m_removeArchive, &QCheckBox::clicked, this, &FileOpsDialogPrivate::simulateOp);
     QObject::connect(m_presetBox, &QComboBox::currentTextChanged, this, &FileOpsDialogPrivate::updateButtonState);
 
     QObject::connect(m_model, &FileOpsModel::simulated, this, &FileOpsDialogPrivate::modelUpdated);
@@ -237,11 +259,32 @@ void FileOpsDialogPrivate::changeOperation(Operation operation)
     m_operation = operation;
     m_destination->setDisabled(operation == Operation::Rename);
     m_removeEmpty->setEnabled(operation == Operation::Move);
-    m_entireSource->setEnabled(operation != Operation::Rename);
-    m_entireSource->setText(operation == Operation::Copy ? tr("Copy entire source folder contents")
-                                                         : tr("Move entire source folder contents"));
+    m_entireSource->setEnabled(operation == Operation::Copy || operation == Operation::Move
+                               || operation == Operation::Extract);
+    if(operation == Operation::Copy) {
+        m_entireSource->setText(tr("Copy entire source folder contents"));
+    }
+    else if(operation == Operation::Move) {
+        m_entireSource->setText(tr("Move entire source folder contents"));
+    }
+    else if(operation == Operation::Extract) {
+        m_entireSource->setText(tr("Extract entire source archive contents"));
+    }
+
+    updateOptionState();
     populatePresets();
     simulateOp();
+}
+
+void FileOpsDialogPrivate::updateOptionState() const
+{
+    m_removeEmpty->setVisible(m_operation != Operation::Extract);
+    m_removeArchive->setVisible(m_operation == Operation::Extract);
+    m_removeArchive->setEnabled(m_entireSource->isVisible() && m_entireSource->isChecked());
+
+    if(m_operation != Operation::Extract || !m_entireSource->isChecked()) {
+        m_removeArchive->setChecked(false);
+    }
 }
 
 void FileOpsDialogPrivate::updateButtonState() const
@@ -259,6 +302,8 @@ FileOpPreset FileOpsDialogPrivate::currentPreset() const
     preset.filename    = m_filename->text();
     preset.wholeDir    = m_entireSource->isChecked();
     preset.removeEmpty = m_removeEmpty->isChecked();
+    preset.removeSourceArchive
+        = m_operation == Operation::Extract && m_entireSource->isChecked() && m_removeArchive->isChecked();
 
     return preset;
 }
@@ -346,6 +391,8 @@ void FileOpsDialogPrivate::loadCurrentPreset() const
         m_filename->setText(preset.filename);
         m_entireSource->setChecked(preset.wholeDir);
         m_removeEmpty->setChecked(preset.removeEmpty);
+        m_removeArchive->setChecked(preset.removeSourceArchive);
+        updateOptionState();
 
         simulateOp();
     }
@@ -374,14 +421,7 @@ void FileOpsDialogPrivate::simulateOp() const
         return;
     }
 
-    FileOpPreset preset;
-    preset.op          = m_operation;
-    preset.dest        = m_destination->text();
-    preset.filename    = m_filename->text();
-    preset.wholeDir    = m_entireSource->isChecked();
-    preset.removeEmpty = m_removeEmpty->isChecked();
-
-    m_model->simulate(preset);
+    m_model->simulate(currentPreset());
 
     m_status->setText(FileOpsDialog::tr("Determining operations…"));
 }
@@ -393,6 +433,18 @@ void FileOpsDialogPrivate::toggleRun()
         m_model->stop();
     }
     else {
+        const FileOpPreset preset = currentPreset();
+        if(preset.removeSourceArchive) {
+            const auto result = QMessageBox::question(
+                m_self, tr("Delete source archive after extraction?"),
+                tr("Source archive files will be moved to the trash after every file from each archive has "
+                   "been extracted. Continue?"),
+                QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
+            if(result != QMessageBox::Yes) {
+                return;
+            }
+        }
+
         m_runButton->setText(tr("&Abort"));
         m_model->run();
     }
@@ -432,10 +484,10 @@ std::vector<FileOpPreset>::iterator FileOpsDialogPrivate::findPreset(const QStri
         m_presets, [this, &name](const auto& preset) { return preset.op == m_operation && preset.name == name; });
 }
 
-FileOpsDialog::FileOpsDialog(MusicLibrary* library, const TrackList& tracks, Operation operation,
-                             SettingsManager* settings, QWidget* parent)
+FileOpsDialog::FileOpsDialog(MusicLibrary* library, std::shared_ptr<AudioLoader> audioLoader, const TrackList& tracks,
+                             Operation operation, SettingsManager* settings, QWidget* parent)
     : QDialog{parent}
-    , p{std::make_unique<FileOpsDialogPrivate>(this, library, tracks, operation, settings)}
+    , p{std::make_unique<FileOpsDialogPrivate>(this, library, tracks, operation, std::move(audioLoader), settings)}
 {
     setWindowTitle(tr("File Operation"));
     setModal(true);
@@ -459,6 +511,9 @@ void FileOpsDialog::loadPreset(const QString& name)
         p->m_filename->setText(preset->filename);
         p->m_entireSource->setChecked(preset->wholeDir);
         p->m_removeEmpty->setChecked(preset->removeEmpty);
+        p->m_removeArchive->setChecked(preset->removeSourceArchive);
+
+        p->updateOptionState();
     }
 
     p->m_loading = false;

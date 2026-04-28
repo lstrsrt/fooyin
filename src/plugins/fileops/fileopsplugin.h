@@ -24,7 +24,10 @@
 #include <gui/plugins/guiplugin.h>
 #include <gui/plugins/pluginconfigguiplugin.h>
 
+#include <memory>
+
 namespace Fooyin {
+class AudioLoader;
 namespace FileOps {
 class FileOpsPlugin : public QObject,
                       public Plugin,
@@ -47,6 +50,7 @@ private:
     void setupMenu();
 
     ActionManager* m_actionManager;
+    std::shared_ptr<AudioLoader> m_audioLoader;
     MusicLibrary* m_library;
     TrackSelectionController* m_trackSelectionController;
     SettingsManager* m_settings;

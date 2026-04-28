@@ -28,8 +28,10 @@
 
 #include <deque>
 #include <set>
+#include <unordered_map>
 
 namespace Fooyin {
+class AudioLoader;
 class MusicLibrary;
 class SettingsManager;
 
@@ -40,6 +42,8 @@ struct FileOpsItem
     QString name;
     QString source;
     QString destination;
+    QString archivePath;
+    QString archiveEntry;
 
     [[nodiscard]] QString displayName() const
     {
@@ -58,7 +62,8 @@ class FileOpsWorker : public Worker
     Q_OBJECT
 
 public:
-    FileOpsWorker(MusicLibrary* library, TrackList tracks, SettingsManager* settings, QObject* parent = nullptr);
+    FileOpsWorker(MusicLibrary* library, std::shared_ptr<AudioLoader> audioLoader, TrackList tracks,
+                  SettingsManager* settings, QObject* parent = nullptr);
 
     void simulate(const FileOpPreset& preset);
     void run();
@@ -75,22 +80,27 @@ private:
 
     void simulateMove();
     void simulateCopy();
+    void simulateExtract();
     void simulateRename();
 
     [[nodiscard]] QString evaluatePath(const ParsedScript& script, const Track& track);
 
-    void renameFile(const FileOpsItem& item);
-    static void copyFile(const FileOpsItem& item);
+    bool renameFile(const FileOpsItem& item);
+    static bool copyFile(const FileOpsItem& item);
+    bool extractFile(const FileOpsItem& item);
+    bool removeArchive(const FileOpsItem& item);
 
     void createDir(const QDir& dir);
     void removeDir(const QDir& dir);
 
     void reset();
 
+    void updateExtractedArchiveTracks(const QString& archivePath);
     void handleEmptyDirs(const QDir& dir, const QString& filepath);
     void addEmptyDirs(const QDir& dir);
 
     MusicLibrary* m_library;
+    std::shared_ptr<AudioLoader> m_audioLoader;
     SettingsManager* m_settings;
     ScriptParser m_scriptParser;
     TrackList m_tracks;
@@ -104,6 +114,9 @@ private:
     std::set<QString> m_filesToMove;
     std::set<QString> m_dirsToCreate;
     std::set<QString> m_dirsToRemove;
+    std::set<QString> m_failedArchives;
+    std::set<QString> m_successfulArchives;
+    std::unordered_map<QString, QString> m_extractedTrackDestinations;
     TrackList m_tracksToUpdate;
     TrackList m_tracksToDelete;
 };

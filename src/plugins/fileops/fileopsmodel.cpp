@@ -23,9 +23,10 @@
 #include <utils/enum.h>
 
 namespace Fooyin::FileOps {
-FileOpsModel::FileOpsModel(MusicLibrary* library, TrackList tracks, SettingsManager* settings, QObject* parent)
+FileOpsModel::FileOpsModel(MusicLibrary* library, std::shared_ptr<AudioLoader> audioLoader, TrackList tracks,
+                           SettingsManager* settings, QObject* parent)
     : QAbstractItemModel{parent}
-    , m_worker{library, std::move(tracks), settings}
+    , m_worker{library, std::move(audioLoader), std::move(tracks), settings}
 {
     m_worker.moveToThread(&m_workerThread);
 
@@ -84,11 +85,11 @@ QVariant FileOpsModel::headerData(int section, Qt::Orientation orientation, int 
     }
 
     switch(section) {
-        case(0):
+        case 0:
             return tr("Operation");
-        case(1):
+        case 1:
             return tr("Source");
-        case(2):
+        case 2:
             return tr("Destination");
         default:
             break;
@@ -110,11 +111,11 @@ QVariant FileOpsModel::data(const QModelIndex& index, int role) const
     const auto& item = m_operations.at(index.row());
 
     switch(index.column()) {
-        case(0):
+        case 0:
             return operationToString(item.op);
-        case(1):
+        case 1:
             return item.displayName();
-        case(2):
+        case 2:
             return item.displayDestination();
         default:
             break;
@@ -166,18 +167,22 @@ void FileOpsModel::operationFinished(const FileOpsItem& /*operation*/)
 QString FileOpsModel::operationToString(Operation op) const
 {
     switch(op) {
-        case(Operation::Copy):
+        case Operation::Copy:
             return tr("Copy");
-        case(Operation::Move):
+        case Operation::Move:
             return tr("Move");
-        case(Operation::Rename):
+        case Operation::Rename:
             return tr("Rename");
-        case(Operation::Create):
+        case Operation::Create:
             return tr("Create");
-        case(Operation::Remove):
+        case Operation::Remove:
             return tr("Remove");
-        case(Operation::Delete):
+        case Operation::Delete:
             return tr("Delete");
+        case Operation::Extract:
+            return tr("Extract");
+        case Operation::RemoveArchive:
+            return tr("Remove");
     }
     return tr("Unknown");
 }

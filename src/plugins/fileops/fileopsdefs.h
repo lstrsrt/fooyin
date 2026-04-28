@@ -30,11 +30,16 @@ enum class Operation : uint8_t
     Rename,
     Create,
     Remove,
-    Delete
+    Delete,
+    Extract,
+    RemoveArchive
 };
 
 struct FileOpPreset
 {
+    static constexpr quint8 Magic   = 99;
+    static constexpr qint32 Version = 1;
+
     Operation op{Operation::Copy};
     QString name;
 
@@ -44,9 +49,12 @@ struct FileOpPreset
     bool overwrite{false};
     bool wholeDir{false};
     bool removeEmpty{false};
+    bool removeSourceArchive{false};
 
     friend QDataStream& operator<<(QDataStream& stream, const FileOpPreset& preset)
     {
+        stream << Magic;
+        stream << Version;
         stream << preset.op;
         stream << preset.name;
         stream << preset.dest;
@@ -54,18 +62,35 @@ struct FileOpPreset
         stream << preset.overwrite;
         stream << preset.wholeDir;
         stream << preset.removeEmpty;
+        stream << preset.removeSourceArchive;
         return stream;
     }
 
     friend QDataStream& operator>>(QDataStream& stream, FileOpPreset& preset)
     {
-        stream >> preset.op;
+        quint8 opOrMagic{0};
+        stream >> opOrMagic;
+
+        qint32 version{0};
+
+        if(opOrMagic == Magic) {
+            stream >> version;
+            stream >> preset.op;
+        }
+        else {
+            preset.op = static_cast<Operation>(opOrMagic);
+        }
+
         stream >> preset.name;
         stream >> preset.dest;
         stream >> preset.filename;
         stream >> preset.overwrite;
         stream >> preset.wholeDir;
         stream >> preset.removeEmpty;
+        if(version >= 1) {
+            stream >> preset.removeSourceArchive;
+        }
+
         return stream;
     }
 };
