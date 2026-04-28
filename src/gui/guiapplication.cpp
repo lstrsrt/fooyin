@@ -223,6 +223,7 @@ public:
 
     void loadPlaylist();
     void savePlaylist() const;
+    void savePlaylist(const Playlist* playlist) const;
     void saveAllPlaylist() const;
 
     GuiApplication* m_self;
@@ -1339,6 +1340,11 @@ void GuiApplicationPrivate::loadPlaylist()
 void GuiApplicationPrivate::savePlaylist() const
 {
     auto* playlist = m_playlistController->currentPlaylist();
+    savePlaylist(playlist);
+}
+
+void GuiApplicationPrivate::savePlaylist(const Playlist* playlist) const
+{
     if(!playlist || playlist->trackCount() == 0) {
         return;
     }
@@ -1413,6 +1419,11 @@ void GuiApplicationPrivate::savePlaylist() const
 
         parser->savePlaylist(&playlistFile, extension, playlist->tracks(), playlistDir, pathType, writeMetadata);
     }
+}
+
+void GuiApplication::savePlaylist(const UId& playlistId) const
+{
+    p->savePlaylist(p->m_playlistHandler->playlistById(playlistId));
 }
 
 void GuiApplicationPrivate::saveAllPlaylist() const

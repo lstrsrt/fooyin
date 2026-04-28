@@ -39,6 +39,7 @@ class SearchController;
 class ScriptCommandHandler;
 class ThemeRegistry;
 class TrackSelectionController;
+class UId;
 class WidgetProvider;
 
 class FYGUI_EXPORT GuiApplication : public QObject
@@ -54,6 +55,7 @@ public:
 
     void raise();
     void openFiles(const QList<QUrl>& files);
+    void savePlaylist(const UId& playlistId) const;
 
     void searchForArtwork(const TrackList& tracks, Track::Cover type, bool quick);
     void attachArtwork(const TrackList& tracks, Track::Cover type, const QString& filepath);

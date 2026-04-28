@@ -30,7 +30,6 @@ class QHBoxLayout;
 class QVBoxLayout;
 
 namespace Fooyin {
-class ActionManager;
 class Playlist;
 class PlaylistController;
 class PlaylistHandler;
@@ -43,8 +42,8 @@ class PlaylistTabs : public WidgetContainer
     Q_OBJECT
 
 public:
-    explicit PlaylistTabs(ActionManager* actionManager, WidgetProvider* widgetProvider,
-                          PlaylistController* playlistController, SettingsManager* settings, QWidget* parent = nullptr);
+    explicit PlaylistTabs(WidgetProvider* widgetProvider, PlaylistController* playlistController,
+                          SettingsManager* settings, QWidget* parent = nullptr);
 
     void setupTabs();
 
@@ -75,6 +74,7 @@ public:
 signals:
     void filesDropped(const QList<QUrl>& urls, const Fooyin::UId& playlistId);
     void tracksDropped(const QByteArray& data, const Fooyin::UId& playlistId);
+    void savePlaylistRequested(const Fooyin::UId& playlistId);
 
 protected:
     void contextMenuEvent(QContextMenuEvent* event) override;
@@ -100,7 +100,6 @@ private:
     void createEmptyPlaylist() const;
     void clearCurrentPlaylist() const;
 
-    ActionManager* m_actionManager;
     PlaylistController* m_playlistController;
     PlaylistHandler* m_playlistHandler;
     TrackSelectionController* m_selectionController;

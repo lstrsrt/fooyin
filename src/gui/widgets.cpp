@@ -150,12 +150,12 @@ void Widgets::registerWidgets()
     provider->registerWidget(
         u"PlaylistTabs"_s,
         [this]() {
-            auto* playlistTabs = new PlaylistTabs(m_gui->actionManager(), m_gui->widgetProvider(), m_playlistController,
-                                                  m_settings, m_window);
+            auto* playlistTabs = new PlaylistTabs(m_gui->widgetProvider(), m_playlistController, m_settings, m_window);
             QObject::connect(playlistTabs, &PlaylistTabs::filesDropped, m_playlistInteractor,
                              &PlaylistInteractor::filesToPlaylist);
             QObject::connect(playlistTabs, &PlaylistTabs::tracksDropped, m_playlistInteractor,
                              &PlaylistInteractor::trackIdsToPlaylist);
+            QObject::connect(playlistTabs, &PlaylistTabs::savePlaylistRequested, m_gui, &GuiApplication::savePlaylist);
             return playlistTabs;
         },
         tr("Playlist Tabs"));

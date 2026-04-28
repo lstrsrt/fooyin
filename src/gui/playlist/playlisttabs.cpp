@@ -32,8 +32,6 @@
 #include <gui/widgets/editabletabbar.h>
 #include <gui/widgets/singletabbedwidget.h>
 #include <gui/widgets/toolbutton.h>
-#include <utils/actions/actionmanager.h>
-#include <utils/actions/command.h>
 #include <utils/settings/settingsmanager.h>
 #include <utils/utils.h>
 
@@ -57,10 +55,9 @@ using namespace std::chrono_literals;
 using namespace Qt::StringLiterals;
 
 namespace Fooyin {
-PlaylistTabs::PlaylistTabs(ActionManager* actionManager, WidgetProvider* widgetProvider,
-                           PlaylistController* playlistController, SettingsManager* settings, QWidget* parent)
+PlaylistTabs::PlaylistTabs(WidgetProvider* widgetProvider, PlaylistController* playlistController,
+                           SettingsManager* settings, QWidget* parent)
     : WidgetContainer{widgetProvider, settings, parent}
-    , m_actionManager{actionManager}
     , m_playlistController{playlistController}
     , m_playlistHandler{m_playlistController->playlistHandler()}
     , m_selectionController{m_playlistController->selectionController()}
@@ -323,8 +320,7 @@ void PlaylistTabs::contextMenuEvent(QContextMenuEvent* event)
 
         auto* renameAction
             = new QAction(playlist->isAutoPlaylist() ? tr("Rename autoplaylist") : tr("Rename playlist"), menu);
-        QObject::connect(renameAction, &QAction::triggered, tabBar,
-                         [tabBar] { tabBar->showEditor(tabBar->currentIndex()); });
+        QObject::connect(renameAction, &QAction::triggered, tabBar, [tabBar, index] { tabBar->showEditor(index); });
 
         menu->addAction(renameAction);
         menu->addSeparator();
@@ -351,9 +347,10 @@ void PlaylistTabs::contextMenuEvent(QContextMenuEvent* event)
 
         menu->addSeparator();
 
-        if(auto* savePlaylist = m_actionManager->command(Constants::Actions::SavePlaylist)) {
-            menu->addAction(savePlaylist->action());
-        }
+        auto* savePlaylist = new QAction(tr("Save playlist…"), menu);
+        savePlaylist->setEnabled(playlist->trackCount() > 0);
+        QObject::connect(savePlaylist, &QAction::triggered, this, [this, id]() { emit savePlaylistRequested(id); });
+        menu->addAction(savePlaylist);
 
         menu->addSeparator();
 
