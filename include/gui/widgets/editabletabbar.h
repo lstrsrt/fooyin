@@ -23,6 +23,8 @@
 
 #include <QTabBar>
 
+class QStyleOptionTab;
+
 namespace Fooyin {
 class PopupLineEdit;
 
@@ -41,6 +43,7 @@ public:
 
     void showEditor(int index);
     void closeEditor();
+    void clearHoverState();
 
     void setEditTitle(const QString& title);
     void setEditMode(EditMode mode);
@@ -52,6 +55,7 @@ signals:
 
 protected:
     bool event(QEvent* event) override;
+    void initStyleOption(QStyleOptionTab* option, int tabIndex) const override;
     void mouseDoubleClickEvent(QMouseEvent* event) override;
     void mousePressEvent(QMouseEvent* event) override;
     void wheelEvent(QWheelEvent* event) override;
@@ -61,5 +65,6 @@ private:
     EditMode m_mode;
     PopupLineEdit* m_lineEdit;
     QPoint m_accumDelta;
+    bool m_suppressHoverState;
 };
 } // namespace Fooyin

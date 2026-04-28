@@ -282,6 +282,7 @@ void PlaylistTabs::contextMenuEvent(QContextMenuEvent* event)
 
     auto* menu = new QMenu(this);
     menu->setAttribute(Qt::WA_DeleteOnClose);
+    QObject::connect(menu, &QMenu::aboutToHide, tabBar, &EditableTabBar::clearHoverState);
 
     auto* createPlaylist = new QAction(tr("Add new playlist"), menu);
     QObject::connect(createPlaylist, &QAction::triggered, this, [this]() {

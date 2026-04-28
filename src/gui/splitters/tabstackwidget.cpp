@@ -272,6 +272,7 @@ void TabStackWidget::contextMenuEvent(QContextMenuEvent* event)
 {
     auto* menu = new QMenu(this);
     menu->setAttribute(Qt::WA_DeleteOnClose);
+    QObject::connect(menu, &QMenu::aboutToHide, m_tabs->editableTabBar(), &EditableTabBar::clearHoverState);
 
     const QPoint point = m_tabs->tabBar()->mapFrom(this, event->pos());
     const int index    = m_tabs->tabBar()->tabAt(point);

@@ -27,6 +27,7 @@
 #include <QMainWindow>
 #include <QMouseEvent>
 #include <QStyle>
+#include <QStyleOption>
 #include <QWheelEvent>
 
 namespace Fooyin {
@@ -35,6 +36,7 @@ EditableTabBar::EditableTabBar(QWidget* parent)
     , m_title{tr("Tab")}
     , m_mode{EditMode::Inline}
     , m_lineEdit{nullptr}
+    , m_suppressHoverState{false}
 {
     setMovable(true);
 }
@@ -84,6 +86,12 @@ void EditableTabBar::closeEditor()
     }
 }
 
+void EditableTabBar::clearHoverState()
+{
+    m_suppressHoverState = true;
+    update();
+}
+
 void EditableTabBar::setEditTitle(const QString& title)
 {
     m_title = title;
@@ -99,7 +107,24 @@ bool EditableTabBar::event(QEvent* event)
     if(event->type() == QEvent::HoverLeave) {
         m_accumDelta = {};
     }
+
+    if(event->type() == QEvent::Enter || event->type() == QEvent::HoverEnter || event->type() == QEvent::HoverMove) {
+        if(m_suppressHoverState) {
+            m_suppressHoverState = false;
+            update();
+        }
+    }
+
     return QTabBar::event(event);
+}
+
+void EditableTabBar::initStyleOption(QStyleOptionTab* option, int tabIndex) const
+{
+    QTabBar::initStyleOption(option, tabIndex);
+
+    if(m_suppressHoverState) {
+        option->state &= ~QStyle::State_MouseOver;
+    }
 }
 
 void EditableTabBar::mouseDoubleClickEvent(QMouseEvent* event)
