@@ -711,15 +711,24 @@ void PlayerControllerPrivate::saveActiveTrack() const
 {
     PlaybackState::clearActiveTrackIndex();
 
-    const auto track = m_self->currentPlaylistTrack();
-    if(!track.isValid() || !m_settings->fileValue(Settings::Core::Internal::SaveActivePlaylistState).toBool()) {
+    if(!m_settings->fileValue(Settings::Core::Internal::SaveActivePlaylistState).toBool()) {
         return;
     }
 
     auto* playlist = m_playlistHandler->activePlaylist();
+    if(!playlist || playlist->isTemporary()) {
+        return;
+    }
 
-    if(playlist && !playlist->isTemporary() && track.isInPlaylist()) {
+    const auto track = m_self->currentPlaylistTrack();
+    if(track.isValid() && track.isInPlaylist() && track.playlistId == playlist->id()) {
         PlaybackState::saveActiveTrackIndex(track.indexInPlaylist);
+        return;
+    }
+
+    const int currentIndex = playlist->currentTrackIndex();
+    if(currentIndex >= 0 && currentIndex < playlist->trackCount()) {
+        PlaybackState::saveActiveTrackIndex(currentIndex);
     }
 }
 
