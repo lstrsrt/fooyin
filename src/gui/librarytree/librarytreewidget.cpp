@@ -913,7 +913,7 @@ void LibraryTreeWidget::searchChanged(const SearchRequest& request)
 
     if(m_currentSearch.length() < 1) {
         if(request.emptyMode == EmptySearchMode::ShowAll) {
-            m_filteredTracks = m_library->tracks();
+            m_filteredTracks = m_library->libraryTracks();
             m_model->reset(m_filteredTracks);
         }
         else {
@@ -923,7 +923,7 @@ void LibraryTreeWidget::searchChanged(const SearchRequest& request)
         return;
     }
 
-    Utils::asyncExec([search = m_currentSearch, tracks = m_library->tracks()]() {
+    Utils::asyncExec([search = m_currentSearch, tracks = m_library->libraryTracks()]() {
         ScriptParser parser;
         return parser.filter(search, tracks);
     }).then(this, [this, search = m_currentSearch](const TrackList& filteredTracks) {
