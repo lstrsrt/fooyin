@@ -323,7 +323,8 @@ void PlaylistTabs::contextMenuEvent(QContextMenuEvent* event)
 
         auto* renameAction
             = new QAction(playlist->isAutoPlaylist() ? tr("Rename autoplaylist") : tr("Rename playlist"), menu);
-        QObject::connect(renameAction, &QAction::triggered, tabBar, &EditableTabBar::showEditor);
+        QObject::connect(renameAction, &QAction::triggered, tabBar,
+                         [tabBar] { tabBar->showEditor(tabBar->currentIndex()); });
 
         menu->addAction(renameAction);
         menu->addSeparator();

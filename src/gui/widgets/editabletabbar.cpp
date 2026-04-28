@@ -39,26 +39,24 @@ EditableTabBar::EditableTabBar(QWidget* parent)
     setMovable(true);
 }
 
-void EditableTabBar::showEditor()
+void EditableTabBar::showEditor(int index)
 {
-    const int currIndex = currentIndex();
-
     if(m_mode == EditMode::Inline) {
-        m_lineEdit = new PopupLineEdit(tabText(currentIndex()), this);
+        m_lineEdit = new PopupLineEdit(tabText(index), this);
         m_lineEdit->setAttribute(Qt::WA_DeleteOnClose);
 
         QObject::connect(m_lineEdit, &QObject::destroyed, this, [this]() { m_lineEdit = nullptr; });
         QObject::connect(m_lineEdit, &PopupLineEdit::editingCancelled, m_lineEdit, &QWidget::close);
-        QObject::connect(m_lineEdit, &PopupLineEdit::editingFinished, this, [this, currIndex]() {
+        QObject::connect(m_lineEdit, &PopupLineEdit::editingFinished, this, [this, index]() {
             const QString text = m_lineEdit->text();
-            if(text != tabText(currIndex)) {
-                setTabText(currIndex, m_lineEdit->text());
-                emit tabTextChanged(currIndex, m_lineEdit->text());
+            if(text != tabText(index)) {
+                setTabText(index, m_lineEdit->text());
+                emit tabTextChanged(index, m_lineEdit->text());
             }
             m_lineEdit->close();
         });
 
-        const QRect rect = tabRect(currIndex);
+        const QRect rect = tabRect(index);
         m_lineEdit->setGeometry(rect);
 
         m_lineEdit->show();
@@ -66,15 +64,15 @@ void EditableTabBar::showEditor()
         m_lineEdit->setFocus(Qt::ActiveWindowFocusReason);
     }
     else {
-        const QString currentText = tabText(currIndex);
+        const QString currentText = tabText(index);
 
         bool ok{false};
         const QString text = QInputDialog::getText(Utils::getMainWindow(), tr("Rename Tab"), tr("Name:"),
                                                    QLineEdit::Normal, currentText, &ok);
 
         if(ok && !text.isEmpty() && text != currentText) {
-            setTabText(currIndex, text);
-            emit tabTextChanged(currIndex, text);
+            setTabText(index, text);
+            emit tabTextChanged(index, text);
         }
     }
 }
@@ -117,8 +115,9 @@ void EditableTabBar::mouseDoubleClickEvent(QMouseEvent* event)
         return;
     }
 
-    if(tabAt(pos) >= 0) {
-        showEditor();
+    const int tab = tabAt(pos);
+    if(tab >= 0) {
+        showEditor(tab);
     }
 
     QTabBar::mouseDoubleClickEvent(event);
