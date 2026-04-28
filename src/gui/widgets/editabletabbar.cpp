@@ -130,6 +130,11 @@ void EditableTabBar::mousePressEvent(QMouseEvent* event)
         return;
     }
 
+    if(event->button() & Qt::RightButton) {
+        event->accept();
+        return;
+    }
+
     const QPoint pos = event->position().toPoint();
 
     if(event->button() & Qt::MiddleButton) {
