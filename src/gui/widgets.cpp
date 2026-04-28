@@ -240,8 +240,8 @@ void Widgets::registerWidgets()
     provider->registerWidget(
         u"ArtworkPanel"_s,
         [this]() {
-            auto* coverWidget = new CoverWidget(m_core->playerController(), m_gui->trackSelection(),
-                                                m_core->audioLoader(), m_settings, m_window);
+            auto* coverWidget = new CoverWidget(m_core->playerController(), m_core->playlistHandler(),
+                                                m_gui->trackSelection(), m_core->audioLoader(), m_settings, m_window);
             QObject::connect(m_core->library(), &MusicLibrary::tracksMetadataChanged, coverWidget,
                              &CoverWidget::reloadCover);
             QObject::connect(coverWidget, &CoverWidget::requestArtworkSearch, this, &Widgets::showArtworkDialog);

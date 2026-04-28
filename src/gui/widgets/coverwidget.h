@@ -32,6 +32,7 @@ class QVariantAnimation;
 namespace Fooyin {
 class CoverProvider;
 class AudioLoader;
+class PlaylistHandler;
 class PlayerController;
 class SettingsManager;
 class TrackSelectionController;
@@ -50,9 +51,9 @@ public:
         int fadeDurationMs{1000};
     };
 
-    explicit CoverWidget(PlayerController* playerController, TrackSelectionController* trackSelection,
-                         std::shared_ptr<AudioLoader> audioLoader, SettingsManager* settings,
-                         QWidget* parent = nullptr);
+    explicit CoverWidget(PlayerController* playerController, PlaylistHandler* playlistHandler,
+                         TrackSelectionController* trackSelection, std::shared_ptr<AudioLoader> audioLoader,
+                         SettingsManager* settings, QWidget* parent = nullptr);
 
     [[nodiscard]] ConfigData factoryConfig() const;
     [[nodiscard]] ConfigData defaultConfig() const;
@@ -102,6 +103,7 @@ private:
     void checkTrackArtwork(const Track& track);
 
     PlayerController* m_playerController;
+    PlaylistHandler* m_playlistHandler;
     TrackSelectionController* m_trackSelection;
     std::shared_ptr<AudioLoader> m_audioLoader;
     SettingsManager* m_settings;

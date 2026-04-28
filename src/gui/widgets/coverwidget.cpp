@@ -26,6 +26,7 @@
 
 #include <core/engine/audioloader.h>
 #include <core/player/playercontroller.h>
+#include <core/playlist/playlisthandler.h>
 #include <core/track.h>
 #include <gui/coverprovider.h>
 #include <gui/guiconstants.h>
@@ -66,10 +67,12 @@ constexpr auto ResizeInterval = 5;
 #endif
 
 namespace Fooyin {
-CoverWidget::CoverWidget(PlayerController* playerController, TrackSelectionController* trackSelection,
-                         std::shared_ptr<AudioLoader> audioLoader, SettingsManager* settings, QWidget* parent)
+CoverWidget::CoverWidget(PlayerController* playerController, PlaylistHandler* playlistHandler,
+                         TrackSelectionController* trackSelection, std::shared_ptr<AudioLoader> audioLoader,
+                         SettingsManager* settings, QWidget* parent)
     : FyWidget{parent}
     , m_playerController{playerController}
+    , m_playlistHandler{playlistHandler}
     , m_trackSelection{trackSelection}
     , m_audioLoader{audioLoader}
     , m_settings{settings}
@@ -105,6 +108,8 @@ CoverWidget::CoverWidget(PlayerController* playerController, TrackSelectionContr
 
     QObject::connect(m_playerController, &PlayerController::currentTrackChanged, this, &CoverWidget::reloadCover);
     QObject::connect(m_playerController, &PlayerController::currentTrackChanged, this, &CoverWidget::checkTrackArtwork);
+    QObject::connect(m_playlistHandler, &PlaylistHandler::playlistsPopulated, this, &CoverWidget::reloadCover);
+    QObject::connect(m_playlistHandler, &PlaylistHandler::activePlaylistChanged, this, &CoverWidget::reloadCover);
     QObject::connect(m_trackSelection, &TrackSelectionController::selectionChanged, this,
                      &CoverWidget::handleSelectionChanged);
     QObject::connect(m_coverProvider, &CoverProvider::coverAdded, this, &CoverWidget::reloadCover,
@@ -249,7 +254,15 @@ Track CoverWidget::displayTrack() const
         return m_trackSelection->selectedTrack();
     }
 
-    return m_playerController->currentTrack();
+    if(const Track track = m_playerController->currentTrack(); track.isValid()) {
+        return track;
+    }
+
+    if(const PlaylistTrack track = m_playlistHandler->currentTrack(); track.isValid()) {
+        return track.track;
+    }
+
+    return {};
 }
 
 bool CoverWidget::sameDisplayTrack(const Track& lhs, const Track& rhs)
@@ -411,9 +424,7 @@ void CoverWidget::loadLayoutData(const QJsonObject& layout)
 
 void CoverWidget::resizeEvent(QResizeEvent* event)
 {
-    if(!m_scaledCover.isNull()) {
-        m_resizeTimer.start(ResizeInterval, this);
-    }
+    m_resizeTimer.start(ResizeInterval, this);
 
     QWidget::resizeEvent(event);
 }
