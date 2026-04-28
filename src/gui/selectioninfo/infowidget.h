@@ -19,14 +19,13 @@
 
 #pragma once
 
-#include "internalguisettings.h"
-
 #include <gui/fywidget.h>
 #include <gui/propertiesdialog.h>
 
 class QJsonObject;
 
 namespace Fooyin {
+class ActionManager;
 class Application;
 class InfoPanel;
 class LibraryManager;
@@ -37,8 +36,10 @@ class InfoWidget : public FyWidget
     Q_OBJECT
 
 public:
-    InfoWidget(const TrackList& tracks, LibraryManager* libraryManager, QWidget* parent = nullptr);
-    InfoWidget(Application* app, TrackSelectionController* selectionController, QWidget* parent = nullptr);
+    InfoWidget(const TrackList& tracks, LibraryManager* libraryManager, ActionManager* actionManager,
+               QWidget* parent = nullptr);
+    InfoWidget(Application* app, ActionManager* actionManager, TrackSelectionController* selectionController,
+               QWidget* parent = nullptr);
     ~InfoWidget() override;
 
     [[nodiscard]] QString name() const override;
@@ -56,7 +57,8 @@ class InfoPropertiesTab : public PropertiesTabWidget
     Q_OBJECT
 
 public:
-    InfoPropertiesTab(const TrackList& tracks, LibraryManager* libraryManager, QWidget* parent = nullptr);
+    InfoPropertiesTab(const TrackList& tracks, LibraryManager* libraryManager, ActionManager* actionManager,
+                      QWidget* parent = nullptr);
     ~InfoPropertiesTab() override;
 
     void updateTracks(const TrackList& tracks) override;

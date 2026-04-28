@@ -27,14 +27,22 @@
 #include <core/application.h>
 #include <core/player/playercontroller.h>
 #include <core/track.h>
+#include <gui/guiconstants.h>
 #include <gui/trackselectioncontroller.h>
+#include <utils/actions/actionmanager.h>
+#include <utils/actions/command.h>
+#include <utils/actions/widgetcontext.h>
 #include <utils/settings/settingsmanager.h>
 
 #include <QBasicTimer>
+#include <QClipboard>
 #include <QContextMenuEvent>
+#include <QGuiApplication>
 #include <QHBoxLayout>
 #include <QHeaderView>
+#include <QItemSelectionModel>
 #include <QJsonObject>
+#include <QKeySequence>
 #include <QMenu>
 #include <QScrollBar>
 #include <QSortFilterProxyModel>
@@ -67,8 +75,10 @@ class InfoPanel : public QWidget
     Q_OBJECT
 
 public:
-    InfoPanel(const TrackList& tracks, LibraryManager* libraryManager, QWidget* parent = nullptr);
-    InfoPanel(Application* app, TrackSelectionController* selectionController, QWidget* parent = nullptr);
+    InfoPanel(const TrackList& tracks, LibraryManager* libraryManager, ActionManager* actionManager,
+              QWidget* parent = nullptr);
+    InfoPanel(Application* app, ActionManager* actionManager, TrackSelectionController* selectionController,
+              QWidget* parent = nullptr);
 
     void saveLayoutData(QJsonObject& layout) const;
     void loadLayoutData(const QJsonObject& layout);
@@ -82,10 +92,16 @@ protected:
     void timerEvent(QTimerEvent* event) override;
 
 private:
+    void setupActions();
+    void updateActions() const;
+
+    void copySelection() const;
+    [[nodiscard]] QString selectionText() const;
     void queueViewReset();
     void resetModel();
     void resetView();
 
+    ActionManager* m_actionManager;
     TrackSelectionController* m_selectionController;
     PlayerController* m_playerController;
     SettingsManager* m_settings;
@@ -93,6 +109,9 @@ private:
     InfoView* m_view;
     InfoFilterModel* m_proxyModel;
     InfoModel* m_model;
+    WidgetContext* m_context;
+    QAction* m_copyAction;
+    Command* m_copyCmd;
     QBasicTimer m_resetTimer;
     SelectionDisplay m_displayOption;
     int m_scrollPos;
@@ -111,14 +130,20 @@ void setupInfoHost(QWidget* host, QWidget* panel)
     layout->addWidget(panel);
 }
 
-InfoPanel::InfoPanel(const TrackList& tracks, LibraryManager* libraryManager, QWidget* parent)
+InfoPanel::InfoPanel(const TrackList& tracks, LibraryManager* libraryManager, ActionManager* actionManager,
+                     QWidget* parent)
     : QWidget{parent}
+    , m_actionManager{actionManager}
     , m_selectionController{nullptr}
     , m_playerController{nullptr}
     , m_settings{nullptr}
     , m_view{new InfoView(this)}
     , m_proxyModel{new InfoFilterModel(this)}
     , m_model{new InfoModel(libraryManager, this)}
+    , m_context{new WidgetContext(
+          this, Context{Id{"Fooyin.Context.SelectionInfo."}.append(reinterpret_cast<uintptr_t>(this))}, this)}
+    , m_copyAction{new QAction(tr("&Copy"), this)}
+    , m_copyCmd{m_actionManager->registerAction(m_copyAction, Constants::Actions::Copy, m_context->context())}
     , m_displayOption{SelectionDisplay::PreferSelection}
     , m_scrollPos{-1}
     , m_showHeader{true}
@@ -138,17 +163,24 @@ InfoPanel::InfoPanel(const TrackList& tracks, LibraryManager* libraryManager, QW
     m_view->header()->setSectionResizeMode(1, QHeaderView::Fixed);
     QObject::connect(m_model, &QAbstractItemModel::modelReset, this, [this]() { queueViewReset(); });
 
+    setupActions();
     m_model->resetModel(tracks);
 }
 
-InfoPanel::InfoPanel(Application* app, TrackSelectionController* selectionController, QWidget* parent)
+InfoPanel::InfoPanel(Application* app, ActionManager* actionManager, TrackSelectionController* selectionController,
+                     QWidget* parent)
     : QWidget{parent}
+    , m_actionManager{actionManager}
     , m_selectionController{selectionController}
     , m_playerController{app->playerController()}
     , m_settings{app->settingsManager()}
     , m_view{new InfoView(this)}
     , m_proxyModel{new InfoFilterModel(this)}
     , m_model{new InfoModel(app->libraryManager(), this)}
+    , m_context{new WidgetContext(
+          this, Context{Id{"Fooyin.Context.SelectionInfo."}.append(reinterpret_cast<uintptr_t>(this))}, this)}
+    , m_copyAction{new QAction(tr("&Copy"), this)}
+    , m_copyCmd{m_actionManager->registerAction(m_copyAction, Constants::Actions::Copy, m_context->context())}
     , m_displayOption{static_cast<SelectionDisplay>(m_settings->value<Settings::Gui::Internal::InfoDisplayPrefer>())}
     , m_scrollPos{-1}
     , m_showHeader{true}
@@ -173,6 +205,8 @@ InfoPanel::InfoPanel(Application* app, TrackSelectionController* selectionContro
                      [this]() { m_resetTimer.start(50, this); });
     QObject::connect(m_model, &QAbstractItemModel::modelReset, this, [this]() { queueViewReset(); });
 
+    setupActions();
+
     using namespace Settings::Gui::Internal;
 
     m_settings->subscribe<Settings::Gui::Internal::InfoDisplayPrefer>(this, [this](const int option) {
@@ -183,17 +217,19 @@ InfoPanel::InfoPanel(Application* app, TrackSelectionController* selectionContro
     resetModel();
 }
 
-InfoWidget::InfoWidget(const TrackList& tracks, LibraryManager* libraryManager, QWidget* parent)
+InfoWidget::InfoWidget(const TrackList& tracks, LibraryManager* libraryManager, ActionManager* actionManager,
+                       QWidget* parent)
     : FyWidget{parent}
-    , m_panel{new InfoPanel(tracks, libraryManager, this)}
+    , m_panel{new InfoPanel(tracks, libraryManager, actionManager, this)}
 {
     setObjectName(InfoWidget::name());
     setupInfoHost(this, m_panel);
 }
 
-InfoWidget::InfoWidget(Application* app, TrackSelectionController* selectionController, QWidget* parent)
+InfoWidget::InfoWidget(Application* app, ActionManager* actionManager, TrackSelectionController* selectionController,
+                       QWidget* parent)
     : FyWidget{parent}
-    , m_panel{new InfoPanel(app, selectionController, this)}
+    , m_panel{new InfoPanel(app, actionManager, selectionController, this)}
 {
     setObjectName(InfoWidget::name());
     setupInfoHost(this, m_panel);
@@ -226,9 +262,10 @@ void InfoWidget::finalise()
     m_panel->finalise();
 }
 
-InfoPropertiesTab::InfoPropertiesTab(const TrackList& tracks, LibraryManager* libraryManager, QWidget* parent)
+InfoPropertiesTab::InfoPropertiesTab(const TrackList& tracks, LibraryManager* libraryManager,
+                                     ActionManager* actionManager, QWidget* parent)
     : PropertiesTabWidget{parent}
-    , m_panel{new InfoPanel(tracks, libraryManager, this)}
+    , m_panel{new InfoPanel(tracks, libraryManager, actionManager, this)}
 {
     setupInfoHost(this, m_panel);
 }
@@ -343,14 +380,20 @@ void InfoPanel::queueViewReset()
 
 void InfoPanel::contextMenuEvent(QContextMenuEvent* event)
 {
-    if(!m_settings) {
-        return;
-    }
-
     using namespace Settings::Gui::Internal;
 
     auto* menu = new QMenu(this);
     menu->setAttribute(Qt::WA_DeleteOnClose);
+
+    updateActions();
+    menu->addAction(m_copyCmd->action());
+
+    if(!m_settings) {
+        menu->popup(event->globalPos());
+        return;
+    }
+
+    menu->addSeparator();
 
     auto* showHeaders = new QAction(tr("Show header"), menu);
     showHeaders->setCheckable(true);
@@ -458,6 +501,44 @@ void InfoPanel::contextMenuEvent(QContextMenuEvent* event)
     menu->addAction(showOther);
 
     menu->popup(event->globalPos());
+}
+
+void InfoPanel::setupActions()
+{
+    m_actionManager->addContextObject(m_context);
+
+    QObject::connect(m_copyAction, &QAction::triggered, this, &InfoPanel::copySelection);
+    QObject::connect(m_view->selectionModel(), &QItemSelectionModel::selectionChanged, this, &InfoPanel::updateActions);
+
+    m_copyCmd->setCategories({tr("Edit")});
+    m_copyCmd->setDefaultShortcut(QKeySequence::Copy);
+
+    updateActions();
+}
+
+void InfoPanel::updateActions() const
+{
+    m_copyAction->setEnabled(!selectionText().isEmpty());
+}
+
+void InfoPanel::copySelection() const
+{
+    const QString text = selectionText();
+    if(text.isEmpty()) {
+        return;
+    }
+
+    QGuiApplication::clipboard()->setText(text);
+}
+
+QString InfoPanel::selectionText() const
+{
+    const QModelIndex index = m_view->currentIndex();
+    if(!index.isValid()) {
+        return {};
+    }
+
+    return index.siblingAtColumn(1).data().toString();
 }
 
 void InfoPanel::timerEvent(QTimerEvent* event)

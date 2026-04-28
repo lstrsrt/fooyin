@@ -234,7 +234,8 @@ void Widgets::registerWidgets()
     provider->setSubMenus(u"OutputSelector"_s, {tr("Controls")});
 
     provider->registerWidget(
-        u"SelectionInfo"_s, [this]() { return new InfoWidget(m_core, m_gui->trackSelection(), m_window); },
+        u"SelectionInfo"_s,
+        [this]() { return new InfoWidget(m_core, m_gui->actionManager(), m_gui->trackSelection(), m_window); },
         tr("Selection Info"));
 
     provider->registerWidget(
@@ -357,7 +358,7 @@ void Widgets::registerDspSettings()
 void Widgets::registerPropertiesTabs()
 {
     m_gui->propertiesDialog()->addTab(tr("Details"), [this](const TrackList& tracks) {
-        return new InfoPropertiesTab(tracks, m_core->libraryManager(), m_window);
+        return new InfoPropertiesTab(tracks, m_core->libraryManager(), m_gui->actionManager(), m_window);
     });
     m_gui->propertiesDialog()->addTab(tr("ReplayGain"), [this](const TrackList& tracks) {
         const bool canWrite = std::ranges::all_of(tracks, [this](const Track& track) {
