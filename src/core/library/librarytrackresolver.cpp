@@ -455,7 +455,7 @@ TrackList LibraryTrackResolver::readArchiveTracks(const QString& filepath)
             return;
         }
 
-        const QString& entry = entryData.path;
+        const QString& entry = entryData.info.path;
         QIODevice* device    = entryData.device.get();
 
         bool readersFound = false;
@@ -463,11 +463,11 @@ TrackList LibraryTrackResolver::readArchiveTracks(const QString& filepath)
             readersFound = true;
 
             AudioSource source;
-            source.filepath      = entryData.path;
+            source.filepath      = entryData.info.path;
             source.device        = device;
             source.archiveReader = archiveReader;
-            source.modifiedTime  = entryData.modifiedTime;
-            source.size          = entryData.size;
+            source.modifiedTime  = entryData.info.modifiedTime;
+            source.size          = entryData.info.size;
 
             if(source.device && !source.device->seek(0)) {
                 continue;

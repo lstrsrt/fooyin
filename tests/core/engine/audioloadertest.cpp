@@ -388,10 +388,11 @@ public:
         buffer->open(QIODevice::ReadOnly);
 
         return {
-            .path         = it->second.path.isEmpty() ? file : it->second.path,
-            .device       = std::move(buffer),
-            .modifiedTime = it->second.modifiedTime,
-            .size         = static_cast<uint64_t>(it->second.data.size()),
+            .info   = {.path          = it->second.path.isEmpty() ? file : it->second.path,
+                       .modifiedTime  = it->second.modifiedTime,
+                       .size          = static_cast<uint64_t>(it->second.data.size()),
+                       .isRegularFile = true},
+            .device = std::move(buffer),
         };
     }
 

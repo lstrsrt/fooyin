@@ -153,9 +153,9 @@ bool openArchiveSource(Fooyin::LoadedSource& input, const Fooyin::AudioLoader& l
     }
 
     input.device              = std::move(entryData.device);
-    input.source.filepath     = entryData.path;
-    input.source.modifiedTime = entryData.modifiedTime;
-    input.source.size         = entryData.size;
+    input.source.filepath     = entryData.info.path;
+    input.source.modifiedTime = entryData.info.modifiedTime;
+    input.source.size         = entryData.info.size;
     input.rebind();
     return true;
 }

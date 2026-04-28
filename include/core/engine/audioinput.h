@@ -33,12 +33,18 @@ namespace Fooyin {
 class AudioDecoderPrivate;
 class ArchiveReader;
 
-struct ArchiveEntryData
+struct ArchiveEntryInfo
 {
     QString path;
-    std::unique_ptr<QIODevice> device;
     uint64_t modifiedTime{0};
     uint64_t size{0};
+    bool isRegularFile{false};
+};
+
+struct ArchiveEntryData
+{
+    ArchiveEntryInfo info;
+    std::unique_ptr<QIODevice> device;
 };
 
 /*!
@@ -268,7 +274,9 @@ using ReaderCreator = std::function<std::unique_ptr<AudioReader>()>;
 class FYCORE_EXPORT ArchiveReader
 {
 public:
-    using ReadEntryCallback = std::function<void(ArchiveEntryData&&)>;
+    using ReadEntryCallback      = std::function<void(ArchiveEntryData&&)>;
+    using ReadEntryInfoCallback  = std::function<bool(const ArchiveEntryInfo&)>;
+    using ShouldContinueCallback = std::function<bool()>;
 
     virtual ~ArchiveReader() = default;
 
@@ -295,6 +303,20 @@ public:
      * @note Called only after `init()` returns true.
      */
     virtual ArchiveEntryData entry(const QString& file) = 0;
+    /*!
+     * Copies the file within the archive at @p file into @p device.
+     * If the file can't be found or writing fails, this should return false.
+     * @note Called only after `init()` returns true.
+     */
+    virtual bool copyEntryToDevice(const QString& file, QIODevice* device,
+                                   const ShouldContinueCallback& shouldContinue);
+    /*!
+     * Reads metadata for all entries in the archive.
+     * The callback @p readEntry should return false to stop iteration.
+     * @returns true if entries were read successfully.
+     * @note Called only after `init()` returns true.
+     */
+    virtual bool readEntries(const ReadEntryInfoCallback& readEntry);
     /*!
      * Reads all files in the archive.
      * The callback @p readEntry should be used to read each file in the archive.

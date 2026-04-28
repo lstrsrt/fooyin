@@ -19,6 +19,8 @@
 
 #include <core/engine/audioinput.h>
 
+#include <array>
+
 namespace Fooyin {
 class AudioDecoderPrivate
 {
@@ -93,5 +95,54 @@ bool AudioReader::writeCover(const AudioSource& /*source*/, const Track& /*track
                              WriteOptions /*options*/)
 {
     return false;
+}
+
+bool ArchiveReader::copyEntryToDevice(const QString& file, QIODevice* device,
+                                      const ShouldContinueCallback& shouldContinue)
+{
+    if(!device || !device->isWritable()) {
+        return false;
+    }
+
+    ArchiveEntryData entryData = entry(file);
+    if(!entryData.device) {
+        return false;
+    }
+
+    std::array<char, 64UL * 1024> buffer{};
+    while(shouldContinue()) {
+        const qint64 read = entryData.device->read(buffer.data(), buffer.size());
+        if(read == 0) {
+            return true;
+        }
+        if(read < 0) {
+            return false;
+        }
+
+        qint64 writtenTotal{0};
+        while(writtenTotal < read) {
+            if(!shouldContinue()) {
+                return false;
+            }
+            const qint64 written = device->write(buffer.data() + writtenTotal, read - writtenTotal);
+            if(written <= 0) {
+                return false;
+            }
+            writtenTotal += written;
+        }
+    }
+
+    return false;
+}
+
+bool ArchiveReader::readEntries(const ReadEntryInfoCallback& readEntry)
+{
+    bool keepReading{true};
+    return readTracks([&readEntry, &keepReading](ArchiveEntryData&& entryData) {
+        if(!readEntry || !keepReading) {
+            return;
+        }
+        keepReading = readEntry(entryData.info);
+    });
 }
 } // namespace Fooyin

@@ -74,6 +74,9 @@ public:
 
     bool init(const QString& file) override;
     ArchiveEntryData entry(const QString& file) override;
+    bool copyEntryToDevice(const QString& file, QIODevice* device,
+                           const ShouldContinueCallback& shouldContinue) override;
+    bool readEntries(const ReadEntryInfoCallback& readEntry) override;
     bool readTracks(ReadEntryCallback readEntry) override;
     QByteArray readCover(const Track& track, Track::Cover cover) override;
 
