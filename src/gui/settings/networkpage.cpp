@@ -137,6 +137,9 @@ void NetworkPageWidget::load()
     m_useSystemProxy->setChecked(mode == NetworkAccessManager::Mode::System);
     m_manualProxy->setChecked(mode == NetworkAccessManager::Mode::Manual);
 
+    const auto type = static_cast<QNetworkProxy::ProxyType>(m_settings->value<Settings::Core::Internal::ProxyType>());
+    m_proxyType->setCurrentIndex(type == QNetworkProxy::Socks5Proxy ? 1 : 0);
+
     m_host->setText(m_settings->value<Settings::Core::Internal::ProxyHost>());
     m_port->setValue(m_settings->value<Settings::Core::Internal::ProxyPort>());
     m_auth->setChecked(m_settings->value<Settings::Core::Internal::ProxyAuth>());
