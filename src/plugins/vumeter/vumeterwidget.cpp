@@ -39,6 +39,7 @@
 #include <QTimerEvent>
 #include <QWindow>
 
+#include <cmath>
 #include <optional>
 
 using namespace Qt::StringLiterals;
@@ -127,6 +128,7 @@ public:
 
     void invalidateStaticLayer();
     void ensureStaticLayer();
+    [[nodiscard]] QRectF staticLayerSourceRect(const QRect& logicalRect) const;
 
     [[nodiscard]] float channelSize() const;
     [[nodiscard]] float barSize() const;
@@ -455,8 +457,8 @@ void VuMeterWidgetPrivate::ensureStaticLayer()
     m_staticLayerSize = targetSize;
     m_staticLayerDpr  = targetDpr;
 
-    m_staticLayer = QPixmap{static_cast<int>(static_cast<qreal>(targetSize.width()) * targetDpr),
-                            static_cast<int>(static_cast<qreal>(targetSize.height()) * targetDpr)};
+    m_staticLayer = QPixmap{static_cast<int>(std::ceil(static_cast<qreal>(targetSize.width()) * targetDpr)),
+                            static_cast<int>(std::ceil(static_cast<qreal>(targetSize.height()) * targetDpr))};
 
     m_staticLayer.setDevicePixelRatio(targetDpr);
     m_staticLayer.fill(m_colours.colour(Colours::Type::Background, m_self->palette()));
@@ -465,6 +467,14 @@ void VuMeterWidgetPrivate::ensureStaticLayer()
     drawLegend(staticPainter);
 
     m_staticLayerDirty = false;
+}
+
+QRectF VuMeterWidgetPrivate::staticLayerSourceRect(const QRect& logicalRect) const
+{
+    return {static_cast<qreal>(logicalRect.x()) * m_staticLayerDpr,
+            static_cast<qreal>(logicalRect.y()) * m_staticLayerDpr,
+            static_cast<qreal>(logicalRect.width()) * m_staticLayerDpr,
+            static_cast<qreal>(logicalRect.height()) * m_staticLayerDpr};
 }
 
 float VuMeterWidgetPrivate::channelSize() const
@@ -1149,17 +1159,17 @@ void VuMeterWidget::paintEvent(QPaintEvent* event)
     QPainter painter{this};
     p->ensureStaticLayer();
 
+    const QRect dirty = event->rect();
+
     if(!p->m_staticLayer.isNull()) {
-        const QRect dirty = event->rect();
-        painter.drawPixmap(dirty, p->m_staticLayer, dirty);
+        painter.drawPixmap(QRectF{dirty}, p->m_staticLayer, p->staticLayerSourceRect(dirty));
     }
     else {
         painter.fillRect(0, 0, width(), height(), p->m_colours.colour(Colours::Type::Background, palette()));
         p->drawLegend(painter);
     }
 
-    const QRect dirty = event->rect();
-    const auto first  = static_cast<float>(p->isHorizontal() ? dirty.left() : dirty.bottom());
+    const auto first = static_cast<float>(p->isHorizontal() ? dirty.left() : dirty.bottom());
 
     const int channels = p->m_format.channelCount();
     if(channels <= 0) {
