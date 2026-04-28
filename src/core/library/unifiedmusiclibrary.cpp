@@ -756,7 +756,16 @@ TrackList UnifiedMusicLibrary::tracks() const
 
 TrackList UnifiedMusicLibrary::libraryTracks() const
 {
-    return p->m_tracks | std::views::filter(&Track::isInLibrary) | std::ranges::to<TrackList>();
+    TrackList tracks;
+    tracks.reserve(p->m_tracks.size());
+
+    for(const Track& track : p->m_tracks) {
+        if(track.isInLibrary()) {
+            tracks.emplace_back(track);
+        }
+    }
+
+    return tracks;
 }
 
 Track UnifiedMusicLibrary::trackForId(int id) const
