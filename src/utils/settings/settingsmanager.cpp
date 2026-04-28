@@ -23,11 +23,41 @@
 
 #include <QSettings>
 
+#include <optional>
 #include <ranges>
 
 Q_LOGGING_CATEGORY(SETTINGS, "fy.settings")
 
 namespace Fooyin {
+namespace {
+std::optional<QVariant> loadedSettingValue(const SettingsEntry& setting, const QVariant& diskValue)
+{
+    switch(setting.type()) {
+        case Settings::Bool:
+            return diskValue.toBool();
+        case Settings::Float:
+            return diskValue.toFloat();
+        case Settings::Double:
+            return diskValue.toDouble();
+        case Settings::Int:
+            return diskValue.toInt();
+        case Settings::String:
+            return diskValue.toString();
+        case Settings::StringList:
+            return diskValue.toStringList();
+        case Settings::ByteArray:
+            return diskValue.toByteArray();
+        case Settings::Variant:
+            if(diskValue.isValid()) {
+                return diskValue;
+            }
+            break;
+    }
+
+    return {};
+}
+} // namespace
+
 SettingsManager::SettingsManager(const QString& settingsPath, QObject* parent)
     : QObject{parent}
     , m_settingsFile{new QSettings(settingsPath, QSettings::IniFormat, this)}
@@ -213,11 +243,16 @@ void SettingsManager::checkLoadSetting(SettingsEntry* setting) const
     }
 
     const auto keyString = setting->key();
-    if(!keyString.isEmpty()) {
-        const auto diskValue = m_settingsFile->value(keyString);
-        if(!diskValue.isNull()) {
-            setting->setValueSilently(diskValue);
-        }
+    if(keyString.isEmpty()) {
+        return;
+    }
+
+    if(!m_settingsFile->contains(keyString)) {
+        return;
+    }
+
+    if(const auto value = loadedSettingValue(*setting, m_settingsFile->value(keyString))) {
+        setting->setValueSilently(*value);
     }
 }
 
@@ -225,7 +260,7 @@ void SettingsManager::saveSettings(bool onlyChanged)
 {
     const std::shared_lock lock(m_lock);
 
-    for(const auto& [key, setting] : m_settings) {
+    for(const auto& setting : m_settings | std::views::values) {
         if(setting && (!onlyChanged || setting->wasChanged()) && !setting->isTemporary()) {
             const auto keyString = setting->key();
             if(!keyString.isEmpty()) {
