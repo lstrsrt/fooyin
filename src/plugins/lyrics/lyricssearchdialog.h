@@ -27,13 +27,13 @@
 #include <QDialog>
 
 class QLabel;
-class QLineEdit;
 class QPlainTextEdit;
 class QPushButton;
 class QSortFilterProxyModel;
 class QTreeView;
 
 namespace Fooyin {
+class LineEditEditor;
 class SettingsManager;
 
 namespace Lyrics {
@@ -68,9 +68,9 @@ private:
     LyricsSaver* m_lyricsSaver;
     LyricsFinder* m_finder;
 
-    QLineEdit* m_titleEdit;
-    QLineEdit* m_albumEdit;
-    QLineEdit* m_artistEdit;
+    LineEditEditor* m_titleEdit;
+    LineEditEditor* m_albumEdit;
+    LineEditEditor* m_artistEdit;
     QPushButton* m_searchButton;
     QLabel* m_statusLabel;
     QTreeView* m_resultsTable;

@@ -24,13 +24,14 @@
 #include "lyricssaver.h"
 #include "lyricssearchmodel.h"
 
+#include <gui/widgets/lineediteditor.h>
+
 #include <QDialogButtonBox>
 #include <QGridLayout>
 #include <QHBoxLayout>
 #include <QHeaderView>
 #include <QItemSelectionModel>
 #include <QLabel>
-#include <QLineEdit>
 #include <QModelIndex>
 #include <QPlainTextEdit>
 #include <QPushButton>
@@ -67,9 +68,9 @@ LyricsSearchDialog::LyricsSearchDialog(const Track& track, std::shared_ptr<Netwo
     , m_track{track}
     , m_lyricsSaver{lyricsSaver}
     , m_finder{new LyricsFinder(std::move(networkAccess), settings, this)}
-    , m_titleEdit{new QLineEdit(track.title(), this)}
-    , m_albumEdit{new QLineEdit(track.album(), this)}
-    , m_artistEdit{new QLineEdit(track.artist(), this)}
+    , m_titleEdit{new LineEditEditor(tr("Title"), this)}
+    , m_albumEdit{new LineEditEditor(tr("Album"), this)}
+    , m_artistEdit{new LineEditEditor(tr("Artist"), this)}
     , m_searchButton{new QPushButton(tr("Search"), this)}
     , m_statusLabel{new QLabel(this)}
     , m_resultsTable{new QTreeView(this)}
@@ -81,23 +82,33 @@ LyricsSearchDialog::LyricsSearchDialog(const Track& track, std::shared_ptr<Netwo
 {
     setWindowTitle(tr("Search for Lyrics"));
 
-    auto* layout = new QVBoxLayout(this);
+    m_titleEdit->setText(track.title());
+    m_albumEdit->setText(track.album());
+    m_artistEdit->setText(track.artist());
 
-    auto* searchLayout = new QGridLayout();
-    searchLayout->addWidget(new QLabel(tr("Artist") + ":"_L1, this), 0, 0);
-    searchLayout->addWidget(m_artistEdit, 0, 1);
-    searchLayout->addWidget(new QLabel(tr("Album") + ":"_L1, this), 0, 2);
-    searchLayout->addWidget(m_albumEdit, 0, 3);
-    searchLayout->addWidget(new QLabel(tr("Title") + ":"_L1, this), 0, 4);
-    searchLayout->addWidget(m_titleEdit, 0, 5);
-    searchLayout->addWidget(m_searchButton, 0, 6);
-    searchLayout->setColumnStretch(1, 1);
-    searchLayout->setColumnStretch(3, 1);
-    searchLayout->setColumnStretch(5, 1);
-    layout->addLayout(searchLayout);
+    const int labelWidth = std::max({m_titleEdit->label()->sizeHint().width(), m_albumEdit->label()->sizeHint().width(),
+                                     m_artistEdit->label()->sizeHint().width()});
+    m_titleEdit->setLabelWidth(labelWidth);
+    m_albumEdit->setLabelWidth(labelWidth);
+    m_artistEdit->setLabelWidth(labelWidth);
+
+    auto* layout = new QVBoxLayout(this);
 
     auto* splitter = new QSplitter(Qt::Horizontal, this);
     layout->addWidget(splitter, 1);
+
+    auto* resultsWidget = new QWidget(splitter);
+    auto* resultsLayout = new QVBoxLayout(resultsWidget);
+    resultsLayout->setContentsMargins(5, 0, 5, 0);
+
+    auto* searchLayout = new QGridLayout();
+    searchLayout->addWidget(m_artistEdit, 0, 0);
+    searchLayout->addWidget(m_albumEdit, 0, 1);
+    searchLayout->addWidget(m_titleEdit, 1, 0);
+    searchLayout->addWidget(m_searchButton, 1, 1, Qt::AlignLeft);
+    searchLayout->setColumnStretch(0, 1);
+    searchLayout->setColumnStretch(1, 1);
+    resultsLayout->addLayout(searchLayout);
 
     m_resultsProxyModel->setSourceModel(m_resultsModel);
     m_resultsTable->setModel(m_resultsProxyModel);
@@ -118,7 +129,8 @@ LyricsSearchDialog::LyricsSearchDialog(const Track& track, std::shared_ptr<Netwo
     header->setSectionResizeMode(4, QHeaderView::ResizeToContents);
     m_resultsTable->sortByColumn(0, Qt::AscendingOrder);
 
-    splitter->addWidget(m_resultsTable);
+    resultsLayout->addWidget(m_resultsTable, 1);
+    splitter->addWidget(resultsWidget);
 
     splitter->addWidget(m_preview);
     splitter->setStretchFactor(0, 3);
@@ -137,9 +149,9 @@ LyricsSearchDialog::LyricsSearchDialog(const Track& track, std::shared_ptr<Netwo
     layout->addLayout(footerLayout);
 
     QObject::connect(m_searchButton, &QPushButton::clicked, this, &LyricsSearchDialog::search);
-    QObject::connect(m_titleEdit, &QLineEdit::returnPressed, this, &LyricsSearchDialog::search);
-    QObject::connect(m_albumEdit, &QLineEdit::returnPressed, this, &LyricsSearchDialog::search);
-    QObject::connect(m_artistEdit, &QLineEdit::returnPressed, this, &LyricsSearchDialog::search);
+    QObject::connect(m_titleEdit, &LineEditEditor::returnPressed, this, &LyricsSearchDialog::search);
+    QObject::connect(m_albumEdit, &LineEditEditor::returnPressed, this, &LyricsSearchDialog::search);
+    QObject::connect(m_artistEdit, &LineEditEditor::returnPressed, this, &LyricsSearchDialog::search);
     QObject::connect(m_resultsTable->selectionModel(), &QItemSelectionModel::selectionChanged, this,
                      [this](const QItemSelection&, const QItemSelection&) { updateSelection(); });
     QObject::connect(m_preview, &QPlainTextEdit::textChanged, this, &LyricsSearchDialog::updateActionState);
