@@ -141,6 +141,12 @@ void drawPreparedTextLine(QPainter* painter, const QStyleOptionViewItem& option,
 } // namespace
 
 namespace Fooyin::Filters {
+struct IconItemLayoutMetrics
+{
+    int horizontalMargin{12};
+    int verticalPadding{0};
+};
+
 void FilterDelegate::paint(QPainter* painter, const QStyleOptionViewItem& option, const QModelIndex& index) const
 {
     QStyleOptionViewItem opt{option};
@@ -226,12 +232,12 @@ QSize FilterDelegate::sizeHint(const QStyleOptionViewItem& option, const QModelI
     opt.decorationSize = option.decorationSize;
 
     const QStyle* style  = opt.widget ? opt.widget->style() : QApplication::style();
-    const QSize textSize = richTextSize(opt, index);
-    QSize size           = view && view->viewMode() == ExpandedTreeView::ViewMode::Icon
-                             ? iconItemSize(opt, index)
-                             : style->sizeFromContents(QStyle::CT_ItemViewItem, &opt, textSize, opt.widget);
+    const bool iconMode  = view && view->viewMode() == ExpandedTreeView::ViewMode::Icon;
+    const QSize textSize = iconMode ? QSize{} : richTextSize(opt, index);
+    QSize size           = iconMode ? iconItemLayoutSize(opt)
+                                    : style->sizeFromContents(QStyle::CT_ItemViewItem, &opt, textSize, opt.widget);
 
-    if(!view || view->viewMode() != ExpandedTreeView::ViewMode::Icon) {
+    if(!iconMode) {
         const int verticalPadding = std::max(2, style->pixelMetric(QStyle::PM_FocusFrameHMargin, &opt, opt.widget));
         size.setHeight(std::max(size.height(), textSize.height() + (2 * verticalPadding)));
     }
@@ -430,26 +436,64 @@ QSize FilterDelegate::iconItemSize(const QStyleOptionViewItem& option, const QMo
     const QStyle* style  = option.widget ? option.widget->style() : QApplication::style();
     const QSize textSize = richTextSize(option, index);
 
-    static constexpr int horizontalMargin{12};
-    const int verticalMargin  = std::max(2, style->pixelMetric(QStyle::PM_FocusFrameVMargin, &option, option.widget));
-    const int verticalPadding = 2 * verticalMargin;
+    const int verticalMargin = std::max(2, style->pixelMetric(QStyle::PM_FocusFrameVMargin, &option, option.widget));
+    const IconItemLayoutMetrics metrics{.verticalPadding = 2 * verticalMargin};
 
+    return iconItemSizeForText(option, metrics, textSize);
+}
+
+QSize FilterDelegate::iconItemLayoutSize(const QStyleOptionViewItem& option)
+{
+    const auto* view = qobject_cast<const ExpandedTreeView*>(option.widget);
+    if(!view || view->viewMode() != ExpandedTreeView::ViewMode::Icon) {
+        return {};
+    }
+
+    const QStyle* style = option.widget ? option.widget->style() : QApplication::style();
+
+    const int verticalMargin = std::max(2, style->pixelMetric(QStyle::PM_FocusFrameVMargin, &option, option.widget));
+    const IconItemLayoutMetrics metrics{.verticalPadding = 2 * verticalMargin};
+
+    const int lineCount  = option.text.isEmpty() ? 0 : option.text.count(QChar::LineSeparator) + 1;
+    const int textHeight = lineCount * option.fontMetrics.height();
+    int textWidth        = 0;
+    if(view->captionDisplay() == ExpandedTreeView::CaptionDisplay::Right) {
+        textWidth = RightCaptionTextWidth;
+    }
+    else if(lineCount > 0) {
+        textWidth = option.decorationSize.width() + metrics.horizontalMargin;
+    }
+
+    return iconItemSizeForText(option, metrics, {textWidth, textHeight});
+}
+
+QSize FilterDelegate::iconItemSizeForText(const QStyleOptionViewItem& option, const IconItemLayoutMetrics& metrics,
+                                          const QSize& textSize)
+{
+    const auto* view = qobject_cast<const ExpandedTreeView*>(option.widget);
+    if(!view || view->viewMode() != ExpandedTreeView::ViewMode::Icon) {
+        return {};
+    }
+
+    const QStyle* style = option.widget ? option.widget->style() : QApplication::style();
     switch(view->captionDisplay()) {
         case ExpandedTreeView::CaptionDisplay::Bottom: {
-            return {std::max(option.decorationSize.width(), textSize.width() + horizontalMargin),
-                    option.decorationSize.height() + (IconCaptionMargin / 2) + textSize.height() + verticalPadding};
+            return {std::max(option.decorationSize.width(), textSize.width() + metrics.horizontalMargin),
+                    option.decorationSize.height() + (IconCaptionMargin / 2) + textSize.height()
+                        + metrics.verticalPadding};
         }
         case ExpandedTreeView::CaptionDisplay::Right: {
             const QSize styleSize = style->sizeFromContents(QStyle::CT_ItemViewItem, &option, textSize, option.widget);
             const int itemWidth   = option.rect.width() > 0 ? option.rect.width()
                                                             : option.decorationSize.width() + IconCaptionMargin
-                                                                  + textSize.width() + horizontalMargin;
-            const int itemHeight  = std::max({styleSize.height(), option.decorationSize.height() + verticalPadding,
-                                              textSize.height() + verticalPadding});
+                                                                  + textSize.width() + metrics.horizontalMargin;
+            const int itemHeight
+                = std::max({styleSize.height(), option.decorationSize.height() + metrics.verticalPadding,
+                            textSize.height() + metrics.verticalPadding});
             return {itemWidth, itemHeight};
         }
         case ExpandedTreeView::CaptionDisplay::None:
-            return {option.decorationSize.width(), option.decorationSize.height() + verticalPadding};
+            return {option.decorationSize.width(), option.decorationSize.height() + metrics.verticalPadding};
     }
 
     return {};
