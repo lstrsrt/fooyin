@@ -50,6 +50,7 @@ set(SOURCES
     ${CMAKE_SOURCE_DIR}/include/gui/widgets/expandingcombobox.h
     ${CMAKE_SOURCE_DIR}/include/gui/widgets/extendabletableview.h
     ${CMAKE_SOURCE_DIR}/include/gui/widgets/fontbutton.h
+    ${CMAKE_SOURCE_DIR}/include/gui/widgets/lineediteditor.h
     ${CMAKE_SOURCE_DIR}/include/gui/widgets/multilinedelegate.h
     ${CMAKE_SOURCE_DIR}/include/gui/widgets/overlaywidget.h
     ${CMAKE_SOURCE_DIR}/include/gui/widgets/popuplineedit.h
@@ -453,6 +454,7 @@ set(SOURCES
     widgets/expandingcombobox.cpp
     widgets/extendabletableview.cpp
     widgets/fontbutton.cpp
+    widgets/lineediteditor.cpp
     widgets/hovermenu.cpp
     widgets/hovermenu.h
     widgets/logslider.cpp
