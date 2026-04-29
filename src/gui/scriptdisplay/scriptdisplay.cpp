@@ -28,12 +28,16 @@
 #include <core/scripting/scriptparser.h>
 #include <core/track.h>
 #include <gui/configdialog.h>
+#include <gui/guiconstants.h>
 #include <gui/guisettings.h>
 #include <gui/scripting/richtext.h>
 #include <gui/scripting/richtextutils.h>
 #include <gui/scripting/scriptformatter.h>
 #include <gui/widgets/colourbutton.h>
 #include <gui/widgets/scriptlineedit.h>
+#include <utils/actions/actionmanager.h>
+#include <utils/actions/command.h>
+#include <utils/actions/widgetcontext.h>
 #include <utils/settings/settingsmanager.h>
 
 #include <QAbstractTextDocumentLayout>
@@ -105,20 +109,28 @@ public:
 };
 
 ScriptDisplay::ScriptDisplay(PlayerController* playerController, PlaylistHandler* playlistHandler,
-                             ScriptCommandHandler* commandHandler, SettingsManager* settings, QWidget* parent)
+                             ScriptCommandHandler* commandHandler, ActionManager* actionManager,
+                             SettingsManager* settings, QWidget* parent)
     : FyWidget{parent}
     , m_playerController{playerController}
     , m_playlistHandler{playlistHandler}
     , m_commandHandler{commandHandler}
+    , m_actionManager{actionManager}
     , m_settings{settings}
     , m_layout{new QHBoxLayout(this)}
     , m_text{new TextBrowser(this)}
+    , m_context{new WidgetContext(this, Context{Id{"Fooyin.Context.ScriptDisplay."}.append(id())}, this)}
+    , m_copyAction{new QAction(tr("&Copy"), this)}
+    , m_copyCmd{m_actionManager->registerAction(m_copyAction, Constants::Actions::Copy, m_context->context())}
 {
+    setObjectName(ScriptDisplay::name());
+    m_layout->addWidget(m_text, 1);
+
+    m_actionManager->addContextObject(m_context);
     m_scriptParser.addProvider(playlistVariableProvider());
 
-    setObjectName(ScriptDisplay::name());
-
-    m_layout->addWidget(m_text, 1);
+    m_copyCmd->setCategories({tr("Edit")});
+    m_copyCmd->setDefaultShortcut(QKeySequence::Copy);
 
     m_text->setReadOnly(true);
     m_text->setOpenLinks(false);
@@ -132,6 +144,9 @@ ScriptDisplay::ScriptDisplay(PlayerController* playerController, PlaylistHandler
     m_text->document()->setDocumentMargin(0);
 
     applyConfig(defaultConfig());
+
+    QObject::connect(m_copyAction, &QAction::triggered, m_text, &QTextBrowser::copy);
+    QObject::connect(m_text, &QTextBrowser::copyAvailable, this, &ScriptDisplay::updateActions);
 
     QObject::connect(m_playerController, &PlayerController::playStateChanged, this, &ScriptDisplay::updateText);
     QObject::connect(m_playerController, &PlayerController::positionChangedSeconds, this, &ScriptDisplay::updateText);
@@ -150,6 +165,8 @@ ScriptDisplay::ScriptDisplay(PlayerController* playerController, PlaylistHandler
                      &ScriptDisplay::updateViewportAlignment);
     QObject::connect(m_text->document()->documentLayout(), &QAbstractTextDocumentLayout::documentSizeChanged, this,
                      &ScriptDisplay::updateViewportAlignment);
+
+    updateActions();
 }
 
 ScriptDisplay::~ScriptDisplay() = default;
@@ -274,6 +291,11 @@ void ScriptDisplay::contextMenuEvent(QContextMenuEvent* event)
 {
     auto* menu = new QMenu(this);
     menu->setAttribute(Qt::WA_DeleteOnClose);
+
+    if(m_text->textCursor().hasSelection()) {
+        menu->addAction(m_copyCmd->action());
+        menu->addSeparator();
+    }
 
     const auto applyAlignment = [this](const auto& update) {
         auto config{currentConfig()};
@@ -452,8 +474,14 @@ void ScriptDisplay::updateText()
     }
 
     updateViewportAlignment();
+    updateActions();
     m_text->setUpdatesEnabled(true);
     m_text->viewport()->update();
+}
+
+void ScriptDisplay::updateActions() const
+{
+    m_copyAction->setEnabled(m_text->textCursor().hasSelection());
 }
 
 void ScriptDisplay::updateViewportAlignment()

@@ -29,17 +29,20 @@ class QContextMenuEvent;
 class QEvent;
 class QHBoxLayout;
 class QJsonObject;
+class QAction;
 class QResizeEvent;
 class QTextBrowser;
 
 namespace Fooyin {
 class ActionManager;
+class Command;
 class Playlist;
 class PlayerController;
 class PlaylistHandler;
 class PropertiesDialog;
 class ScriptCommandHandler;
 class SettingsManager;
+class WidgetContext;
 
 class ScriptDisplay : public FyWidget
 {
@@ -58,7 +61,8 @@ public:
     };
 
     ScriptDisplay(PlayerController* playerController, PlaylistHandler* playlistHandler,
-                  ScriptCommandHandler* commandHandler, SettingsManager* settings, QWidget* parent = nullptr);
+                  ScriptCommandHandler* commandHandler, ActionManager* actionManager, SettingsManager* settings,
+                  QWidget* parent = nullptr);
     ~ScriptDisplay() override;
 
     [[nodiscard]] QString name() const override;
@@ -89,6 +93,7 @@ private:
 
     void applyAppearance();
     void updateText();
+    void updateActions() const;
     void updateViewportAlignment();
     [[nodiscard]] Track currentTrack() const;
     [[nodiscard]] Playlist* currentPlaylist() const;
@@ -98,12 +103,18 @@ private:
     PlayerController* m_playerController;
     PlaylistHandler* m_playlistHandler;
     ScriptCommandHandler* m_commandHandler;
+    ActionManager* m_actionManager;
     SettingsManager* m_settings;
 
     ScriptParser m_scriptParser;
 
     QHBoxLayout* m_layout;
     QTextBrowser* m_text;
+    WidgetContext* m_context;
+
+    QAction* m_copyAction;
+    Command* m_copyCmd;
+
     QString m_lastHtml;
     Track m_lastTrack;
     ConfigData m_config;

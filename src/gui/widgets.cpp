@@ -287,7 +287,7 @@ void Widgets::registerWidgets()
         u"ScriptDisplay"_s,
         [this]() {
             return new ScriptDisplay(m_core->playerController(), m_core->playlistHandler(), m_scriptCommandHandler,
-                                     m_settings, m_window);
+                                     m_gui->actionManager(), m_settings, m_window);
         },
         tr("Script Display"));
 }
