@@ -43,6 +43,9 @@ public:
     [[nodiscard]] QString placeholderText() const;
     void setPlaceholderText(const QString& text);
 
+    [[nodiscard]] int labelWidth() const;
+    void setLabelWidth(int width);
+
     [[nodiscard]] QLabel* label() const;
     [[nodiscard]] QLineEdit* lineEdit() const;
 

@@ -81,6 +81,16 @@ void LineEditEditor::setPlaceholderText(const QString& text)
     m_lineEdit->setPlaceholderText(text);
 }
 
+int LineEditEditor::labelWidth() const
+{
+    return m_label->minimumWidth();
+}
+
+void LineEditEditor::setLabelWidth(int width)
+{
+    m_label->setMinimumWidth(width);
+}
+
 QLabel* LineEditEditor::label() const
 {
     return m_label;
