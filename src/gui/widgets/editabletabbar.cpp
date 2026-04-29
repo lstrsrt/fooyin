@@ -160,13 +160,22 @@ void EditableTabBar::mousePressEvent(QMouseEvent* event)
         return;
     }
 
-    const QPoint pos = event->position().toPoint();
+    QTabBar::mousePressEvent(event);
+}
 
+void EditableTabBar::mouseReleaseEvent(QMouseEvent* event)
+{
     if(event->button() & Qt::MiddleButton) {
-        emit middleClicked(tabAt(pos));
+        const QPoint pos = event->position().toPoint();
+        const int index  = tabAt(pos);
+        if(index >= 0 || rect().contains(pos)) {
+            emit middleClicked(index);
+        }
+        event->accept();
+        return;
     }
 
-    QTabBar::mousePressEvent(event);
+    QTabBar::mouseReleaseEvent(event);
 }
 
 void EditableTabBar::wheelEvent(QWheelEvent* event)

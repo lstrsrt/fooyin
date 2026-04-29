@@ -58,6 +58,7 @@ protected:
     void initStyleOption(QStyleOptionTab* option, int tabIndex) const override;
     void mouseDoubleClickEvent(QMouseEvent* event) override;
     void mousePressEvent(QMouseEvent* event) override;
+    void mouseReleaseEvent(QMouseEvent* event) override;
     void wheelEvent(QWheelEvent* event) override;
 
 private:
