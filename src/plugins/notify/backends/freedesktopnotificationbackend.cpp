@@ -158,7 +158,7 @@ void FreedesktopNotificationBackend::notificationActionInvoked(uint id, const QS
     }
 
     clearActiveNotification();
-    emit actionInvoked(actionKey);
+    Q_EMIT actionInvoked(actionKey);
 }
 
 void FreedesktopNotificationBackend::notificationCallFinished(QDBusPendingCallWatcher* watcher)
@@ -166,11 +166,11 @@ void FreedesktopNotificationBackend::notificationCallFinished(QDBusPendingCallWa
     const QDBusPendingReply<uint> reply = *watcher;
     if(reply.isError()) {
         qCWarning(NOTIFY) << "Failed to send freedesktop notification:" << reply.error().message();
-        emit notificationSent(false);
+        Q_EMIT notificationSent(false);
     }
     else {
         m_lastNotificationId = reply.value();
-        emit notificationSent(true);
+        Q_EMIT notificationSent(true);
     }
 
     watcher->deleteLater();

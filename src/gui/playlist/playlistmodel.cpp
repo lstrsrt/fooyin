@@ -738,7 +738,7 @@ PlaylistModel::PlaylistModel(PlaylistInteractor* playlistInteractor, AudioLoader
         m_playlistLoaded = true;
         syncPlayingTrackIndex();
         syncStopAtTrackIndex();
-        emit playlistLoaded();
+        Q_EMIT playlistLoaded();
     });
 
     QObject::connect(&m_populator, &PlaylistPopulator::populated, this, &PlaylistModel::populateModel);
@@ -843,9 +843,9 @@ bool PlaylistModel::setData(const QModelIndex& index, const QVariant& value, int
         return false;
     }
 
-    emit metadataWriteRequested({*updatedTrack});
+    Q_EMIT metadataWriteRequested({*updatedTrack});
 
-    emit dataChanged(index, index, {Qt::EditRole});
+    Q_EMIT dataChanged(index, index, {Qt::EditRole});
     return true;
 }
 
@@ -1019,7 +1019,7 @@ std::expected<TrackList, PlaylistModel::BulkEditError> PlaylistModel::setBulkDat
     }
 
     for(const QModelIndex& changedIndex : changedIndexes) {
-        emit dataChanged(changedIndex, changedIndex, {Qt::EditRole});
+        Q_EMIT dataChanged(changedIndex, changedIndex, {Qt::EditRole});
     }
 
     return tracksToWrite;
@@ -1189,7 +1189,7 @@ void PlaylistModel::reset(const PlaylistTrackList& tracks)
         m_playlistLoaded = true;
         syncPlayingTrackIndex();
         syncStopAtTrackIndex();
-        emit playlistLoaded();
+        Q_EMIT playlistLoaded();
         return;
     }
 
@@ -1240,7 +1240,7 @@ void PlaylistModel::stopAfterTrack(const QModelIndex& index)
         }
     }
 
-    emit dataChanged(index, index, {Qt::DecorationRole});
+    Q_EMIT dataChanged(index, index, {Qt::DecorationRole});
 
     const bool stopAfterCurrent = index.siblingAtColumn(0) == m_playingIndex;
     m_settings->set<Settings::Core::StopAfterCurrent>(stopAfterCurrent && m_stopAtIndex.isValid());
@@ -1542,7 +1542,8 @@ void PlaylistModel::tracksChanged()
         }
 
         if(const auto bottomRight = rightIndex(index); bottomRight.isValid()) {
-            emit dataChanged(index, bottomRight, {PlaylistItem::Role::Column, Qt::DecorationRole, Qt::BackgroundRole});
+            Q_EMIT dataChanged(index, bottomRight,
+                               {PlaylistItem::Role::Column, Qt::DecorationRole, Qt::BackgroundRole});
         }
     };
 
@@ -1619,8 +1620,8 @@ void PlaylistModel::playingTrackChanged(const PlaylistTrack& track)
             }
 
             if(const auto bottomRight = rightIndex(index); bottomRight.isValid()) {
-                emit dataChanged(index, bottomRight,
-                                 {PlaylistItem::Role::Column, Qt::DecorationRole, Qt::BackgroundRole});
+                Q_EMIT dataChanged(index, bottomRight,
+                                   {PlaylistItem::Role::Column, Qt::DecorationRole, Qt::BackgroundRole});
             }
         };
 
@@ -1663,7 +1664,7 @@ void PlaylistModel::playStateChanged(Player::PlayState state)
     if(std::exchange(m_currentPlayState, state) != state) {
         if(m_playingIndex.isValid()) {
             if(const auto bottomRight = rightIndex(m_playingIndex); bottomRight.isValid()) {
-                emit dataChanged(m_playingIndex, bottomRight, {Qt::DecorationRole, Qt::BackgroundRole});
+                Q_EMIT dataChanged(m_playingIndex, bottomRight, {Qt::DecorationRole, Qt::BackgroundRole});
             }
         }
     }
@@ -1814,7 +1815,7 @@ void PlaylistModel::populateModel(PendingData data)
             nodeIt->second.setData(item.data());
             if(!m_resetting) {
                 const QModelIndex nodeIndex = indexOfItem(&nodeIt->second);
-                emit dataChanged(nodeIndex, nodeIndex, {});
+                Q_EMIT dataChanged(nodeIndex, nodeIndex, {});
             }
         }
     }
@@ -1838,7 +1839,7 @@ void PlaylistModel::populateTrackGroup(PendingData data)
     if(!m_indexesPendingRemoval.empty() && tryUpdateTrackGroupInPlace(data)) {
         m_indexesPendingRemoval.clear();
         tracksChanged();
-        emit trackGroupApplied();
+        Q_EMIT trackGroupApplied();
         return;
     }
 
@@ -1857,7 +1858,7 @@ void PlaylistModel::populateTrackGroup(PendingData data)
         m_resetting = true;
         populateModel(data);
         tracksChanged();
-        emit trackGroupApplied();
+        Q_EMIT trackGroupApplied();
         return;
     }
 
@@ -1872,7 +1873,7 @@ void PlaylistModel::populateTrackGroup(PendingData data)
         refreshTracks(indexes, columnsToUpdate);
     }
 
-    emit trackGroupApplied();
+    Q_EMIT trackGroupApplied();
 }
 
 void PlaylistModel::updateModel(ItemKeyMap data)
@@ -1891,7 +1892,7 @@ void PlaylistModel::updateModel(ItemKeyMap data)
         node->setState(PlaylistItem::State::None);
 
         const QModelIndex headerIndex = indexOfItem(node);
-        emit dataChanged(headerIndex, headerIndex, {});
+        Q_EMIT dataChanged(headerIndex, headerIndex, {});
     }
 }
 
@@ -1910,13 +1911,13 @@ void PlaylistModel::updateTracks(const ItemList& tracks, const std::set<int>& co
             const QModelIndex trackIndex = indexOfItem(node);
             if(columnsUpdated.empty()) {
                 if(const auto bottomRight = rightIndex(trackIndex); bottomRight.isValid()) {
-                    emit dataChanged(trackIndex, bottomRight, playlistTrackChangedRoles());
+                    Q_EMIT dataChanged(trackIndex, bottomRight, playlistTrackChangedRoles());
                 }
             }
             else {
                 const auto [first, last] = std::ranges::minmax_element(columnsUpdated);
-                emit dataChanged(trackIndex.siblingAtColumn(*first), trackIndex.siblingAtColumn(*last),
-                                 playlistTrackChangedRoles());
+                Q_EMIT dataChanged(trackIndex.siblingAtColumn(*first), trackIndex.siblingAtColumn(*last),
+                                   playlistTrackChangedRoles());
             }
         }
     }
@@ -1996,7 +1997,7 @@ bool PlaylistModel::tryUpdateTrackGroupInPlace(const PendingData& data)
             item->setState(PlaylistItem::State::None);
 
             if(const auto bottomRight = rightIndex(trackIndex); bottomRight.isValid()) {
-                emit dataChanged(trackIndex, bottomRight, playlistTrackChangedRoles());
+                Q_EMIT dataChanged(trackIndex, bottomRight, playlistTrackChangedRoles());
             }
         }
     }
@@ -2324,7 +2325,7 @@ bool PlaylistModel::prepareDrop(const QMimeData* data, Qt::DropAction action, in
         MoveOperation operation;
         operation.emplace_back(dropIndex, indexRanges);
 
-        emit tracksMoved({operation});
+        Q_EMIT tracksMoved({operation});
 
         return true;
     }
@@ -2347,13 +2348,13 @@ bool PlaylistModel::prepareDrop(const QMimeData* data, Qt::DropAction action, in
         }
 
         const TrackGroups groups{{dropIndex, playlistTracks}};
-        emit tracksInserted(groups);
+        Q_EMIT tracksInserted(groups);
 
         return true;
     }
 
     if(data->hasUrls()) {
-        emit filesDropped(data->urls(), dropIndex);
+        Q_EMIT filesDropped(data->urls(), dropIndex);
         return true;
     }
 
@@ -3148,14 +3149,15 @@ void PlaylistModel::coverUpdated(const Track& track)
 
             if(parentItem->type() == PlaylistItem::Header) {
                 const QModelIndex nodeIndex = indexOfItem(parentItem);
-                emit dataChanged(nodeIndex, nodeIndex.siblingAtColumn(columnCount(nodeIndex) - 1),
-                                 {Qt::DecorationRole});
+                Q_EMIT dataChanged(nodeIndex, nodeIndex.siblingAtColumn(columnCount(nodeIndex) - 1),
+                                   {Qt::DecorationRole});
             }
             else if(hasPixmap && parentItem->type() == PlaylistItem::Track) {
                 const QModelIndex nodeIndex = indexOfItem(parentItem);
                 for(const int col : m_pixmapColumns) {
-                    emit dataChanged(nodeIndex.siblingAtColumn(col),
-                                     nodeIndex.sibling(rowCount(nodeIndex.parent()) - 1, col), {PlaylistItem::Column});
+                    Q_EMIT dataChanged(nodeIndex.siblingAtColumn(col),
+                                       nodeIndex.sibling(rowCount(nodeIndex.parent()) - 1, col),
+                                       {PlaylistItem::Column});
                 }
             }
         }

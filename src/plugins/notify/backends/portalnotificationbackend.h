@@ -48,7 +48,7 @@ private:
     [[nodiscard]] QString currentNotificationId() const;
     void notificationCallFinished(QDBusPendingCallWatcher* watcher);
 
-private slots:
+private Q_SLOTS:
     void portalActionInvoked(const QString& id, const QString& action, const QVariantList& parameter);
 
 private:

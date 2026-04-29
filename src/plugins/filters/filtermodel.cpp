@@ -252,7 +252,7 @@ void FilterModelPrivate::coverUpdated(const Track& track)
             auto* parentItem = &m_nodes.at(parentKey);
 
             const QModelIndex nodeIndex = m_self->indexOfItem(parentItem);
-            emit m_self->dataChanged(nodeIndex, nodeIndex, {Qt::DecorationRole});
+            Q_EMIT m_self->dataChanged(nodeIndex, nodeIndex, {Qt::DecorationRole});
         }
     }
 }
@@ -267,7 +267,7 @@ void FilterModelPrivate::dataUpdated(const QList<int>& roles) const
 
     const QModelIndex topLeft     = m_self->index(0, 0, {});
     const QModelIndex bottomRight = m_self->index(rowCount - 1, columnCount - 1, {});
-    emit m_self->dataChanged(topLeft, bottomRight, roles);
+    Q_EMIT m_self->dataChanged(topLeft, bottomRight, roles);
 }
 
 bool FilterModelPrivate::hasSummaryItem() const
@@ -698,7 +698,7 @@ void FilterModel::setRows(const FilterColumnList& columns, const FilterRowList& 
         if(columnCount > 0) {
             const QModelIndex topLeft     = indexOfItem(item);
             const QModelIndex bottomRight = index(topLeft.row(), columnCount - 1, {});
-            emit dataChanged(topLeft, bottomRight);
+            Q_EMIT dataChanged(topLeft, bottomRight);
         }
     }
 
@@ -710,7 +710,7 @@ void FilterModel::setRows(const FilterColumnList& columns, const FilterRowList& 
 
         const QModelIndex topLeft     = indexOfItem(&p->m_summaryNode);
         const QModelIndex bottomRight = index(topLeft.row(), columnCount - 1, {});
-        emit dataChanged(topLeft, bottomRight);
+        Q_EMIT dataChanged(topLeft, bottomRight);
     }
 }
 } // namespace Fooyin::Filters

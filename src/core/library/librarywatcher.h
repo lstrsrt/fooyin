@@ -32,7 +32,7 @@ class LibraryWatcher : public QFileSystemWatcher
 public:
     explicit LibraryWatcher(QObject* parent = nullptr);
 
-signals:
+Q_SIGNALS:
     void libraryDirsChanged(const QStringList& paths);
 
 protected:

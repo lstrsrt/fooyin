@@ -31,7 +31,7 @@ PlaylistColumnRegistry::PlaylistColumnRegistry(SettingsManager* settings, QObjec
 {
     QObject::connect(this, &RegistryBase::itemChanged, this, [this](int id) {
         if(const auto column = itemById(id)) {
-            emit columnChanged(column.value());
+            Q_EMIT columnChanged(column.value());
         }
     });
 

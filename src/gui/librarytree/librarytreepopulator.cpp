@@ -162,7 +162,7 @@ bool LibraryTreePopulatorPrivate::runBatch(int size)
         return false;
     }
 
-    emit m_self->populated(std::make_shared<PendingTreeData>(std::move(m_data)));
+    Q_EMIT m_self->populated(std::make_shared<PendingTreeData>(std::move(m_data)));
 
     m_data              = {};
     m_pendingTrackIndex = batchEnd;
@@ -208,7 +208,7 @@ void LibraryTreePopulator::run(const LibraryTreeGrouping& grouping, const TrackL
     setState(Idle);
 
     if(success) {
-        emit finished();
+        Q_EMIT finished();
     }
 }
 } // namespace Fooyin

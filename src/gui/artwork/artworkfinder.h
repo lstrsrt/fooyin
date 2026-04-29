@@ -49,7 +49,7 @@ public:
     void sort();
     void reset();
 
-signals:
+Q_SIGNALS:
     void coverFound(const Fooyin::SearchResult& result);
     void coverLoaded(const QUrl& url, const Fooyin::ArtworkResult& result);
     void coverLoadProgress(const QUrl& url, int progress);

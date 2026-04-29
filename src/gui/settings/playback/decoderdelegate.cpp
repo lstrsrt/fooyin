@@ -40,7 +40,7 @@ std::vector<ActionButton> DecoderDelegate::buttons(const QModelIndex& index) con
 void DecoderDelegate::buttonWasClicked(const QModelIndex& index, int buttonId)
 {
     if(buttonId == Configure) {
-        emit configureClicked(index);
+        Q_EMIT configureClicked(index);
     }
 }
 } // namespace Fooyin

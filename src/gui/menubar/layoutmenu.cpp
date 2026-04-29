@@ -115,7 +115,7 @@ void LayoutMenu::addLayout(const FyLayout& layout)
     QObject::connect(layoutAction, &QAction::triggered, this, [this, name]() {
         const auto fyLayout = m_layoutProvider->layoutByName(name);
         if(fyLayout.isValid()) {
-            emit changeLayout(fyLayout);
+            Q_EMIT changeLayout(fyLayout);
         }
     });
     m_layoutMenu->addAction(layoutCmd->action());

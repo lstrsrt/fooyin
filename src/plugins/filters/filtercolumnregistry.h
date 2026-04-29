@@ -34,7 +34,7 @@ class FilterColumnRegistry : public ItemRegistry<FilterColumn>
 public:
     explicit FilterColumnRegistry(SettingsManager* settings, QObject* parent = nullptr);
 
-signals:
+Q_SIGNALS:
     void columnChanged(const Fooyin::Filters::FilterColumn& field);
 
 protected:

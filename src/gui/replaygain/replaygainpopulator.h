@@ -48,7 +48,7 @@ public:
 
     void run(const TrackList& tracks);
 
-signals:
+Q_SIGNALS:
     void populated(Fooyin::RGInfoData data);
 
 private:

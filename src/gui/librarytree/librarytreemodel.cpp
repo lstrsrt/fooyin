@@ -606,11 +606,11 @@ void LibraryTreeModelPrivate::populateModel(PendingTreeData& data)
     }
 
     const QModelIndex allIndex = m_self->indexOfItem(&m_summaryNode);
-    emit m_self->dataChanged(allIndex, allIndex, {Qt::DisplayRole});
+    Q_EMIT m_self->dataChanged(allIndex, allIndex, {Qt::DisplayRole});
 
     for(const QModelIndex& index : changedIndexes) {
-        emit m_self->dataChanged(index, index,
-                                 {Qt::DisplayRole, Qt::ToolTipRole, Qt::SizeHintRole, LibraryTreeItem::RichTitle});
+        Q_EMIT m_self->dataChanged(index, index,
+                                   {Qt::DisplayRole, Qt::ToolTipRole, Qt::SizeHintRole, LibraryTreeItem::RichTitle});
     }
 
     if(m_resetting) {
@@ -667,7 +667,7 @@ LibraryTreeModel::LibraryTreeModel(LibraryManager* libraryManager, const std::sh
         p->m_populatorThread.quit();
         if(!p->m_loaded) {
             p->m_loaded = true;
-            emit modelLoaded();
+            Q_EMIT modelLoaded();
         }
     });
 
@@ -677,7 +677,7 @@ LibraryTreeModel::LibraryTreeModel(LibraryManager* libraryManager, const std::sh
             for(const auto& itemHash : items) {
                 if(p->m_nodes.contains(itemHash)) {
                     const QModelIndex index = indexOfItem(&p->m_nodes.at(itemHash));
-                    emit dataChanged(index, index, {Qt::DecorationRole});
+                    Q_EMIT dataChanged(index, index, {Qt::DecorationRole});
                 }
             }
         }
@@ -720,8 +720,8 @@ void LibraryTreeModel::resetPalette()
     }
 
     for(const QModelIndex& index : changedIndexes) {
-        emit dataChanged(index, index,
-                         {Qt::DisplayRole, Qt::ToolTipRole, Qt::SizeHintRole, LibraryTreeItem::RichTitle});
+        Q_EMIT dataChanged(index, index,
+                           {Qt::DisplayRole, Qt::ToolTipRole, Qt::SizeHintRole, LibraryTreeItem::RichTitle});
     }
     invalidateData();
 }
@@ -729,20 +729,20 @@ void LibraryTreeModel::resetPalette()
 void LibraryTreeModel::setRowHeight(int height)
 {
     p->m_rowHeight = height;
-    emit dataUpdated({}, {});
+    Q_EMIT dataUpdated({}, {});
 }
 
 void LibraryTreeModel::setPlayState(Player::PlayState state)
 {
     p->m_playingState = state;
-    emit dataUpdated({}, {}, {Qt::DecorationRole, Qt::BackgroundRole});
+    Q_EMIT dataUpdated({}, {}, {Qt::DecorationRole, Qt::BackgroundRole});
 }
 
 void LibraryTreeModel::setPlayingPath(const QString& parentNode, const QString& path)
 {
     p->m_parentNode  = parentNode;
     p->m_playingPath = path;
-    emit dataUpdated({}, {}, {Qt::DecorationRole, Qt::BackgroundRole});
+    Q_EMIT dataUpdated({}, {}, {Qt::DecorationRole, Qt::BackgroundRole});
 }
 
 Qt::ItemFlags LibraryTreeModel::flags(const QModelIndex& index) const
@@ -1058,7 +1058,7 @@ void LibraryTreeModel::updateTracks(const TrackList& tracks)
                          [this](const Track& track) { return p->m_trackParents.contains(track.id()); });
 
     if(tracksToUpdate.empty()) {
-        emit modelUpdated();
+        Q_EMIT modelUpdated();
         addTracks(tracks);
         return;
     }
@@ -1115,7 +1115,7 @@ void LibraryTreeModel::reset(const TrackList& tracks)
         beginResetModel();
         p->beginReset();
         endResetModel();
-        emit modelLoaded();
+        Q_EMIT modelLoaded();
         return;
     }
 

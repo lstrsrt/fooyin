@@ -80,7 +80,7 @@ void recursiveDataChanged(QAbstractItemModel* model, const QModelIndex& parent, 
     if(rowCount > 0 && columnCount > 0) {
         const QModelIndex topLeft     = model->index(0, 0, parent);
         const QModelIndex bottomRight = model->index(rowCount - 1, columnCount - 1, parent);
-        emit model->dataChanged(topLeft, bottomRight, roles);
+        Q_EMIT model->dataChanged(topLeft, bottomRight, roles);
     }
 
     for(int row{0}; row < rowCount; ++row) {

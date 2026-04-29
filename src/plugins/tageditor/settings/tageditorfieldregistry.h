@@ -36,7 +36,7 @@ public:
 
     void loadDefaultFields();
 
-signals:
+Q_SIGNALS:
     void fieldChanged(const Fooyin::TagEditor::TagEditorField& field);
 };
 } // namespace TagEditor

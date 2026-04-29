@@ -60,7 +60,7 @@ public:
 
     bool reset();
 
-signals:
+Q_SIGNALS:
     void settingChangedVariant(const QVariant& value);
     void settingChangedBool(bool value);
     void settingChangedInt(int value);

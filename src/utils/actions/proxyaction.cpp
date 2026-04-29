@@ -184,7 +184,7 @@ void ProxyAction::setAction(QAction* action)
     p->connectAction();
     p->updateState();
 
-    emit currentActionChanged(action);
+    Q_EMIT currentActionChanged(action);
 }
 
 void ProxyAction::setShortcutVisibleInToolTip(bool visible)

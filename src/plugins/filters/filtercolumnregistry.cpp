@@ -27,7 +27,7 @@ FilterColumnRegistry::FilterColumnRegistry(SettingsManager* settings, QObject* p
 {
     QObject::connect(this, &RegistryBase::itemChanged, this, [this](int id) {
         if(const auto field = itemById(id)) {
-            emit columnChanged(field.value());
+            Q_EMIT columnChanged(field.value());
         }
     });
 

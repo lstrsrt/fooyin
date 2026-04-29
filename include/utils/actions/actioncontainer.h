@@ -103,7 +103,7 @@ public:
     virtual void clear();
     virtual bool update() = 0;
 
-signals:
+Q_SIGNALS:
     void requestUpdate(Fooyin::ActionContainer* container);
 
 protected:

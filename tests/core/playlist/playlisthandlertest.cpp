@@ -115,7 +115,7 @@ public:
 
     void emitTracksLoaded()
     {
-        emit tracksLoaded(m_tracks);
+        Q_EMIT tracksLoaded(m_tracks);
     }
 
     bool hasLibrary() const override
@@ -353,7 +353,7 @@ TEST(PlaylistHandlerTest, TracksMetadataChangedUpdatesPlaylistTrackWhenFilepathC
                      });
 
     const Track renamedTrack = makeTrack(u"/tmp/renamed.flac"_s, 1);
-    emit harness.library.tracksMetadataChanged({renamedTrack});
+    Q_EMIT harness.library.tracksMetadataChanged({renamedTrack});
 
     ASSERT_EQ(updatedIndexes, std::vector<int>({0}));
 

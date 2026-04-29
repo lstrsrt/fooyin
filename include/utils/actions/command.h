@@ -74,7 +74,7 @@ public:
     void setCurrentContext(const Context& newContext);
     void addOverrideAction(QAction* actionToAdd, const Context& context, bool changeContext = true);
 
-signals:
+Q_SIGNALS:
     void shortcutChanged();
     void activeStateChanged();
 

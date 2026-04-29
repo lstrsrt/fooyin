@@ -95,10 +95,10 @@ public:
     void clearSavedDefaults() const;
     void applyConfig(const ConfigData& config);
 
-signals:
+Q_SIGNALS:
     void rootChanged();
 
-public slots:
+public Q_SLOTS:
     void playstateChanged(Fooyin::Player::PlayState state);
     void activePlaylistChanged(Fooyin::Playlist* playlist);
     void playlistTrackChanged(const Fooyin::PlaylistTrack& track);

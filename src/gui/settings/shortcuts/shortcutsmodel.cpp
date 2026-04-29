@@ -494,7 +494,7 @@ void ShortcutsModel::emitDataChanged(const IdSet& ids)
         }
 
         const auto index = indexOfItem(&it->second);
-        emit dataChanged(index, index.siblingAtColumn(columnCount({}) - 1));
+        Q_EMIT dataChanged(index, index.siblingAtColumn(columnCount({}) - 1));
     }
 }
 } // namespace Fooyin

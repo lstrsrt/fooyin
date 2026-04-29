@@ -669,14 +669,14 @@ bool TagEditorModel::setData(const QModelIndex& index, const QVariant& value, in
             if((item->status() == TagEditorItem::Added && newTitle == p->m_defaultFieldtext)
                || p->hasTagConflict(item, newTitle)) {
                 if(item->status() == TagEditorItem::Added) {
-                    emit pendingRowCancelled();
+                    Q_EMIT pendingRowCancelled();
                 }
                 return false;
             }
 
             if(!item->setTitle(newTitle)) {
                 if(item->status() == TagEditorItem::Added) {
-                    emit pendingRowCancelled();
+                    Q_EMIT pendingRowCancelled();
                 }
                 return false;
             }
@@ -700,7 +700,7 @@ bool TagEditorModel::setData(const QModelIndex& index, const QVariant& value, in
             break;
     }
 
-    emit dataChanged(index, index);
+    Q_EMIT dataChanged(index, index);
 
     return true;
 }
@@ -753,7 +753,7 @@ bool TagEditorModel::removeRows(int row, int count, const QModelIndex& /*parent*
         }
         else {
             item->setStatus(TagEditorItem::Removed);
-            emit dataChanged(index, index.siblingAtColumn(columnCount({}) - 1), {Qt::FontRole});
+            Q_EMIT dataChanged(index, index.siblingAtColumn(columnCount({}) - 1), {Qt::FontRole});
         }
     }
 

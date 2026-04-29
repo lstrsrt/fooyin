@@ -435,7 +435,7 @@ public:
     void simulateDisconnect()
     {
         ++m_stats->disconnectSignals;
-        emit stateChanged(State::Disconnected);
+        Q_EMIT stateChanged(State::Disconnected);
     }
 
 private:

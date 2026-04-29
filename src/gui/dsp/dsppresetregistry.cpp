@@ -27,7 +27,7 @@ DspPresetRegistry::DspPresetRegistry(SettingsManager* settings, QObject* parent)
 {
     QObject::connect(this, &RegistryBase::itemChanged, this, [this](int id) {
         if(const auto preset = itemById(id)) {
-            emit presetChanged(preset.value());
+            Q_EMIT presetChanged(preset.value());
         }
     });
 

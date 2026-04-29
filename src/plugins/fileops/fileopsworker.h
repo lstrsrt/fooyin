@@ -69,7 +69,7 @@ public:
     void run();
     void deleteFiles();
 
-signals:
+Q_SIGNALS:
     void simulated(const Fooyin::FileOps::FileOperations& operations);
     void deleteFinished(const Fooyin::TrackList& deletedTracks);
     void operationFinished(const Fooyin::FileOps::FileOpsItem& operation);

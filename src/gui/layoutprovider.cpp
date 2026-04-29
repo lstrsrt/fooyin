@@ -266,7 +266,7 @@ void LayoutProvider::importLayout(QWidget* parent)
     const int buttonClicked = message.exec();
 
     if(buttonClicked == QMessageBox::Yes) {
-        emit requestChangeLayout(layout);
+        Q_EMIT requestChangeLayout(layout);
     }
 }
 
@@ -296,11 +296,11 @@ bool LayoutProvider::exportLayout(const FyLayout& layout, const QString& path)
         auto currLayout = p->layout(layout.name());
         if(currLayout != p->m_layouts.end()) {
             *currLayout = layout;
-            emit layoutChanged(layout);
+            Q_EMIT layoutChanged(layout);
         }
         else {
             p->m_layouts.push_back(layout);
-            emit layoutAdded(layout);
+            Q_EMIT layoutAdded(layout);
         }
     }
 

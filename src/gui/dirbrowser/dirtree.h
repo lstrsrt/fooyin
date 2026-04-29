@@ -32,7 +32,7 @@ public:
     void resizeView();
     void setShowHorizontalScrollbar(bool enabled);
 
-signals:
+Q_SIGNALS:
     void backClicked();
     void forwardClicked();
     void middleClicked();

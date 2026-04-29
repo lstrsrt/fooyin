@@ -88,9 +88,9 @@ void LrcLibLyrics::handleLyricReply()
             data.duration = obj.value("duration"_L1).toInteger();
         }
 
-        emit searchResult({data});
+        Q_EMIT searchResult({data});
     }
 
-    emit searchResult({});
+    Q_EMIT searchResult({});
 }
 } // namespace Fooyin::Lyrics

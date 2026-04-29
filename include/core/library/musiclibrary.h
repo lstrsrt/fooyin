@@ -220,7 +220,7 @@ public:
     /** Delete @p tracks from the library and database. */
     virtual WriteRequest deleteTracks(const TrackList& tracks) = 0;
 
-signals:
+Q_SIGNALS:
     /** Emitted whenever the progress state for a scan request changes. */
     void scanProgress(const Fooyin::ScanProgress& progress);
     /**

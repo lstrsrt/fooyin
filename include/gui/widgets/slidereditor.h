@@ -59,10 +59,10 @@ public:
 
     void addSpecialValue(int val, const QString& text);
 
-signals:
+Q_SIGNALS:
     void valueChanged(int value);
 
-private slots:
+private Q_SLOTS:
     void sliderValueChanged(int value);
     void spinBoxValueChanged(int value);
 

@@ -56,7 +56,7 @@ public:
     virtual void setAttributes(Attributes attributes);
     virtual void setText(const QString& text);
 
-signals:
+Q_SIGNALS:
     void textChanged(const QString& text);
 
 private:
@@ -91,7 +91,7 @@ public:
     void deleteBlock();
     void clearBlocks();
 
-signals:
+Q_SIGNALS:
     void blockDeleted(const QString& text);
 
 private:

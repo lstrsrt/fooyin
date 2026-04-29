@@ -48,7 +48,7 @@ public:
     void saveState(QSettings& settings) const;
     void restoreState(const QSettings& settings);
 
-signals:
+Q_SIGNALS:
     void opening();
     void closing();
 

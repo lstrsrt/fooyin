@@ -306,7 +306,7 @@ void DiscogsArtwork::handleArtistReply(const QStringList& artists, QNetworkReply
 void DiscogsArtwork::endSearchIfFinished()
 {
     if(m_requests.empty()) {
-        emit searchResult(m_results);
+        Q_EMIT searchResult(m_results);
     }
 }
 } // namespace Fooyin

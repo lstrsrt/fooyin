@@ -55,7 +55,7 @@ public:
     [[nodiscard]] QString mimeType() const;
     [[nodiscard]] QByteArray image() const;
 
-signals:
+Q_SIGNALS:
     void requestExtract();
     void requestExtractAs();
 

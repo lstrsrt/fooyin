@@ -35,11 +35,11 @@ class LibraryMonitor : public QObject
 public:
     explicit LibraryMonitor(QObject* parent = nullptr);
 
-signals:
+Q_SIGNALS:
     void statusChanged(const Fooyin::LibraryInfo& library);
     void directoriesChanged(const Fooyin::LibraryInfo& library, const QStringList& dirs);
 
-public slots:
+public Q_SLOTS:
     void setupWatchers(const Fooyin::LibraryInfoMap& libraries, bool enabled);
 
 private:

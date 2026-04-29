@@ -50,7 +50,7 @@ void SignalThrottler::setTimeout(int timeout)
         return;
     }
     m_timeout = timeout;
-    emit timeoutChanged(timeout);
+    Q_EMIT timeoutChanged(timeout);
 }
 
 void SignalThrottler::setTimeout(std::chrono::milliseconds timeout)
@@ -69,7 +69,7 @@ void SignalThrottler::setTimerType(Qt::TimerType timerType)
         return;
     }
     m_timerType = timerType;
-    emit timerTypeChanged(timerType);
+    Q_EMIT timerTypeChanged(timerType);
 }
 
 void SignalThrottler::throttle()
@@ -102,6 +102,6 @@ void SignalThrottler::maybeEmitTriggered()
 void SignalThrottler::emitTriggered()
 {
     m_pendingEmit = false;
-    emit triggered();
+    Q_EMIT triggered();
 }
 } // namespace Fooyin

@@ -942,7 +942,7 @@ void TrackSelectionControllerPrivate::sendToNewPlaylist(PlaylistAction::ActionOp
     if(auto* playlist = m_playlistHandler->createPlaylist(newName, selection.tracks)) {
         playlist->changeCurrentIndex(-1);
         handleActions(options, playlist);
-        emit m_self->actionExecuted(TrackAction::SendNewPlaylist);
+        Q_EMIT m_self->actionExecuted(TrackAction::SendNewPlaylist);
     }
 }
 
@@ -956,7 +956,7 @@ void TrackSelectionControllerPrivate::sendToCurrentPlaylist(PlaylistAction::Acti
     if(auto* currentPlaylist = m_playlistController->currentPlaylist()) {
         m_playlistHandler->createPlaylist(currentPlaylist->name(), selection.tracks);
         handleActions(options, currentPlaylist);
-        emit m_self->actionExecuted(TrackAction::SendCurrentPlaylist);
+        Q_EMIT m_self->actionExecuted(TrackAction::SendCurrentPlaylist);
     }
 }
 
@@ -969,7 +969,7 @@ void TrackSelectionControllerPrivate::addToCurrentPlaylist() const
     const auto& selection = m_contextSelection.at(m_activeContext);
     if(const auto* playlist = m_playlistController->currentPlaylist()) {
         m_playlistHandler->appendToPlaylist(playlist->id(), selection.tracks);
-        emit m_self->actionExecuted(TrackAction::AddCurrentPlaylist);
+        Q_EMIT m_self->actionExecuted(TrackAction::AddCurrentPlaylist);
     }
 }
 
@@ -979,7 +979,7 @@ void TrackSelectionControllerPrivate::addToActivePlaylist() const
         const auto& selection = m_contextSelection.at(m_activeContext);
         if(const auto* playlist = m_playlistHandler->activePlaylist()) {
             m_playlistHandler->appendToPlaylist(playlist->id(), selection.tracks);
-            emit m_self->actionExecuted(TrackAction::AddActivePlaylist);
+            Q_EMIT m_self->actionExecuted(TrackAction::AddActivePlaylist);
         }
     }
 }
@@ -1028,7 +1028,7 @@ void TrackSelectionControllerPrivate::addToQueue() const
 
     const auto& selection = m_contextSelection.at(m_activeContext);
     m_playlistController->playerController()->queueTracks(queueTracksForSelection(selection));
-    emit m_self->actionExecuted(TrackAction::AddToQueue);
+    Q_EMIT m_self->actionExecuted(TrackAction::AddToQueue);
 }
 
 void TrackSelectionControllerPrivate::queueNext() const
@@ -1039,7 +1039,7 @@ void TrackSelectionControllerPrivate::queueNext() const
 
     const auto& selection = m_contextSelection.at(m_activeContext);
     m_playlistController->playerController()->queueTracksNext(queueTracksForSelection(selection));
-    emit m_self->actionExecuted(TrackAction::QueueNext);
+    Q_EMIT m_self->actionExecuted(TrackAction::QueueNext);
 }
 
 void TrackSelectionControllerPrivate::openFolder(const TrackSelection& selection) const
@@ -1093,7 +1093,7 @@ void TrackSelectionControllerPrivate::searchArtwork(const TrackSelection& select
         return;
     }
 
-    emit m_self->requestArtworkSearch(selection.tracks, quick);
+    Q_EMIT m_self->requestArtworkSearch(selection.tracks, quick);
 }
 
 void TrackSelectionControllerPrivate::extractArtwork(const TrackSelection& selection) const
@@ -1116,7 +1116,7 @@ void TrackSelectionControllerPrivate::attachArtwork(const TrackSelection& select
 
     const QString filepath = promptForArtworkPath(parent);
     if(!filepath.isEmpty()) {
-        emit m_self->requestArtworkAttach(selection.tracks, coverType, filepath);
+        Q_EMIT m_self->requestArtworkAttach(selection.tracks, coverType, filepath);
     }
 }
 
@@ -1126,7 +1126,7 @@ void TrackSelectionControllerPrivate::removeArtwork(const TrackSelection& select
         return;
     }
 
-    emit m_self->requestArtworkRemoval(selection.tracks);
+    Q_EMIT m_self->requestArtworkRemoval(selection.tracks);
 }
 
 void TrackSelectionControllerPrivate::openProperties(const TrackSelection& selection) const
@@ -1135,7 +1135,7 @@ void TrackSelectionControllerPrivate::openProperties(const TrackSelection& selec
         return;
     }
 
-    emit m_self->requestPropertiesDialog(selection.tracks);
+    Q_EMIT m_self->requestPropertiesDialog(selection.tracks);
 }
 
 void TrackSelectionControllerPrivate::sendToQueue(PlaylistAction::ActionOptions options) const
@@ -1147,7 +1147,7 @@ void TrackSelectionControllerPrivate::sendToQueue(PlaylistAction::ActionOptions 
     const auto& selection = m_contextSelection.at(m_activeContext);
     m_playlistController->playerController()->replaceTracks(queueTracksForSelection(selection));
     handleActions(options);
-    emit m_self->actionExecuted(TrackAction::SendToQueue);
+    Q_EMIT m_self->actionExecuted(TrackAction::SendToQueue);
 }
 
 QueueTracks TrackSelectionControllerPrivate::queueTracksForSelection(const TrackSelection& selection) const
@@ -1355,7 +1355,7 @@ void TrackSelectionController::changeSelectedTracks(WidgetContext* context, cons
     }
 
     p->updateActionState();
-    emit selectionChanged();
+    Q_EMIT selectionChanged();
 }
 
 void TrackSelectionController::changeSelectedTracks(const TrackSelection& selection)
@@ -1365,7 +1365,7 @@ void TrackSelectionController::changeSelectedTracks(const TrackSelection& select
     }
 
     p->updateActionState();
-    emit selectionChanged();
+    Q_EMIT selectionChanged();
 }
 
 void TrackSelectionController::changePlaybackOnSend(WidgetContext* context, bool enabled)
@@ -1507,7 +1507,7 @@ void TrackSelectionController::tracksUpdated(const TrackList& tracks)
     }
 
     p->updateActionState();
-    emit selectionChanged();
+    Q_EMIT selectionChanged();
 }
 
 void TrackSelectionController::tracksRemoved(const TrackList& tracks)
@@ -1518,7 +1518,7 @@ void TrackSelectionController::tracksRemoved(const TrackList& tracks)
     }
 
     p->updateActionState();
-    emit selectionChanged();
+    Q_EMIT selectionChanged();
 }
 } // namespace Fooyin
 

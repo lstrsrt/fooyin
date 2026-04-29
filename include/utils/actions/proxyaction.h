@@ -56,7 +56,7 @@ public:
 
     static ProxyAction* actionWithIcon(QAction* original, const QIcon& icon);
 
-signals:
+Q_SIGNALS:
     void currentActionChanged(QAction* action);
 
 private:

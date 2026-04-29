@@ -60,7 +60,7 @@ public:
     bool applyProfile(const QString& output, const QString& device);
     void reapplyCurrentProfile();
 
-signals:
+Q_SIGNALS:
     void profilesChanged(const QString& output);
     void currentOutputChanged(const QString& output, const QString& device);
 

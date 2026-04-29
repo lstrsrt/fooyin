@@ -102,14 +102,14 @@ public:
 
     [[nodiscard]] EditableTabBar* tabBar() const;
 
-signals:
+Q_SIGNALS:
     void currentChanged(int index);
     void tabMoved(int oldIndex, int newIndex);
     void tabCloseRequested(int index);
     void tabBarClicked(int index);
     void tabBarDoubleClicked(int index);
 
-public slots:
+public Q_SLOTS:
     void setCurrentIndex(int index);
 
 protected:

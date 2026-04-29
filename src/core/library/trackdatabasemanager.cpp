@@ -66,7 +66,7 @@ void TrackDatabaseManager::getAllTracks()
     setState(Running);
 
     const TrackList tracks = m_trackDatabase.getAllTracks();
-    emit gotTracks(tracks);
+    Q_EMIT gotTracks(tracks);
 
     setState(Idle);
 }
@@ -94,7 +94,7 @@ void TrackDatabaseManager::checkTrackAvailability(const TrackList& tracks)
     }
 
     if(!updatedTracks.empty()) {
-        emit availabilityChecked(updatedTracks);
+        Q_EMIT availabilityChecked(updatedTracks);
     }
 
     setState(Idle);
@@ -158,9 +158,9 @@ void TrackDatabaseManager::updateTracks(const TrackList& tracks, bool write, int
         }
     }
 
-    emit updatedTracks(tracksUpdated);
+    Q_EMIT updatedTracks(tracksUpdated);
     if(operationId >= 0) {
-        emit trackWriteCompleted(operationId, tracksUpdated, failedCount, cancelled);
+        Q_EMIT trackWriteCompleted(operationId, tracksUpdated, failedCount, cancelled);
     }
 
     setState(Idle);
@@ -214,7 +214,7 @@ void TrackDatabaseManager::updateTrackStats(const TrackList& tracks, AudioReader
     }
 
     if(!tracksUpdated.empty()) {
-        emit updatedTracksStats(tracksUpdated);
+        Q_EMIT updatedTracksStats(tracksUpdated);
     }
 
     setState(Idle);
@@ -268,9 +268,9 @@ void TrackDatabaseManager::writeCovers(const TrackCoverData& tracks, int operati
         }
     }
 
-    emit updatedTracks(tracksUpdated);
+    Q_EMIT updatedTracks(tracksUpdated);
     if(operationId >= 0) {
-        emit trackCoverWriteCompleted(operationId, tracksUpdated, failedCount, cancelled);
+        Q_EMIT trackCoverWriteCompleted(operationId, tracksUpdated, failedCount, cancelled);
     }
 
     setState(Idle);
@@ -304,14 +304,14 @@ void TrackDatabaseManager::deleteTracks(const TrackList& tracks, int operationId
     }
 
     if(!tracksToDelete.empty() && m_trackDatabase.deleteTracks(tracksToDelete)) {
-        emit removedTracks(tracksToDelete);
+        Q_EMIT removedTracks(tracksToDelete);
     }
     else if(!tracksToDelete.empty()) {
         failedCount = static_cast<int>(tracksToDelete.size());
     }
 
     if(operationId >= 0) {
-        emit tracksDeleted(operationId, tracksToDelete, failedCount, cancelled);
+        Q_EMIT tracksDeleted(operationId, tracksToDelete, failedCount, cancelled);
     }
 
     setState(Idle);
@@ -337,14 +337,14 @@ void TrackDatabaseManager::removeUnavailbleTracks(const TrackList& tracks, int o
     }
 
     if(!trackstoRemove.empty() && m_trackDatabase.deleteTracks(trackstoRemove)) {
-        emit removedTracks(trackstoRemove);
+        Q_EMIT removedTracks(trackstoRemove);
     }
     else if(!trackstoRemove.empty()) {
         failedCount = static_cast<int>(trackstoRemove.size());
     }
 
     if(operationId >= 0) {
-        emit unavailableTracksRemoved(operationId, trackstoRemove, failedCount, cancelled);
+        Q_EMIT unavailableTracksRemoved(operationId, trackstoRemove, failedCount, cancelled);
     }
 
     setState(Idle);

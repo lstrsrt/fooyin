@@ -38,7 +38,7 @@ public:
 
     void setColour(const QColor& colour);
 
-signals:
+Q_SIGNALS:
     void clicked();
 
 protected:

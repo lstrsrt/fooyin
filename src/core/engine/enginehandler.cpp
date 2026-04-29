@@ -91,19 +91,19 @@ EngineHandler::EngineHandler(std::shared_ptr<AudioLoader> audioLoader, PlayerCon
     QObject::connect(m_playerController, &PlayerController::positionMoved, this, &EngineHandler::dispatchSeek);
 
     QObject::connect(m_engine, &AudioEngine::trackAboutToFinish, this, [this](const Track& track, uint64_t generation) {
-        emit trackAboutToFinish(Engine::AboutToFinishContext{.track = track, .generation = generation});
+        Q_EMIT trackAboutToFinish(Engine::AboutToFinishContext{.track = track, .generation = generation});
     });
     QObject::connect(m_engine, &AudioEngine::trackReadyToSwitch, this, [this](const Track& track, uint64_t generation) {
-        emit trackReadyToSwitch(Engine::AboutToFinishContext{.track = track, .generation = generation});
+        Q_EMIT trackReadyToSwitch(Engine::AboutToFinishContext{.track = track, .generation = generation});
     });
     QObject::connect(
         m_engine, &AudioEngine::trackBoundaryReached, this,
         [this](const Track& track, uint64_t generation, uint64_t remainingOutputMs, bool engineOwnsTransition) {
             handleTrackBoundaryReached(track, generation, remainingOutputMs, engineOwnsTransition);
-            emit trackBoundaryReached(Engine::AboutToFinishContext{.track                = track,
-                                                                   .generation           = generation,
-                                                                   .remainingOutputMs    = remainingOutputMs,
-                                                                   .engineOwnsTransition = engineOwnsTransition});
+            Q_EMIT trackBoundaryReached(Engine::AboutToFinishContext{.track                = track,
+                                                                     .generation           = generation,
+                                                                     .remainingOutputMs    = remainingOutputMs,
+                                                                     .engineOwnsTransition = engineOwnsTransition});
         });
     QObject::connect(m_engine, &AudioEngine::finished, this, &EngineHandler::finished);
     QObject::connect(m_engine, &AudioEngine::positionContextChanged, this, &EngineHandler::handlePositionContext);
@@ -191,7 +191,7 @@ void EngineHandler::publishEvent(const Engine::PlaybackItem& item, bool ready, u
 {
     m_lastPreparedNextTrack      = item;
     m_lastPreparedNextTrackReady = ready;
-    emit nextTrackReadiness(item, ready, requestId);
+    Q_EMIT nextTrackReadiness(item, ready, requestId);
 }
 
 uint64_t EngineHandler::nextPrepareRequestId()
@@ -233,7 +233,7 @@ void EngineHandler::requestArmPreparedCrossfadeTransition(const Engine::Playback
                     if(!self) {
                         return;
                     }
-                    emit self->preparedCrossfadeArmResult(item, generation, armed);
+                    Q_EMIT self->preparedCrossfadeArmResult(item, generation, armed);
                 },
                 Qt::QueuedConnection);
         },
@@ -271,7 +271,7 @@ void EngineHandler::requestArmPreparedGaplessTransition(const Engine::PlaybackIt
                     if(!self) {
                         return;
                     }
-                    emit self->preparedGaplessArmResult(item, generation, armed);
+                    Q_EMIT self->preparedGaplessArmResult(item, generation, armed);
                 },
                 Qt::QueuedConnection);
         },
@@ -307,7 +307,7 @@ void EngineHandler::handleStateChange(Engine::PlaybackState state)
             break;
     }
 
-    emit engineStateChanged(state);
+    Q_EMIT engineStateChanged(state);
 }
 
 void EngineHandler::handleTrackChangeRequest(const Player::TrackChangeRequest& request)
@@ -516,7 +516,7 @@ void EngineHandler::handleTrackCommitted(const Engine::TrackCommitContext& conte
         return;
     }
 
-    emit trackCommitted(context);
+    Q_EMIT trackCommitted(context);
 
     if(m_pendingTrackChange.has_value()
        && samePlaybackItem(makePlaybackItem(m_pendingTrackChange->track.track, m_pendingTrackChange->itemId),
@@ -615,7 +615,7 @@ void EngineHandler::handleTrackStatus(Engine::TrackStatus status, const Track& t
             break;
     }
 
-    emit trackStatusContextChanged(
+    Q_EMIT trackStatusContextChanged(
         Engine::TrackStatusContext{.status = status, .track = track, .generation = generation});
 }
 
@@ -686,7 +686,7 @@ void EngineHandler::changeOutput(const QString& output)
             return;
         }
         m_currentOutput = {.name = m_outputs.cbegin()->first, .device = u"default"_s};
-        emit outputChanged(m_currentOutput.name, m_currentOutput.device);
+        Q_EMIT outputChanged(m_currentOutput.name, m_currentOutput.device);
     };
 
     if(output.isEmpty()) {
@@ -719,11 +719,11 @@ void EngineHandler::changeOutput(const QString& output)
 
     if(m_currentOutput.name != newName) {
         m_currentOutput = {.name = newName, .device = device};
-        emit outputChanged(newName, device);
+        Q_EMIT outputChanged(newName, device);
     }
     else if(m_currentOutput.device != device) {
         m_currentOutput.device = device;
-        emit deviceChanged(device);
+        Q_EMIT deviceChanged(device);
     }
 }
 

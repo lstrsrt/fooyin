@@ -61,7 +61,7 @@ public:
     [[nodiscard]] QByteArray saveHeaderState() const;
     void restoreHeaderState(const QByteArray& data);
 
-signals:
+Q_SIGNALS:
     void stretchChanged(bool enabled);
     void stateRestored();
     void leftClicked(int section, const QPoint& pos);

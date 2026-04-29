@@ -48,7 +48,7 @@ public:
     void setEditTitle(const QString& title);
     void setEditMode(EditMode mode);
 
-signals:
+Q_SIGNALS:
     void middleClicked(int index);
     void addButtonClicked();
     void tabTextChanged(int index, const QString& text);

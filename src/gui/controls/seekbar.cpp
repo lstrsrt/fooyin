@@ -56,7 +56,7 @@ public:
     [[nodiscard]] bool isSeeking() const;
     void stopSeeking();
 
-signals:
+Q_SIGNALS:
     void sliderDropped(uint64_t pos);
     void seekForward();
     void seekBackward();
@@ -180,7 +180,7 @@ void TrackSlider::mouseReleaseEvent(QMouseEvent* event)
     m_pressPos = {};
 
     const auto pos = valueFromPosition(static_cast<int>(event->position().x()));
-    emit sliderDropped(pos);
+    Q_EMIT sliderDropped(pos);
 }
 
 void TrackSlider::mouseMoveEvent(QMouseEvent* event)
@@ -204,11 +204,11 @@ void TrackSlider::keyPressEvent(QKeyEvent* event)
     const auto key = event->key();
 
     if(key == Qt::Key_Right || key == Qt::Key_Up) {
-        emit seekForward();
+        Q_EMIT seekForward();
         event->accept();
     }
     else if(key == Qt::Key_Left || key == Qt::Key_Down) {
-        emit seekBackward();
+        Q_EMIT seekBackward();
         event->accept();
     }
     else {
@@ -219,10 +219,10 @@ void TrackSlider::keyPressEvent(QKeyEvent* event)
 void TrackSlider::wheelEvent(QWheelEvent* event)
 {
     if(event->angleDelta().y() < 0) {
-        emit seekBackward();
+        Q_EMIT seekBackward();
     }
     else {
-        emit seekForward();
+        Q_EMIT seekForward();
     }
 
     event->accept();

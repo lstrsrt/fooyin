@@ -65,6 +65,6 @@ void DspSettingsDialog::setRestoreDefaultsVisible(const bool visible)
 
 void DspSettingsDialog::publishPreviewSettings()
 {
-    emit previewSettingsChanged(saveSettings());
+    Q_EMIT previewSettingsChanged(saveSettings());
 }
 } // namespace Fooyin

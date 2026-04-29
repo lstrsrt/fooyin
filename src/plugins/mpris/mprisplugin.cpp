@@ -134,7 +134,7 @@ void MprisPlugin::initialise(const CorePluginContext& context)
     });
     QObject::connect(m_playerController, &PlayerController::playlistTrackUpdated, this, &MprisPlugin::trackChanged);
     QObject::connect(m_playerController, &PlayerController::positionMoved, this,
-                     [this](uint64_t ms) { emit Seeked(static_cast<qlonglong>(ms) * 1000); });
+                     [this](uint64_t ms) { Q_EMIT Seeked(static_cast<qlonglong>(ms) * 1000); });
 
     QObject::connect(this, &MprisPlugin::reloadMetadata, this, [this]() { notify(u"Metadata"_s, metadata()); });
 }
@@ -519,7 +519,7 @@ void MprisPlugin::loadMetaData(const PlaylistTrack& playlistTrack)
         }
 
         qCDebug(MPRIS) << "Sending MPRIS data:" << m_currentMetaData;
-        emit reloadMetadata();
+        Q_EMIT reloadMetadata();
     };
 
     const QString coverKey = Utils::generateHash(u"MPRIS"_s, track.hash());

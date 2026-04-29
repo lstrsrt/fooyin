@@ -75,7 +75,7 @@ void QuickSetupDialog::changeLayout(const QItemSelection& selected, const QItemS
 
     const auto layout = indexes.constFirst().data(QuickSetupModel::Layout).value<FyLayout>();
 
-    emit layoutChanged(layout);
+    Q_EMIT layoutChanged(layout);
 }
 
 void QuickSetupDialog::showEvent(QShowEvent* event)

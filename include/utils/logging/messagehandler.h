@@ -40,7 +40,7 @@ public:
     static QtMsgType level();
     static void setLevel(QtMsgType level);
 
-signals:
+Q_SIGNALS:
     void showMessage(QString msg, QtMsgType type);
 
 private:

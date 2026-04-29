@@ -55,7 +55,7 @@ public:
     [[nodiscard]] int columnCount(const QModelIndex& parent) const override;
     [[nodiscard]] int rowCount(const QModelIndex& parent) const override;
 
-signals:
+Q_SIGNALS:
     void simulated();
     void finished();
 

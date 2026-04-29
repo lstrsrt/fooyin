@@ -525,7 +525,7 @@ void DirBrowser::handleModelReset()
         updateDir(rootPath);
     }
 
-    emit this->rootChanged();
+    Q_EMIT this->rootChanged();
     m_dirTree->selectionModel()->setCurrentIndex(m_proxyModel->index(0, 0, {}), QItemSelectionModel::NoUpdate);
     m_dirTree->resizeView();
 }

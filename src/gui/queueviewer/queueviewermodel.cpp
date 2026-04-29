@@ -145,7 +145,7 @@ QueueViewerModel::QueueViewerModel(std::shared_ptr<AudioLoader> audioLoader, Pla
             const auto items = m_trackParents.at(track.albumHash());
             for(QueueViewerItem* item : items) {
                 const QModelIndex index = indexOfItem(item);
-                emit dataChanged(index, index, {Qt::DecorationRole});
+                Q_EMIT dataChanged(index, index, {Qt::DecorationRole});
             }
         }
     });
@@ -312,7 +312,7 @@ bool QueueViewerModel::dropMimeData(const QMimeData* data, Qt::DropAction action
             --queueRow;
         }
 
-        emit queueTracksMoved(std::clamp(queueRow, 0, static_cast<int>(m_trackItems.size())), queueIndexes);
+        Q_EMIT queueTracksMoved(std::clamp(queueRow, 0, static_cast<int>(m_trackItems.size())), queueIndexes);
         return true;
     }
     if(data->hasFormat(QString::fromLatin1(Constants::Mime::QueueTracks))) {
@@ -323,8 +323,8 @@ bool QueueViewerModel::dropMimeData(const QMimeData* data, Qt::DropAction action
         else if(m_currentTrackItem) {
             --queueRow;
         }
-        emit playlistTracksDropped(std::clamp(queueRow, 0, static_cast<int>(m_trackItems.size())),
-                                   data->data(QString::fromLatin1(Constants::Mime::QueueTracks)));
+        Q_EMIT playlistTracksDropped(std::clamp(queueRow, 0, static_cast<int>(m_trackItems.size())),
+                                     data->data(QString::fromLatin1(Constants::Mime::QueueTracks)));
         return true;
     }
 
@@ -337,7 +337,7 @@ bool QueueViewerModel::dropMimeData(const QMimeData* data, Qt::DropAction action
         else if(m_currentTrackItem) {
             --queueRow;
         }
-        emit tracksDropped(std::clamp(queueRow, 0, static_cast<int>(m_trackItems.size())), data);
+        Q_EMIT tracksDropped(std::clamp(queueRow, 0, static_cast<int>(m_trackItems.size())), data);
         return true;
     }
 
@@ -379,7 +379,7 @@ void QueueViewerModel::playbackStateChanged()
 
     if(m_currentTrackItem) {
         const auto idx = index(0, 0, {});
-        emit dataChanged(idx, idx, {Qt::DecorationRole});
+        Q_EMIT dataChanged(idx, idx, {Qt::DecorationRole});
     }
 }
 

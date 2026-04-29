@@ -97,7 +97,7 @@ bool TagEditorPropertiesTab::commitPendingChanges()
 {
     const TrackList changedTracks = commitCurrentScopeEdits();
     if(!changedTracks.empty()) {
-        emit tracksChanged(changedTracks);
+        Q_EMIT tracksChanged(changedTracks);
     }
     return true;
 }
@@ -106,7 +106,7 @@ void TagEditorPropertiesTab::apply()
 {
     const TrackList changedTracks = commitCurrentScopeEdits();
     if(!changedTracks.empty()) {
-        emit tracksChanged(changedTracks);
+        Q_EMIT tracksChanged(changedTracks);
     }
 
     if(m_pendingTracks.empty()) {
@@ -117,10 +117,10 @@ void TagEditorPropertiesTab::apply()
 
     auto applyChanges = [this, updateStats]() {
         if(updateStats) {
-            emit trackStatsChanged(m_pendingTracks);
+            Q_EMIT trackStatsChanged(m_pendingTracks);
         }
         else {
-            emit trackMetadataChanged(m_pendingTracks);
+            Q_EMIT trackMetadataChanged(m_pendingTracks);
         }
         m_pendingTracks.clear();
         m_hasPendingMetadataChanges = false;
@@ -156,7 +156,7 @@ void TagEditorPropertiesTab::updateTracks(const TrackList& tracks)
     if(!m_session) {
         const TrackList changedTracks = commitCurrentScopeEdits();
         if(!changedTracks.empty()) {
-            emit tracksChanged(changedTracks);
+            Q_EMIT tracksChanged(changedTracks);
         }
         mergeTracks(m_tracks, tracks);
     }
@@ -174,7 +174,7 @@ void TagEditorPropertiesTab::autoFillValues()
 
     const TrackList committedTracks = commitCurrentScopeEdits();
     if(!committedTracks.empty()) {
-        emit tracksChanged(committedTracks);
+        Q_EMIT tracksChanged(committedTracks);
     }
 
     const TrackList tracks = activeTracks();
@@ -238,7 +238,7 @@ void TagEditorPropertiesTab::stageTrackChanges(const TrackList& tracks, bool met
         m_hasPendingStatChanges = true;
     }
 
-    emit tracksChanged(tracks);
+    Q_EMIT tracksChanged(tracks);
 }
 
 void TagEditorPropertiesTab::refreshTrackScope()

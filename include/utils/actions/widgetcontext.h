@@ -72,7 +72,7 @@ public:
 
     void setEnabled(bool enabled);
 
-signals:
+Q_SIGNALS:
     void isEnabledChanged();
 
 private:

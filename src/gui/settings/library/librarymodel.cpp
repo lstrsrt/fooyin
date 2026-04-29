@@ -98,7 +98,7 @@ void LibraryModel::populate()
 void LibraryModel::markForAddition(const LibraryInfo& info)
 {
     if(info.name.isEmpty() || info.path.isEmpty()) {
-        emit pendingRowCancelled();
+        Q_EMIT pendingRowCancelled();
         return;
     }
 
@@ -339,7 +339,7 @@ bool LibraryModel::setData(const QModelIndex& index, const QVariant& value, int 
         item->setStatus(LibraryItem::Changed);
     }
 
-    emit dataChanged(index, index.siblingAtColumn(columnCount({}) - 1), {Qt::DisplayRole, Qt::FontRole});
+    Q_EMIT dataChanged(index, index.siblingAtColumn(columnCount({}) - 1), {Qt::DisplayRole, Qt::FontRole});
 
     return true;
 }
@@ -384,7 +384,7 @@ bool LibraryModel::removeRows(int row, int count, const QModelIndex& /*parent*/)
             }
             else {
                 item->setStatus(LibraryItem::Removed);
-                emit dataChanged(index, index.siblingAtColumn(columnCount({}) - 1), {Qt::FontRole});
+                Q_EMIT dataChanged(index, index.siblingAtColumn(columnCount({}) - 1), {Qt::FontRole});
             }
         }
     }
@@ -400,14 +400,14 @@ void LibraryModel::updateLibraryRow(const QString& path, const QList<int>& roles
         const QModelIndex rhs = index(row, columnCount({}) - 1, {});
 
         if(lhs.isValid() && rhs.isValid()) {
-            emit dataChanged(lhs, rhs, roles);
+            Q_EMIT dataChanged(lhs, rhs, roles);
         }
     }
 }
 
 void LibraryModel::addPendingRow()
 {
-    emit requestAddLibrary();
+    Q_EMIT requestAddLibrary();
 }
 
 void LibraryModel::removePendingRow() { }

@@ -437,7 +437,7 @@ void LibraryThreadHandlerPrivate::updateProgress(const ScanProgress& scannerProg
     if(progress.phase == ScanProgress::Phase::Finished) {
         m_pendingProgress.reset();
         m_progressTimer.stop();
-        emit m_self->progressChanged(progress);
+        Q_EMIT m_self->progressChanged(progress);
         return;
     }
 
@@ -454,7 +454,7 @@ void LibraryThreadHandlerPrivate::flushPendingProgress()
         return;
     }
 
-    emit m_self->progressChanged(*m_pendingProgress);
+    Q_EMIT m_self->progressChanged(*m_pendingProgress);
     m_pendingProgress.reset();
     m_progressTimer.stop();
 }
@@ -496,7 +496,7 @@ void LibraryThreadHandlerPrivate::completeScanRequest(const int id)
     }
 
     const bool wasCurrent = m_currentRequestId == id;
-    emit m_self->scanFinished(requestIt->id, requestIt->type, requestIt->cancelled);
+    Q_EMIT m_self->scanFinished(requestIt->id, requestIt->type, requestIt->cancelled);
 
     m_scanRequests.erase(requestIt);
 
@@ -780,18 +780,18 @@ LibraryThreadHandler::LibraryThreadHandler(DbConnectionPoolPtr dbPool, MusicLibr
                      [this](const ScanProgress& progress) { p->updateProgress(progress); });
     QObject::connect(&p->m_scanner, &LibraryScanner::scannedTracks, this, [this](const TrackList& tracks) {
         p->incrementPendingLibraryCompletions(p->m_currentRequestId);
-        emit scannedTracks(p->m_currentRequestId, tracks);
+        Q_EMIT scannedTracks(p->m_currentRequestId, tracks);
     });
     QObject::connect(&p->m_scanner, &LibraryScanner::playlistLoaded, this, [this](const TrackList& tracks) {
         p->incrementPendingLibraryCompletions(p->m_currentRequestId);
-        emit playlistLoaded(p->m_currentRequestId, tracks);
+        Q_EMIT playlistLoaded(p->m_currentRequestId, tracks);
     });
     QObject::connect(&p->m_scanner, &LibraryScanner::statusChanged, this, &LibraryThreadHandler::statusChanged);
     QObject::connect(&p->m_scanner, &LibraryScanner::scanUpdate, this, [this](const ScanResult& result) {
         const auto request = p->currentRequest();
         const auto type    = request ? request->type : ScanRequest::Library;
         p->incrementPendingLibraryCompletions(p->m_currentRequestId);
-        emit scanUpdate(p->m_currentRequestId, type, result);
+        Q_EMIT scanUpdate(p->m_currentRequestId, type, result);
     });
     QObject::connect(&p->m_monitor, &LibraryMonitor::statusChanged, this, &LibraryThreadHandler::statusChanged);
     QObject::connect(&p->m_monitor, &LibraryMonitor::directoriesChanged, this,

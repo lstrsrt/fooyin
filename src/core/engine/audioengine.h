@@ -139,7 +139,7 @@ public:
     //! Replace active DSP chain configuration.
     void setDspChain(const Engine::DspChains& chain);
 
-public slots:
+public Q_SLOTS:
     void loadTrack(const Fooyin::Engine::PlaybackItem& item, bool manualChange = false);
     void setTrackEndAutoTransitionEnabled(bool enabled);
     void setUpcomingTrackCandidate(const Fooyin::Engine::PlaybackItem& item);
@@ -173,7 +173,7 @@ public slots:
     void setAnalysisDataSubscriptions(Fooyin::Engine::AnalysisDataTypes subscriptions);
     void updateLiveDspSettings(const Fooyin::Engine::LiveDspSettingsUpdate& update);
 
-signals:
+Q_SIGNALS:
     void stateChanged(Fooyin::Engine::PlaybackState state);
     void trackStatusContextChanged(Fooyin::Engine::TrackStatus status, const Fooyin::Track& track, uint64_t generation);
     void positionChanged(uint64_t positionMs);

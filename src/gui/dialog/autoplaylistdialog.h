@@ -77,7 +77,7 @@ public:
     void done(int value) override;
     void accept() override;
 
-signals:
+Q_SIGNALS:
     void playlistEdited(const QString& name, const QString& query, const QString& sortQuery, bool forceSorted);
 
 private:

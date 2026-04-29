@@ -226,7 +226,7 @@ bool PluginsModel::setData(const QModelIndex& index, const QVariant& value, int 
         }
     }
 
-    emit dataChanged(index, index, {role});
+    Q_EMIT dataChanged(index, index, {role});
 
     return true;
 }

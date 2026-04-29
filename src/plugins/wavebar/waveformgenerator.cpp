@@ -136,7 +136,7 @@ void WaveformGenerator::generate(const Track& track, int samplesPerChannel, bool
     if(!update && m_waveDb.existsInCache(trackKey)) {
         if(!render) {
             setState(Idle);
-            emit waveformGenerated(track, {});
+            Q_EMIT waveformGenerated(track, {});
             return;
         }
 
@@ -147,7 +147,7 @@ void WaveformGenerator::generate(const Track& track, int samplesPerChannel, bool
             m_data.complete      = true;
 
             setState(Idle);
-            emit waveformGenerated(track, m_data);
+            Q_EMIT waveformGenerated(track, m_data);
             return;
         }
 
@@ -157,13 +157,13 @@ void WaveformGenerator::generate(const Track& track, int samplesPerChannel, bool
         }
     }
 
-    emit generatingWaveform();
+    Q_EMIT generatingWaveform();
 
     const int bpf = m_format.bytesPerFrame();
     if(bpf <= 0) {
         qCWarning(WAVEBAR) << "Invalid format while generating waveform for track:" << track.filepath();
         setState(Idle);
-        emit waveformGenerated(track, {});
+        Q_EMIT waveformGenerated(track, {});
         return;
     }
 
@@ -239,7 +239,7 @@ void WaveformGenerator::generate(const Track& track, int samplesPerChannel, bool
 
         if(render && processedCount++ == updateThreshold) {
             processedCount = 0;
-            emit waveformGenerated(track, m_data);
+            Q_EMIT waveformGenerated(track, m_data);
         }
     }
 
@@ -253,7 +253,7 @@ void WaveformGenerator::generate(const Track& track, int samplesPerChannel, bool
         setState(Idle);
     }
 
-    emit waveformGenerated(track, m_data);
+    Q_EMIT waveformGenerated(track, m_data);
 }
 
 QString WaveformGenerator::setup(const Track& track, int samplesPerChannel)

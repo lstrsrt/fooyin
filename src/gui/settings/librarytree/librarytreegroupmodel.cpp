@@ -223,7 +223,7 @@ bool LibraryTreeGroupModel::setData(const QModelIndex& index, const QVariant& va
         case 1: {
             if(value.toString() == u"<enter name here>"_s || group.name == value.toString()) {
                 if(item->status() == LibraryTreeGroupItem::Added) {
-                    emit pendingRowCancelled();
+                    Q_EMIT pendingRowCancelled();
                 }
                 return false;
             }
@@ -255,7 +255,7 @@ bool LibraryTreeGroupModel::setData(const QModelIndex& index, const QVariant& va
     }
 
     item->changeGroup(group);
-    emit dataChanged(index, index.siblingAtColumn(columnCount({}) - 1), {Qt::FontRole, Qt::DisplayRole});
+    Q_EMIT dataChanged(index, index.siblingAtColumn(columnCount({}) - 1), {Qt::FontRole, Qt::DisplayRole});
 
     return true;
 }

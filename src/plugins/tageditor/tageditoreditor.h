@@ -55,7 +55,7 @@ public:
     [[nodiscard]] TrackList tracks() const;
     TrackList applyChanges();
 
-signals:
+Q_SIGNALS:
     void pendingChangesStateChanged();
     void autoFillValuesRequested();
 

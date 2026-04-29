@@ -46,7 +46,7 @@ public:
 protected:
     void invalidateData();
 
-signals:
+Q_SIGNALS:
     void pendingRowCancelled();
 };
 

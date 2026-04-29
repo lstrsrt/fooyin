@@ -101,7 +101,7 @@ public:
     [[nodiscard]] TrackList clipboard() const;
     void setClipboard(const TrackList& tracks);
 
-signals:
+Q_SIGNALS:
     void playlistsLoaded();
     void currentPlaylistChanged(Fooyin::Playlist* prevPlaylist, Fooyin::Playlist* playlist);
     void currentPlaylistUpdated(Fooyin::Playlist* playlist);
@@ -116,7 +116,7 @@ signals:
     void playlistHistoryChanged();
     void playingTrackChanged(const Fooyin::PlaylistTrack& track);
 
-public slots:
+public Q_SLOTS:
     void handleTrackSelectionAction(Fooyin::TrackAction action);
 
 private:

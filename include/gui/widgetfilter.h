@@ -38,7 +38,7 @@ public:
 
     bool eventFilter(QObject* watched, QEvent* event) override;
 
-signals:
+Q_SIGNALS:
     void filterFinished();
 
 private:

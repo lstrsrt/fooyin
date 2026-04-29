@@ -51,7 +51,7 @@ public:
 
     [[nodiscard]] QSize sizeHint() const override;
 
-signals:
+Q_SIGNALS:
     void textEdited();
     void lyricsChanged();
     void resetClicked();

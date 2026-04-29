@@ -58,23 +58,23 @@ void PlaylistUiController::addPlaylistMenu(QMenu* menu) const
 
 void PlaylistUiController::showNowPlaying()
 {
-    emit showCurrentTrack();
+    Q_EMIT showCurrentTrack();
 }
 
 void PlaylistUiController::selectTrackIds(const TrackIds& ids)
 {
-    emit selectTracks(ids);
+    Q_EMIT selectTracks(ids);
 }
 
 void PlaylistUiController::focusPlaylist()
 {
-    emit requestPlaylistFocus();
+    Q_EMIT requestPlaylistFocus();
 }
 
 void PlaylistUiController::filterCurrentPlaylist(const PlaylistTrackList& tracks)
 {
     if(m_playlistController && m_playlistController->currentPlaylist()) {
-        emit filterTracks(tracks);
+        Q_EMIT filterTracks(tracks);
     }
 }
 } // namespace Fooyin

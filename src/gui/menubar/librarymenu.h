@@ -36,7 +36,7 @@ class LibraryMenu : public QObject
 public:
     LibraryMenu(Application* core, ActionManager* actionManager, QObject* parent = nullptr);
 
-signals:
+Q_SIGNALS:
     void requestSearch();
     void requestQuickSearch();
 

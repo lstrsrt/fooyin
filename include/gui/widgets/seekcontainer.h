@@ -46,7 +46,7 @@ public:
 protected:
     void changeEvent(QEvent* event) override;
 
-signals:
+Q_SIGNALS:
     void elapsedClicked();
     void totalClicked();
 

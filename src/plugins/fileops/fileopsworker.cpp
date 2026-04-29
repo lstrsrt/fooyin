@@ -130,8 +130,8 @@ void FileOpsWorker::deleteFiles()
 
     if(!populateTrackPaths()) {
         setState(Idle);
-        emit deleteFinished({});
-        emit finished();
+        Q_EMIT deleteFinished({});
+        Q_EMIT finished();
         return;
     }
 
@@ -181,8 +181,8 @@ void FileOpsWorker::deleteFiles()
         m_settings->set<Settings::Core::Internal::MonitorLibraries>(true);
     }
 
-    emit deleteFinished(m_tracksToDelete);
-    emit finished();
+    Q_EMIT deleteFinished(m_tracksToDelete);
+    Q_EMIT finished();
 }
 
 bool FileOpsWorker::prepareOperations(const FileOpPreset& preset, bool emitSimulation)
@@ -218,7 +218,7 @@ bool FileOpsWorker::prepareOperations(const FileOpPreset& preset, bool emitSimul
 
     const bool shouldContinue = canContinue && mayRun();
     if(emitSimulation && shouldContinue) {
-        emit simulated(m_operations);
+        Q_EMIT simulated(m_operations);
     }
 
     setState(Idle);
@@ -298,7 +298,7 @@ void FileOpsWorker::run()
                 break;
         }
 
-        emit operationFinished(item);
+        Q_EMIT operationFinished(item);
         m_operations.pop_front();
     }
 
@@ -316,7 +316,7 @@ void FileOpsWorker::run()
         m_settings->set<Settings::Core::Internal::MonitorLibraries>(true);
     }
 
-    emit finished();
+    Q_EMIT finished();
 }
 
 void FileOpsWorker::simulateMove()

@@ -59,7 +59,7 @@ public:
     [[nodiscard]] QSize sizeHint() const override;
     [[nodiscard]] QSize minimumSizeHint() const override;
 
-signals:
+Q_SIGNALS:
     void clicked();
 
 protected:

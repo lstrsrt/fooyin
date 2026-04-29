@@ -70,7 +70,7 @@ void QQLyrics::handleSearchReply()
 {
     QJsonObject obj;
     if(!getJsonFromReply(reply(), &obj)) {
-        emit searchResult({});
+        Q_EMIT searchResult({});
         resetReply();
         return;
     }
@@ -82,7 +82,7 @@ void QQLyrics::handleSearchReply()
     const QJsonArray songArray = songObj.value("itemlist"_L1).toArray();
 
     if(songArray.isEmpty()) {
-        emit searchResult({});
+        Q_EMIT searchResult({});
         return;
     }
 
@@ -99,7 +99,7 @@ void QQLyrics::handleSearchReply()
     }
 
     if(m_data.empty()) {
-        emit searchResult({});
+        Q_EMIT searchResult({});
         return;
     }
 
@@ -140,7 +140,7 @@ void QQLyrics::handleLyricReply()
     ++m_currentData;
 
     if(m_currentData == m_data.end()) {
-        emit searchResult(m_data);
+        Q_EMIT searchResult(m_data);
         m_data.clear();
     }
     else {

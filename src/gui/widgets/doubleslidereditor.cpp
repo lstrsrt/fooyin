@@ -155,7 +155,7 @@ void DoubleSliderEditor::spinBoxValueChanged(double value)
     updateSlider();
     m_updatingSpinBox = false;
 
-    emit valueChanged(value);
+    Q_EMIT valueChanged(value);
 }
 
 void DoubleSliderEditor::updateSlider()

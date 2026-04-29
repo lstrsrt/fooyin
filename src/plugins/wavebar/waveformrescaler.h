@@ -32,10 +32,10 @@ class WaveformRescaler : public Worker
 public:
     explicit WaveformRescaler(QObject* parent = nullptr);
 
-signals:
+Q_SIGNALS:
     void waveformRescaled(const Fooyin::WaveBar::WaveformData<float>& data);
 
-public slots:
+public Q_SLOTS:
     void rescale();
     void rescale(int width);
     void rescale(const Fooyin::WaveBar::WaveformData<float>& data, int width);

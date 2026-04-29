@@ -94,7 +94,7 @@ void ReplayGainWidget::apply()
             tracksToWrite.emplace_back(prepareOpusRGWriteTrack(track, m_opusWriteMode));
         }
 
-        emit tracksChanged(m_pendingTracks);
+        Q_EMIT tracksChanged(m_pendingTracks);
         m_library->writeTrackMetadata(tracksToWrite);
         m_pendingTracks.clear();
     }
@@ -114,7 +114,7 @@ bool ReplayGainWidget::commitPendingChanges()
     }
 
     mergeTracks(m_pendingTracks, changedTracks);
-    emit tracksChanged(changedTracks);
+    Q_EMIT tracksChanged(changedTracks);
     return true;
 }
 

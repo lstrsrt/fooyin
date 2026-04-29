@@ -188,7 +188,7 @@ protected:
      */
     void showConfigDialog(QDialog* dialog);
 
-signals:
+Q_SIGNALS:
     /*!
      * Sets the search term of the connected search widget.
      * @note this is only usable with the ExclusiveSearch feature.

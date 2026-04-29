@@ -34,7 +34,7 @@ public:
 
     void setLoading(bool isLoading);
 
-signals:
+Q_SIGNALS:
     void middleClicked(const QModelIndex& index);
     void displayChanged();
 

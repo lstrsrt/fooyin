@@ -149,7 +149,7 @@ public:
     void clearPlaylistQueue(const UId& playlistId);
     void clearQueue();
 
-signals:
+Q_SIGNALS:
     void playStateChanged(Fooyin::Player::PlayState state);
     void playModeChanged(Fooyin::Playlist::PlayModes mode);
     void transportPlayRequested();

@@ -95,7 +95,7 @@ public:
                       const std::set<int>& columnsToUpdate, const TrackItemMap& tracks);
     void updateHeaders(Playlist* playlist, const PlaylistPreset& preset, const HeaderUpdateList& headers);
 
-signals:
+Q_SIGNALS:
     void populated(const Fooyin::PendingData& data);
     void populatedTrackGroup(const Fooyin::PendingData& data);
     void tracksUpdated(const Fooyin::ItemList& tracks, const std::set<int>& columnsUpdated);

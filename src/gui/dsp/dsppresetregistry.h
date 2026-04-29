@@ -31,7 +31,7 @@ class DspPresetRegistry : public ItemRegistry<DspChainPreset>
 public:
     explicit DspPresetRegistry(SettingsManager* settings, QObject* parent = nullptr);
 
-signals:
+Q_SIGNALS:
     void presetChanged(const Fooyin::DspChainPreset& preset);
 
 protected:

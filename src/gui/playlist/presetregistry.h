@@ -35,7 +35,7 @@ class PresetRegistry : public ItemRegistry<PlaylistPreset>
 public:
     explicit PresetRegistry(SettingsManager* settings, QObject* parent = nullptr);
 
-signals:
+Q_SIGNALS:
     void presetChanged(const Fooyin::PlaylistPreset& preset);
 
 protected:

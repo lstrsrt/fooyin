@@ -83,7 +83,7 @@ public:
     [[nodiscard]] static uint64_t presentedFromSource(uint64_t sourcePositionMs, uint64_t outputDelayMs,
                                                       double delayToSourceScale);
 
-signals:
+Q_SIGNALS:
     //! Request immediate sync sample from pipeline/engine.
     void requestSyncPosition();
     //! Published clock position update in milliseconds.

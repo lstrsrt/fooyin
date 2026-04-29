@@ -64,7 +64,7 @@ void ToolButton::setMaximumIconSize(int size)
 void ToolButton::enterEvent(QEnterEvent* event)
 {
     QToolButton::enterEvent(event);
-    emit entered();
+    Q_EMIT entered();
 }
 
 void ToolButton::paintEvent(QPaintEvent* /*event*/)

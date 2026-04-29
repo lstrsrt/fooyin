@@ -134,7 +134,7 @@ public:
     void executeAction(TrackAction action, PlaylistAction::ActionOptions options = {},
                        const QString& playlistName = {});
 
-signals:
+Q_SIGNALS:
     void actionExecuted(Fooyin::TrackAction action);
     void selectionChanged();
     void requestPropertiesDialog(const Fooyin::TrackList& tracks);
@@ -142,7 +142,7 @@ signals:
     void requestArtworkAttach(const Fooyin::TrackList& tracks, Fooyin::Track::Cover type, const QString& filepath);
     void requestArtworkRemoval(const Fooyin::TrackList& tracks);
 
-public slots:
+public Q_SLOTS:
     void tracksUpdated(const Fooyin::TrackList& tracks);
     void tracksRemoved(const Fooyin::TrackList& tracks);
 

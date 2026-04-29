@@ -75,7 +75,7 @@ public:
     void addFilterToGroup(FilterWidget* widget, const Id& groupId);
     bool removeFilter(FilterWidget* widget);
 
-signals:
+Q_SIGNALS:
 private:
     std::unique_ptr<FilterControllerPrivate> p;
 };

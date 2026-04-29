@@ -216,7 +216,7 @@ QString WaveBarWidget::cacheSizeText() const
 
 void WaveBarWidget::requestClearCache()
 {
-    emit clearCacheRequested();
+    Q_EMIT clearCacheRequested();
 }
 
 void WaveBarWidget::saveDefaults(const ConfigData& config) const

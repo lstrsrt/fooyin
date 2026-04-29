@@ -301,7 +301,7 @@ void FFmpegReplayGainPrivate::scanAlbum(FFmpegContext& context, TrackList& track
             return;
         }
         QMetaObject::invokeMethod(
-            m_self, [this, filepath = track.prettyFilepath()]() { emit m_self->startingCalculation(filepath); });
+            m_self, [this, filepath = track.prettyFilepath()]() { Q_EMIT m_self->startingCalculation(filepath); });
 
         if(setupTrack(context, track, context.trackFilter)) {
             const ReplayGainResult trackResult = handleTrack(context, true);
@@ -340,7 +340,7 @@ void FFmpegScanner::closeThread()
             p->m_future->cancel();
             p->m_future->waitForFinished();
         }
-        emit closed();
+        Q_EMIT closed();
     });
 }
 
@@ -363,7 +363,7 @@ void FFmpegScanner::calculatePerTrack(const TrackList& tracks, bool truePeak)
 
     QObject::connect(p->m_future, &QFutureWatcher<void>::progressValueChanged, this, [this](const int val) {
         if(val >= 0 && std::cmp_less(val, p->m_tracks.size())) {
-            emit startingCalculation(p->m_tracks.at(val).prettyFilepath());
+            Q_EMIT startingCalculation(p->m_tracks.at(val).prettyFilepath());
         }
     });
 
@@ -384,10 +384,10 @@ void FFmpegScanner::calculatePerTrack(const TrackList& tracks, bool truePeak)
     future.then(this, [this]() {
         if(mayRun()) {
             qCDebug(FFMPEG) << "Finished calculating RG for" << p->m_scannedTracks.size() << "tracks";
-            emit calculationFinished(p->m_scannedTracks);
+            Q_EMIT calculationFinished(p->m_scannedTracks);
         }
 
-        emit finished();
+        Q_EMIT finished();
         setState(Idle);
     });
 }
@@ -406,10 +406,10 @@ void FFmpegScanner::calculateAsAlbum(const TrackList& tracks, bool truePeak)
 
     if(mayRun()) {
         qCDebug(FFMPEG) << "Finished calculating RG for" << p->m_scannedTracks.size() << "tracks";
-        emit calculationFinished(scannedTracks);
+        Q_EMIT calculationFinished(scannedTracks);
     }
 
-    emit finished();
+    Q_EMIT finished();
     setState(Idle);
 }
 
@@ -443,10 +443,10 @@ void FFmpegScanner::calculateByAlbumTags(const TrackList& tracks, const QString&
                 p->m_scannedTracks.insert(p->m_scannedTracks.end(), album.cbegin(), album.cend());
             }
             qCDebug(FFMPEG) << "Finished calculating RG for" << p->m_scannedTracks.size() << "tracks";
-            emit calculationFinished(p->m_scannedTracks);
+            Q_EMIT calculationFinished(p->m_scannedTracks);
         }
 
-        emit finished();
+        Q_EMIT finished();
         setState(Idle);
     });
 }

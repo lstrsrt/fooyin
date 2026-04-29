@@ -306,7 +306,7 @@ bool PlaylistColumnModel::setData(const QModelIndex& index, const QVariant& valu
             case 2: {
                 if(value.toString() == u"<enter name here>"_s || column.name == value.toString()) {
                     if(item->status() == ColumnItem::Added) {
-                        emit pendingRowCancelled();
+                        Q_EMIT pendingRowCancelled();
                     }
                     return false;
                 }
@@ -349,7 +349,7 @@ bool PlaylistColumnModel::setData(const QModelIndex& index, const QVariant& valu
     }
 
     item->changeColumn(column);
-    emit dataChanged(index, index, {Qt::FontRole, Qt::DisplayRole, Qt::CheckStateRole, Qt::UserRole});
+    Q_EMIT dataChanged(index, index, {Qt::FontRole, Qt::DisplayRole, Qt::CheckStateRole, Qt::UserRole});
 
     return true;
 }

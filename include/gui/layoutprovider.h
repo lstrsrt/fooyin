@@ -53,7 +53,7 @@ public:
     void importLayout(QWidget* parent);
     bool exportLayout(const FyLayout& layout, const QString& path);
 
-signals:
+Q_SIGNALS:
     void layoutAdded(const Fooyin::FyLayout& layout);
     void layoutChanged(const Fooyin::FyLayout& layout);
     void requestChangeLayout(const Fooyin::FyLayout& layout);

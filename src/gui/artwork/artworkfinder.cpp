@@ -152,7 +152,7 @@ void ArtworkFinder::finishOrStartNextSource(bool forceFinish)
         m_currentSource->search(m_params);
     }
     else if(m_downloads.empty()) {
-        emit searchFinished();
+        Q_EMIT searchFinished();
     }
 }
 
@@ -198,7 +198,7 @@ void ArtworkFinder::onSearchResults(const SearchResults& results)
             continue;
         }
 
-        emit coverFound(result);
+        Q_EMIT coverFound(result);
 
         const QNetworkRequest req{result.imageUrl};
         auto* reply = m_downloads.emplace_back(m_networkManager->get(req));
@@ -207,7 +207,7 @@ void ArtworkFinder::onSearchResults(const SearchResults& results)
                              onDownloadProgress(url, bytesReceived, bytesTotal);
                          });
         QObject::connect(reply, &QNetworkReply::errorOccurred, this,
-                         [this, url = result.imageUrl]() { emit coverLoadError(url); });
+                         [this, url = result.imageUrl]() { Q_EMIT coverLoadError(url); });
         QObject::connect(reply, &QNetworkReply::finished, this,
                          [this, reply, url = result.imageUrl]() { onImageResult(url, reply); });
     }
@@ -222,7 +222,7 @@ void ArtworkFinder::onDownloadProgress(const QUrl& url, qint64 bytesReceived, qi
         progress = static_cast<int>((static_cast<double>(bytesReceived) / static_cast<double>(bytesTotal)) * 100);
     }
     progress = std::clamp(progress, 0, 100);
-    emit coverLoadProgress(url, progress);
+    Q_EMIT coverLoadProgress(url, progress);
 }
 
 void ArtworkFinder::onImageResult(const QUrl& url, QNetworkReply* reply)
@@ -234,11 +234,11 @@ void ArtworkFinder::onImageResult(const QUrl& url, QNetworkReply* reply)
         const QMimeDatabase mimeDb;
         const QString mimeType = mimeDb.mimeTypeForData(coverData).name();
 
-        emit coverLoaded(url, {.mimeType = mimeType, .image = coverData});
+        Q_EMIT coverLoaded(url, {.mimeType = mimeType, .image = coverData});
     }
 
     if(m_downloads.empty() && std::cmp_greater_equal(m_currentSourceIndex, m_sources.size())) {
-        emit searchFinished();
+        Q_EMIT searchFinished();
     }
 }
 } // namespace Fooyin

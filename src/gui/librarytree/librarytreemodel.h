@@ -97,7 +97,7 @@ public:
 
     [[nodiscard]] QModelIndex indexForKey(const Md5Hash& key);
 
-signals:
+Q_SIGNALS:
     void modelLoaded();
     void modelUpdated();
     // QSortFilterProxyModel won't forward dataChanged if indexes are invalid, so use a custom signal

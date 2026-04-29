@@ -214,7 +214,7 @@ void KugouLyrics::handleSearchReply()
 {
     QJsonObject obj;
     if(!getJsonFromReply(reply(), &obj)) {
-        emit searchResult({});
+        Q_EMIT searchResult({});
         resetReply();
         return;
     }
@@ -223,7 +223,7 @@ void KugouLyrics::handleSearchReply()
 
     const QJsonArray lyricsArray = obj.value("candidates"_L1).toArray();
     if(lyricsArray.isEmpty()) {
-        emit searchResult({});
+        Q_EMIT searchResult({});
         return;
     }
 
@@ -252,7 +252,7 @@ void KugouLyrics::handleSearchReply()
     }
 
     if(m_metadata.empty()) {
-        emit searchResult({});
+        Q_EMIT searchResult({});
         return;
     }
 
@@ -263,7 +263,7 @@ void KugouLyrics::handleSearchReply()
 void KugouLyrics::makeLyricRequest()
 {
     if(m_currentIndex < 0 || std::cmp_greater_equal(m_currentIndex, m_metadata.size())) {
-        emit searchResult(m_data);
+        Q_EMIT searchResult(m_data);
         return;
     }
 
@@ -313,7 +313,7 @@ void KugouLyrics::handleLyricReply()
     ++m_currentIndex;
 
     if(std::cmp_greater_equal(m_currentIndex, m_metadata.size())) {
-        emit searchResult(m_data);
+        Q_EMIT searchResult(m_data);
         m_metadata.clear();
     }
     else {

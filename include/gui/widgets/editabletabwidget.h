@@ -35,7 +35,7 @@ public:
 
     [[nodiscard]] EditableTabBar* editableTabBar() const;
 
-signals:
+Q_SIGNALS:
     void middleClicked(int index);
 
 protected:

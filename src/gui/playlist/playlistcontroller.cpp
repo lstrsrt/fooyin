@@ -168,11 +168,11 @@ void PlaylistController::changeCurrentPlaylist(Playlist* playlist)
     if(prevPlaylist == playlist) {
         m_workspace->resetPlaylistSessionState(playlist);
 
-        emit playlistHistoryChanged();
+        Q_EMIT playlistHistoryChanged();
         return;
     }
 
-    emit currentPlaylistChanged(prevPlaylist, playlist);
+    Q_EMIT currentPlaylistChanged(prevPlaylist, playlist);
 }
 
 void PlaylistController::changeCurrentPlaylist(const UId& id)
@@ -222,7 +222,7 @@ void PlaylistController::addToHistory(QUndoCommand* command)
 
     m_workspace->addToHistory(command);
 
-    emit playlistHistoryChanged();
+    Q_EMIT playlistHistoryChanged();
 }
 
 bool PlaylistController::canUndo() const
@@ -243,7 +243,7 @@ void PlaylistController::undoPlaylistChanges()
 
     if(canUndo()) {
         m_workspace->undo();
-        emit playlistHistoryChanged();
+        Q_EMIT playlistHistoryChanged();
     }
 }
 
@@ -255,7 +255,7 @@ void PlaylistController::redoPlaylistChanges()
 
     if(canRedo()) {
         m_workspace->redo();
-        emit playlistHistoryChanged();
+        Q_EMIT playlistHistoryChanged();
     }
 }
 
@@ -277,7 +277,7 @@ TrackList PlaylistController::clipboard() const
 void PlaylistController::setClipboard(const TrackList& tracks)
 {
     m_workspace->setClipboard(tracks);
-    emit clipboardChanged();
+    Q_EMIT clipboardChanged();
 }
 
 void PlaylistController::handleTrackSelectionAction(TrackAction action)
@@ -290,7 +290,7 @@ void PlaylistController::handleTrackSelectionAction(TrackAction action)
 void PlaylistController::restoreLastPlaylist()
 {
     m_workspace->restoreLastPlaylist(m_handler, m_playerController);
-    emit playlistsLoaded();
+    Q_EMIT playlistsLoaded();
 }
 
 void PlaylistController::handlePlaylistAdded(Playlist* playlist)
@@ -303,7 +303,7 @@ void PlaylistController::handlePlaylistAdded(Playlist* playlist)
 void PlaylistController::handlePlaylistMetadataUpdated(Playlist* playlist)
 {
     if(m_workspace->isCurrentPlaylist(playlist)) {
-        emit currentPlaylistUpdated(playlist);
+        Q_EMIT currentPlaylistUpdated(playlist);
     }
 }
 
@@ -317,7 +317,7 @@ void PlaylistController::handlePlaylistTracksPatched(Playlist* playlist, const P
         if(source != PlaylistTrackChangeSource::History) {
             m_workspace->clearPlaylistHistory(playlist);
             if(isCurrentPlaylist) {
-                emit playlistHistoryChanged();
+                Q_EMIT playlistHistoryChanged();
             }
         }
     }
@@ -326,7 +326,7 @@ void PlaylistController::handlePlaylistTracksPatched(Playlist* playlist, const P
         return;
     }
 
-    emit currentPlaylistTracksPatched(changeSet);
+    Q_EMIT currentPlaylistTracksPatched(changeSet);
 }
 
 void PlaylistController::handlePlaylistTracksRemoved(Playlist* playlist, const std::vector<int>& indexes)
@@ -335,7 +335,7 @@ void PlaylistController::handlePlaylistTracksRemoved(Playlist* playlist, const s
         return;
     }
 
-    emit currentPlaylistTracksRemoved(indexes);
+    Q_EMIT currentPlaylistTracksRemoved(indexes);
 }
 
 void PlaylistController::handleTracksQueued(const QueueTracks& tracks)
@@ -356,7 +356,7 @@ void PlaylistController::handleTracksQueued(const QueueTracks& tracks)
     const std::vector<int> indexes{uniqueIndexes.cbegin(), uniqueIndexes.cend()};
 
     if(!indexes.empty()) {
-        emit currentPlaylistQueueChanged(indexes);
+        Q_EMIT currentPlaylistQueueChanged(indexes);
     }
 }
 
@@ -383,7 +383,7 @@ void PlaylistController::handleTracksDequeued(const QueueTracks& tracks)
     const std::vector<int> indexes{uniqueIndexes.cbegin(), uniqueIndexes.cend()};
 
     if(!indexes.empty()) {
-        emit currentPlaylistQueueChanged(indexes);
+        Q_EMIT currentPlaylistQueueChanged(indexes);
     }
 }
 
@@ -411,7 +411,7 @@ void PlaylistController::handleTracksDequeued(const PlaylistIndexes& indexes)
     const std::vector<int> playlistIndexes{uniqueIndexes.cbegin(), uniqueIndexes.cend()};
 
     if(!indexes.empty()) {
-        emit currentPlaylistQueueChanged(playlistIndexes);
+        Q_EMIT currentPlaylistQueueChanged(playlistIndexes);
     }
 }
 
@@ -438,7 +438,7 @@ void PlaylistController::handleQueueChanged(const QueueTracks& removed, const Qu
     const std::vector<int> indexes{uniqueIndexes.cbegin(), uniqueIndexes.cend()};
 
     if(!indexes.empty()) {
-        emit currentPlaylistQueueChanged(indexes);
+        Q_EMIT currentPlaylistQueueChanged(indexes);
     }
 }
 
@@ -455,20 +455,20 @@ void PlaylistController::handlePlaylistUpdated(Playlist* playlist, const std::ve
         if(source != PlaylistTrackChangeSource::History) {
             m_workspace->clearPlaylistHistory(playlist);
             if(isCurrentPlaylist) {
-                emit playlistHistoryChanged();
+                Q_EMIT playlistHistoryChanged();
             }
         }
     }
 
     if(isCurrentPlaylist) {
-        emit currentPlaylistTracksChanged(indexes, allNew);
+        Q_EMIT currentPlaylistTracksChanged(indexes, allNew);
     }
 }
 
 void PlaylistController::handleTracksUpdated(Playlist* playlist, const std::vector<int>& indexes)
 {
     if(m_workspace->isCurrentPlaylist(playlist)) {
-        emit currentPlaylistTracksUpdated(indexes);
+        Q_EMIT currentPlaylistTracksUpdated(indexes);
     }
 }
 

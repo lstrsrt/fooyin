@@ -169,7 +169,7 @@ public:
     void tracksAboutToBeChanged();
     void tracksChanged();
 
-signals:
+Q_SIGNALS:
     void metadataWriteRequested(const Fooyin::TrackList& tracks);
     void playlistLoaded();
     void filesDropped(const QList<QUrl>& urls, int index);
@@ -180,7 +180,7 @@ signals:
 protected:
     void invalidateData() override;
 
-public slots:
+public Q_SLOTS:
     void playingTrackChanged(const Fooyin::PlaylistTrack& track);
     void playStateChanged(Fooyin::Player::PlayState state);
     void refreshPlayingTrackPositionData();

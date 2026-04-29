@@ -77,7 +77,7 @@ public:
     void cleanupTracks();
     void libraryRemoved(int id);
 
-signals:
+Q_SIGNALS:
     void progressChanged(const Fooyin::ScanProgress& progress);
     void scannedTracks(int id, const Fooyin::TrackList& tracks);
     void playlistLoaded(int id, const Fooyin::TrackList& tracks);

@@ -35,7 +35,7 @@ class FYCORE_EXPORT SortingRegistry : public ItemRegistry<SortScript>
 public:
     explicit SortingRegistry(SettingsManager* settings, QObject* parent = nullptr);
 
-signals:
+Q_SIGNALS:
     void sortChanged(const Fooyin::SortScript& preset);
 
 protected:

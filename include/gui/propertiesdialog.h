@@ -82,7 +82,7 @@ public:
     [[nodiscard]] virtual bool hasPendingScopeChanges() const;
     [[nodiscard]] virtual bool commitPendingChanges();
 
-signals:
+Q_SIGNALS:
     void pendingChangesStateChanged();
     void tracksChanged(const Fooyin::TrackList& tracks);
 };

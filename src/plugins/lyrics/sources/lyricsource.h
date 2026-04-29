@@ -74,7 +74,7 @@ public:
     void setIndex(int index);
     void setEnabled(bool enabled);
 
-signals:
+Q_SIGNALS:
     void searchResult(const std::vector<Fooyin::Lyrics::LyricData>& data);
 
 protected:

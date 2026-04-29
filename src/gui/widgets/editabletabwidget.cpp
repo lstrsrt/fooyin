@@ -45,10 +45,10 @@ void EditableTabWidget::mousePressEvent(QMouseEvent* event)
     const int index  = m_tabBar->tabAt(pos);
 
     if(event->button() & Qt::MiddleButton) {
-        emit middleClicked(index);
+        Q_EMIT middleClicked(index);
     }
     else {
-        emit tabBarClicked(index);
+        Q_EMIT tabBarClicked(index);
     }
 
     QTabWidget::mousePressEvent(event);

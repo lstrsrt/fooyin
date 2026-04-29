@@ -296,19 +296,19 @@ QCoro::Task<> UnifiedMusicLibraryPrivate::commitLoadTracks(TrackList tracksToLoa
 {
     if(tracksToLoad.empty()) {
         m_tracks.clear();
-        emit m_self->tracksLoaded({});
+        Q_EMIT m_self->tracksLoaded({});
         co_return;
     }
 
     attachMetadataStore(tracksToLoad);
     m_tracks = co_await sortTracks(librarySortScript(), std::move(tracksToLoad));
-    emit m_self->tracksLoaded(m_tracks);
+    Q_EMIT m_self->tracksLoaded(m_tracks);
 }
 
 QCoro::Task<> UnifiedMusicLibraryPrivate::commitChangeSort(QString sort)
 {
     m_tracks = co_await sortTracks(std::move(sort), std::move(m_tracks));
-    emit m_self->tracksSorted(m_tracks);
+    Q_EMIT m_self->tracksSorted(m_tracks);
 }
 
 QCoro::Task<> UnifiedMusicLibraryPrivate::commitAddTracks(TrackList newTracks)
@@ -348,10 +348,10 @@ QCoro::Task<> UnifiedMusicLibraryPrivate::commitAddTracks(TrackList newTracks)
     co_await resortLibraryTracks();
 
     if(!updatedTracks.empty()) {
-        emit m_self->tracksMetadataChanged(updatedTracks);
+        Q_EMIT m_self->tracksMetadataChanged(updatedTracks);
     }
     if(!addedTracks.empty()) {
-        emit m_self->tracksAdded(addedTracks);
+        Q_EMIT m_self->tracksAdded(addedTracks);
     }
 }
 
@@ -398,7 +398,7 @@ void UnifiedMusicLibraryPrivate::updateTracks(TrackList tracksToUpdate)
 QCoro::Task<> UnifiedMusicLibraryPrivate::commitUpdateTracksMetadata(TrackList tracksToUpdate)
 {
     if(tracksToUpdate.empty()) {
-        emit m_self->tracksMetadataChanged({});
+        Q_EMIT m_self->tracksMetadataChanged({});
         co_return;
     }
 
@@ -408,7 +408,7 @@ QCoro::Task<> UnifiedMusicLibraryPrivate::commitUpdateTracksMetadata(TrackList t
 
     updateLibraryTracks(sortedTracks);
     co_await resortLibraryTracks();
-    emit m_self->tracksMetadataChanged(sortedTracks);
+    Q_EMIT m_self->tracksMetadataChanged(sortedTracks);
 }
 
 TrackList UnifiedMusicLibraryPrivate::mergeTrackUpdates(const TrackList& tracksToUpdate,
@@ -440,7 +440,7 @@ QCoro::Task<> UnifiedMusicLibraryPrivate::commitUpdateTracksAvailability(TrackLi
 
     updateLibraryTracks(sortedTracks);
     co_await resortLibraryTracks();
-    emit m_self->tracksUpdated(sortedTracks);
+    Q_EMIT m_self->tracksUpdated(sortedTracks);
 }
 
 QCoro::Task<> UnifiedMusicLibraryPrivate::commitUpdateTracksStats(TrackList tracksToUpdate)
@@ -452,7 +452,7 @@ QCoro::Task<> UnifiedMusicLibraryPrivate::commitUpdateTracksStats(TrackList trac
 
     updateLibraryTracks(sortedTracks);
     co_await resortLibraryTracks();
-    emit m_self->tracksUpdated(sortedTracks);
+    Q_EMIT m_self->tracksUpdated(sortedTracks);
 }
 
 QCoro::Task<> UnifiedMusicLibraryPrivate::commitUpdateTracks(TrackList tracksToUpdate)
@@ -463,7 +463,7 @@ QCoro::Task<> UnifiedMusicLibraryPrivate::commitUpdateTracks(TrackList tracksToU
 
     updateLibraryTracks(sortedTracks);
     co_await resortLibraryTracks();
-    emit m_self->tracksUpdated(sortedTracks);
+    Q_EMIT m_self->tracksUpdated(sortedTracks);
 }
 
 QCoro::Task<> UnifiedMusicLibraryPrivate::commitRemoveTracks(TrackList tracksToRemove)
@@ -481,7 +481,7 @@ QCoro::Task<> UnifiedMusicLibraryPrivate::commitRemoveTracks(TrackList tracksToR
 
     m_tracks = std::move(remainingTracks);
 
-    emit m_self->tracksDeleted(tracksToRemove);
+    Q_EMIT m_self->tracksDeleted(tracksToRemove);
     co_return;
 }
 
@@ -513,7 +513,7 @@ QCoro::Task<> UnifiedMusicLibraryPrivate::commitApplyScanResult(int id, ScanResu
         co_await commitUpdateTracksMetadata(std::move(result.updatedTracks));
     }
 
-    emit m_self->scanApplyCompleted(id);
+    Q_EMIT m_self->scanApplyCompleted(id);
 }
 
 QCoro::Task<> UnifiedMusicLibraryPrivate::commitPublishScannedTracks(int id, TrackList tracks)
@@ -522,7 +522,7 @@ QCoro::Task<> UnifiedMusicLibraryPrivate::commitPublishScannedTracks(int id, Tra
 
     co_await commitAddTracks(std::move(tracks));
     const TrackList sortedScannedTracks = co_await sortTracks(externalSortScript(), std::move(scannedTracks));
-    emit m_self->tracksScanned(id, sortedScannedTracks);
+    Q_EMIT m_self->tracksScanned(id, sortedScannedTracks);
 
     m_threadHandler.acknowledgeTracksScanned(id);
 }
@@ -532,7 +532,7 @@ QCoro::Task<> UnifiedMusicLibraryPrivate::commitPublishPlaylistTracks(int id, Tr
     const TrackList playlistTracks{tracks};
 
     co_await commitAddTracks(std::move(tracks));
-    emit m_self->tracksScanned(id, playlistTracks);
+    Q_EMIT m_self->tracksScanned(id, playlistTracks);
 
     m_threadHandler.acknowledgeTracksScanned(id);
 }
@@ -544,9 +544,9 @@ void UnifiedMusicLibraryPrivate::handleScanFinished(int id, const ScanRequest::T
 
     if(!cancelled) {
         logScanSummary(id, type, summary);
-        emit m_self->scanSummary(id, type, summary);
+        Q_EMIT m_self->scanSummary(id, type, summary);
     }
-    emit m_self->scanFinished(id, type, cancelled);
+    Q_EMIT m_self->scanFinished(id, type, cancelled);
 }
 
 void UnifiedMusicLibraryPrivate::scannedTracks(int id, TrackList tracks)
@@ -594,10 +594,10 @@ QCoro::Task<> UnifiedMusicLibraryPrivate::commitRemoveLibrary(LibraryInfo librar
     m_tracks = std::move(remainingTracks);
 
     if(!removedTracks.empty()) {
-        emit m_self->tracksDeleted(removedTracks);
+        Q_EMIT m_self->tracksDeleted(removedTracks);
     }
     if(!updatedTracks.empty()) {
-        emit m_self->tracksMetadataChanged(updatedTracks);
+        Q_EMIT m_self->tracksMetadataChanged(updatedTracks);
     }
 
     co_return;

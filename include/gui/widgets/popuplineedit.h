@@ -32,7 +32,7 @@ public:
     explicit PopupLineEdit(QWidget* parent = nullptr);
     explicit PopupLineEdit(const QString& contents, QWidget* parent = nullptr);
 
-signals:
+Q_SIGNALS:
     void editingCancelled();
 
 protected:

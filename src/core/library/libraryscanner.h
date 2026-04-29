@@ -63,14 +63,14 @@ public:
     void reportProgress(int current, const QString& file, int total, int phase, int discovered) override;
     void reportScanUpdate(const ScanResult& result) override;
 
-signals:
+Q_SIGNALS:
     void progressChanged(const Fooyin::ScanProgress& progress);
     void statusChanged(const Fooyin::LibraryInfo& library);
     void scanUpdate(const Fooyin::ScanResult& result);
     void scannedTracks(const Fooyin::TrackList& tracks);
     void playlistLoaded(const Fooyin::TrackList& tracks);
 
-public slots:
+public Q_SLOTS:
     void scanLibrary(const Fooyin::LibraryInfo& library, const Fooyin::TrackList& tracks, bool onlyModified,
                      const Fooyin::LibraryScanConfig& config);
     void scanLibraryDirectoies(const Fooyin::LibraryInfo& library, const QStringList& dirs,

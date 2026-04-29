@@ -65,7 +65,7 @@ public:
     [[nodiscard]] CommandList commands() const;
     [[nodiscard]] ActionContainer* actionContainer(const Id& id) const;
 
-signals:
+Q_SIGNALS:
     void commandsChanged();
     void contextChanged(const Fooyin::Context& context);
 

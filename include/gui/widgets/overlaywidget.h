@@ -71,7 +71,7 @@ public:
     bool event(QEvent* event) override;
     bool eventFilter(QObject* watched, QEvent* event) override;
 
-signals:
+Q_SIGNALS:
     void clicked();
     void entered();
     void left();

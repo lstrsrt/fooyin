@@ -113,6 +113,6 @@ bool Database::initSchema()
 void Database::changeStatus(Status status)
 {
     m_status = status;
-    emit statusChanged(status);
+    Q_EMIT statusChanged(status);
 }
 } // namespace Fooyin

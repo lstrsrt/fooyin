@@ -206,7 +206,7 @@ void LyricsFinder::finishOrStartNextSource(bool forceFinish)
         return;
     }
 
-    emit lyricsSearchFinished(m_params.track, m_foundAnyResults);
+    Q_EMIT lyricsSearchFinished(m_params.track, m_foundAnyResults);
 }
 
 bool LyricsFinder::findNextAvailableSource()
@@ -294,7 +294,7 @@ void LyricsFinder::onSearchResult(const std::vector<LyricData>& data)
         }
 
         emittedLyrics.emplace_back(lyrics);
-        emit lyricsFound(m_params.track, lyrics);
+        Q_EMIT lyricsFound(m_params.track, lyrics);
     }
 
     if(!emittedLyrics.empty() && m_currentSource->isLocal()) {

@@ -168,7 +168,7 @@ public:
         return {};
     };
 
-signals:
+Q_SIGNALS:
     //! Backend runtime state transition (`Error`, `Disconnected`, ...).
     void stateChanged(Fooyin::AudioOutput::State state);
 };

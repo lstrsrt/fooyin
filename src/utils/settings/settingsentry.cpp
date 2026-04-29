@@ -88,28 +88,28 @@ void SettingsEntry::notifySubscribers()
 {
     switch(m_type) {
         case(Settings::Variant):
-            emit settingChangedVariant(m_value);
+            Q_EMIT settingChangedVariant(m_value);
             break;
         case(Settings::Bool):
-            emit settingChangedBool(m_value.toBool());
+            Q_EMIT settingChangedBool(m_value.toBool());
             break;
         case(Settings::Float):
-            emit settingChangedFloat(m_value.toFloat());
+            Q_EMIT settingChangedFloat(m_value.toFloat());
             break;
         case(Settings::Double):
-            emit settingChangedDouble(m_value.toDouble());
+            Q_EMIT settingChangedDouble(m_value.toDouble());
             break;
         case(Settings::Int):
-            emit settingChangedInt(m_value.toInt());
+            Q_EMIT settingChangedInt(m_value.toInt());
             break;
         case(Settings::String):
-            emit settingChangedString(m_value.toString());
+            Q_EMIT settingChangedString(m_value.toString());
             break;
         case(Settings::StringList):
-            emit settingChangedStringList(m_value.toStringList());
+            Q_EMIT settingChangedStringList(m_value.toStringList());
             break;
         case(Settings::ByteArray):
-            emit settingChangedByteArray(m_value.toByteArray());
+            Q_EMIT settingChangedByteArray(m_value.toByteArray());
             break;
     }
 }

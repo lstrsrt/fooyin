@@ -44,11 +44,11 @@ public:
     explicit WaveformGenerator(std::shared_ptr<AudioLoader> audioLoader, DbConnectionPoolPtr dbPool,
                                QObject* parent = nullptr);
 
-signals:
+Q_SIGNALS:
     void generatingWaveform();
     void waveformGenerated(const Fooyin::Track& track, const Fooyin::WaveBar::WaveformData<float>& data);
 
-public slots:
+public Q_SLOTS:
     void initialiseThread() override;
     void generate(const Fooyin::Track& track, int samplesPerChannel, bool render, bool update = false);
 

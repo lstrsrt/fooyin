@@ -77,7 +77,7 @@ void SettingsDialogController::openAtPage(const Id& page)
         p->size         = settingsDialog->size();
         p->lastOpenPage = settingsDialog->currentPage();
         p->isOpen       = false;
-        emit closing();
+        Q_EMIT closing();
         settingsDialog->deleteLater();
     });
     QObject::connect(settingsDialog, &SettingsDialog::resettingAll, this,
@@ -91,7 +91,7 @@ void SettingsDialogController::openAtPage(const Id& page)
     }
 
     p->isOpen = true;
-    emit opening();
+    Q_EMIT opening();
 
     settingsDialog->openSettings();
 

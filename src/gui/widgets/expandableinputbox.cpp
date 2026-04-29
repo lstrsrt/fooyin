@@ -285,7 +285,7 @@ void ExpandableInputBox::deleteBlock()
     }
 
     auto* block = p->m_blocks.back();
-    emit blockDeleted(block->text());
+    Q_EMIT blockDeleted(block->text());
     std::erase(p->m_blocks, block);
     block->deleteLater();
 

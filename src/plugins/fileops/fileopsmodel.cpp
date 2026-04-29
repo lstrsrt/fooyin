@@ -154,7 +154,7 @@ void FileOpsModel::populate(const FileOperations& operations)
     m_operations = operations;
     endResetModel();
 
-    emit simulated();
+    Q_EMIT simulated();
 }
 
 void FileOpsModel::operationFinished(const FileOpsItem& /*operation*/)

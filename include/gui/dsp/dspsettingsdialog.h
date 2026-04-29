@@ -44,7 +44,7 @@ protected:
     void publishPreviewSettings();
     virtual void restoreDefaults() = 0;
 
-signals:
+Q_SIGNALS:
     void previewSettingsChanged(const QByteArray& settings);
 
 private:

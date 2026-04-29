@@ -73,7 +73,7 @@ ElapsedProgressDialog::ElapsedProgressDialog(const QString& labelText, const QSt
         m_wasCancelled = true;
         m_updateTimer->stop();
         hide();
-        emit cancelled();
+        Q_EMIT cancelled();
     });
 }
 

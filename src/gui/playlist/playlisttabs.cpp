@@ -350,7 +350,7 @@ void PlaylistTabs::contextMenuEvent(QContextMenuEvent* event)
 
         auto* savePlaylist = new QAction(tr("Save playlist…"), menu);
         savePlaylist->setEnabled(playlist->trackCount() > 0);
-        QObject::connect(savePlaylist, &QAction::triggered, this, [this, id]() { emit savePlaylistRequested(id); });
+        QObject::connect(savePlaylist, &QAction::triggered, this, [this, id]() { Q_EMIT savePlaylistRequested(id); });
         menu->addAction(savePlaylist);
 
         menu->addSeparator();
@@ -471,11 +471,11 @@ void PlaylistTabs::dropEvent(QDropEvent* event)
     }
 
     if(event->mimeData()->hasFormat(QString::fromLatin1(Constants::Mime::TrackIds))) {
-        emit tracksDropped(event->mimeData()->data(QString::fromLatin1(Constants::Mime::TrackIds)), id);
+        Q_EMIT tracksDropped(event->mimeData()->data(QString::fromLatin1(Constants::Mime::TrackIds)), id);
         event->acceptProposedAction();
     }
     else if(event->mimeData()->hasUrls()) {
-        emit filesDropped(event->mimeData()->urls(), id);
+        Q_EMIT filesDropped(event->mimeData()->urls(), id);
         event->acceptProposedAction();
     }
     else {

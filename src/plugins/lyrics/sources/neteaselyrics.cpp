@@ -138,7 +138,7 @@ void NeteaseLyrics::handleSearchReply()
 {
     QJsonObject obj;
     if(!getJsonFromReply(reply(), &obj)) {
-        emit searchResult(m_data);
+        Q_EMIT searchResult(m_data);
         resetReply();
         return;
     }
@@ -149,7 +149,7 @@ void NeteaseLyrics::handleSearchReply()
     const QJsonArray songs   = result.value("songs"_L1).toArray();
 
     if(songs.isEmpty()) {
-        emit searchResult(m_data);
+        Q_EMIT searchResult(m_data);
         return;
     }
 
@@ -179,7 +179,7 @@ void NeteaseLyrics::handleSearchReply()
     }
 
     if(m_data.empty()) {
-        emit searchResult(m_data);
+        Q_EMIT searchResult(m_data);
         return;
     }
 
@@ -190,7 +190,7 @@ void NeteaseLyrics::handleSearchReply()
 void NeteaseLyrics::makeLyricRequest()
 {
     if(m_currentIndex < 0 || std::cmp_greater_equal(m_currentIndex, m_data.size())) {
-        emit searchResult(m_data);
+        Q_EMIT searchResult(m_data);
         return;
     }
 
@@ -224,7 +224,7 @@ void NeteaseLyrics::handleLyricReply()
 
     if(hasJson) {
         if(m_currentIndex < 0 || std::cmp_greater_equal(m_currentIndex, m_data.size())) {
-            emit searchResult(m_data);
+            Q_EMIT searchResult(m_data);
             return;
         }
 
@@ -250,7 +250,7 @@ void NeteaseLyrics::handleLyricReply()
     ++m_currentIndex;
 
     if(std::cmp_greater_equal(m_currentIndex, m_data.size())) {
-        emit searchResult(m_data);
+        Q_EMIT searchResult(m_data);
     }
     else {
         makeLyricRequest();

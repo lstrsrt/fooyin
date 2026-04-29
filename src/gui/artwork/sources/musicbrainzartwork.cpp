@@ -94,7 +94,7 @@ void MusicBrainzArtwork::handleSearchReply()
     QJsonObject obj;
     if(!getJsonFromReply(reply(), &obj)) {
         resetReply();
-        emit searchResult({});
+        Q_EMIT searchResult({});
         return;
     }
 
@@ -107,16 +107,16 @@ void MusicBrainzArtwork::handleSearchReply()
     else if(obj.contains("error"_L1) && obj.contains("message"_L1)) {
         const QString error = obj.value("error"_L1).toString();
         qCDebug(ARTWORK) << "Error:" << error;
-        emit searchResult({});
+        Q_EMIT searchResult({});
         return;
     }
     else {
-        emit searchResult({});
+        Q_EMIT searchResult({});
         return;
     }
 
     if(releases.empty()) {
-        emit searchResult({});
+        Q_EMIT searchResult({});
         return;
     }
 
@@ -155,6 +155,6 @@ void MusicBrainzArtwork::handleSearchReply()
         searchResults.emplace_back(artistsNames, album, url);
     }
 
-    emit searchResult(searchResults);
+    Q_EMIT searchResult(searchResults);
 }
 } // namespace Fooyin

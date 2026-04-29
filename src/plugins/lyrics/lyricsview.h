@@ -50,7 +50,7 @@ public:
 
     [[nodiscard]] bool isDragSeeking() const;
 
-signals:
+Q_SIGNALS:
     void dragSeekingChanged(bool active);
     void lineClicked(const QModelIndex& index, const QPoint& pos);
     void lineDragSeekRequested(const QModelIndex& index, const QPoint& pos);

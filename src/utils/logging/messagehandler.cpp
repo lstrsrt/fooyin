@@ -85,7 +85,7 @@ void MessageHandler::handler(QtMsgType type, const QMessageLogContext& context, 
     }
 
     QMetaObject::invokeMethod(
-        instance(), [formattedMsg, type]() { emit instance() -> showMessage(formattedMsg, type); },
+        instance(), [formattedMsg, type]() { Q_EMIT instance()->showMessage(formattedMsg, type); },
         Qt::QueuedConnection);
 }
 

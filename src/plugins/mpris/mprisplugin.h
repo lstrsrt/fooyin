@@ -117,7 +117,7 @@ public:
     void Seek(int64_t offset);
     void SetPosition(const QDBusObjectPath& path, int64_t position);
 
-signals:
+Q_SIGNALS:
     void Seeked(qlonglong position);
     void fullscreenChanged(bool fullscreen);
     void volumeChanged(double volume);

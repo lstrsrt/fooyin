@@ -43,12 +43,12 @@ OutputProfileManager::OutputProfileManager(EngineController* engine, DspChainSto
     m_settings->subscribe<Settings::Core::AudioOutput>(this, [this](const QString& value) {
         const QStringList parts = value.split(u'|');
         if(!parts.empty() && parts.size() >= 2) {
-            emit currentOutputChanged(parts.value(0), parts.value(1));
+            Q_EMIT currentOutputChanged(parts.value(0), parts.value(1));
             reapplyCurrentProfile();
         }
     });
     m_settings->subscribe<Settings::Core::Internal::OutputDeviceProfiles>(
-        this, [this]() { emit profilesChanged(currentOutput()); });
+        this, [this]() { Q_EMIT profilesChanged(currentOutput()); });
 }
 
 OutputNames OutputProfileManager::outputs() const
@@ -118,7 +118,7 @@ void OutputProfileManager::setProfiles(const QString& output, const Engine::Outp
 void OutputProfileManager::clearProfiles()
 {
     m_settings->reset<Settings::Core::Internal::OutputDeviceProfiles>();
-    emit profilesChanged(currentOutput());
+    Q_EMIT profilesChanged(currentOutput());
 }
 
 bool OutputProfileManager::applyProfile(const QString& output, const QString& device)
@@ -156,7 +156,7 @@ bool OutputProfileManager::applyProfile(const QString& output, const QString& de
     m_settings->setSilently<Settings::Core::OutputBitDepth>(static_cast<int>(bitDepth));
     m_settings->setSilently<Settings::Core::OutputDither>(dither);
 
-    emit currentOutputChanged(output, device);
+    Q_EMIT currentOutputChanged(output, device);
     return true;
 }
 

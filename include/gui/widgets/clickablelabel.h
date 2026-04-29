@@ -31,7 +31,7 @@ class FYGUI_EXPORT ClickableLabel : public QLabel
 public:
     using QLabel::QLabel;
 
-signals:
+Q_SIGNALS:
     void clicked();
     void mouseEntered();
     void mouseLeft();

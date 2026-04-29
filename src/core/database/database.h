@@ -49,7 +49,7 @@ public:
     [[nodiscard]] int currentRevision() const;
     [[nodiscard]] int previousRevision() const;
 
-signals:
+Q_SIGNALS:
     void statusChanged(Status status);
 
 private:

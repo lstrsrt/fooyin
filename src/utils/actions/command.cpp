@@ -144,7 +144,7 @@ void Command::setShortcut(const ShortcutList& keys)
 {
     p->m_shortcutIsInitialised = true;
     p->m_action->setShortcuts(keys);
-    emit shortcutChanged();
+    Q_EMIT shortcutChanged();
 }
 
 QString Command::stringWithShortcut(const QString& str) const

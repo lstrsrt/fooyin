@@ -103,7 +103,7 @@ public:
 
     void showQuickSetup();
 
-signals:
+Q_SIGNALS:
     void layoutChanged();
 
 private:

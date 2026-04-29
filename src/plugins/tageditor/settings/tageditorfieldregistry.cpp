@@ -29,7 +29,7 @@ TagEditorFieldRegistry::TagEditorFieldRegistry(SettingsManager* settings, QObjec
 {
     QObject::connect(this, &RegistryBase::itemChanged, this, [this](int id) {
         if(const auto field = itemById(id)) {
-            emit fieldChanged(field.value());
+            Q_EMIT fieldChanged(field.value());
         }
     });
 

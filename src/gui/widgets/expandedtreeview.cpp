@@ -3119,7 +3119,7 @@ void ExpandedTreeView::setViewMode(ViewMode mode)
 
     p->doDelayedItemsLayout();
 
-    emit viewModeChanged(mode);
+    Q_EMIT viewModeChanged(mode);
 }
 
 ExpandedTreeView::CaptionDisplay ExpandedTreeView::captionDisplay() const
@@ -3686,7 +3686,7 @@ void ExpandedTreeView::mousePressEvent(QMouseEvent* event)
     p->m_pressedPos = pos + p->offset();
 
     if(event->button() == Qt::MiddleButton) {
-        QMetaObject::invokeMethod(this, [this, index]() { emit middleClicked(index); }, Qt::QueuedConnection);
+        QMetaObject::invokeMethod(this, [this, index]() { Q_EMIT middleClicked(index); }, Qt::QueuedConnection);
     }
 
     if(p->m_selectBeforeDrag && !model()->hasChildren(modelIndex)) {

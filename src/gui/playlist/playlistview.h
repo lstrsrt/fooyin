@@ -71,7 +71,7 @@ protected:
     DropIndicatorPosition dropPosition(const QPoint& pos, const QRect& rect, const QModelIndex& index) override;
     bool eventFilter(QObject* watched, QEvent* event) override;
 
-signals:
+Q_SIGNALS:
     void bulkWriteRequested(const Fooyin::TrackList& tracks);
     void tracksRated(const Fooyin::TrackList& tracks);
     void displayChanged();

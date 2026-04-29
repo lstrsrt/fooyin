@@ -362,7 +362,7 @@ bool ReplayGainModel::setData(const QModelIndex& index, const QVariant& value, i
             return false;
         }
 
-        emit dataChanged(index, index);
+        Q_EMIT dataChanged(index, index);
         updateSummary();
         return true;
     };

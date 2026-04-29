@@ -359,7 +359,7 @@ void PlaylistManagerModel::refreshPlaylist(Playlist* playlist)
     }
 
     m_summaries[static_cast<size_t>(row)] = summarisePlaylist(playlist);
-    emit dataChanged(index(row, 0), index(row, Count - 1));
+    Q_EMIT dataChanged(index(row, 0), index(row, Count - 1));
 }
 
 int PlaylistManagerModel::rowForPlaylist(const Playlist* playlist) const

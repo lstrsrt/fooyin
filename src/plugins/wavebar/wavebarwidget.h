@@ -81,7 +81,7 @@ public:
     [[nodiscard]] QString cacheSizeText() const;
     void requestClearCache();
 
-signals:
+Q_SIGNALS:
     void clearCacheRequested();
 
 protected:

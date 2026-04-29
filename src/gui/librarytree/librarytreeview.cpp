@@ -58,7 +58,7 @@ void LibraryTreeView::changeEvent(QEvent* event)
         case QEvent::FontChange:
         case QEvent::PaletteChange:
         case QEvent::StyleChange:
-            emit displayChanged();
+            Q_EMIT displayChanged();
             break;
         default:
             break;
@@ -79,7 +79,7 @@ void LibraryTreeView::mousePressEvent(QMouseEvent* event)
     }
 
     if(event->button() == Qt::MiddleButton) {
-        emit middleClicked(index);
+        Q_EMIT middleClicked(index);
         return;
     }
 

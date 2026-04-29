@@ -32,7 +32,7 @@ class SystemTrayIcon : public QSystemTrayIcon
 public:
     explicit SystemTrayIcon(ActionManager* actionManager, QObject* parent = nullptr);
 
-signals:
+Q_SIGNALS:
     void toggleVisibility();
 
 private:

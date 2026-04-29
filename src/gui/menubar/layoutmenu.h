@@ -41,7 +41,7 @@ public:
 
     void setup();
 
-signals:
+Q_SIGNALS:
     void changeLayout(const Fooyin::FyLayout& layout);
     void importLayout();
     void exportLayout();

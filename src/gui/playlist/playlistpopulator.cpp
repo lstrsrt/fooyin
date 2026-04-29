@@ -540,7 +540,7 @@ void PlaylistPopulatorPrivate::runBatch(int size, int index)
     }
 
     const PendingData batchData = buildBatchData();
-    emit m_self->populated(batchData);
+    Q_EMIT m_self->populated(batchData);
 
     m_nextTrack += batchSize;
     clearBatchData();
@@ -578,7 +578,7 @@ void PlaylistPopulatorPrivate::runTracksGroup(const std::map<int, PlaylistTrackL
     }
 
     const PendingData batchData = buildBatchData();
-    emit m_self->populatedTrackGroup(batchData);
+    Q_EMIT m_self->populatedTrackGroup(batchData);
     clearBatchData();
 }
 
@@ -630,7 +630,7 @@ void PlaylistPopulator::run(Playlist* playlist, const PlaylistPreset& preset, co
     p->runBatch(preloadCount, 0);
 
     if(mayRun()) {
-        emit finished();
+        Q_EMIT finished();
     }
 
     setState(Idle);
@@ -699,7 +699,7 @@ void PlaylistPopulator::updateTracks(Playlist* playlist, const PlaylistPreset& p
         updatedTracks.push_back(item);
     }
 
-    emit tracksUpdated(updatedTracks, columnsToUpdate);
+    Q_EMIT tracksUpdated(updatedTracks, columnsToUpdate);
 
     setState(Idle);
 }
@@ -721,7 +721,7 @@ void PlaylistPopulator::updateHeaders(Playlist* playlist, const PlaylistPreset& 
         updatedHeaders.emplace(item.key(), std::move(item));
     }
 
-    emit headersUpdated(updatedHeaders);
+    Q_EMIT headersUpdated(updatedHeaders);
 
     setState(Idle);
 }

@@ -34,7 +34,7 @@ class ViewMenu : public QObject
 public:
     explicit ViewMenu(ActionManager* actionManager, SettingsManager* settings, QObject* parent = nullptr);
 
-signals:
+Q_SIGNALS:
     void focusSearchBar();
     void openQuickSetup();
     void openPlaybackQueue();

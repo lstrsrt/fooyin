@@ -51,7 +51,7 @@ public:
     void setDownmix(DownmixOption option);
     void setSupersampleFactor(int factor);
 
-signals:
+Q_SIGNALS:
     void generatingWaveform();
     void waveformGenerated(const Fooyin::Track& track);
     void waveformRescaled(const Fooyin::WaveBar::WaveformData<float>& data);

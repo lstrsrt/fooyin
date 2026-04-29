@@ -47,7 +47,7 @@ class FYUTILS_EXPORT RegistryBase : public QObject
 public:
     explicit RegistryBase(QObject* parent = nullptr);
 
-signals:
+Q_SIGNALS:
     void itemAdded(int id);
     void itemChanged(int id);
     void itemRemoved(int id);
@@ -123,16 +123,16 @@ public:
 
         for(const auto& item : previousItems) {
             if(!currentItemsById.contains(item.id)) {
-                emit itemRemoved(item.id);
+                Q_EMIT itemRemoved(item.id);
             }
         }
 
         for(const auto& item : m_items) {
             if(!previousItemsById.contains(item.id)) {
-                emit itemAdded(item.id);
+                Q_EMIT itemAdded(item.id);
             }
             else if(!(previousItemsById.at(item.id) == item)) {
-                emit itemChanged(item.id);
+                Q_EMIT itemChanged(item.id);
             }
         }
     }
@@ -147,7 +147,7 @@ public:
 
         m_itemsChanged = true;
 
-        emit itemAdded(newItem.id);
+        Q_EMIT itemAdded(newItem.id);
 
         saveItems();
         return newItem;
@@ -182,7 +182,7 @@ public:
             m_defaultOverrides[changedItem.id] = changedItem;
 
             saveDefaultOverrides();
-            emit itemChanged(changedItem.id);
+            Q_EMIT itemChanged(changedItem.id);
             return true;
         }
 
@@ -198,7 +198,7 @@ public:
         m_itemsChanged = true;
 
         std::ranges::sort(m_items, {}, &Item::index);
-        emit itemChanged(changedItem.id);
+        Q_EMIT itemChanged(changedItem.id);
 
         saveItems();
         return true;
@@ -253,7 +253,7 @@ public:
         }
 
         m_itemsChanged = true;
-        emit itemRemoved(id);
+        Q_EMIT itemRemoved(id);
 
         saveItems();
         return true;
@@ -330,7 +330,7 @@ public:
             if(itemIt != m_items.end()) {
                 itemToAdjust.id = findValidId();
                 *itemIt         = itemToAdjust;
-                emit itemChanged(itemToAdjust.id);
+                Q_EMIT itemChanged(itemToAdjust.id);
             }
         }
     }

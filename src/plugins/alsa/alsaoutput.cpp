@@ -649,7 +649,7 @@ bool AlsaOutput::checkError(int error, const char* message)
     if(error < 0) {
         m_error = QString::fromUtf8(message);
         qCWarning(ALSA) << message << ":" << snd_strerror(error);
-        emit stateChanged(State::Error);
+        Q_EMIT stateChanged(State::Error);
         return true;
     }
     return false;
@@ -777,7 +777,7 @@ bool AlsaOutput::attemptRecovery(snd_pcm_status_t* status)
 
     const auto requestReinit = [this]() {
         m_reinitRequested = true;
-        QMetaObject::invokeMethod(this, [this]() { emit this->stateChanged(State::Disconnected); });
+        QMetaObject::invokeMethod(this, [this]() { Q_EMIT this->stateChanged(State::Disconnected); });
     };
 
     // Give ALSA a number of chances to recover

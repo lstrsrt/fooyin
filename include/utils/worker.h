@@ -54,7 +54,7 @@ public:
     [[nodiscard]] std::stop_token stopToken() const;
     [[nodiscard]] bool stopRequested() const;
 
-signals:
+Q_SIGNALS:
     void finished();
 
 protected:

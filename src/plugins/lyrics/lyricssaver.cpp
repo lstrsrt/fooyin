@@ -419,7 +419,7 @@ bool LyricsSaver::saveToConfiguredMethod(const Lyrics& lyrics, const Track& trac
                 }
             }
 
-            emit lyricsSaved(*updatedTrack, savedLyrics(lyrics, *updatedTrack));
+            Q_EMIT lyricsSaved(*updatedTrack, savedLyrics(lyrics, *updatedTrack));
             break;
         }
         case SaveMethod::Directory: {
@@ -452,7 +452,7 @@ bool LyricsSaver::saveToConfiguredMethod(const Lyrics& lyrics, const Track& trac
                 m_library->writeTrackMetadata({updatedTrack});
             }
 
-            emit lyricsSaved(updatedTrack, savedLyrics(lyrics, updatedTrack));
+            Q_EMIT lyricsSaved(updatedTrack, savedLyrics(lyrics, updatedTrack));
             break;
         }
     }

@@ -54,7 +54,7 @@ public:
 
     [[nodiscard]] QSize sizeHint() const override;
 
-signals:
+Q_SIGNALS:
     void cancelled();
 
 private:

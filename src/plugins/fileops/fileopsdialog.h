@@ -47,7 +47,7 @@ public:
 
     void done(int value) override;
 
-signals:
+Q_SIGNALS:
     void presetsChanged();
 
 private:

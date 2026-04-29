@@ -261,7 +261,7 @@ public:
             }
         }
 
-        emit tracksUpdated(tracks);
+        Q_EMIT tracksUpdated(tracks);
     }
 
 private:

@@ -213,7 +213,7 @@ bool FiltersColumnModel::setData(const QModelIndex& index, const QVariant& value
         case(1): {
             if(value.toString() == u"<enter name here>"_s || column.name == value.toString()) {
                 if(item->status() == ColumnItem::Added) {
-                    emit pendingRowCancelled();
+                    Q_EMIT pendingRowCancelled();
                 }
                 return false;
             }
@@ -236,7 +236,7 @@ bool FiltersColumnModel::setData(const QModelIndex& index, const QVariant& value
     }
 
     item->changeColumn(column);
-    emit dataChanged(index, index, {Qt::FontRole, Qt::DisplayRole});
+    Q_EMIT dataChanged(index, index, {Qt::FontRole, Qt::DisplayRole});
 
     return true;
 }

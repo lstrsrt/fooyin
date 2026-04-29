@@ -230,7 +230,7 @@ bool ActionDelegate::editorEvent(QEvent* event, QAbstractItemModel* model, const
 
     for(int i{0}; i < btnCount; ++i) {
         if(buttonRect(opt, i).contains(pos)) {
-            emit buttonClicked(index, btns[i].id);
+            Q_EMIT buttonClicked(index, btns[i].id);
             return true;
         }
     }

@@ -42,7 +42,7 @@ WaveformBuilder::WaveformBuilder(std::shared_ptr<AudioLoader> decoderProvider, D
 
     QObject::connect(&m_generator, &WaveformGenerator::generatingWaveform, this, &WaveformBuilder::generatingWaveform);
     QObject::connect(&m_generator, &WaveformGenerator::waveformGenerated, this,
-                     [this](const Fooyin::Track& track, const auto& /*data*/) { emit waveformGenerated(track); });
+                     [this](const Fooyin::Track& track, const auto& /*data*/) { Q_EMIT waveformGenerated(track); });
     QObject::connect(&m_generator, &WaveformGenerator::waveformGenerated, &m_rescaler,
                      [this](const Track& /*track*/, const auto& data) {
                          if(m_rescale) {

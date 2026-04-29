@@ -109,7 +109,7 @@ bool WidgetContext::isEnabled() const
 void WidgetContext::setEnabled(bool enabled)
 {
     if(std::exchange(m_isEnabled, enabled) != enabled) {
-        emit isEnabledChanged();
+        Q_EMIT isEnabledChanged();
     }
 }
 } // namespace Fooyin

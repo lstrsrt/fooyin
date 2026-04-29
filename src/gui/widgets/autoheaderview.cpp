@@ -376,7 +376,7 @@ void AutoHeaderView::hideHeaderSection(int logical)
     }
 
     hideSection(logical);
-    emit sectionVisiblityChanged(logical);
+    Q_EMIT sectionVisiblityChanged(logical);
 
     if(!p->m_stretchEnabled) {
         return;
@@ -394,7 +394,7 @@ void AutoHeaderView::showHeaderSection(int logical)
     }
 
     showSection(logical);
-    emit sectionVisiblityChanged(logical);
+    Q_EMIT sectionVisiblityChanged(logical);
 
     p->normaliseWidths();
     p->updateWidths();
@@ -474,7 +474,7 @@ void AutoHeaderView::setStretchEnabled(bool enabled)
             p->updateWidths();
         }
     }
-    emit stretchChanged(enabled);
+    Q_EMIT stretchChanged(enabled);
 }
 
 void AutoHeaderView::addHeaderContextMenu(QMenu* menu, const QPoint& pos)
@@ -665,7 +665,7 @@ void AutoHeaderView::restoreHeaderState(const QByteArray& state)
     p->m_pendingColumns = 0;
     p->m_pendingState.clear();
 
-    emit stateRestored();
+    Q_EMIT stateRestored();
 }
 
 void AutoHeaderView::mousePressEvent(QMouseEvent* event)
@@ -753,7 +753,7 @@ void AutoHeaderView::mouseReleaseEvent(QMouseEvent* event)
         const int logicalIndex = logicalIndexAt(pos);
 
         if(logicalIndex >= 0 && handleIndex == -1) {
-            emit leftClicked(logicalIndex, pos);
+            Q_EMIT leftClicked(logicalIndex, pos);
         }
     }
     else if(p->m_state == SectionState::Resizing) {

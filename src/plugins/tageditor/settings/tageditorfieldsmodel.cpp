@@ -275,7 +275,7 @@ bool TagEditorFieldsModel::setData(const QModelIndex& index, const QVariant& val
         case(1): {
             if(value.toString() == u"<enter name here>"_s || field.name == value.toString()) {
                 if(item->status() == TagEditorFieldItem::Added) {
-                    emit pendingRowCancelled();
+                    Q_EMIT pendingRowCancelled();
                 }
                 return false;
             }
@@ -302,8 +302,8 @@ bool TagEditorFieldsModel::setData(const QModelIndex& index, const QVariant& val
     }
 
     item->changeField(field);
-    emit dataChanged(index, index.siblingAtColumn(columnCount({}) - 1),
-                     {Qt::FontRole, Qt::DisplayRole, Qt::CheckStateRole});
+    Q_EMIT dataChanged(index, index.siblingAtColumn(columnCount({}) - 1),
+                       {Qt::FontRole, Qt::DisplayRole, Qt::CheckStateRole});
 
     return true;
 }

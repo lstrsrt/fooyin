@@ -213,7 +213,7 @@ bool SortingModel::setData(const QModelIndex& index, const QVariant& value, int 
         case 1: {
             if(value.toString() == u"<enter name here>"_s || sortScript.name == value.toString()) {
                 if(item->status() == SortingItem::Added) {
-                    emit pendingRowCancelled();
+                    Q_EMIT pendingRowCancelled();
                 }
                 return false;
             }
@@ -236,7 +236,7 @@ bool SortingModel::setData(const QModelIndex& index, const QVariant& value, int 
     }
 
     item->changeSort(sortScript);
-    emit dataChanged(index, index.siblingAtColumn(columnCount({}) - 1), {Qt::DisplayRole, Qt::FontRole});
+    Q_EMIT dataChanged(index, index.siblingAtColumn(columnCount({}) - 1), {Qt::DisplayRole, Qt::FontRole});
 
     return true;
 }

@@ -565,9 +565,9 @@ void CoverWidget::contextMenuEvent(QContextMenuEvent* event)
 
         QObject::connect(viewFullSize, &QAction::triggered, this, &CoverWidget::showArtworkViewer);
         QObject::connect(search, &QAction::triggered, this,
-                         [this]() { emit requestArtworkSearch({m_track}, m_config.coverType, false); });
+                         [this]() { Q_EMIT requestArtworkSearch({m_track}, m_config.coverType, false); });
         QObject::connect(quickSearch, &QAction::triggered, this,
-                         [this]() { emit requestArtworkSearch({m_track}, m_config.coverType, true); });
+                         [this]() { Q_EMIT requestArtworkSearch({m_track}, m_config.coverType, true); });
         QObject::connect(extractFile, &QAction::triggered, this, [this]() {
             const auto summary = ArtworkExporter::extractTracks(m_audioLoader.get(), {m_track}, {m_config.coverType});
             StatusEvent::post(ArtworkExporter::statusMessage(summary));
@@ -580,7 +580,7 @@ void CoverWidget::contextMenuEvent(QContextMenuEvent* event)
             }
         });
         QObject::connect(remove, &QAction::triggered, this,
-                         [this]() { emit requestArtworkRemoval({m_track}, m_config.coverType); });
+                         [this]() { Q_EMIT requestArtworkRemoval({m_track}, m_config.coverType); });
 
         menu->addSeparator();
         menu->addAction(viewFullSize);
@@ -657,7 +657,7 @@ void CoverWidget::checkTrackArtwork(const Track& track)
         if(track.isValid()) {
             m_coverProvider->trackHasCover(track, m_config.coverType).then([this](const bool hasCover) {
                 if(!hasCover) {
-                    emit requestArtworkSearch({m_track}, m_config.coverType, true);
+                    Q_EMIT requestArtworkSearch({m_track}, m_config.coverType, true);
                 }
             });
         }

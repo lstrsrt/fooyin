@@ -83,6 +83,6 @@ void LocalLyrics::search(const SearchParams& params)
         }
     }
 
-    emit searchResult({data});
+    Q_EMIT searchResult({data});
 }
 } // namespace Fooyin::Lyrics

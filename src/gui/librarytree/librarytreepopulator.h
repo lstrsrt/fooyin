@@ -66,7 +66,7 @@ public:
 
     void run(const LibraryTreeGrouping& grouping, const TrackList& tracks, bool useVarious);
 
-signals:
+Q_SIGNALS:
     void populated(Fooyin::PendingTreeDataPtr data);
 
 private:

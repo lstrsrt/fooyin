@@ -245,10 +245,10 @@ void LyricsView::mouseMoveEvent(QMouseEvent* event)
 
     if(!m_dragSeeking) {
         m_dragSeeking = true;
-        emit dragSeekingChanged(true);
+        Q_EMIT dragSeekingChanged(true);
     }
 
-    emit userScrolling();
+    Q_EMIT userScrolling();
     updateDragPreview(pos);
 }
 
@@ -269,14 +269,14 @@ void LyricsView::mouseReleaseEvent(QMouseEvent* event)
     const QPoint pos = seekPosition(event->position().toPoint());
     if(m_dragSeeking) {
         updateDragPreview(pos);
-        emit lineDragSeekRequested(m_dragIndex, pos);
+        Q_EMIT lineDragSeekRequested(m_dragIndex, pos);
         clearDragPreview();
         m_leftButtonDown = false;
         return;
     }
 
     const QModelIndex index = seekableIndexAt(pos);
-    emit lineClicked(index, pos);
+    Q_EMIT lineClicked(index, pos);
 
     m_leftButtonDown = false;
     m_dragIndex      = QPersistentModelIndex{};
@@ -285,7 +285,7 @@ void LyricsView::mouseReleaseEvent(QMouseEvent* event)
 void LyricsView::resizeEvent(QResizeEvent* event)
 {
     QListView::resizeEvent(event);
-    emit viewportResized();
+    Q_EMIT viewportResized();
 }
 
 void LyricsView::scrollContentsBy(const int dx, const int dy)
@@ -305,7 +305,7 @@ void LyricsView::updateGeometries()
 
 void LyricsView::wheelEvent(QWheelEvent* event)
 {
-    emit userScrolling();
+    Q_EMIT userScrolling();
     QListView::wheelEvent(event);
 }
 
@@ -504,7 +504,7 @@ void LyricsView::clearDragPreview()
     viewport()->update();
 
     if(wasDragSeeking) {
-        emit dragSeekingChanged(false);
+        Q_EMIT dragSeekingChanged(false);
     }
 }
 } // namespace Fooyin::Lyrics

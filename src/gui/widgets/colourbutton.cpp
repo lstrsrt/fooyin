@@ -61,7 +61,7 @@ void ColourButton::mousePressEvent(QMouseEvent* event)
     QWidget::mousePressEvent(event);
 
     if(event->button() == Qt::LeftButton) {
-        emit clicked();
+        Q_EMIT clicked();
     }
 }
 

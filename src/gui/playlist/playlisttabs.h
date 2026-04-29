@@ -71,7 +71,7 @@ public:
     void replaceWidget(int index, FyWidget* newWidget) override;
     void moveWidget(int index, int newIndex) override;
 
-signals:
+Q_SIGNALS:
     void filesDropped(const QList<QUrl>& urls, const Fooyin::UId& playlistId);
     void tracksDropped(const QByteArray& data, const Fooyin::UId& playlistId);
     void savePlaylistRequested(const Fooyin::UId& playlistId);

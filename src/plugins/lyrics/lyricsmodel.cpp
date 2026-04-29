@@ -78,8 +78,8 @@ void LyricsModel::setMargins(const QMargins& margins)
 
     // Update padding rows
     if(rowCount({}) > 0) {
-        emit dataChanged(index(0, 0), index(0, 0));
-        emit dataChanged(index(rowCount({}) - 1, 0), index(rowCount({}) - 1, 0));
+        Q_EMIT dataChanged(index(0, 0), index(0, 0));
+        Q_EMIT dataChanged(index(rowCount({}) - 1, 0), index(rowCount({}) - 1, 0));
     }
 }
 
@@ -95,8 +95,8 @@ void LyricsModel::setViewportPadding(int topPadding, int bottomPadding)
     m_bottomViewportPadding = bottomPadding;
 
     if(rowCount({}) > 0) {
-        emit dataChanged(index(0, 0), index(0, 0));
-        emit dataChanged(index(rowCount({}) - 1, 0), index(rowCount({}) - 1, 0));
+        Q_EMIT dataChanged(index(0, 0), index(0, 0));
+        Q_EMIT dataChanged(index(rowCount({}) - 1, 0), index(rowCount({}) - 1, 0));
     }
 }
 
@@ -311,7 +311,7 @@ void LyricsModel::updateCurrentLine()
                 m_text[lineIndex] = textForLine(m_lyrics.lines.at(lineIndex));
             }
 
-            emit dataChanged(index(changedStart + 1, 0), index(changedEnd + 1, 0), {RichTextRole});
+            Q_EMIT dataChanged(index(changedStart + 1, 0), index(changedEnd + 1, 0), {RichTextRole});
         }
     }
 }

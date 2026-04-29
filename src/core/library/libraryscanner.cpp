@@ -54,7 +54,7 @@ ScanProgress LibraryScanner::makeProgress(const int current, const QString& file
 void LibraryScanner::changeLibraryStatus(const LibraryInfo::Status status)
 {
     m_currentLibrary.status = status;
-    emit statusChanged(m_currentLibrary);
+    Q_EMIT statusChanged(m_currentLibrary);
 }
 
 void LibraryScanner::startSession(const LibraryScanConfig& config, const LibraryInfo& library)
@@ -107,7 +107,7 @@ void LibraryScanner::stopThread()
         QMetaObject::invokeMethod(
             this,
             [this, scanned, discovered]() {
-                emit progressChanged(makeProgress(scanned, {}, scanned, ScanProgress::Phase::Finished, discovered));
+                Q_EMIT progressChanged(makeProgress(scanned, {}, scanned, ScanProgress::Phase::Finished, discovered));
             },
             Qt::QueuedConnection);
     }
@@ -123,12 +123,12 @@ bool LibraryScanner::stopRequested() const
 void LibraryScanner::reportProgress(const int current, const QString& file, const int total, const int phase,
                                     const int discovered)
 {
-    emit progressChanged(makeProgress(current, file, total, static_cast<ScanProgress::Phase>(phase), discovered));
+    Q_EMIT progressChanged(makeProgress(current, file, total, static_cast<ScanProgress::Phase>(phase), discovered));
 }
 
 void LibraryScanner::reportScanUpdate(const ScanResult& result)
 {
-    emit scanUpdate(result);
+    Q_EMIT scanUpdate(result);
 }
 
 void LibraryScanner::scanLibrary(const LibraryInfo& library, const TrackList& tracks, const bool onlyModified,
@@ -155,7 +155,7 @@ void LibraryScanner::scanLibrary(const LibraryInfo& library, const TrackList& tr
         changeLibraryStatus(isMonitoring ? LibraryInfo::Status::Monitoring : LibraryInfo::Status::Idle);
         finishSession();
         setState(Idle);
-        emit finished();
+        Q_EMIT finished();
     }
 
     qCInfo(LIB_SCANNER) << "Scan of" << library.name << "took" << timer.elapsedFormatted();
@@ -184,7 +184,7 @@ void LibraryScanner::scanLibraryDirectoies(const LibraryInfo& library, const QSt
         finishSession();
 
         setState(Idle);
-        emit finished();
+        Q_EMIT finished();
     }
 
     clearSession();
@@ -203,16 +203,18 @@ void LibraryScanner::scanTracks(const TrackList& tracks, const bool onlyModified
 
     const Timer timer;
 
-    emit progressChanged(makeProgress(0, {}, static_cast<int>(tracks.size()), ScanProgress::Phase::ReadingMetadata, 0));
+    Q_EMIT progressChanged(
+        makeProgress(0, {}, static_cast<int>(tracks.size()), ScanProgress::Phase::ReadingMetadata, 0));
 
     TrackList tracksToUpdate;
     int processedTracks{0};
 
     for(const Track& track : tracks) {
         if(!shouldContinue()) {
-            emit progressChanged(makeProgress(processedTracks, {}, processedTracks, ScanProgress::Phase::Finished, 0));
+            Q_EMIT progressChanged(
+                makeProgress(processedTracks, {}, processedTracks, ScanProgress::Phase::Finished, 0));
             setState(Idle);
-            emit finished();
+            Q_EMIT finished();
             return;
         }
 
@@ -228,8 +230,8 @@ void LibraryScanner::scanTracks(const TrackList& tracks, const bool onlyModified
 
             if(track.modifiedTime() >= lastModified) {
                 ++processedTracks;
-                emit progressChanged(makeProgress(processedTracks, track.filepath(), static_cast<int>(tracks.size()),
-                                                  ScanProgress::Phase::ReadingMetadata, 0));
+                Q_EMIT progressChanged(makeProgress(processedTracks, track.filepath(), static_cast<int>(tracks.size()),
+                                                    ScanProgress::Phase::ReadingMetadata, 0));
                 continue;
             }
         }
@@ -263,22 +265,22 @@ void LibraryScanner::scanTracks(const TrackList& tracks, const bool onlyModified
         }
 
         ++processedTracks;
-        emit progressChanged(makeProgress(processedTracks, track.filepath(), static_cast<int>(tracks.size()),
-                                          ScanProgress::Phase::ReadingMetadata, 0));
+        Q_EMIT progressChanged(makeProgress(processedTracks, track.filepath(), static_cast<int>(tracks.size()),
+                                            ScanProgress::Phase::ReadingMetadata, 0));
     }
 
     if(!tracksToUpdate.empty()) {
-        emit progressChanged(makeProgress(processedTracks, {}, static_cast<int>(tracks.size()),
-                                          ScanProgress::Phase::WritingDatabase, 0));
+        Q_EMIT progressChanged(makeProgress(processedTracks, {}, static_cast<int>(tracks.size()),
+                                            ScanProgress::Phase::WritingDatabase, 0));
         m_trackDatabase.updateTracks(tracksToUpdate);
         m_trackDatabase.updateTrackStats(tracksToUpdate);
-        emit scanUpdate({.addedTracks = {}, .updatedTracks = tracksToUpdate});
+        Q_EMIT scanUpdate({.addedTracks = {}, .updatedTracks = tracksToUpdate});
     }
 
-    emit progressChanged(makeProgress(processedTracks, {}, processedTracks, ScanProgress::Phase::Finished, 0));
+    Q_EMIT progressChanged(makeProgress(processedTracks, {}, processedTracks, ScanProgress::Phase::Finished, 0));
 
     setState(Idle);
-    emit finished();
+    Q_EMIT finished();
 
     qCInfo(LIB_SCANNER) << "Scan of" << tracks.size() << "tracks took" << timer.elapsedFormatted();
 }
@@ -297,19 +299,19 @@ void LibraryScanner::scanFiles(const TrackList& libraryTracks, const QList<QUrl>
     const bool completed = m_session->scanFiles(libraryTracks, urls, result);
 
     if(completed && !result.playlistTracksScanned.empty()) {
-        emit progressChanged(
+        Q_EMIT progressChanged(
             makeProgress(static_cast<int>(m_session->progressCount()), {}, static_cast<int>(m_session->progressCount()),
                          ScanProgress::Phase::WritingDatabase, static_cast<int>(m_session->discoveredFiles())));
         m_trackDatabase.storeTracks(result.playlistTracksScanned);
-        emit playlistLoaded(result.playlistTracksScanned);
+        Q_EMIT playlistLoaded(result.playlistTracksScanned);
     }
 
     if(completed && !result.tracksScanned.empty()) {
-        emit progressChanged(
+        Q_EMIT progressChanged(
             makeProgress(static_cast<int>(m_session->progressCount()), {}, static_cast<int>(m_session->progressCount()),
                          ScanProgress::Phase::WritingDatabase, static_cast<int>(m_session->discoveredFiles())));
         m_trackDatabase.storeTracks(result.tracksScanned);
-        emit scannedTracks(result.tracksScanned);
+        Q_EMIT scannedTracks(result.tracksScanned);
     }
 
     const int scannedFiles = static_cast<int>(m_session->filesScanned());
@@ -318,7 +320,7 @@ void LibraryScanner::scanFiles(const TrackList& libraryTracks, const QList<QUrl>
     clearSession();
 
     setState(Idle);
-    emit finished();
+    Q_EMIT finished();
 
     qCInfo(LIB_SCANNER) << "Scan of" << scannedFiles << "files took" << timer.elapsedFormatted();
 }
@@ -338,18 +340,18 @@ void LibraryScanner::scanPlaylist(const TrackList& libraryTracks, const QList<QU
     const bool completed = m_session->scanPlaylist(libraryTracks, urls, tracksScanned);
 
     if(completed && !tracksScanned.empty()) {
-        emit progressChanged(
+        Q_EMIT progressChanged(
             makeProgress(static_cast<int>(m_session->progressCount()), {}, static_cast<int>(m_session->progressCount()),
                          ScanProgress::Phase::WritingDatabase, static_cast<int>(m_session->discoveredFiles())));
         m_trackDatabase.storeTracks(tracksScanned);
-        emit playlistLoaded(tracksScanned);
+        Q_EMIT playlistLoaded(tracksScanned);
     }
 
     finishSession();
     clearSession();
 
     setState(Idle);
-    emit finished();
+    Q_EMIT finished();
 
     qCInfo(LIB_SCANNER) << "Scan of playlist took" << timer.elapsedFormatted();
 }

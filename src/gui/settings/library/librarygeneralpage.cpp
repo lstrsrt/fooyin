@@ -55,7 +55,7 @@ public:
 protected:
     void setupContextActions(QMenu* menu, const QPoint& pos) override;
 
-signals:
+Q_SIGNALS:
     void refreshLibrary(const Fooyin::LibraryInfo& info);
     void rescanLibrary(const Fooyin::LibraryInfo& info);
     void cancelLibraryScan(int id);
@@ -75,11 +75,11 @@ void LibraryTableView::setupContextActions(QMenu* menu, const QPoint& pos)
 
     auto* refresh = new QAction(tr("&Scan for changes"), menu);
     refresh->setEnabled(!isPending && !isScanning);
-    QObject::connect(refresh, &QAction::triggered, this, [this, library]() { emit refreshLibrary(library); });
+    QObject::connect(refresh, &QAction::triggered, this, [this, library]() { Q_EMIT refreshLibrary(library); });
 
     auto* rescan = new QAction(tr("&Reload tracks"), menu);
     rescan->setEnabled(!isPending && !isScanning);
-    QObject::connect(rescan, &QAction::triggered, this, [this, library]() { emit rescanLibrary(library); });
+    QObject::connect(rescan, &QAction::triggered, this, [this, library]() { Q_EMIT rescanLibrary(library); });
 
     menu->addAction(refresh);
     menu->addAction(rescan);
@@ -87,7 +87,7 @@ void LibraryTableView::setupContextActions(QMenu* menu, const QPoint& pos)
     if(isScanning) {
         auto* cancel = new QAction(tr("&Cancel scan"), menu);
         Gui::setThemeIcon(cancel, Constants::Icons::Close);
-        QObject::connect(cancel, &QAction::triggered, this, [this, scanId]() { emit cancelLibraryScan(scanId); });
+        QObject::connect(cancel, &QAction::triggered, this, [this, scanId]() { Q_EMIT cancelLibraryScan(scanId); });
         menu->addSeparator();
         menu->addAction(cancel);
     }

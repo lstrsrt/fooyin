@@ -173,7 +173,7 @@ void PlaylistView::changeEvent(QEvent* event)
     switch(event->type()) {
         case QEvent::FontChange:
         case QEvent::StyleChange:
-            emit displayChanged();
+            Q_EMIT displayChanged();
             break;
         default:
             break;
@@ -283,7 +283,7 @@ void PlaylistView::mousePressEvent(QMouseEvent* event)
 
                 const auto bulkEdit = playlistModel->setBulkData(ratingIndexes, QVariant::fromValue(modelRating));
                 if(bulkEdit.has_value()) {
-                    emit bulkWriteRequested(*bulkEdit);
+                    Q_EMIT bulkWriteRequested(*bulkEdit);
                 }
                 else {
                     for(const QModelIndex& ratingIndex : std::as_const(ratingIndexes)) {
@@ -311,12 +311,12 @@ void PlaylistView::mousePressEvent(QMouseEvent* event)
                 tracks.push_back(track);
             }
         }
-        emit tracksRated(tracks);
+        Q_EMIT tracksRated(tracks);
     }
     else {
         auto track = index.data(PlaylistItem::ItemData).value<PlaylistTrack>().track;
         track.setRating(rating);
-        emit tracksRated({track});
+        Q_EMIT tracksRated({track});
     }
 
     ExpandedTreeView::mousePressEvent(event);
@@ -664,7 +664,7 @@ bool PlaylistView::commitBulkEdit(int columnIndex)
         return false;
     }
 
-    emit bulkWriteRequested(*bulkEdit);
+    Q_EMIT bulkWriteRequested(*bulkEdit);
     return true;
 }
 

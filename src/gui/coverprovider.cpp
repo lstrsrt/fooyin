@@ -493,7 +493,7 @@ void CoverProvider::CoverProviderPrivate::processCoverResult(const CoverLoader& 
         qCDebug(COV_PROV) << "Failed to cache cover for:" << loader.track.filepath();
     }
 
-    emit m_self->coverAdded(loader.track);
+    Q_EMIT m_self->coverAdded(loader.track);
 }
 
 QPixmap CoverProvider::CoverProviderPrivate::processLoadResult(const CoverLoader& loader)

@@ -198,7 +198,7 @@ uint64_t PlayerControllerPrivate::nextPlaybackItemId()
 bool PlayerControllerPrivate::updateBitrate(int bitrate)
 {
     if(m_progressTracker.updateBitrate(bitrate)) {
-        emit m_self->bitrateChanged(bitrate);
+        Q_EMIT m_self->bitrateChanged(bitrate);
         return true;
     }
 
@@ -208,7 +208,7 @@ bool PlayerControllerPrivate::updateBitrate(int bitrate)
 void PlayerControllerPrivate::setStopAfterCurrentArmed(bool armed)
 {
     if(std::exchange(m_stopAfterCurrentArmed, armed) != armed) {
-        emit m_self->trackEndAutoTransitionsEnabledChanged(trackEndAutoTransitionsEnabled());
+        Q_EMIT m_self->trackEndAutoTransitionsEnabledChanged(trackEndAutoTransitionsEnabled());
     }
 
     if(!armed) {
@@ -369,21 +369,21 @@ void PlayerControllerPrivate::emitUpcomingTrackChangedIfNeeded()
     }
 
     m_lastUpcomingTrack = upcoming;
-    emit m_self->upcomingTrackChanged(upcoming);
+    Q_EMIT m_self->upcomingTrackChanged(upcoming);
 }
 
 void PlayerControllerPrivate::requestTrackChange(const Player::TrackChangeRequest& request)
 {
     const auto requestWithId
         = m_session.requestTrackChange(m_session.withPlaybackItemId(request, nextPlaybackItemId()));
-    emit m_self->trackChangeRequested(requestWithId);
+    Q_EMIT m_self->trackChangeRequested(requestWithId);
 }
 
 bool PlayerControllerPrivate::updatePlaystate(Player::PlayState state)
 {
     if(std::exchange(m_playState, state) != state) {
-        emit m_self->playStateChanged(state);
-        emit m_self->playbackSnapshotChanged(m_self->playbackSnapshot());
+        Q_EMIT m_self->playStateChanged(state);
+        Q_EMIT m_self->playbackSnapshotChanged(m_self->playbackSnapshot());
         return true;
     }
 
@@ -399,7 +399,7 @@ bool PlayerControllerPrivate::enterStoppedState(bool requestTransportStop)
     emitPositionSignals(m_progressTracker.resetPosition());
 
     if(requestTransportStop) {
-        emit m_self->transportStopRequested();
+        Q_EMIT m_self->transportStopRequested();
     }
 
     return true;
@@ -407,10 +407,10 @@ bool PlayerControllerPrivate::enterStoppedState(bool requestTransportStop)
 
 void PlayerControllerPrivate::emitPositionSignals(const PlaybackProgressTracker::PositionUpdate& update)
 {
-    emit m_self->positionChanged(update.positionMs);
+    Q_EMIT m_self->positionChanged(update.positionMs);
 
     if(update.positionSeconds.has_value()) {
-        emit m_self->positionChangedSeconds(*update.positionSeconds);
+        Q_EMIT m_self->positionChangedSeconds(*update.positionSeconds);
     }
 }
 
@@ -443,14 +443,14 @@ void PlayerControllerPrivate::updateCurrentTrackPlaylist(const UId& playlistId)
 {
     if(m_session.updateCurrentTrackPlaylist(playlistId)) {
         syncCommittedPlaylistTrack();
-        emit m_self->playlistTrackUpdated(m_session.currentTrack());
+        Q_EMIT m_self->playlistTrackUpdated(m_session.currentTrack());
     }
 }
 
 void PlayerControllerPrivate::updateCurrentTrackEntry(const UId& entryId)
 {
     if(m_session.updateCurrentTrackEntry(entryId)) {
-        emit m_self->playlistTrackUpdated(m_session.currentTrack());
+        Q_EMIT m_self->playlistTrackUpdated(m_session.currentTrack());
     }
 }
 
@@ -458,7 +458,7 @@ void PlayerControllerPrivate::updateCurrentTrackIndex(int index)
 {
     if(m_session.updateCurrentTrackIndex(index)) {
         syncCommittedPlaylistTrack();
-        emit m_self->playlistTrackUpdated(m_session.currentTrack());
+        Q_EMIT m_self->playlistTrackUpdated(m_session.currentTrack());
     }
 }
 
@@ -498,10 +498,10 @@ void PlayerControllerPrivate::syncPlaylistTrackState(const UId& playlistId)
         syncCommittedPlaylistTrack();
 
         if(currentTrackChanged) {
-            emit m_self->currentTrackUpdated(m_session.currentTrack().track);
+            Q_EMIT m_self->currentTrackUpdated(m_session.currentTrack().track);
         }
         if(playlistTrackChanged) {
-            emit m_self->playlistTrackUpdated(m_session.currentTrack());
+            Q_EMIT m_self->playlistTrackUpdated(m_session.currentTrack());
         }
     }
     else if(const auto& detachedTrack = m_session.detachedCurrentPlaylistTrack();
@@ -513,10 +513,10 @@ void PlayerControllerPrivate::syncPlaylistTrackState(const UId& playlistId)
             m_session.clearDetachedCurrentPlaylistTrack();
             syncCommittedPlaylistTrack();
             if(currentTrackChanged) {
-                emit m_self->currentTrackUpdated(m_session.currentTrack().track);
+                Q_EMIT m_self->currentTrackUpdated(m_session.currentTrack().track);
             }
             if(playlistTrackChanged) {
-                emit m_self->playlistTrackUpdated(m_session.currentTrack());
+                Q_EMIT m_self->playlistTrackUpdated(m_session.currentTrack());
             }
         }
     }
@@ -923,7 +923,7 @@ PlayerController::PlayerController(SettingsManager* settings, PlaylistHandler* p
     settings->subscribe<Settings::Core::PlayMode>(this, [this]() {
         const auto mode = static_cast<Playlist::PlayModes>(p->m_settings->value<Settings::Core::PlayMode>());
         if(std::exchange(p->m_playMode, mode) != mode) {
-            emit playModeChanged(mode);
+            Q_EMIT playModeChanged(mode);
             p->emitUpcomingTrackChangedIfNeeded();
         }
     });
@@ -984,7 +984,7 @@ void PlayerController::reset()
     p->updateBitrate(0);
 
     p->emitPositionSignals(p->m_progressTracker.resetPosition());
-    emit playbackSnapshotChanged(playbackSnapshot());
+    Q_EMIT playbackSnapshotChanged(playbackSnapshot());
     p->emitUpcomingTrackChangedIfNeeded();
 }
 
@@ -994,12 +994,12 @@ void PlayerController::play()
 
     if(!p->m_session.isIdle()) {
         if(p->updatePlaystate(Player::PlayState::Playing)) {
-            emit transportPlayRequested();
+            Q_EMIT transportPlayRequested();
         }
     }
     else {
         p->m_session.clearCurrentTrack();
-        emit playbackSnapshotChanged(playbackSnapshot());
+        Q_EMIT playbackSnapshotChanged(playbackSnapshot());
     }
 }
 
@@ -1021,7 +1021,7 @@ void PlayerController::playPause()
 void PlayerController::pause()
 {
     if(p->updatePlaystate(Player::PlayState::Paused)) {
-        emit transportPauseRequested();
+        Q_EMIT transportPauseRequested();
     }
 }
 
@@ -1220,7 +1220,7 @@ void PlayerController::setCurrentPosition(uint64_t ms)
                                    << "timeListened=" << p->m_progressTracker.timeListened()
                                    << "playedThreshold=" << p->m_progressTracker.playedThreshold()
                                    << "playCount=" << p->m_session.currentTrack().track.playCount();
-        emit trackPlayed(p->m_session.currentTrack().track);
+        Q_EMIT trackPlayed(p->m_session.currentTrack().track);
     }
 
     p->emitPositionSignals(update);
@@ -1239,7 +1239,7 @@ void PlayerController::restorePlaybackProgress(uint64_t positionMs, uint64_t tim
 void PlayerController::setBitrate(int bitrate)
 {
     if(p->updateBitrate(bitrate)) {
-        emit playbackSnapshotChanged(playbackSnapshot());
+        Q_EMIT playbackSnapshotChanged(playbackSnapshot());
     }
 }
 
@@ -1284,17 +1284,17 @@ void PlayerController::commitCurrentTrack(const Player::TrackChangeRequest& requ
     if(result.isQueueTrack) {
         if(const auto removedTrack = p->m_queue.removeFirstMatchingTrack(requestWithId.track);
            removedTrack.has_value()) {
-            emit tracksDequeued({*removedTrack});
+            Q_EMIT tracksDequeued({*removedTrack});
         }
     }
 
     p->m_settings->set<Settings::Core::ActiveTrack>(QVariant::fromValue(p->m_session.currentTrack().track));
     p->m_settings->set<Settings::Core::ActiveTrackId>(p->m_session.currentTrack().track.id());
 
-    emit currentTrackChanged(p->m_session.currentTrack().track);
-    emit playlistTrackChanged(p->m_session.currentTrack());
-    emit playlistTrackUpdated(p->m_session.currentTrack());
-    emit playbackSnapshotChanged(playbackSnapshot());
+    Q_EMIT currentTrackChanged(p->m_session.currentTrack().track);
+    Q_EMIT playlistTrackChanged(p->m_session.currentTrack());
+    Q_EMIT playlistTrackUpdated(p->m_session.currentTrack());
+    Q_EMIT playbackSnapshotChanged(playbackSnapshot());
     p->emitUpcomingTrackChangedIfNeeded();
 }
 
@@ -1311,7 +1311,7 @@ void PlayerController::commitCurrentTrack(const PlaylistTrack& track, const Play
 void PlayerController::updateCurrentTrack(const Track& track)
 {
     if(p->m_session.updateCurrentTrack(track)) {
-        emit currentTrackUpdated(track);
+        Q_EMIT currentTrackUpdated(track);
     }
 }
 
@@ -1389,7 +1389,7 @@ void PlayerController::seek(uint64_t ms)
     }
 
     if(p->m_progressTracker.markSeekPosition(ms)) {
-        emit positionMoved(ms);
+        Q_EMIT positionMoved(ms);
     }
 }
 
@@ -1535,7 +1535,7 @@ void PlayerController::queueTracks(const QueueTracks& tracks)
     const int index = p->m_queue.trackCount();
 
     p->m_queue.addTracks(tracksToAdd);
-    emit tracksQueued(tracksToAdd, index);
+    Q_EMIT tracksQueued(tracksToAdd, index);
     p->emitUpcomingTrackChangedIfNeeded();
 }
 
@@ -1577,7 +1577,7 @@ void PlayerController::queueTracksNext(const QueueTracks& tracks)
     }
 
     p->m_queue.addTracks(tracksToAdd, 0);
-    emit trackQueueChanged({}, p->m_queue.tracks());
+    Q_EMIT trackQueueChanged({}, p->m_queue.tracks());
     p->emitUpcomingTrackChangedIfNeeded();
 }
 
@@ -1613,7 +1613,7 @@ void PlayerController::dequeueTracks(const QueueTracks& tracks)
 
     const auto removedTracks = p->m_queue.removeTracks(tracks);
     if(!removedTracks.empty()) {
-        emit tracksDequeued(removedTracks);
+        Q_EMIT tracksDequeued(removedTracks);
         p->emitUpcomingTrackChangedIfNeeded();
     }
 }
@@ -1642,7 +1642,7 @@ void PlayerController::dequeueTracks(const std::vector<int>& indexes)
     p->m_queue.replaceTracks(tracks);
 
     if(!dequeuedIndexes.empty()) {
-        emit trackIndexesDequeued(dequeuedIndexes);
+        Q_EMIT trackIndexesDequeued(dequeuedIndexes);
         p->emitUpcomingTrackChangedIfNeeded();
     }
 }
@@ -1669,7 +1669,7 @@ void PlayerController::replaceTracks(const QueueTracks& tracks)
 
     p->m_queue.replaceTracks(tracks);
 
-    emit trackQueueChanged(removed, tracks);
+    Q_EMIT trackQueueChanged(removed, tracks);
     p->emitUpcomingTrackChangedIfNeeded();
 }
 
@@ -1677,7 +1677,7 @@ void PlayerController::clearPlaylistQueue(const UId& playlistId)
 {
     const auto removedTracks = p->m_queue.removePlaylistTracks(playlistId);
     if(!removedTracks.empty()) {
-        emit tracksDequeued(removedTracks);
+        Q_EMIT tracksDequeued(removedTracks);
         p->emitUpcomingTrackChangedIfNeeded();
     }
 }
@@ -1687,7 +1687,7 @@ void PlayerController::clearQueue()
     const auto removedTracks = p->m_queue.tracks();
     p->m_queue.clear();
     if(!removedTracks.empty()) {
-        emit tracksDequeued(removedTracks);
+        Q_EMIT tracksDequeued(removedTracks);
     }
     p->emitUpcomingTrackChangedIfNeeded();
 }

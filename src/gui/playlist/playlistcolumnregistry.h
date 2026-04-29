@@ -33,7 +33,7 @@ class PlaylistColumnRegistry : public ItemRegistry<PlaylistColumn>
 public:
     explicit PlaylistColumnRegistry(SettingsManager* settings, QObject* parent = nullptr);
 
-signals:
+Q_SIGNALS:
     void columnChanged(const Fooyin::PlaylistColumn& column);
 
 protected:

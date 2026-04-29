@@ -54,7 +54,7 @@ public:
 
     void run(InfoItem::Options options, const TrackList& tracks);
 
-signals:
+Q_SIGNALS:
     void populated(Fooyin::InfoDataPtr data);
 
 private:

@@ -82,7 +82,7 @@ public:
     static QImage readImage(QByteArray data);
     static QImage readImage(const QString& path, int requestedSize, const char* hintType);
 
-signals:
+Q_SIGNALS:
     void searchResult(const Fooyin::SearchResults& results);
 
 protected:

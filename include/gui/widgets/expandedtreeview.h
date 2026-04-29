@@ -116,7 +116,7 @@ public:
 
     void selectAll() override;
 
-signals:
+Q_SIGNALS:
     void viewModeChanged(Fooyin::ExpandedTreeView::ViewMode mode);
     void middleClicked(const QModelIndex& index);
 

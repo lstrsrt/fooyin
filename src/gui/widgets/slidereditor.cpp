@@ -137,7 +137,7 @@ void SliderEditor::sliderValueChanged(int value)
 {
     if(!m_updatingSlider) {
         setValue(value);
-        emit valueChanged(value);
+        Q_EMIT valueChanged(value);
     }
 }
 
@@ -145,7 +145,7 @@ void SliderEditor::spinBoxValueChanged(int value)
 {
     if(!m_updatingSpinBox) {
         m_slider->setValue(value);
-        emit valueChanged(value);
+        Q_EMIT valueChanged(value);
     }
 }
 } // namespace Fooyin

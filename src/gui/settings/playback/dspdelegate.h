@@ -35,7 +35,7 @@ public:
 
     explicit DspDelegate(QAbstractItemView* view, QObject* parent = nullptr);
 
-signals:
+Q_SIGNALS:
     void removeClicked(const QModelIndex& index);
     void configureClicked(const QModelIndex& index);
 

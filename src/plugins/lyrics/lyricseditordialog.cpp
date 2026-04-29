@@ -108,7 +108,7 @@ bool LyricsEditorDialog::apply()
         savedLyrics.isLocal = true;
     }
 
-    emit lyricsEdited(savedLyrics);
+    Q_EMIT lyricsEdited(savedLyrics);
     m_editor->setLyrics(savedLyrics);
     return true;
 }

@@ -35,7 +35,7 @@ class LibraryTreeGroupRegistry : public ItemRegistry<LibraryTreeGrouping>
 public:
     explicit LibraryTreeGroupRegistry(SettingsManager* settings, QObject* parent = nullptr);
 
-signals:
+Q_SIGNALS:
     void groupingChanged(const Fooyin::LibraryTreeGrouping& grouping);
 
 protected:

@@ -379,8 +379,8 @@ void InfoPopulator::run(InfoItem::Options options, const TrackList& tracks)
     p->addTrackNodes(options, tracks);
 
     if(mayRun()) {
-        emit populated(std::make_shared<InfoData>(std::move(p->m_data)));
-        emit finished();
+        Q_EMIT populated(std::make_shared<InfoData>(std::move(p->m_data)));
+        Q_EMIT finished();
     }
 
     p->m_data = {};

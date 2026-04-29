@@ -55,7 +55,7 @@ public:
     [[nodiscard]] bool isSeeking() const;
     void stopSeeking();
 
-signals:
+Q_SIGNALS:
     void sliderMoved(uint64_t pos);
     void seekForward();
     void seekBackward();

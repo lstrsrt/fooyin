@@ -39,7 +39,7 @@ public:
 
     [[nodiscard]] QSize sizeHint() const override;
 
-signals:
+Q_SIGNALS:
     void layoutChanged(const Fooyin::FyLayout& layout);
 
 protected:

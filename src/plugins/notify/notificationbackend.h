@@ -78,7 +78,7 @@ public:
     virtual void sendNotification(const NotificationRequest& request) = 0;
     virtual void resetIdentities()                                    = 0;
 
-signals:
+Q_SIGNALS:
     void actionInvoked(const QString& actionKey);
     void notificationSent(bool success);
 };

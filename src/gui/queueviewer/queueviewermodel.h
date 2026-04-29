@@ -67,7 +67,7 @@ public:
     void setShowIcon(bool showIcon);
     void setIconSize(const QSize& iconSize);
 
-signals:
+Q_SIGNALS:
     void queueTracksMoved(int row, const QList<int>& indexes);
     void tracksDropped(int row, const QMimeData* data);
     void playlistTracksDropped(int row, const QByteArray& data);

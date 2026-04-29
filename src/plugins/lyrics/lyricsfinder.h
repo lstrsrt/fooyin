@@ -63,7 +63,7 @@ public:
     void sort();
     void reset();
 
-signals:
+Q_SIGNALS:
     void lyricsFound(const Fooyin::Track& track, const Fooyin::Lyrics::Lyrics& lyrics);
     void lyricsSearchFinished(const Fooyin::Track& track, bool foundAny);
 

@@ -211,7 +211,7 @@ TrackList TagEditorEditor::applyChanges()
 
 void TagEditorEditor::updatePendingScopeState()
 {
-    emit pendingChangesStateChanged();
+    Q_EMIT pendingChangesStateChanged();
 }
 
 void TagEditorEditor::saveState() const

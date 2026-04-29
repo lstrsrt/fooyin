@@ -43,7 +43,7 @@ void LibraryMonitor::addWatcher(const LibraryInfo& library)
     QObject::connect(&m_watchers.at(library.id), &LibraryWatcher::libraryDirsChanged, this,
                      [this, watchPaths, library](const QStringList& dirs) {
                          std::ranges::for_each(dirs, watchPaths);
-                         emit directoriesChanged(library, dirs);
+                         Q_EMIT directoriesChanged(library, dirs);
                      });
 }
 
@@ -54,14 +54,14 @@ void LibraryMonitor::setupWatchers(const LibraryInfoMap& libraries, bool enabled
             if(library.status == LibraryInfo::Status::Monitoring) {
                 LibraryInfo updatedLibrary{library};
                 updatedLibrary.status = LibraryInfo::Status::Idle;
-                emit statusChanged(updatedLibrary);
+                Q_EMIT statusChanged(updatedLibrary);
             }
         }
         else if(!m_watchers.contains(library.id)) {
             addWatcher(library);
             LibraryInfo updatedLibrary{library};
             updatedLibrary.status = LibraryInfo::Status::Monitoring;
-            emit statusChanged(updatedLibrary);
+            Q_EMIT statusChanged(updatedLibrary);
         }
     }
 

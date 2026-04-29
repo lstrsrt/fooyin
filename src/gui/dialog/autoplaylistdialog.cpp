@@ -134,7 +134,7 @@ void AutoPlaylistDialog::accept()
         }
     }
 
-    emit playlistEdited(name, m_queryEdit->text(), m_sortQueryEdit->text(), m_forceSorted->isChecked());
+    Q_EMIT playlistEdited(name, m_queryEdit->text(), m_sortQueryEdit->text(), m_forceSorted->isChecked());
     QDialog::accept();
 }
 

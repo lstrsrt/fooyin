@@ -677,7 +677,7 @@ void EditableLayout::changeLayout(const FyLayout& layout)
         p->m_settings->set<Settings::Gui::LayoutEditing>(false);
     }
 
-    emit layoutChanged();
+    Q_EMIT layoutChanged();
 }
 
 void EditableLayout::saveLayout()

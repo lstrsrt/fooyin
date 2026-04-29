@@ -42,12 +42,12 @@ public:
     [[nodiscard]] Qt::TimerType timerType() const;
     void setTimerType(Qt::TimerType timerType);
 
-signals:
+Q_SIGNALS:
     void triggered();
     void timeoutChanged(int timeout);
     void timerTypeChanged(Qt::TimerType timerType);
 
-public slots:
+public Q_SLOTS:
     void throttle();
 
 protected:

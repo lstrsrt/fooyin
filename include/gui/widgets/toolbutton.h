@@ -38,7 +38,7 @@ public:
     void setMinimumIconSize(int size);
     void setMaximumIconSize(int size);
 
-signals:
+Q_SIGNALS:
     void entered();
 
 protected:

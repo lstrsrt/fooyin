@@ -59,7 +59,7 @@ SystemTrayIcon::SystemTrayIcon(ActionManager* actionManager, QObject* parent)
         switch(reason) {
             case(QSystemTrayIcon::DoubleClick):
             case(QSystemTrayIcon::Trigger):
-                emit toggleVisibility();
+                Q_EMIT toggleVisibility();
                 break;
             case(QSystemTrayIcon::MiddleClick):
                 playPause->trigger();

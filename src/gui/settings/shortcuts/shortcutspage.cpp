@@ -55,7 +55,7 @@ public:
         m_shortcut->setClearButtonEnabled(true);
 
         QObject::connect(m_shortcut, &QKeySequenceEdit::keySequenceChanged, this,
-                         [this](const QKeySequence& shortcut) { emit textChanged(shortcut.toString()); });
+                         [this](const QKeySequence& shortcut) { Q_EMIT textChanged(shortcut.toString()); });
     }
 
     [[nodiscard]] QString text() const override

@@ -70,14 +70,14 @@ void DirTree::mousePressEvent(QMouseEvent* event)
     const auto button = event->button();
 
     if(button == Qt::ForwardButton) {
-        emit forwardClicked();
+        Q_EMIT forwardClicked();
     }
     else if(button == Qt::BackButton) {
-        emit backClicked();
+        Q_EMIT backClicked();
     }
     else if(button == Qt::MiddleButton) {
         QTreeView::mousePressEvent(event);
-        emit middleClicked();
+        Q_EMIT middleClicked();
     }
     else {
         QTreeView::mousePressEvent(event);

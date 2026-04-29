@@ -110,7 +110,7 @@ int LibraryManager::addLibrary(const QString& path, const QString& name)
 
     if(id > 0) {
         LibraryInfo& info = p->m_libraries.emplace(id, LibraryInfo{libraryName, path, id}).first->second;
-        emit libraryAdded(info);
+        Q_EMIT libraryAdded(info);
         info.status = LibraryInfo::Status::Initialised;
         return id;
     }
@@ -125,13 +125,13 @@ bool LibraryManager::removeLibrary(int id)
     }
 
     const auto library = p->m_libraries.at(id);
-    emit libraryAboutToBeRemoved(library);
+    Q_EMIT libraryAboutToBeRemoved(library);
 
     if(p->m_libraryConnector.removeLibrary(id)) {
         eraseLibrary(p->m_libraries, id);
 
         const auto tracksRemoved = p->m_trackConnector.deleteLibraryTracks(id);
-        emit libraryRemoved(library, tracksRemoved);
+        Q_EMIT libraryRemoved(library, tracksRemoved);
 
         return true;
     }
@@ -149,7 +149,7 @@ bool LibraryManager::renameLibrary(int id, const QString& name)
 
     if(p->m_libraryConnector.renameLibrary(id, libraryName)) {
         p->m_libraries.at(id).name = libraryName;
-        emit libraryRenamed(p->m_libraries.at(id));
+        Q_EMIT libraryRenamed(p->m_libraries.at(id));
         return true;
     }
 
@@ -162,7 +162,7 @@ void LibraryManager::updateLibraryStatus(const LibraryInfo& library)
         return;
     }
     p->m_libraries.at(library.id).status = library.status;
-    emit libraryStatusChanged(library);
+    Q_EMIT libraryStatusChanged(library);
 }
 
 bool LibraryManager::hasLibrary() const

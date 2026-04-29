@@ -35,7 +35,7 @@ public:
         , token{this->backend ? this->backend->registerSession() : 0}
     {
         if(this->service) {
-            emit this->service->sessionActivityChanged();
+            Q_EMIT this->service->sessionActivityChanged();
         }
     }
 
@@ -45,7 +45,7 @@ public:
             (void)backend->unregisterSession(token);
         }
         if(service) {
-            emit service->sessionActivityChanged();
+            Q_EMIT service->sessionActivityChanged();
         }
     }
 

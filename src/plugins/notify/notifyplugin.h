@@ -56,7 +56,7 @@ public:
     bool supportsPlaybackControls();
     bool supportsTimeout();
 
-private slots:
+private Q_SLOTS:
     void playStateChanged(Fooyin::Player::PlayState state);
 
 private:

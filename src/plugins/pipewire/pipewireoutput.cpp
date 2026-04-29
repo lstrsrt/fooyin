@@ -818,10 +818,10 @@ void PipeWireOutput::handleStateChanged(void* userdata, pw_stream_state old, pw_
     if(state == PW_STREAM_STATE_ERROR) {
         const QString message = error ? QString::fromUtf8(error) : u"Unknown PipeWire stream error"_s;
         qCWarning(PIPEWIRE) << "Stream entered error state:" << message;
-        QMetaObject::invokeMethod(self, [self]() { emit self->stateChanged(State::Error); });
+        QMetaObject::invokeMethod(self, [self]() { Q_EMIT self->stateChanged(State::Error); });
     }
     else if(state == PW_STREAM_STATE_UNCONNECTED) {
-        QMetaObject::invokeMethod(self, [self]() { emit self->stateChanged(State::Disconnected); });
+        QMetaObject::invokeMethod(self, [self]() { Q_EMIT self->stateChanged(State::Disconnected); });
     }
     else if(old == PW_STREAM_STATE_UNCONNECTED && state == PW_STREAM_STATE_CONNECTING) {
         // TODO: Handle reconnections

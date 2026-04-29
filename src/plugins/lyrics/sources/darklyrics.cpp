@@ -70,7 +70,7 @@ void DarkLyrics::search(const SearchParams& params)
     QString album  = normalise(params.album);
 
     if(artist.isEmpty() || album.isEmpty()) {
-        emit searchResult({});
+        Q_EMIT searchResult({});
         return;
     }
 
@@ -86,7 +86,7 @@ void DarkLyrics::search(const SearchParams& params)
 void DarkLyrics::handleLyricReply()
 {
     if(reply()->error() != QNetworkReply::NoError) {
-        emit searchResult({});
+        Q_EMIT searchResult({});
         resetReply();
         return;
     }
@@ -134,11 +134,11 @@ void DarkLyrics::handleLyricReply()
 
     if(reader.hasError()) {
         qCDebug(LYRICS) << "Error parsing HTML:" << reader.errorString();
-        emit searchResult({});
+        Q_EMIT searchResult({});
     }
 
     if(lyricsText == "[Instrumental]"_L1) {
-        emit searchResult({});
+        Q_EMIT searchResult({});
         return;
     }
 
@@ -148,6 +148,6 @@ void DarkLyrics::handleLyricReply()
     lyrics.artist = m_params.artist;
     lyrics.data   = lyricsText;
 
-    emit searchResult({lyrics});
+    Q_EMIT searchResult({lyrics});
 }
 } // namespace Fooyin::Lyrics

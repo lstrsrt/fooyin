@@ -151,7 +151,7 @@ void PortalNotificationBackend::portalActionInvoked(const QString& id, const QSt
     }
 
     clearActiveNotification();
-    emit actionInvoked(action);
+    Q_EMIT actionInvoked(action);
 }
 
 void PortalNotificationBackend::notificationCallFinished(QDBusPendingCallWatcher* watcher)
@@ -161,10 +161,10 @@ void PortalNotificationBackend::notificationCallFinished(QDBusPendingCallWatcher
         qCWarning(NOTIFY) << "Failed to send portal notification:" << reply.error().message();
         m_notificationExpiryTimer.stop();
         m_notificationActive = false;
-        emit notificationSent(false);
+        Q_EMIT notificationSent(false);
     }
     else {
-        emit notificationSent(true);
+        Q_EMIT notificationSent(true);
     }
 
     watcher->deleteLater();

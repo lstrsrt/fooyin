@@ -47,7 +47,7 @@ void LibraryWatcher::timerEvent(QTimerEvent* event)
 
         const QStringList paths{m_dirs.cbegin(), m_dirs.cend()};
         m_dirs.clear();
-        emit libraryDirsChanged(paths);
+        Q_EMIT libraryDirsChanged(paths);
     }
     QFileSystemWatcher::timerEvent(event);
 }

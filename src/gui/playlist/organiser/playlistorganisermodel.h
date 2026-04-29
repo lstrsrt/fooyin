@@ -91,7 +91,7 @@ public:
 
     void removeItems(const QModelIndexList& indexes);
 
-signals:
+Q_SIGNALS:
     void filesDroppedOnPlaylist(const QList<QUrl>& urls, const Fooyin::UId& id);
     void filesDroppedOnGroup(const QList<QUrl>& urls, const QString& group, int index);
     void tracksDroppedOnPlaylist(const std::vector<int>& trackIds, const Fooyin::UId& id);

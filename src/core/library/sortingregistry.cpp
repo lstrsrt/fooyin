@@ -27,7 +27,7 @@ SortingRegistry::SortingRegistry(SettingsManager* settings, QObject* parent)
 {
     QObject::connect(this, &RegistryBase::itemChanged, this, [this](int id) {
         if(const auto sort = itemById(id)) {
-            emit sortChanged(sort.value());
+            Q_EMIT sortChanged(sort.value());
         }
     });
 

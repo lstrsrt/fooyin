@@ -45,10 +45,10 @@ void DspDelegate::buttonWasClicked(const QModelIndex& index, int buttonId)
 {
     switch(buttonId) {
         case(Button::Remove):
-            emit removeClicked(index);
+            Q_EMIT removeClicked(index);
             break;
         case(Button::Configure):
-            emit configureClicked(index);
+            Q_EMIT configureClicked(index);
             break;
     }
 }

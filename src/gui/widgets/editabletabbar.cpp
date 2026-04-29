@@ -53,7 +53,7 @@ void EditableTabBar::showEditor(int index)
             const QString text = m_lineEdit->text();
             if(text != tabText(index)) {
                 setTabText(index, m_lineEdit->text());
-                emit tabTextChanged(index, m_lineEdit->text());
+                Q_EMIT tabTextChanged(index, m_lineEdit->text());
             }
             m_lineEdit->close();
         });
@@ -74,7 +74,7 @@ void EditableTabBar::showEditor(int index)
 
         if(ok && !text.isEmpty() && text != currentText) {
             setTabText(index, text);
-            emit tabTextChanged(index, text);
+            Q_EMIT tabTextChanged(index, text);
         }
     }
 }
@@ -169,7 +169,7 @@ void EditableTabBar::mouseReleaseEvent(QMouseEvent* event)
         const QPoint pos = event->position().toPoint();
         const int index  = tabAt(pos);
         if(index >= 0 || rect().contains(pos)) {
-            emit middleClicked(index);
+            Q_EMIT middleClicked(index);
         }
         event->accept();
         return;
@@ -192,7 +192,7 @@ void EditableTabBar::wheelEvent(QWheelEvent* event)
 
     if(currentIndex() > 0 && currentIndex() < count() - 1) {
         QTabBar::wheelEvent(event);
-        emit tabBarClicked(currentIndex());
+        Q_EMIT tabBarClicked(currentIndex());
         return;
     }
 
@@ -224,7 +224,7 @@ void EditableTabBar::wheelEvent(QWheelEvent* event)
     if(isTabEnabled(proposedIndex) && isTabVisible(proposedIndex)) {
         if(proposedIndex != currentIndex()) {
             setCurrentIndex(proposedIndex);
-            emit tabBarClicked(currentIndex());
+            Q_EMIT tabBarClicked(currentIndex());
             event->accept();
         }
     }

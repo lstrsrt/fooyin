@@ -53,7 +53,7 @@ public:
     void apply() override;
     void updateTracks(const TrackList& tracks) override;
 
-signals:
+Q_SIGNALS:
     void trackMetadataChanged(const Fooyin::TrackList& tracks);
     void trackStatsChanged(const Fooyin::TrackList& tracks);
 

@@ -146,7 +146,7 @@ bool OutputDevicesModel::setData(const QModelIndex& index, const QVariant& value
                     return false;
                 }
                 row.enabled = enabled;
-                emit dataChanged(index, index, {Qt::CheckStateRole});
+                Q_EMIT dataChanged(index, index, {Qt::CheckStateRole});
                 return true;
             }
             break;
@@ -157,7 +157,7 @@ bool OutputDevicesModel::setData(const QModelIndex& index, const QVariant& value
                     return false;
                 }
                 row.dspPresetId = dspPresetId;
-                emit dataChanged(index, index, {Qt::DisplayRole, Qt::EditRole, DspPresetIdRole});
+                Q_EMIT dataChanged(index, index, {Qt::DisplayRole, Qt::EditRole, DspPresetIdRole});
                 return true;
             }
             break;
@@ -170,7 +170,7 @@ bool OutputDevicesModel::setData(const QModelIndex& index, const QVariant& value
 
                 row.bitDepth = option.bitDepth;
                 row.dither   = row.bitDepth == SampleFormat::S16 && option.dither;
-                emit dataChanged(index, index, {Qt::DisplayRole, BitdepthSelectionRole, BitDepthRole, DitherRole});
+                Q_EMIT dataChanged(index, index, {Qt::DisplayRole, BitdepthSelectionRole, BitDepthRole, DitherRole});
                 return true;
             }
             if(role == BitDepthRole) {
@@ -181,7 +181,7 @@ bool OutputDevicesModel::setData(const QModelIndex& index, const QVariant& value
                     row.dither = false;
                 }
                 if(changed) {
-                    emit dataChanged(index, index, {Qt::DisplayRole, BitDepthRole, DitherRole});
+                    Q_EMIT dataChanged(index, index, {Qt::DisplayRole, BitDepthRole, DitherRole});
                 }
                 return changed;
             }
@@ -191,7 +191,7 @@ bool OutputDevicesModel::setData(const QModelIndex& index, const QVariant& value
                     return false;
                 }
                 row.dither = dither;
-                emit dataChanged(index, index, {Qt::DisplayRole, DitherRole});
+                Q_EMIT dataChanged(index, index, {Qt::DisplayRole, DitherRole});
                 return true;
             }
             break;
@@ -243,8 +243,8 @@ bool OutputDevicesModel::setAllEnabled(bool enabled)
     }
 
     if(changed && !m_rows.empty()) {
-        emit dataChanged(index(0, DeviceColumn), index(static_cast<int>(m_rows.size()) - 1, DeviceColumn),
-                         {Qt::CheckStateRole});
+        Q_EMIT dataChanged(index(0, DeviceColumn), index(static_cast<int>(m_rows.size()) - 1, DeviceColumn),
+                           {Qt::CheckStateRole});
     }
 
     return changed;

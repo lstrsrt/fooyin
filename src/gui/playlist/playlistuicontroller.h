@@ -42,7 +42,7 @@ public:
     void focusPlaylist();
     void filterCurrentPlaylist(const PlaylistTrackList& tracks);
 
-signals:
+Q_SIGNALS:
     void showCurrentTrack();
     void selectTracks(const Fooyin::TrackIds& ids);
     void filterTracks(const Fooyin::PlaylistTrackList& tracks);

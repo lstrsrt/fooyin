@@ -49,7 +49,7 @@ public:
 
     void changeSearch(const Id& id, const SearchRequest& request);
 
-signals:
+Q_SIGNALS:
     void connectionChanged(const Fooyin::Id& id);
 
 private:

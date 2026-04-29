@@ -95,7 +95,7 @@ bool LyricsPropertiesTab::commitPendingChanges()
         if(const auto updatedTrack = m_lyricsSaver->updateLyricsTag(draft->workingLyrics, m_track)) {
             m_track = *updatedTrack;
             m_pendingTagTracks.emplace(m_currentTrackKey, *updatedTrack);
-            emit tracksChanged({*updatedTrack});
+            Q_EMIT tracksChanged({*updatedTrack});
         }
     }
     else {
@@ -104,7 +104,7 @@ bool LyricsPropertiesTab::commitPendingChanges()
         if(const auto restoredTrack = m_lyricsSaver->restoreLyricsTags(draft->originalTagTrack, m_track);
            restoredTrack != m_track) {
             m_track = restoredTrack;
-            emit tracksChanged({restoredTrack});
+            Q_EMIT tracksChanged({restoredTrack});
         }
     }
 
@@ -154,7 +154,7 @@ void LyricsPropertiesTab::apply()
     if(appliedLyrics.isValid()) {
         appliedLyrics.isLocal = true;
     }
-    emit lyricsEdited(appliedLyrics);
+    Q_EMIT lyricsEdited(appliedLyrics);
 }
 
 void LyricsPropertiesTab::finish()
@@ -287,7 +287,7 @@ void LyricsPropertiesTab::updatePendingState()
     }
 
     m_hasPendingScopeChanges = hasPendingChanges;
-    emit pendingChangesStateChanged();
+    Q_EMIT pendingChangesStateChanged();
 }
 
 void LyricsPropertiesTab::setupConnections()

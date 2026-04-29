@@ -196,7 +196,7 @@ void SearchControllerPrivate::addOrRemoveConnection(const Id& sourceId, FyWidget
 
     updateAllOverlays();
     updateDialog(sourceId);
-    emit m_self->connectionChanged(sourceId);
+    Q_EMIT m_self->connectionChanged(sourceId);
 }
 
 void SearchControllerPrivate::setupWidgetOverlay(const Id& sourceId, FyWidget* widget)

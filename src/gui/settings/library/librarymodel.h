@@ -73,7 +73,7 @@ public:
     void addPendingRow() override;
     void removePendingRow() override;
 
-signals:
+Q_SIGNALS:
     void requestAddLibrary();
 
 private:

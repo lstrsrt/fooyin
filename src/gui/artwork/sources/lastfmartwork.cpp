@@ -131,7 +131,7 @@ void LastFmArtwork::handleSearchReply()
     QJsonObject obj;
     if(!getJsonFromReply(reply(), &obj)) {
         resetReply();
-        emit searchResult({});
+        Q_EMIT searchResult({});
         return;
     }
 
@@ -144,16 +144,16 @@ void LastFmArtwork::handleSearchReply()
     else if(obj.contains("error"_L1) && obj.contains("message"_L1)) {
         const QString error = obj.value("error"_L1).toString();
         qCDebug(ARTWORK) << "Error:" << error;
-        emit searchResult({});
+        Q_EMIT searchResult({});
         return;
     }
     else {
-        emit searchResult({});
+        Q_EMIT searchResult({});
         return;
     }
 
     if(results.empty()) {
-        emit searchResult({});
+        Q_EMIT searchResult({});
         return;
     }
 
@@ -165,7 +165,7 @@ void LastFmArtwork::handleSearchReply()
         }
         else {
             qCWarning(ARTWORK) << "Reply from server is missing albummatches";
-            emit searchResult({});
+            Q_EMIT searchResult({});
             return;
         }
     }
@@ -175,19 +175,19 @@ void LastFmArtwork::handleSearchReply()
         }
         else {
             qCWarning(ARTWORK) << "Reply from server is missing trackmatches";
-            emit searchResult({});
+            Q_EMIT searchResult({});
             return;
         }
     }
 
     if(match.empty()) {
-        emit searchResult({});
+        Q_EMIT searchResult({});
         return;
     }
 
     if(!match.contains(m_queryType)) {
         qCWarning(ARTWORK) << "Json is missing " << m_queryType;
-        emit searchResult({});
+        Q_EMIT searchResult({});
         return;
     }
 
@@ -248,6 +248,6 @@ void LastFmArtwork::handleSearchReply()
         searchResults.emplace_back(QStringList{artist}, album, lastCoverUrl);
     }
 
-    emit searchResult(searchResults);
+    Q_EMIT searchResult(searchResults);
 }
 } // namespace Fooyin

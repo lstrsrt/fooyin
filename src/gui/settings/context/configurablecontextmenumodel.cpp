@@ -405,7 +405,7 @@ bool ConfigurableContextMenuModel::setData(const QModelIndex& index, const QVari
 
     for(auto* parentItem = item->parent(); parentItem && parentItem != rootItem(); parentItem = parentItem->parent()) {
         const QModelIndex idx = indexOfItem(parentItem);
-        emit dataChanged(idx, idx, {Qt::CheckStateRole});
+        Q_EMIT dataChanged(idx, idx, {Qt::CheckStateRole});
     }
 
     m_updating = false;
@@ -580,7 +580,7 @@ void ConfigurableContextMenuModel::emitDataChangedRecursive(ConfigurableContextM
     }
 
     const QModelIndex idx = indexOfItem(item);
-    emit dataChanged(idx, idx, {Qt::CheckStateRole});
+    Q_EMIT dataChanged(idx, idx, {Qt::CheckStateRole});
 
     for(const auto& child : item->children()) {
         if(child->isSeparator()) {

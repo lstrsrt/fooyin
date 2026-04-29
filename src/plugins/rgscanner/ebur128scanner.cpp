@@ -77,7 +77,7 @@ void Ebur128Scanner::closeThread()
             cancelFuture(watcher);
         }
 
-        emit closed();
+        Q_EMIT closed();
     });
 }
 
@@ -94,7 +94,7 @@ void Ebur128Scanner::calculatePerTrack(const TrackList& tracks, bool truePeak)
 
     QObject::connect(m_watcher, &QFutureWatcher<void>::progressValueChanged, this, [this](const int val) {
         if(val >= 0 && std::cmp_less(val, m_tracks.size())) {
-            emit startingCalculation(m_tracks.at(val).prettyFilepath());
+            Q_EMIT startingCalculation(m_tracks.at(val).prettyFilepath());
         }
     });
 
@@ -106,10 +106,10 @@ void Ebur128Scanner::calculatePerTrack(const TrackList& tracks, bool truePeak)
     future.then(this, [this]() {
         if(mayRun()) {
             qCDebug(EBUR128) << "Finished calculating RG for" << m_scannedTracks.size() << "tracks";
-            emit calculationFinished(m_scannedTracks);
+            Q_EMIT calculationFinished(m_scannedTracks);
         }
         if(m_runningWatchers.fetch_sub(1, std::memory_order_release) <= 1) {
-            emit finished();
+            Q_EMIT finished();
         }
         setState(Idle);
     });
@@ -128,7 +128,7 @@ void Ebur128Scanner::calculateAsAlbum(const TrackList& tracks, bool truePeak)
 
     QObject::connect(m_watcher, &QFutureWatcher<void>::progressValueChanged, this, [this](const int val) {
         if(val >= 0 && std::cmp_less(val, m_tracks.size())) {
-            emit startingCalculation(m_tracks.at(val).prettyFilepath());
+            Q_EMIT startingCalculation(m_tracks.at(val).prettyFilepath());
         }
     });
 
@@ -165,10 +165,10 @@ void Ebur128Scanner::calculateAsAlbum(const TrackList& tracks, bool truePeak)
 
         if(mayRun()) {
             qCDebug(EBUR128) << "Finished calculating RG for" << m_scannedTracks.size() << "tracks";
-            emit calculationFinished(m_scannedTracks);
+            Q_EMIT calculationFinished(m_scannedTracks);
         }
         if(m_runningWatchers.fetch_sub(1, std::memory_order_release) <= 1) {
-            emit finished();
+            Q_EMIT finished();
         }
         setState(Idle);
     });
@@ -274,10 +274,10 @@ void Ebur128Scanner::scanAlbum(bool truePeak)
                 m_scannedTracks.insert(m_scannedTracks.end(), tracks.cbegin(), tracks.cend());
             }
             qCDebug(EBUR128) << "Finished calculating RG for" << m_scannedTracks.size() << "tracks";
-            emit calculationFinished(m_scannedTracks);
+            Q_EMIT calculationFinished(m_scannedTracks);
         }
         if(m_runningWatchers.fetch_sub(1, std::memory_order_release) <= 1) {
-            emit finished();
+            Q_EMIT finished();
         }
         setState(Idle);
         return;
@@ -294,7 +294,7 @@ void Ebur128Scanner::scanAlbum(bool truePeak)
 
     QObject::connect(albumWatcher, &QFutureWatcher<void>::progressValueChanged, this, [this](const int val) {
         if(val >= 0 && std::cmp_less(val, m_tracks.size())) {
-            emit startingCalculation(m_tracks.at(val).prettyFilepath());
+            Q_EMIT startingCalculation(m_tracks.at(val).prettyFilepath());
         }
     });
 

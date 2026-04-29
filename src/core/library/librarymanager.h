@@ -55,7 +55,7 @@ public:
     [[nodiscard]] std::optional<LibraryInfo> findLibraryByPath(const QString& path) const;
     [[nodiscard]] std::optional<LibraryInfo> libraryInfo(int id) const;
 
-signals:
+Q_SIGNALS:
     void libraryAdded(const Fooyin::LibraryInfo& library);
     void libraryAboutToBeRemoved(const Fooyin::LibraryInfo& library);
     void libraryRemoved(const Fooyin::LibraryInfo& library, const std::set<int>& tracksRemoved);

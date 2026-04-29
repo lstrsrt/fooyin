@@ -138,7 +138,7 @@ public:
     void savePlaylists();
     void savePlaylist(const UId& id);
 
-signals:
+Q_SIGNALS:
     void playlistsPopulated();
     void playlistAdded(Fooyin::Playlist* playlist);
     void playlistRemoved(Fooyin::Playlist* playlist);

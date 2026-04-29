@@ -201,7 +201,7 @@ void AudioClock::timerEvent(QTimerEvent* event)
         }
         m_lastSyncTimerTick    = now;
         m_hasLastSyncTimerTick = true;
-        emit requestSyncPosition();
+        Q_EMIT requestSyncPosition();
         return;
     }
 
@@ -275,7 +275,7 @@ void AudioClock::emitPosition(uint64_t positionMs)
         return;
     }
 
-    emit positionChanged(positionMs, m_generation);
+    Q_EMIT positionChanged(positionMs, m_generation);
 }
 
 void AudioClock::resetClock()

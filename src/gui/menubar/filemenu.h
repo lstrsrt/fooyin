@@ -32,7 +32,7 @@ class FileMenu : public QObject
 public:
     explicit FileMenu(ActionManager* actionManager, SettingsManager* settings, QObject* parent = nullptr);
 
-signals:
+Q_SIGNALS:
     void requestExit();
     void requestAddFiles();
     void requestAddFolders();

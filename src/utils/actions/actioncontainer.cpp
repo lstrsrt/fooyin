@@ -221,7 +221,7 @@ void ActionContainer::addAction(Command* action, const Id& group)
         return;
     }
     groups.at(groupIt - groups.cbegin()).items.push_back(action);
-    QObject::connect(action, &Command::activeStateChanged, this, [this]() { emit requestUpdate(this); });
+    QObject::connect(action, &Command::activeStateChanged, this, [this]() { Q_EMIT requestUpdate(this); });
     QObject::connect(action, &QObject::destroyed, p.get(), &ActionContainerPrivate::itemDestroyed);
 
     QAction* beforeAction = p->determineInsertionLocation(groupIt);

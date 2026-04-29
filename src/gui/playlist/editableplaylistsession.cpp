@@ -497,7 +497,7 @@ void EditablePlaylistSession::changePlaylist(PlaylistWidgetSessionHost& sessionH
     else {
         setSearch(currentSearch);
     }
-    emit widget->changeSearch(currentSearch);
+    Q_EMIT widget->changeSearch(currentSearch);
 
     if(currentSearch.isEmpty()) {
         host.resetModelThrottled();
@@ -730,7 +730,7 @@ void EditablePlaylistSession::handleTracksChanged(PlaylistWidgetSessionHost& ses
     const PlaylistViewState viewState = playlistViewState(host, currentPlaylist);
     host.playlistController()->setSearch(currentPlaylist, {});
     clearSearch();
-    emit widget->changeSearch({});
+    Q_EMIT widget->changeSearch({});
 
     auto restoreViewState = [&host, currentPlaylist, viewState, allNew](int currentIndex,
                                                                         const std::vector<int>& selectedIndexes) {

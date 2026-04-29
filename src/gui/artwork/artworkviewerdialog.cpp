@@ -59,7 +59,7 @@ public:
     void zoomIn();
     void zoomOut();
 
-signals:
+Q_SIGNALS:
     void manualZoomPerformed();
 
 protected:
@@ -129,7 +129,7 @@ void ArtworkView::actualSize()
     resetTransform();
 
     if(wasFitToWindow || !qFuzzyCompare(oldScale, transform().m11())) {
-        emit manualZoomPerformed();
+        Q_EMIT manualZoomPerformed();
     }
 }
 
@@ -176,7 +176,7 @@ void ArtworkView::applyManualScale(double factor)
     scale(factor, factor);
 
     if(wasFitToWindow || !qFuzzyCompare(oldScale, transform().m11())) {
-        emit manualZoomPerformed();
+        Q_EMIT manualZoomPerformed();
     }
 }
 

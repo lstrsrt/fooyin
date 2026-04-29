@@ -65,7 +65,7 @@ public:
     static QString lyricsToLrc(const Lyrics& lyrics, const SaveOptions& options);
     static void lyricsToLrc(const Lyrics& lyrics, QIODevice* device, const SaveOptions& options);
 
-signals:
+Q_SIGNALS:
     void lyricsSaved(const Fooyin::Track& track, const Fooyin::Lyrics::Lyrics& lyrics);
 
 protected:

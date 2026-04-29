@@ -122,7 +122,7 @@ void LyricsSearchModel::updateLyrics(int row, const Lyrics& lyrics)
     m_results[static_cast<size_t>(row)] = lyrics;
     const QModelIndex first             = index(row, 0);
     const QModelIndex last              = index(row, columnCount() - 1);
-    emit dataChanged(first, last);
+    Q_EMIT dataChanged(first, last);
 }
 
 const Lyrics* LyricsSearchModel::lyricsAt(int row) const

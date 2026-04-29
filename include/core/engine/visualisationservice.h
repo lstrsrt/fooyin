@@ -182,7 +182,7 @@ public:
     //! Create a pull-based session for widget visualisation queries.
     [[nodiscard]] VisualisationSessionPtr createSession();
 
-signals:
+Q_SIGNALS:
     //! Emitted when session registration changes and engine analysis relays may need updating.
     void sessionActivityChanged();
 

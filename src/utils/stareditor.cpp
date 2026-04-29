@@ -126,7 +126,7 @@ void StarEditor::mousePressEvent(QMouseEvent* event)
 
 void StarEditor::mouseReleaseEvent(QMouseEvent* /*event*/)
 {
-    emit editingFinished();
+    Q_EMIT editingFinished();
 }
 
 void StarEditor::keyPressEvent(QKeyEvent* event)
@@ -135,7 +135,7 @@ void StarEditor::keyPressEvent(QKeyEvent* event)
     const int key      = event->key();
 
     if(key == Qt::Key_Return || key == Qt::Key_Enter || key == Qt::Key_Escape) {
-        emit editingFinished();
+        Q_EMIT editingFinished();
     }
     else if(event->key() == Qt::Key_Left) {
         if(rating > 0) {

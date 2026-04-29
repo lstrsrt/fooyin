@@ -148,7 +148,7 @@ bool DspModel::setData(const QModelIndex& index, const QVariant& value, int role
         return false;
     }
 
-    emit dataChanged(index, index, {Qt::DisplayRole, Qt::CheckStateRole, Role::Enabled, Role::Dsp});
+    Q_EMIT dataChanged(index, index, {Qt::DisplayRole, Qt::CheckStateRole, Role::Enabled, Role::Dsp});
     return true;
 }
 

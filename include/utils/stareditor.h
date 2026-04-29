@@ -42,7 +42,7 @@ public:
 
     [[nodiscard]] QSize sizeHint() const override;
 
-signals:
+Q_SIGNALS:
     void editingFinished();
 
 protected:

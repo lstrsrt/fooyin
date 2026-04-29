@@ -204,8 +204,8 @@ void ReplayGainPopulator::run(const TrackList& tracks)
     }
 
     if(mayRun()) {
-        emit populated(p->m_data);
-        emit finished();
+        Q_EMIT populated(p->m_data);
+        Q_EMIT finished();
     }
 
     p->reset();

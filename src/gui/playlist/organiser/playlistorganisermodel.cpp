@@ -129,7 +129,7 @@ PlaylistOrganiserModel::PlaylistOrganiserModel(PlaylistHandler* playlistHandler,
     auto playlistChanged = [this](const QString& key, Qt::ItemDataRole role) {
         if(m_nodes.contains(key)) {
             const QModelIndex index = indexOfItem(&m_nodes.at(key));
-            emit dataChanged(index, index, {role});
+            Q_EMIT dataChanged(index, index, {role});
         }
     };
 
@@ -376,8 +376,8 @@ void PlaylistOrganiserModel::playlistRenamed(Playlist* playlist)
         item->setTitle(playlist->name());
 
         const QModelIndex index = indexForPlaylist(playlist);
-        emit dataChanged(index, index,
-                         {PlaylistOrganiserItem::RichText, PlaylistOrganiserItem::RichRightText, Qt::SizeHintRole});
+        Q_EMIT dataChanged(index, index,
+                           {PlaylistOrganiserItem::RichText, PlaylistOrganiserItem::RichRightText, Qt::SizeHintRole});
     }
 }
 
@@ -406,9 +406,9 @@ void PlaylistOrganiserModel::playlistRemoved(Playlist* playlist)
 
 void PlaylistOrganiserModel::sortAllPlaylists(const SortOrder order)
 {
-    emit layoutAboutToBeChanged();
+    Q_EMIT layoutAboutToBeChanged();
     sortPlaylists(rootItem(), order);
-    emit layoutChanged();
+    Q_EMIT layoutChanged();
 }
 
 void PlaylistOrganiserModel::sortGroupPlaylists(const QModelIndexList& indices, const SortOrder order)
@@ -423,9 +423,9 @@ void PlaylistOrganiserModel::sortGroupPlaylists(const QModelIndexList& indices, 
         return;
     }
 
-    emit layoutAboutToBeChanged();
+    Q_EMIT layoutAboutToBeChanged();
     sortPlaylists(sortGroup, order);
-    emit layoutChanged();
+    Q_EMIT layoutChanged();
 }
 
 void PlaylistOrganiserModel::sortPlaylists(PlaylistOrganiserItem* parent, const SortOrder order)
@@ -488,7 +488,7 @@ void PlaylistOrganiserModel::refreshData(const QList<int>& roles, PlaylistOrgani
 
     if(parent->childCount() > 0) {
         const QModelIndex parentIndex = indexOfItem(parent);
-        emit dataChanged(index(0, 0, parentIndex), index(parent->childCount() - 1, 0, parentIndex), roles);
+        Q_EMIT dataChanged(index(0, 0, parentIndex), index(parent->childCount() - 1, 0, parentIndex), roles);
 
         for(int row{0}; row < parent->childCount(); ++row) {
             if(auto* child = parent->child(row)) {
@@ -502,10 +502,10 @@ void PlaylistOrganiserModel::refreshPlaylist(Playlist* playlist, const QList<int
 {
     const QModelIndex index = indexForPlaylist(playlist);
     if(index.isValid()) {
-        emit dataChanged(index, index,
-                         roles.isEmpty() ? QList<int>{PlaylistOrganiserItem::RichText,
-                                                      PlaylistOrganiserItem::RichRightText, Qt::SizeHintRole}
-                                         : roles);
+        Q_EMIT dataChanged(index, index,
+                           roles.isEmpty() ? QList<int>{PlaylistOrganiserItem::RichText,
+                                                        PlaylistOrganiserItem::RichRightText, Qt::SizeHintRole}
+                                           : roles);
     }
 }
 
@@ -659,8 +659,8 @@ bool PlaylistOrganiserModel::setData(const QModelIndex& index, const QVariant& v
         }
     }
 
-    emit dataChanged(index, index,
-                     {PlaylistOrganiserItem::RichText, PlaylistOrganiserItem::RichRightText, Qt::SizeHintRole});
+    Q_EMIT dataChanged(index, index,
+                       {PlaylistOrganiserItem::RichText, PlaylistOrganiserItem::RichRightText, Qt::SizeHintRole});
 
     return true;
 }
@@ -722,10 +722,10 @@ bool PlaylistOrganiserModel::dropMimeData(const QMimeData* data, Qt::DropAction 
 
         if(auto* item = itemForIndex(parent)) {
             if(item->type() == PlaylistOrganiserItem::PlaylistItem) {
-                emit tracksDroppedOnPlaylist(ids, item->playlist()->id());
+                Q_EMIT tracksDroppedOnPlaylist(ids, item->playlist()->id());
             }
             else {
-                emit tracksDroppedOnGroup(ids, item->title(), row);
+                Q_EMIT tracksDroppedOnGroup(ids, item->title(), row);
             }
             return true;
         }
@@ -733,10 +733,10 @@ bool PlaylistOrganiserModel::dropMimeData(const QMimeData* data, Qt::DropAction 
     else if(data->hasUrls()) {
         if(auto* item = itemForIndex(parent)) {
             if(item->type() == PlaylistOrganiserItem::PlaylistItem) {
-                emit filesDroppedOnPlaylist(data->urls(), item->playlist()->id());
+                Q_EMIT filesDroppedOnPlaylist(data->urls(), item->playlist()->id());
             }
             else {
-                emit filesDroppedOnGroup(data->urls(), item->title(), row);
+                Q_EMIT filesDroppedOnGroup(data->urls(), item->title(), row);
             }
             return true;
         }

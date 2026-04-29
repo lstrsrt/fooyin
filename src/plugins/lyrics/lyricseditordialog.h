@@ -48,7 +48,7 @@ public:
     void accept() override;
     [[nodiscard]] QSize sizeHint() const override;
 
-signals:
+Q_SIGNALS:
     void lyricsEdited(const Fooyin::Lyrics::Lyrics& lyrics);
 
 private:

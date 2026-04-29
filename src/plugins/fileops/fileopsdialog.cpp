@@ -526,7 +526,7 @@ void FileOpsDialog::done(int value)
     FileOps::savePresets(p->m_presets);
 
     if(p->m_presetsChanged) {
-        emit presetsChanged();
+        Q_EMIT presetsChanged();
     }
 
     QDialog::done(value);

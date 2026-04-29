@@ -168,7 +168,7 @@ void ActionManagerPrivate::updateContextObject(const WidgetContextList& context)
     uniqueContexts.append(Constants::Context::Global);
 
     setContext(uniqueContexts);
-    emit m_self->contextChanged(uniqueContexts);
+    Q_EMIT m_self->contextChanged(uniqueContexts);
 }
 
 void ActionManagerPrivate::updateFocusWidget(QWidget* widget)
@@ -404,7 +404,7 @@ Command* ActionManager::registerAction(QAction* action, const Id& id, const Cont
     Command* command = p->overridableAction(id);
     if(command) {
         command->addOverrideAction(action, context, !p->m_contextOverride);
-        emit commandsChanged();
+        Q_EMIT commandsChanged();
     }
     return command;
 }

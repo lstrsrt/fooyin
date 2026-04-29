@@ -69,7 +69,7 @@ bool WidgetFilter::eventFilter(QObject* watched, QEvent* event)
 
         if(event->type() == QEvent::MouseButtonPress && mouseEvent->button() != Qt::LeftButton) {
             m_overOverlay = false;
-            emit filterFinished();
+            Q_EMIT filterFinished();
             return false;
         }
 
@@ -101,7 +101,7 @@ bool WidgetFilter::eventFilter(QObject* watched, QEvent* event)
             return true;
         }
         case(QEvent::KeyPress):
-            emit filterFinished();
+            Q_EMIT filterFinished();
             event->accept();
             return true;
         case(QEvent::MouseButtonDblClick):

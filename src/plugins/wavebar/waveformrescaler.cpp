@@ -140,7 +140,7 @@ void WaveformRescaler::rescale()
     }
 
     setState(Idle);
-    emit waveformRescaled(data);
+    Q_EMIT waveformRescaled(data);
 }
 
 void WaveformRescaler::rescale(int width)

@@ -45,7 +45,7 @@ public:
         return m_mainWindow;
     }
 
-signals:
+Q_SIGNALS:
     void isFullScreenChanged(bool fullscreen);
     void windowShown();
     void windowHidden();

@@ -310,7 +310,7 @@ void SdlOutput::checkEvents()
         switch(m_event.type) {
             case(SDL_AUDIODEVICEREMOVED):
                 QMetaObject::invokeMethod(
-                    this, [this]() { emit stateChanged(AudioOutput::State::Disconnected); }, Qt::QueuedConnection);
+                    this, [this]() { Q_EMIT stateChanged(AudioOutput::State::Disconnected); }, Qt::QueuedConnection);
             default:
                 break;
         }

@@ -113,7 +113,7 @@ public:
 
     void addFilterHeaderMenu(QMenu* menu, const QPoint& pos, bool includeWidgetActions = true);
 
-signals:
+Q_SIGNALS:
     void doubleClicked();
     void middleClicked();
 

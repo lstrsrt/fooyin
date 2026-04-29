@@ -69,7 +69,7 @@ class FilterView : public ExpandedTreeView
 public:
     using ExpandedTreeView::ExpandedTreeView;
 
-signals:
+Q_SIGNALS:
     void displayChanged();
 
 protected:
@@ -80,7 +80,7 @@ protected:
         switch(event->type()) {
             case QEvent::FontChange:
             case QEvent::StyleChange:
-                emit displayChanged();
+                Q_EMIT displayChanged();
                 break;
             default:
                 break;
@@ -153,7 +153,7 @@ FilterWidget::FilterWidget(ActionManager* actionManager, FilterColumnRegistry* c
 
 FilterWidget::~FilterWidget()
 {
-    emit filterDeleted();
+    Q_EMIT filterDeleted();
 }
 
 Id FilterWidget::group() const
@@ -399,7 +399,7 @@ void FilterWidget::loadLayoutData(const QJsonObject& layout)
         m_index = layout.value("Index"_L1).toInt();
     }
 
-    emit filterUpdated();
+    Q_EMIT filterUpdated();
 
     if(layout.contains("State"_L1)) {
         const auto headerState = layout.value("State"_L1).toString().toUtf8();
@@ -506,7 +506,7 @@ void FilterWidget::applyConfig(const ConfigData& config)
     QMetaObject::invokeMethod(m_view->itemDelegate(), "sizeHintChanged", Q_ARG(QModelIndex, {}));
 
     if(sendPlaybackChanged) {
-        emit configChanged();
+        Q_EMIT configChanged();
     }
 }
 
@@ -607,7 +607,7 @@ void FilterWidget::searchEvent(const SearchRequest& request)
         return;
     }
 
-    emit searchTextChanged(m_searchStr);
+    Q_EMIT searchTextChanged(m_searchStr);
 }
 
 void FilterWidget::addFilterHeaderMenu(QMenu* menu, const QPoint& pos, bool includeWidgetActions)
@@ -652,7 +652,7 @@ void FilterWidget::addFilterHeaderMenu(QMenu* menu, const QPoint& pos, bool incl
             }
         }
 
-        emit filterUpdated();
+        Q_EMIT filterUpdated();
     });
 
     auto* multiColAction = new QAction(FilterWidget::tr("Multiple columns"), menu);
@@ -693,14 +693,14 @@ void FilterWidget::addFilterHeaderMenu(QMenu* menu, const QPoint& pos, bool incl
 
 void FilterWidget::contextMenuEvent(QContextMenuEvent* event)
 {
-    emit requestContextMenu(event->globalPos());
+    Q_EMIT requestContextMenu(event->globalPos());
 }
 
 void FilterWidget::keyPressEvent(QKeyEvent* event)
 {
     const auto key = event->key();
     if(key == Qt::Key_Enter || key == Qt::Key_Return) {
-        emit doubleClicked();
+        Q_EMIT doubleClicked();
     }
 
     FyWidget::keyPressEvent(event);
@@ -747,7 +747,7 @@ void FilterWidget::handleSelectionChanged(const QItemSelection& selected, const 
         return;
     }
 
-    emit selectionKeysChanged(selectedKeys());
+    Q_EMIT selectionKeysChanged(selectedKeys());
 }
 
 void FilterWidget::updateViewMode(ExpandedTreeView::ViewMode mode)
@@ -892,7 +892,7 @@ void FilterWidget::addDisplayMenu(QMenu* menu)
 
 void FilterWidget::filterHeaderMenu(const QPoint& pos)
 {
-    emit requestHeaderMenu(m_header, pos);
+    Q_EMIT requestHeaderMenu(m_header, pos);
 }
 
 bool FilterWidget::hasColumn(int id) const
@@ -912,7 +912,7 @@ void FilterWidget::columnChanged(const FilterColumn& changedColumn)
     }
 
     if(changed) {
-        emit filterUpdated();
+        Q_EMIT filterUpdated();
     }
 }
 
@@ -932,7 +932,7 @@ void FilterWidget::columnRemoved(int id)
         m_columns.erase(columnIt);
     }
 
-    emit filterUpdated();
+    Q_EMIT filterUpdated();
 }
 } // namespace Fooyin::Filters
 

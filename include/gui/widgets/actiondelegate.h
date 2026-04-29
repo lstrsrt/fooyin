@@ -53,7 +53,7 @@ public:
     bool helpEvent(QHelpEvent* event, QAbstractItemView* view, const QStyleOptionViewItem& option,
                    const QModelIndex& index) override;
 
-signals:
+Q_SIGNALS:
     void buttonClicked(const QModelIndex& index, int buttonId);
 
 protected:

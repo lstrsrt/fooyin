@@ -35,7 +35,7 @@ public:
     void setScale(double scale);
     void setNaturalValue(double value);
 
-signals:
+Q_SIGNALS:
     void logValueChanged(double value);
 
 private:

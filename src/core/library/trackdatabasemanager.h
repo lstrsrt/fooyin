@@ -46,7 +46,7 @@ public:
 
     void initialiseThread() override;
 
-signals:
+Q_SIGNALS:
     void gotTracks(const Fooyin::TrackList& tracks);
     void updatedTracks(const Fooyin::TrackList& tracks);
     void availabilityChecked(const Fooyin::TrackList& tracks);
@@ -57,7 +57,7 @@ signals:
     void tracksDeleted(int operationId, const Fooyin::TrackList& tracks, int failed, bool cancelled);
     void unavailableTracksRemoved(int operationId, const Fooyin::TrackList& tracks, int failed, bool cancelled);
 
-public slots:
+public Q_SLOTS:
     void getAllTracks();
     void checkTrackAvailability(const Fooyin::TrackList& tracks);
     void updateTracks(const Fooyin::TrackList& tracks, bool write);

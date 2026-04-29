@@ -32,7 +32,7 @@ class EditMenu : public QObject
 public:
     EditMenu(ActionManager* actionManager, SettingsManager* settings, QObject* parent = nullptr);
 
-signals:
+Q_SIGNALS:
     void requestSearch();
 
 private:

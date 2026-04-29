@@ -75,7 +75,7 @@ public:
      */
     virtual void addOutput(const QString& name, OutputCreator output) = 0;
 
-signals:
+Q_SIGNALS:
     //! Emitted when output backend selection changes.
     void outputChanged(const QString& output, const QString& device);
     //! Emitted when device for current backend changes.

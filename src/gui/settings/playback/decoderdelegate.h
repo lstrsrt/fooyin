@@ -34,7 +34,7 @@ public:
 
     explicit DecoderDelegate(QAbstractItemView* view, QObject* parent = nullptr);
 
-signals:
+Q_SIGNALS:
     void configureClicked(const QModelIndex& index);
 
 protected:

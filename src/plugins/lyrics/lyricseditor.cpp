@@ -179,7 +179,7 @@ void LyricsEditor::setupConnections()
 void LyricsEditor::reset()
 {
     m_lyricsText->setPlainText(m_lyrics.data);
-    emit resetClicked();
+    Q_EMIT resetClicked();
 }
 
 void LyricsEditor::seek()

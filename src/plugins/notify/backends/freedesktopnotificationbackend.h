@@ -50,7 +50,7 @@ private:
     void notificationClosed(uint id, uint reason);
     void notificationCallFinished(QDBusPendingCallWatcher* watcher);
 
-private slots:
+private Q_SLOTS:
     void notificationActionInvoked(uint id, const QString& actionKey);
 
 private:
