@@ -885,9 +885,10 @@ void TrackSelectionControllerPrivate::updateActiveContext(QWidget* widget)
         while(focusedWidget) {
             widgetContext = contextObject(focusedWidget);
             if(widgetContext) {
-                m_activeContext = widgetContext;
-                updateActionState();
-                QMetaObject::invokeMethod(m_self, &TrackSelectionController::selectionChanged);
+                if(std::exchange(m_activeContext, widgetContext) != widgetContext) {
+                    updateActionState();
+                    QMetaObject::invokeMethod(m_self, &TrackSelectionController::selectionChanged);
+                }
                 return;
             }
             focusedWidget = focusedWidget->parentWidget();
