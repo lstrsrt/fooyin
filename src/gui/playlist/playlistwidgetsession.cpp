@@ -33,15 +33,52 @@
 #include <utils/actions/actionmanager.h>
 #include <utils/actions/command.h>
 #include <utils/async.h>
-#include <utils/modelutils.h>
 #include <utils/signalthrottler.h>
 
 #include <QAction>
+#include <QItemSelection>
 #include <QItemSelectionModel>
 #include <QScrollBar>
 
 #include <ranges>
 #include <stack>
+
+namespace {
+QModelIndexList selectedRowsFromRanges(const QAbstractItemView* view)
+{
+    if(!view || !view->model() || !view->selectionModel()) {
+        return {};
+    }
+
+    const QItemSelection selection = view->selectionModel()->selection();
+
+    qsizetype rowCount{0};
+    for(const QItemSelectionRange& range : selection) {
+        if(range.isValid() && range.left() <= 0 && range.right() >= 0) {
+            rowCount += range.bottom() - range.top() + 1;
+        }
+    }
+
+    QModelIndexList rows;
+    rows.reserve(rowCount);
+
+    for(const QItemSelectionRange& range : selection) {
+        if(!range.isValid() || range.left() > 0 || range.right() < 0) {
+            continue;
+        }
+
+        const QModelIndex parent = range.parent();
+        for(int row{range.top()}; row <= range.bottom(); ++row) {
+            const QModelIndex index = view->model()->index(row, 0, parent);
+            if(index.isValid()) {
+                rows.append(index);
+            }
+        }
+    }
+
+    return rows;
+}
+} // namespace
 
 namespace Fooyin {
 void PlaylistWidgetSession::setupConnections(PlaylistWidgetSessionHost& /*host*/) { }
@@ -63,8 +100,8 @@ void PlaylistWidgetSession::selectionChanged(PlaylistWidgetSessionHost& host)
     std::set<Track> selectedTracks;
     PlaylistTrack firstTrack;
 
-    QModelIndexList indexes = filterSelectedIndexes(host.playlistView());
-    std::ranges::sort(indexes, Utils::sortModelIndexes);
+    const QModelIndexList indexes = filterSelectedIndexes(host.playlistView());
+    tracks.reserve(indexes.size());
 
     for(const QModelIndex& index : std::as_const(indexes)) {
         if(index.data(PlaylistItem::Type).toInt() != PlaylistItem::Track) {
@@ -73,7 +110,9 @@ void PlaylistWidgetSession::selectionChanged(PlaylistWidgetSessionHost& host)
 
         const auto track = index.data(PlaylistItem::Role::ItemData).value<PlaylistTrack>();
         tracks.push_back(track.track);
-        selectedTracks.emplace(track.track);
+        if(!modeCaps.playlistBackedSelection) {
+            selectedTracks.emplace(track.track);
+        }
         const int trackIndex = index.data(PlaylistItem::Role::Index).toInt();
         trackIndexes.emplace(trackIndex);
 
@@ -370,11 +409,7 @@ void PlaylistWidgetSession::getAllTrackIndexes(QAbstractItemModel* model, const 
 
 QModelIndexList PlaylistWidgetSession::filterSelectedIndexes(const QAbstractItemView* view)
 {
-    if(!view || !view->selectionModel()) {
-        return {};
-    }
-
-    return view->selectionModel()->selectedRows();
+    return selectedRowsFromRanges(view);
 }
 
 TrackSelection PlaylistWidgetSession::makeTrackSelection(const TrackList& tracks,
