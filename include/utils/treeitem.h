@@ -49,6 +49,7 @@ public:
 
     virtual void appendChild(Item* child)
     {
+        child->m_row = static_cast<int>(m_children.size());
         m_children.emplace_back(child);
         child->m_parent = static_cast<Item*>(this);
     }
@@ -58,6 +59,7 @@ public:
         row = std::min(row, static_cast<int>(m_children.size()));
         m_children.insert(m_children.begin() + row, child);
         child->m_parent = static_cast<Item*>(this);
+        resetChildRows(row);
     }
 
     virtual void moveChild(int oldRow, int newRow)
@@ -68,6 +70,7 @@ public:
         else {
             Utils::move(m_children, oldRow, newRow);
         }
+        resetChildRows(std::min(oldRow, newRow));
     }
 
     virtual bool removeChild(int index)
@@ -76,6 +79,7 @@ public:
             return false;
         }
         m_children.erase(m_children.cbegin() + index);
+        resetChildRows(index);
         return true;
     }
 
@@ -120,9 +124,9 @@ public:
         for(Item* child : m_children) {
             if(child) {
                 child->resetChildren();
-                child->resetRow();
             }
         }
+        resetChildRows();
     }
 
     template <typename SortFunc>
@@ -134,6 +138,7 @@ public:
         }
 
         std::ranges::sort(m_children, std::forward<SortFunc>(func));
+        resetChildRows();
     }
 
     void sortChildren()
@@ -148,6 +153,16 @@ public:
 
 private:
     friend Item;
+
+    void resetChildRows(int start = 0)
+    {
+        const int count = childCount();
+        for(int row{std::max(start, 0)}; row < count; ++row) {
+            if(Item* child = m_children.at(row)) {
+                child->m_row = row;
+            }
+        }
+    }
 
     Item* m_parent;                // Not owned
     std::vector<Item*> m_children; // Not owned
