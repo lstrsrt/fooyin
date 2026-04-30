@@ -3457,10 +3457,17 @@ void ExpandedTreeView::selectAll()
 
     const SelectionMode mode = selectionMode();
     if(mode != SingleSelection && mode != NoSelection && !p->m_viewItems.empty()) {
-        const QModelIndex& idx          = p->m_viewItems.back().index;
-        const QModelIndex lastItemIndex = idx.sibling(idx.row(), p->m_model->columnCount(idx.parent()) - 1);
-        p->select(p->m_viewItems.front().index, lastItemIndex,
-                  QItemSelectionModel::ClearAndSelect | QItemSelectionModel::Rows);
+        const QModelIndex& first        = p->m_viewItems.front().index;
+        const QModelIndex& last         = p->m_viewItems.back().index;
+        const QModelIndex lastItemIndex = last.sibling(last.row(), p->m_model->columnCount(last.parent()) - 1);
+        static constexpr auto command   = QItemSelectionModel::ClearAndSelect | QItemSelectionModel::Rows;
+
+        if(first.parent() == last.parent()) {
+            selectionModel()->select({first, lastItemIndex}, command);
+        }
+        else {
+            p->select(first, lastItemIndex, command);
+        }
     }
 }
 
