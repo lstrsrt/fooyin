@@ -96,8 +96,6 @@ PlaylistManagerWidget::PlaylistManagerWidget(ActionManager* actionManager, Playl
     , m_view{new ExpandedTreeView(this)}
     , m_context{new WidgetContext(this, Context{IdList{Id{"Fooyin.Context.PlaylistManager."}.append(id())}}, this)}
     , m_activateAction{new QAction(tr("Activate"), this)}
-    , m_activateCmd{m_actionManager->registerAction(m_activateAction, Constants::Actions::ActivatePlaylist,
-                                                    m_context->context())}
     , m_editAutoPlaylistAction{new QAction(tr("&Edit autoplaylist"), this)}
     , m_editAutoPlaylistCmd{m_actionManager->registerAction(m_editAutoPlaylistAction,
                                                             Constants::Actions::EditAutoPlaylist, m_context->context())}
@@ -285,9 +283,10 @@ void PlaylistManagerWidget::setupActions()
     const QStringList playlistManagerCategory{tr("Playlist Manager")};
 
     m_activateAction->setStatusTip(tr("Activate the selected playlist"));
+    m_activateAction->setShortcut(QKeySequence(Qt::Key_Return));
+    m_activateAction->setShortcutContext(Qt::WidgetWithChildrenShortcut);
     m_activateAction->setShortcutVisibleInContextMenu(true);
-    m_activateCmd->setCategories(playlistManagerCategory);
-    m_activateCmd->setDefaultShortcut(QKeySequence(Qt::Key_Return));
+    addAction(m_activateAction);
     QObject::connect(m_activateAction, &QAction::triggered, this, &PlaylistManagerWidget::activateCurrentPlaylist);
 
     m_editAutoPlaylistAction->setStatusTip(tr("Edit the selected autoplaylist"));
@@ -348,9 +347,6 @@ void PlaylistManagerWidget::updateActionState()
     const bool isAuto      = hasPlaylist && playlist->isAutoPlaylist();
 
     if(m_activateAction) {
-        if(m_activateCmd) {
-            m_activateAction->setShortcut(m_activateCmd->shortcut());
-        }
         m_activateAction->setEnabled(hasPlaylist);
     }
     if(m_editAutoPlaylistAction) {

@@ -96,7 +96,6 @@ private:
     WidgetContext* m_context;
 
     QAction* m_activateAction;
-    Command* m_activateCmd;
     QAction* m_editAutoPlaylistAction;
     Command* m_editAutoPlaylistCmd;
     QAction* m_renameAction;

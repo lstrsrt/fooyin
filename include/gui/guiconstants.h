@@ -179,7 +179,6 @@ constexpr auto Undo                      = "Edit.Undo";
 constexpr auto Redo                      = "Edit.Redo";
 constexpr auto Remove                    = "Edit.Remove";
 constexpr auto Rename                    = "Edit.Rename";
-constexpr auto ActivatePlaylist          = "Playlist.Activate";
 constexpr auto VolumeUp                  = "Volume.VolumeUp";
 constexpr auto VolumeDown                = "Volume.VolumeDown";
 constexpr auto Mute                      = "Volume.Mute";
