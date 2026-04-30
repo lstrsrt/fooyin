@@ -3280,7 +3280,7 @@ void ExpandedTreeView::scrollTo(const QModelIndex& index, ScrollHint hint)
         }
     }
 
-    if(state() == QAbstractItemView::DraggingState || state() == QAbstractItemView::DragSelectingState) {
+    if(state() == DraggingState || state() == DragSelectingState) {
         // Prevent scrolling to index during drag-n-drop
         return;
     }
@@ -3302,7 +3302,7 @@ void ExpandedTreeView::scrollTo(const QModelIndex& index, ScrollHint hint)
 
     const QRect area = viewport()->rect();
 
-    if(p->m_viewMode != ViewMode::Icon && verticalScrollMode() == QAbstractItemView::ScrollPerItem) {
+    if(p->m_viewMode != ViewMode::Icon && verticalScrollMode() == ScrollPerItem) {
         const int top    = verticalScrollBar()->value();
         const int bottom = top + verticalScrollBar()->pageStep();
         if(hint == EnsureVisible && item >= top && item < bottom) {
@@ -4184,70 +4184,83 @@ QRegion ExpandedTreeView::visualRegionForSelection(const QItemSelection& selecti
         return selectionRegion;
     }
 
-    for(const auto& range : selection) {
-        if(!range.isValid()) {
+    p->layoutItems();
+
+    int firstOffset{0};
+    const int firstVisible = p->m_view->firstVisibleItem(&firstOffset);
+    if(firstVisible < 0) {
+        return selectionRegion;
+    }
+
+    const int lastVisible = p->m_view->lastVisibleItem(firstVisible, firstOffset);
+    if(lastVisible < firstVisible) {
+        return selectionRegion;
+    }
+
+    int y{firstOffset};
+    for(int item{firstVisible}; item <= lastVisible && item < p->itemCount(); ++item) {
+        const auto& viewItem     = p->m_viewItems.at(item);
+        const QModelIndex& index = viewItem.index;
+        const int height         = p->m_view->itemHeight(item) + viewItem.padding;
+
+        if(!index.isValid()) {
+            y += height;
             continue;
         }
 
-        const QModelIndex parent = range.parent();
-        QModelIndex leftIndex    = range.topLeft();
-        const int columnCount    = p->m_model->columnCount(parent);
+        const QModelIndex parent = index.parent();
+        const int row            = index.row();
 
-        while(leftIndex.isValid() && isIndexHidden(leftIndex)) {
-            if((leftIndex.column() + 1) < columnCount) {
-                leftIndex = p->m_model->index(leftIndex.row(), (leftIndex.column() + 1), parent);
+        for(const auto& range : selection) {
+            if(!range.isValid() || range.parent() != parent || row < range.top() || row > range.bottom()) {
+                continue;
+            }
+
+            if(p->m_header->sectionsMoved()) {
+                for(int column{range.left()}; column <= range.right(); ++column) {
+                    if(isIndexHidden(p->m_model->index(row, column, parent))) {
+                        continue;
+                    }
+
+                    const QRect rangeRect{p->m_header->sectionViewportPosition(column), y,
+                                          p->m_header->sectionSize(column), height};
+                    if(viewportRect.intersects(rangeRect)) {
+                        selectionRegion += rangeRect;
+                    }
+                }
             }
             else {
-                leftIndex = {};
-            }
-        }
+                int leftColumn{-1};
+                for(int column{range.left()}; column <= range.right(); ++column) {
+                    if(!isIndexHidden(p->m_model->index(row, column, parent))) {
+                        leftColumn = column;
+                        break;
+                    }
+                }
 
-        if(!leftIndex.isValid()) {
-            continue;
-        }
+                if(leftColumn < 0) {
+                    continue;
+                }
 
-        const QRect leftRect   = visualRect(leftIndex);
-        int top                = leftRect.top();
-        QModelIndex rightIndex = range.bottomRight();
+                int rightColumn{-1};
+                for(int column{range.right()}; column >= range.left(); --column) {
+                    if(!isIndexHidden(p->m_model->index(row, column, parent))) {
+                        rightColumn = column;
+                        break;
+                    }
+                }
 
-        while(rightIndex.isValid() && isIndexHidden(rightIndex)) {
-            if(rightIndex.column() - 1 >= 0) {
-                rightIndex = p->m_model->index(rightIndex.row(), rightIndex.column() - 1, parent);
-            }
-            else {
-                rightIndex = {};
-            }
-        }
-
-        if(!rightIndex.isValid()) {
-            continue;
-        }
-
-        const QRect rightRect = visualRect(rightIndex);
-        int bottom            = rightRect.bottom();
-
-        if(top > bottom) {
-            std::swap(top, bottom);
-        }
-
-        const int height = bottom - top + 1;
-
-        if(p->m_header->sectionsMoved()) {
-            for(int column{range.left()}; column <= range.right(); ++column) {
-                const QRect rangeRect{p->m_header->sectionViewportPosition(column), top,
-                                      p->m_header->sectionSize(column), height};
+                const int left = p->m_header->sectionViewportPosition(leftColumn);
+                const int right
+                    = p->m_header->sectionViewportPosition(rightColumn) + p->m_header->sectionSize(rightColumn);
+                const QRect rangeRect{std::min(left, right), y, std::abs(right - left), height};
                 if(viewportRect.intersects(rangeRect)) {
                     selectionRegion += rangeRect;
                 }
             }
         }
-        else {
-            QRect combined = leftRect | rightRect;
-            combined.setX(p->m_header->sectionViewportPosition(isRightToLeft() ? range.right() : range.left()));
-            if(viewportRect.intersects(combined)) {
-                selectionRegion += combined;
-            }
-        }
+
+        y += height;
     }
 
     return selectionRegion;
