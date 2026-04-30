@@ -20,7 +20,7 @@
 #include "freedesktopnotificationbackend.h"
 
 #include <QApplication>
-#include <QDBusReply>
+#include <QDBusPendingReply>
 
 using namespace Qt::StringLiterals;
 
@@ -47,9 +47,9 @@ FreedesktopNotificationBackend::FreedesktopNotificationBackend(QObject* parent)
     // clang-format on
 
     if(m_notifications->isValid()) {
-        m_capabilities.albumArt         = true;
-        m_capabilities.timeout          = true;
-        m_capabilities.playbackControls = supportsActions();
+        m_capabilities.albumArt = true;
+        m_capabilities.timeout  = true;
+        queryCapabilities();
     }
 }
 
@@ -134,14 +134,11 @@ void FreedesktopNotificationBackend::clearActiveNotification()
     m_lastNotificationId = 0;
 }
 
-bool FreedesktopNotificationBackend::supportsActions() const
+void FreedesktopNotificationBackend::queryCapabilities()
 {
-    const QDBusReply<QStringList> reply = m_notifications->call(u"GetCapabilities"_s);
-    if(!reply.isValid()) {
-        return false;
-    }
-
-    return reply.value().contains(u"actions"_s);
+    auto* watcher = new QDBusPendingCallWatcher(m_notifications->asyncCall(u"GetCapabilities"_s), this);
+    QObject::connect(watcher, &QDBusPendingCallWatcher::finished, this,
+                     &FreedesktopNotificationBackend::capabilitiesCallFinished);
 }
 
 void FreedesktopNotificationBackend::notificationClosed(uint id, uint /*reason*/)
@@ -159,6 +156,19 @@ void FreedesktopNotificationBackend::notificationActionInvoked(uint id, const QS
 
     clearActiveNotification();
     Q_EMIT actionInvoked(actionKey);
+}
+
+void FreedesktopNotificationBackend::capabilitiesCallFinished(QDBusPendingCallWatcher* watcher)
+{
+    const QDBusPendingReply<QStringList> reply = *watcher;
+    if(reply.isError()) {
+        qCDebug(NOTIFY) << "Failed to query freedesktop notification capabilities:" << reply.error().message();
+    }
+    else {
+        m_capabilities.playbackControls = reply.value().contains(u"actions"_s);
+    }
+
+    watcher->deleteLater();
 }
 
 void FreedesktopNotificationBackend::notificationCallFinished(QDBusPendingCallWatcher* watcher)

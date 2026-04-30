@@ -46,8 +46,9 @@ protected:
 
 private:
     void clearActiveNotification();
-    [[nodiscard]] bool supportsActions() const;
+    void queryCapabilities();
     void notificationClosed(uint id, uint reason);
+    void capabilitiesCallFinished(QDBusPendingCallWatcher* watcher);
     void notificationCallFinished(QDBusPendingCallWatcher* watcher);
 
 private Q_SLOTS:
