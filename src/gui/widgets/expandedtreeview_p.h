@@ -143,6 +143,8 @@ public:
     bool m_layingOutItems{false};
 
     mutable std::vector<ExpandedTreeViewItem> m_viewItems;
+    mutable std::vector<int> m_itemOffsets;
+    mutable bool m_itemOffsetsDirty{true};
     mutable int m_lastViewedItem{0};
     int m_defaultItemHeight{20};
     int m_indent{0};

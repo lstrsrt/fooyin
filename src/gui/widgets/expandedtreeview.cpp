@@ -36,7 +36,6 @@
 
 #include <set>
 
-using namespace std::chrono_literals;
 using namespace Qt::StringLiterals;
 
 constexpr auto MinItemSpacing    = 10;
@@ -478,6 +477,9 @@ public:
 private:
     [[nodiscard]] int indexRowSizeHint(const QModelIndex& index) const;
     [[nodiscard]] int indexSizeHint(const QModelIndex& index, bool span = false) const;
+    void ensureItemOffsetCache() const;
+    [[nodiscard]] int itemOffset(int item) const;
+    [[nodiscard]] int itemAtOffset(int offset, bool includePadding) const;
     void recalculatePadding();
     void drawAndClipSpans(QPainter* painter, const QStyleOptionViewItem& option, int firstVisibleItem,
                           int firstVisibleItemOffset) const;
@@ -488,6 +490,7 @@ void TreeView::invalidate()
 {
     m_uniformRowHeight = 0;
     m_p->m_uniformRoleHeights.clear();
+    m_p->m_itemOffsetsDirty = true;
 }
 
 void TreeView::drawView(QPainter* painter, const QRegion& region) const
@@ -792,18 +795,15 @@ int TreeView::firstVisibleItem(int* offset) const
         return value / m_uniformRowHeight;
     }
 
-    int y{0};
-    for(int i{0}; i < count; ++i) {
-        const int height = itemHeight(i) + itemPadding(i);
-        y += height;
-        if(y > value) {
-            if(offset) {
-                *offset = y - value - height;
-            }
-            return i;
-        }
+    const int item = itemAtOffset(value, false);
+    if(item < 0) {
+        return -1;
     }
-    return -1;
+
+    if(offset) {
+        *offset = itemOffset(item) - value;
+    }
+    return item;
 }
 
 int TreeView::lastVisibleItem(int firstVisual, int offset) const
@@ -837,13 +837,7 @@ QPoint TreeView::coordinateForItem(int item) const
         if(m_p->m_uniformRowHeights) {
             return {0, (item * m_uniformRowHeight) - vertScrollValue};
         }
-        const auto& items = viewItems();
-        for(int index{0}, y{0}; const auto& viewItem : items) {
-            if(index == item) {
-                return {0, y - vertScrollValue};
-            }
-            y += itemHeight(index++) + viewItem.padding;
-        }
+        return {0, itemOffset(item) - vertScrollValue};
     }
     else {
         const int topViewItemIndex{vertScrollValue};
@@ -851,28 +845,7 @@ QPoint TreeView::coordinateForItem(int item) const
             return {0, m_uniformRowHeight * (item - topViewItemIndex)};
         }
 
-        const int count = itemCount();
-        if(item >= topViewItemIndex) {
-            int viewItemCoordinate = 0;
-            int viewItemIndex      = topViewItemIndex;
-            while(viewItemIndex < count) {
-                if(viewItemIndex == item) {
-                    return {0, viewItemCoordinate};
-                }
-                viewItemCoordinate += itemHeight(viewItemIndex);
-                ++viewItemIndex;
-            }
-            return {0, viewItemCoordinate};
-        }
-
-        int viewItemCoordinate{0};
-        for(int viewItemIndex = topViewItemIndex; viewItemIndex > 0; --viewItemIndex) {
-            if(viewItemIndex == item) {
-                return {0, viewItemCoordinate};
-            }
-            viewItemCoordinate -= itemHeight(viewItemIndex - 1);
-        }
-        return {0, viewItemCoordinate};
+        return {0, itemOffset(item) - itemOffset(topViewItemIndex)};
     }
 
     return {0, 0};
@@ -896,21 +869,7 @@ int TreeView::itemAtCoordinate(QPoint coordinate, bool includePadding) const
             return ((viewItemIndex >= count || viewItemIndex < 0) ? -1 : viewItemIndex);
         }
 
-        const int contentsCoord = coordinate.y() + vertScrollValue;
-
-        int itemCoord{0};
-        for(int index{0}; index < count; ++index) {
-            const int height  = itemHeight(index);
-            const int padding = itemPadding(index);
-            itemCoord += height + padding;
-
-            if(itemCoord > contentsCoord) {
-                if(includePadding && (itemCoord - padding) < contentsCoord) {
-                    return -1;
-                }
-                return index >= count ? -1 : index;
-            }
-        }
+        return itemAtOffset(coordinate.y() + vertScrollValue, includePadding);
     }
     else {
         const int topViewItemIndex{vertScrollValue};
@@ -921,26 +880,7 @@ int TreeView::itemAtCoordinate(QPoint coordinate, bool includePadding) const
             const int viewItemIndex = topViewItemIndex + (coordinate.y() / m_uniformRowHeight);
             return ((viewItemIndex >= itemCount() || viewItemIndex < 0) ? -1 : viewItemIndex);
         }
-        if(coordinate.y() >= 0) {
-            // In or below viewport
-            int viewItemCoordinate{0};
-            for(int viewItemIndex = topViewItemIndex; viewItemIndex < count; ++viewItemIndex) {
-                viewItemCoordinate += itemHeight(viewItemIndex);
-                if(viewItemCoordinate > coordinate.y()) {
-                    return (viewItemIndex >= count ? -1 : viewItemIndex);
-                }
-            }
-        }
-        else {
-            // Above viewport
-            int viewItemCoordinate{0};
-            for(int viewItemIndex = topViewItemIndex; viewItemIndex >= 0; --viewItemIndex) {
-                if(viewItemCoordinate <= coordinate.y()) {
-                    return (viewItemIndex >= count ? -1 : viewItemIndex);
-                }
-                viewItemCoordinate -= itemHeight(viewItemIndex);
-            }
-        }
+        return itemAtOffset(itemOffset(topViewItemIndex) + coordinate.y(), includePadding);
     }
 
     return -1;
@@ -1463,6 +1403,60 @@ int TreeView::indexSizeHint(const QModelIndex& index, bool span) const
     return height;
 }
 
+void TreeView::ensureItemOffsetCache() const
+{
+    const int count = itemCount();
+    if(!m_p->m_itemOffsetsDirty && static_cast<int>(m_p->m_itemOffsets.size()) == count + 1) {
+        return;
+    }
+
+    m_p->m_itemOffsets.resize(count + 1);
+    m_p->m_itemOffsets[0] = 0;
+
+    for(int i{0}; i < count; ++i) {
+        m_p->m_itemOffsets[i + 1] = m_p->m_itemOffsets[i] + itemHeight(i) + itemPadding(i);
+    }
+
+    m_p->m_itemOffsetsDirty = false;
+}
+
+int TreeView::itemOffset(int item) const
+{
+    if(item <= 0) {
+        return 0;
+    }
+
+    ensureItemOffsetCache();
+    if(std::cmp_greater_equal(item, m_p->m_itemOffsets.size())) {
+        return m_p->m_itemOffsets.empty() ? 0 : m_p->m_itemOffsets.back();
+    }
+
+    return m_p->m_itemOffsets.at(item);
+}
+
+int TreeView::itemAtOffset(int offset, bool includePadding) const
+{
+    if(offset < 0 || itemCount() == 0) {
+        return -1;
+    }
+
+    ensureItemOffsetCache();
+
+    const auto begin = m_p->m_itemOffsets.cbegin();
+    const auto end   = m_p->m_itemOffsets.cend();
+    const auto it    = std::ranges::upper_bound(begin, end, offset);
+    if(it == begin || it == end) {
+        return -1;
+    }
+
+    const int item = static_cast<int>(std::ranges::distance(begin, it)) - 1;
+    if(includePadding && offset >= m_p->m_itemOffsets.at(item) + itemHeight(item)) {
+        return -1;
+    }
+
+    return item;
+}
+
 void TreeView::recalculatePadding()
 {
     if(empty()) {
@@ -1505,6 +1499,8 @@ void TreeView::recalculatePadding()
             item.padding            = (max > sectionHeight) ? max - sectionHeight : 0;
         }
     }
+
+    m_p->m_itemOffsetsDirty = true;
 }
 
 void TreeView::drawAndClipSpans(QPainter* painter, const QStyleOptionViewItem& option, int firstVisibleItem,
@@ -2657,6 +2653,7 @@ bool ExpandedTreeViewPrivate::itemHasChildren(int i) const
 void ExpandedTreeViewPrivate::invalidateHeightCache(int item) const
 {
     m_viewItems[item].height = 0;
+    m_itemOffsetsDirty       = true;
 }
 
 int ExpandedTreeViewPrivate::itemForHomeKey() const
