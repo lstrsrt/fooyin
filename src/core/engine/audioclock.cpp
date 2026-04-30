@@ -112,8 +112,7 @@ void AudioClock::applyPosition(uint64_t sourcePositionMs, uint64_t outputDelayMs
         = static_cast<double>(presentedFromSource(sourcePositionMs, outputDelayMs, delayToSourceScale));
     m_rateUsed = clampRate(delayToSourceScale);
 
-    const bool forceDiscontinuity
-        = mode == UpdateMode::Discontinuity || !m_hasAnchor || m_state != State::Playing || generation != m_generation;
+    const bool forceDiscontinuity = mode == UpdateMode::Discontinuity || !m_hasAnchor || generation != m_generation;
 
     if(forceDiscontinuity) {
         m_generation   = generation;
