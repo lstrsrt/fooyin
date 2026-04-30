@@ -120,6 +120,7 @@ public:
 
     [[nodiscard]] bool playlistIsLoaded() const;
     [[nodiscard]] bool haveTracks() const;
+    [[nodiscard]] bool shouldShowLoadingText() const;
 
     enum class BulkEditError : uint8_t
     {
@@ -171,6 +172,7 @@ public:
 
 Q_SIGNALS:
     void metadataWriteRequested(const Fooyin::TrackList& tracks);
+    void loadingStateChanged();
     void playlistLoaded();
     void filesDropped(const QList<QUrl>& urls, int index);
     void tracksInserted(const Fooyin::TrackGroups& groups);
@@ -317,6 +319,7 @@ private:
     PlaylistPopulator m_populator;
 
     bool m_playlistLoaded;
+    bool m_loadingTextPending;
     ItemKeyMap m_nodes;
     TrackIdNodeMap m_trackParents;
     std::map<int, UId> m_trackIndexes;

@@ -400,11 +400,11 @@ void PlaylistView::paintEvent(QPaintEvent* event)
 
     if(auto* playlistModel = qobject_cast<PlaylistModel*>(model())) {
         if(playlistModel->haveTracks()) {
-            if(playlistModel->playlistIsLoaded() || m_playlistLoaded) {
-                ExpandedTreeView::paintEvent(event);
+            if(playlistModel->shouldShowLoadingText()) {
+                drawCentreText(m_loadingText);
             }
             else {
-                drawCentreText(m_loadingText);
+                ExpandedTreeView::paintEvent(event);
             }
         }
         else {

@@ -588,6 +588,8 @@ void PlaylistWidget::setupConnections()
     QObject::connect(m_playlistView, &QAbstractItemView::doubleClicked, this, &PlaylistWidget::doubleClicked);
     QObject::connect(m_model, &QAbstractItemModel::modelAboutToBeReset, m_playlistView, &PlaylistView::playlistAboutToBeReset);
     QObject::connect(m_model, &QAbstractItemModel::modelAboutToBeReset, this, [this]() { m_session->handleAboutToBeReset(sessionHost()); });
+    QObject::connect(m_model, &PlaylistModel::loadingStateChanged, m_playlistView->viewport(), qOverload<>(&QWidget::update));
+    QObject::connect(m_model, &PlaylistModel::loadingStateChanged, m_header->viewport(), qOverload<>(&QWidget::update));
     QObject::connect(m_model, &PlaylistModel::playlistLoaded, m_playlistView->viewport(), qOverload<>(&QWidget::update));
     QObject::connect(m_model, &PlaylistModel::metadataWriteRequested, this, &PlaylistWidget::handleMetadataWriteRequested);
     QObject::connect(m_playlistView, &PlaylistView::bulkWriteRequested, this, &PlaylistWidget::handleBulkWriteRequested);

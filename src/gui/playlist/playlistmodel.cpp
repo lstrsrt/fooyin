@@ -60,11 +60,26 @@
 
 using namespace Qt::StringLiterals;
 
-constexpr auto MimeModelId           = "application/x-playlistmodel-id";
-constexpr auto MaxPlaylistTracks     = 250;
-constexpr int UniformHeightValueMask = 0xFFFF;
+constexpr auto MimeModelId               = "application/x-playlistmodel-id";
+constexpr auto MaxPlaylistTracks         = 250;
+constexpr int UniformHeightValueMask     = 0xFFFF;
+constexpr auto LoadingTextTrackThreshold = 10000;
 
 namespace {
+int loadingTextClearTrackCount(const Fooyin::SettingsManager& settings, qsizetype trackCount)
+{
+    if(trackCount <= LoadingTextTrackThreshold) {
+        return 0;
+    }
+
+    const int preloadCount = settings.value<Fooyin::Settings::Gui::Internal::PlaylistTrackPreloadCount>();
+    if(preloadCount > 0 && preloadCount < LoadingTextTrackThreshold) {
+        return 0;
+    }
+
+    return LoadingTextTrackThreshold;
+}
+
 int uniformHeightKey(int type, int height, bool usesStyleBase = false)
 {
     return (type << 17) | (usesStyleBase ? (1 << 16) : 0) | std::min(height, UniformHeightValueMask);
@@ -695,6 +710,7 @@ PlaylistModel::PlaylistModel(PlaylistInteractor* playlistInteractor, AudioLoader
     , m_disabledColour{disabledRowColor()}
     , m_populator{playlistInteractor->playerController(), settings}
     , m_playlistLoaded{false}
+    , m_loadingTextPending{false}
     , m_pixmapPadding{settings->value<Settings::Gui::Internal::PlaylistImagePadding>()}
     , m_pixmapPaddingTop{settings->value<Settings::Gui::Internal::PlaylistImagePaddingTop>()}
     , m_starRatingSize{settings->value<Settings::Gui::StarRatingSize>()}
@@ -735,9 +751,14 @@ PlaylistModel::PlaylistModel(PlaylistInteractor* playlistInteractor, AudioLoader
     m_settings->subscribe<Settings::Gui::IconTheme>(this, [this]() { invalidateData(); });
 
     QObject::connect(&m_populator, &PlaylistPopulator::finished, this, [this]() {
-        m_playlistLoaded = true;
+        const bool loadingTextVisible = shouldShowLoadingText();
+        m_playlistLoaded              = true;
+        m_loadingTextPending          = false;
         syncPlayingTrackIndex();
         syncStopAtTrackIndex();
+        if(loadingTextVisible) {
+            Q_EMIT loadingStateChanged();
+        }
         Q_EMIT playlistLoaded();
     });
 
@@ -977,6 +998,20 @@ bool PlaylistModel::haveTracks() const
     return (m_currentPlaylist && m_currentPlaylist->trackCount() > 0) || !m_trackParents.empty();
 }
 
+bool PlaylistModel::shouldShowLoadingText() const
+{
+    if(m_playlistLoaded || !m_currentPlaylist || m_currentPlaylist->trackCount() == 0) {
+        return false;
+    }
+
+    const int clearTrackCount = loadingTextClearTrackCount(*m_settings, m_currentPlaylist->trackCount());
+    if(clearTrackCount <= 0) {
+        return false;
+    }
+
+    return m_loadingTextPending || std::cmp_less(m_trackIndexes.size(), clearTrackCount);
+}
+
 std::expected<TrackList, PlaylistModel::BulkEditError> PlaylistModel::setBulkData(const QModelIndexList& indexes,
                                                                                   const QVariant& value)
 {
@@ -1174,8 +1209,13 @@ void PlaylistModel::reset(const PlaylistTrackList& tracks)
 {
     m_populator.stopThread();
 
-    m_playlistLoaded = false;
-    m_resetting      = true;
+    const bool loadingTextVisible = shouldShowLoadingText();
+    m_playlistLoaded              = false;
+    m_loadingTextPending          = loadingTextClearTrackCount(*m_settings, tracks.size()) > 0;
+    m_resetting                   = true;
+    if(loadingTextVisible != shouldShowLoadingText()) {
+        Q_EMIT loadingStateChanged();
+    }
 
     if(tracks.empty()) {
         beginResetModel();
@@ -1185,8 +1225,9 @@ void PlaylistModel::reset(const PlaylistTrackList& tracks)
         updateTrackIndexes(false);
         endResetModel();
 
-        m_resetting      = false;
-        m_playlistLoaded = true;
+        m_resetting          = false;
+        m_playlistLoaded     = true;
+        m_loadingTextPending = false;
         syncPlayingTrackIndex();
         syncStopAtTrackIndex();
         Q_EMIT playlistLoaded();
@@ -1460,8 +1501,14 @@ void PlaylistModel::removeTracks(const TrackGroups& groups)
 
 void PlaylistModel::updateHeader(Playlist* playlist)
 {
+    const QString prevHeaderText{m_headerText};
+
     if(playlist) {
         m_headerText = playlist->name() + u" - "_s + tr("%Ln track(s)", nullptr, playlist->trackCount());
+    }
+
+    if(m_headerText != prevHeaderText) {
+        Q_EMIT headerDataChanged(Qt::Horizontal, 0, std::max(0, columnCount({}) - 1));
     }
 }
 
@@ -1821,6 +1868,13 @@ void PlaylistModel::populateModel(PendingData data)
     }
 
     updateTrackIndexes(false);
+
+    const int clearTrackCount
+        = loadingTextClearTrackCount(*m_settings, m_currentPlaylist ? m_currentPlaylist->trackCount() : 0);
+    if(m_loadingTextPending && clearTrackCount > 0 && std::cmp_greater_equal(m_trackIndexes.size(), clearTrackCount)) {
+        m_loadingTextPending = false;
+        Q_EMIT loadingStateChanged();
+    }
 
     if(m_resetting) {
         endResetModel();
