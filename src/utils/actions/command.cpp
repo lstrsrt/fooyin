@@ -28,6 +28,8 @@
 #include <QLoggingCategory>
 #include <QPointer>
 
+Q_LOGGING_CATEGORY(COMMAND, "fy.command")
+
 using namespace Qt::StringLiterals;
 
 namespace Fooyin {
@@ -228,17 +230,20 @@ void Command::setCurrentContext(const Context& context)
     p->m_context = context;
 
     QAction* currentAction{nullptr};
-    for(const Id& contextId : std::as_const(p->m_context)) {
-        if(p->m_contextActionMap.contains(contextId)) {
-            if(QAction* contextAction = p->m_contextActionMap.at(contextId)) {
-                currentAction = contextAction;
-                break;
-            }
+    if(p->m_context.empty()) {
+        if(p->m_contextActionMap.contains(Constants::Context::Global)) {
+            currentAction = p->m_contextActionMap.at(Constants::Context::Global);
         }
     }
-
-    if(!currentAction) {
-        return;
+    else {
+        for(const Id& contextId : std::as_const(p->m_context)) {
+            if(p->m_contextActionMap.contains(contextId)) {
+                if(QAction* contextAction = p->m_contextActionMap.at(contextId)) {
+                    currentAction = contextAction;
+                    break;
+                }
+            }
+        }
     }
 
     p->m_action->setAction(currentAction);
@@ -258,17 +263,25 @@ void Command::addOverrideAction(QAction* action, const Context& context, bool ch
     QObject::connect(action, &QObject::destroyed, this, [this, action]() { p->removeOverrideAction(action); });
 
     if(context.empty()) {
-        p->m_contextActionMap.emplace(Constants::Context::Global, action);
+        if(auto it = p->m_contextActionMap.find(Constants::Context::Global); it != p->m_contextActionMap.end()) {
+            qCWarning(COMMAND) << "Replacing action" << it->second << "with" << action << "for context"
+                               << Constants::Context::Global;
+            it->second = action;
+        }
+        else {
+            p->m_contextActionMap.emplace(Constants::Context::Global, action);
+        }
     }
     else {
         for(const Id& contextId : context) {
-            if(p->m_contextActionMap.contains(contextId)) {
-                if(auto contextAction = p->m_contextActionMap.at(contextId)) {
-                    QLoggingCategory log{"Actions"};
-                    qCDebug(log) << "Context" << contextId.name() << "already added for" << contextAction;
-                }
+            if(auto it = p->m_contextActionMap.find(contextId); it != p->m_contextActionMap.end()) {
+                qCWarning(COMMAND) << "Replacing action" << it->second << "with" << action << "for context"
+                                   << contextId.name();
+                it->second = action;
             }
-            p->m_contextActionMap.emplace(contextId, action);
+            else {
+                p->m_contextActionMap.emplace(contextId, action);
+            }
         }
     }
 

@@ -351,8 +351,21 @@ void ActionManager::removeContextObject(WidgetContext* context)
         return;
     }
 
-    if(std::erase_if(p->m_activeContext, [context](WidgetContext* wc) { return wc == context; }) > 0) {
-        p->updateContextObject(p->m_activeContext);
+    const bool wasOverride = context == p->m_widgetOverride;
+    if(wasOverride) {
+        p->m_contextOverride = false;
+        p->m_widgetOverride  = nullptr;
+    }
+
+    const bool wasActive
+        = std::erase_if(p->m_activeContext, [context](WidgetContext* wc) { return wc == context; }) > 0;
+    if(wasOverride || wasActive) {
+        if(p->m_contextOverride) {
+            p->updateContextObject(p->m_activeContext);
+        }
+        else {
+            p->updateFocusWidget(QApplication::focusWidget());
+        }
     }
 }
 
