@@ -37,6 +37,8 @@
 #include <QMenu>
 #include <QTimer>
 
+#include <set>
+
 using namespace Qt::StringLiterals;
 
 constexpr auto MinimumValueColumnWidth = 150;
@@ -57,7 +59,6 @@ TagEditorView::TagEditorView(ActionManager* actionManager, QWidget* parent)
     actionManager->addContextObject(m_context);
 
     setTextElideMode(Qt::ElideRight);
-    setSelectionBehavior(SelectRows);
     setMouseTracking(true);
     horizontalHeader()->setSectionsClickable(false);
     verticalHeader()->setVisible(false);
@@ -235,7 +236,7 @@ void TagEditorView::mouseDoubleClickEvent(QMouseEvent* event)
 
 void TagEditorView::keyPressEvent(QKeyEvent* event)
 {
-    const QKeyCombination pasteSeq{Qt::CTRL | Qt::SHIFT | Qt::Key_V};
+    static constexpr QKeyCombination pasteSeq{Qt::CTRL | Qt::SHIFT | Qt::Key_V};
 
     if((event == QKeySequence::Copy)) {
         m_copyAction->trigger();
@@ -248,6 +249,15 @@ void TagEditorView::keyPressEvent(QKeyEvent* event)
     if(event->keyCombination() == pasteSeq) {
         m_pasteFields->trigger();
         return;
+    }
+    if(event->key() == Qt::Key_F2 && event->modifiers() == Qt::NoModifier) {
+        const QModelIndex editIndex = editableIndexFor(currentIndex());
+        if(editIndex.isValid()) {
+            setCurrentIndex(editIndex);
+            edit(editIndex);
+            event->accept();
+            return;
+        }
     }
 
     ExtendableTableView::keyPressEvent(event);
@@ -276,9 +286,56 @@ void TagEditorView::reopenEditor(const QModelIndex& index)
     });
 }
 
+QModelIndex TagEditorView::editableIndexFor(const QModelIndex& index) const
+{
+    if(m_editTrigger == NoEditTriggers || !model() || !index.isValid() || index.row() == m_ratingRow) {
+        return {};
+    }
+
+    if((model()->flags(index) & Qt::ItemIsEditable) != 0) {
+        return index;
+    }
+
+    const QModelIndex valueIndex = index.siblingAtColumn(1);
+    if(!valueIndex.isValid() || (model()->flags(valueIndex) & Qt::ItemIsEditable) == 0) {
+        return {};
+    }
+
+    return valueIndex;
+}
+
+QModelIndexList TagEditorView::selectedRows() const
+{
+    if(!model() || !selectionModel()) {
+        return {};
+    }
+
+    std::set<int> rows;
+
+    const auto selectedIndexes = selectionModel()->selectedIndexes();
+    for(const QModelIndex& index : selectedIndexes) {
+        if(index.isValid()) {
+            rows.emplace(index.row());
+        }
+    }
+
+    if(rows.empty() && currentIndex().isValid()) {
+        rows.emplace(currentIndex().row());
+    }
+
+    QModelIndexList indexes;
+    for(const int row : rows) {
+        const QModelIndex index = model()->index(row, 0);
+        if(index.isValid()) {
+            indexes.emplace_back(index);
+        }
+    }
+    return indexes;
+}
+
 void TagEditorView::copySelection()
 {
-    const auto selected = selectionModel()->selectedRows();
+    const auto selected = selectedRows();
     if(selected.empty()) {
         return;
     }
@@ -295,7 +352,7 @@ void TagEditorView::copySelection()
 
 void TagEditorView::pasteSelection(bool match)
 {
-    const auto selected = selectionModel()->selectedRows();
+    const auto selected = selectedRows();
     if(!match && selected.empty()) {
         return;
     }
@@ -338,8 +395,8 @@ bool TagEditorView::canCapitaliseSelection() const
         return false;
     }
 
-    const auto selectedRows = selectionModel()->selectedRows();
-    return std::ranges::any_of(selectedRows, [this](const QModelIndex& index) {
+    const auto rows = selectedRows();
+    return std::ranges::any_of(rows, [this](const QModelIndex& index) {
         if(!index.isValid() || index.row() == m_ratingRow) {
             return false;
         }
@@ -356,7 +413,7 @@ void TagEditorView::capitaliseSelection()
     }
 
     if(auto* tagModel = qobject_cast<TagEditorModel*>(model())) {
-        tagModel->capitaliseRows(selectionModel()->selectedRows());
+        tagModel->capitaliseRows(selectedRows());
     }
 }
 

@@ -53,6 +53,8 @@ protected:
 
 private:
     void reopenEditor(const QModelIndex& index);
+    [[nodiscard]] QModelIndex editableIndexFor(const QModelIndex& index) const;
+    [[nodiscard]] QModelIndexList selectedRows() const;
     void copySelection();
     void pasteSelection(bool match);
 
