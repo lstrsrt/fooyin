@@ -46,6 +46,7 @@ struct PlaybackIntentReducerState
     Engine::PlaybackState playbackState{Engine::PlaybackState::Stopped};
     FadeState fadeState{FadeState::Idle};
     bool fadingEnabled{false};
+    int pauseFadeInMs{0};
     int pauseFadeOutMs{0};
     int stopFadeOutMs{0};
 };

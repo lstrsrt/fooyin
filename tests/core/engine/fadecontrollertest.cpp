@@ -94,6 +94,20 @@ TEST(FadeControllerTest, PauseFadeCompletesToPauseAction)
     EXPECT_FALSE(controller.hasPendingFade());
 }
 
+TEST(FadeControllerTest, PauseFadeInOnlyUsesMinimumFadeOut)
+{
+    FakePipeline pipeline;
+    FadeController controller{&pipeline};
+
+    Engine::FadingValues values;
+    values.pause.in  = 250;
+    values.pause.out = 0;
+
+    ASSERT_TRUE(controller.beginPauseFade(true, values, 1.0, 42));
+    EXPECT_EQ(pipeline.lastFadeOutDurationMs, 1);
+    EXPECT_EQ(controller.state(), FadeState::FadingToPause);
+}
+
 TEST(FadeControllerTest, StopEscalatesExistingPauseFade)
 {
     FakePipeline pipeline;

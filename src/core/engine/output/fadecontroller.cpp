@@ -202,7 +202,7 @@ bool FadeController::applyPlayFade(Engine::PlaybackState prevState, bool fadingE
 bool FadeController::beginPauseFade(bool fadingEnabled, const Engine::FadingValues& fadingValues, double /*volume*/,
                                     uint64_t transportTransitionId)
 {
-    if(!fadingEnabled || fadingValues.pause.effectiveOutMs() <= 0) {
+    if(!fadingEnabled || !fadingValues.pause.isConfigured()) {
         return false;
     }
 
@@ -214,7 +214,10 @@ bool FadeController::beginPauseFade(bool fadingEnabled, const Engine::FadingValu
     m_state              = FadeState::FadingToPause;
     m_fadingTransitionId = transportTransitionId;
     m_pipelineFader->setFaderCurve(fadingValues.pause.curve);
-    m_pipelineFader->faderFadeOut(fadingValues.pause.effectiveOutMs(), 1.0, armActiveFade(transportTransitionId, true));
+    // Some outputs can keep around a tiny amount of buffered audio on resume.
+    // Use the real fade-out path even for fade-in-only pause so the fader is silent before pausing.
+    const int fadeOutMs = std::max(fadingValues.pause.effectiveOutMs(), 1);
+    m_pipelineFader->faderFadeOut(fadeOutMs, 1.0, armActiveFade(transportTransitionId, true));
     return true;
 }
 

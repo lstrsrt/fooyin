@@ -56,6 +56,16 @@ TEST(PlaybackIntentReducerTest, PauseBeginsFadeWhenEnabled)
     EXPECT_EQ(reducePlaybackIntent(state, PlaybackIntent::Pause), PlaybackAction::BeginFade);
 }
 
+TEST(PlaybackIntentReducerTest, PauseUsesAudiblePathWhenOnlyFadeInEnabled)
+{
+    PlaybackIntentReducerState state;
+    state.playbackState = Engine::PlaybackState::Playing;
+    state.fadingEnabled = true;
+    state.pauseFadeInMs = 250;
+
+    EXPECT_EQ(reducePlaybackIntent(state, PlaybackIntent::Pause), PlaybackAction::BeginFade);
+}
+
 TEST(PlaybackIntentReducerTest, StopFromPausedIsImmediate)
 {
     PlaybackIntentReducerState state;

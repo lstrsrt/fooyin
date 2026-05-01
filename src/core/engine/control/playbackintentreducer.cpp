@@ -22,8 +22,8 @@
 namespace Fooyin {
 PlaybackAction reducePlaybackIntent(const PlaybackIntentReducerState& state, const PlaybackIntent intent)
 {
-    const bool canFadePause = state.fadingEnabled && state.pauseFadeOutMs > 0;
-    const bool canFadeStop  = state.fadingEnabled && state.stopFadeOutMs > 0;
+    const bool needsAudiblePause = state.fadingEnabled && (state.pauseFadeInMs > 0 || state.pauseFadeOutMs > 0);
+    const bool canFadeStop       = state.fadingEnabled && state.stopFadeOutMs > 0;
 
     switch(intent) {
         case PlaybackIntent::Play:
@@ -37,7 +37,7 @@ PlaybackAction reducePlaybackIntent(const PlaybackIntentReducerState& state, con
             if(state.fadeState == FadeState::FadingToPause) {
                 return PlaybackAction::Continue;
             }
-            if(canFadePause) {
+            if(needsAudiblePause) {
                 return PlaybackAction::BeginFade;
             }
             return PlaybackAction::Immediate;
