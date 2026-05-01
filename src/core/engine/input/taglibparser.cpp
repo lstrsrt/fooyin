@@ -39,6 +39,7 @@
 #endif
 #include <taglib/fileref.h>
 #include <taglib/flacfile.h>
+#include <taglib/id3v1tag.h>
 #include <taglib/id3v2framefactory.h>
 #include <taglib/id3v2tag.h>
 #include <taglib/mp4file.h>
@@ -815,13 +816,25 @@ void readAudioProperties(const TagLib::File& file, Fooyin::Track& track)
     }
 }
 
-void readGeneralProperties(const TagLib::PropertyMap& props, Fooyin::Track& track)
+bool hasPopulatedValue(const TagLib::StringList& value)
 {
-    track.clearExtraTags();
+    return std::ranges::any_of(value, [](const TagLib::String& entry) { return !entry.stripWhiteSpace().isEmpty(); });
+}
+
+void readGeneralProperties(const TagLib::PropertyMap& props, Fooyin::Track& track, bool skipEmptyValues = false,
+                           bool clearExtraTags = true)
+{
+    if(clearExtraTags) {
+        track.clearExtraTags();
+    }
 
     using namespace Fooyin::Tag;
 
     for(const auto& [field, value] : props) {
+        if(skipEmptyValues && !hasPopulatedValue(value)) {
+            continue;
+        }
+
         if(field == Title) {
             track.setTitle(convertString(value.toString()));
         }
@@ -2675,7 +2688,29 @@ bool TagLibReader::readTrack(const AudioSource& source, Track& track)
         TagLib::MPEG::File file(&stream, TagLib::ID3v2::FrameFactory::instance(), true, style);
 #endif
         if(file.isValid()) {
-            readProperties(file);
+            readAudioProperties(file, track);
+
+            bool readTags{false};
+            if(file.hasID3v1Tag()) {
+                readGeneralProperties(file.ID3v1Tag()->properties(), track);
+                readTags = true;
+            }
+            if(file.hasAPETag()) {
+                const auto* apeTag = file.APETag();
+                readGeneralProperties(apeTag->properties(), track, readTags, !readTags);
+                readApeTags(apeTag, track);
+                readTags = true;
+            }
+            if(file.hasID3v2Tag()) {
+                const auto* id3Tag = file.ID3v2Tag();
+                readGeneralProperties(id3Tag->properties(), track, readTags, !readTags);
+                readId3Tags(id3Tag, track);
+                readTags = true;
+            }
+            if(!readTags) {
+                readGeneralProperties(file.properties(), track);
+            }
+
             checkXingHeader(&file, track);
             track.setEncoding(u"Lossy"_s);
 
@@ -2689,7 +2724,6 @@ bool TagLibReader::readTrack(const AudioSource& source, Track& track)
             if(file.hasID3v2Tag()) {
                 const auto* id3Tag = file.ID3v2Tag();
                 types.emplace_back(u"ID3v2.%1"_s.arg(id3Tag->header()->majorVersion()));
-                readId3Tags(id3Tag, track);
             }
             track.setTagTypes(types);
         }
