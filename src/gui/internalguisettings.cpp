@@ -131,6 +131,8 @@ GuiSettings::GuiSettings(SettingsManager* settingsManager)
     m_settings->createSetting<Internal::TrackCoverDisplayOption>(0, u"Artwork/DisplayOption"_s);
     m_settings->createSetting<Internal::TrackCoverSourcePreference>(
         static_cast<int>(ArtworkSourcePreference::PreferDirectory), u"Artwork/LocalSourcePreference"_s);
+    m_settings->createSetting<Internal::TrackCoverThumbnailGroupScript>(
+        u"[%date%|][%albumartist%|][%artist%|]$if2(%album%,%path%)"_s, u"Artwork/ThumbnailGroupScript"_s);
     m_settings->createSetting<Internal::PlaylistImagePadding>(5, u"PlaylistWidget/ImagePadding"_s);
     m_settings->createSetting<Internal::PlaylistImagePaddingTop>(0, u"PlaylistWidget/ImagePaddingTop"_s);
     m_settings->createSetting<Internal::PixmapCacheSize>(

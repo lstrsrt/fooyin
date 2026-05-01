@@ -130,6 +130,8 @@ public:
     static void clearCache();
     /** Removes all covers of the @p track from the cache. */
     static void removeFromCache(const Track& track);
+    /** Removes all covers of the @p track from the cache using settings for grouped thumbnails. */
+    static void removeFromCache(const Track& track, const SettingsManager& settings);
 
 Q_SIGNALS:
     /** Emitted after a @fn trackCover or @fn trackCoverThumbnail call if and when the cover is added to the cache. */
@@ -139,6 +141,8 @@ Q_SIGNALS:
 private:
     class CoverProviderPrivate;
     std::unique_ptr<CoverProviderPrivate> p;
+
+    static void removeFromCache(const Track& track, const QString& thumbnailGroup);
 
     static QCache<QString, QPixmap> m_coverCache;
     static std::set<QString> m_noCoverKeys;

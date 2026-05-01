@@ -180,7 +180,7 @@ public:
     void handleTrackStatus(const Engine::TrackStatusContext& context);
     void handleTracksDeleted(const TrackList& tracks);
 
-    static void removeExpiredCovers(const TrackList& tracks);
+    void removeExpiredCovers(const TrackList& tracks);
 
     void registerActions();
     void rescanTracks(const TrackList& tracks, bool onlyModified) const;
@@ -375,7 +375,7 @@ void GuiApplicationPrivate::initialise()
 void GuiApplicationPrivate::setupConnections()
 {
     QObject::connect(m_library, &MusicLibrary::tracksMetadataChanged, m_self,
-                     [](const TrackList& tracks) { removeExpiredCovers(tracks); });
+                     [this](const TrackList& tracks) { removeExpiredCovers(tracks); });
     QObject::connect(m_library, &MusicLibrary::tracksMetadataChanged, &m_selectionController,
                      &TrackSelectionController::tracksUpdated);
     QObject::connect(m_library, &MusicLibrary::tracksUpdated, &m_selectionController,
@@ -653,7 +653,7 @@ void GuiApplicationPrivate::removeExpiredCovers(const TrackList& tracks)
 {
     for(const Track& track : tracks) {
         if(track.metadataWasModified()) {
-            CoverProvider::removeFromCache(track);
+            CoverProvider::removeFromCache(track, *m_settings);
         }
     }
 }
@@ -1550,9 +1550,12 @@ void GuiApplication::searchForArtwork(const TrackList& tracks, Track::Cover type
                 coverData.tracks = tracks;
                 coverData.coverData.emplace(Track::Cover::Front,
                                             CoverImage{.mimeType = saveResult.mimeType, .data = saveResult.image});
-                p->m_library->writeTrackCovers(coverData).finished.then(this, [tracks](const WriteResult& /*result*/) {
-                    std::ranges::for_each(tracks, &CoverProvider::removeFromCache);
-                });
+                p->m_library->writeTrackCovers(coverData).finished.then(
+                    this, [this, tracks](const WriteResult& /*result*/) {
+                        for(const Track& updatedTrack : tracks) {
+                            CoverProvider::removeFromCache(updatedTrack, *p->m_settings);
+                        }
+                    });
             }
             else {
                 ScriptParser trackParser;
@@ -1562,7 +1565,9 @@ void GuiApplication::searchForArtwork(const TrackList& tracks, Track::Cover type
 
                 QFile file{cleanPath};
                 if(file.open(QIODevice::WriteOnly) && file.write(saveResult.image) == saveResult.image.size()) {
-                    std::ranges::for_each(tracks, CoverProvider::removeFromCache);
+                    for(const Track& updatedTrack : tracks) {
+                        CoverProvider::removeFromCache(updatedTrack, *p->m_settings);
+                    }
                     p->m_widgets->refreshCoverWidgets();
                 }
             }
@@ -1582,8 +1587,10 @@ void GuiApplication::removeArtwork(const TrackList& tracks, const std::set<Track
         coverData.coverData.emplace(coverType, CoverImage{});
     }
 
-    p->m_library->writeTrackCovers(coverData).finished.then(this, [tracks](const WriteResult& /*result*/) {
-        std::ranges::for_each(tracks, CoverProvider::removeFromCache);
+    p->m_library->writeTrackCovers(coverData).finished.then(this, [this, tracks](const WriteResult& /*result*/) {
+        for(const Track& track : tracks) {
+            CoverProvider::removeFromCache(track, *p->m_settings);
+        }
     });
 }
 
@@ -1611,8 +1618,10 @@ void GuiApplication::attachArtwork(const TrackList& tracks, Track::Cover type, c
     coverData.tracks = tracks;
     coverData.coverData.emplace(type, CoverImage{.mimeType = mimeType, .data = image});
 
-    p->m_library->writeTrackCovers(coverData).finished.then(this, [tracks](const WriteResult& /*result*/) {
-        std::ranges::for_each(tracks, CoverProvider::removeFromCache);
+    p->m_library->writeTrackCovers(coverData).finished.then(this, [this, tracks](const WriteResult& /*result*/) {
+        for(const Track& track : tracks) {
+            CoverProvider::removeFromCache(track, *p->m_settings);
+        }
     });
 }
 

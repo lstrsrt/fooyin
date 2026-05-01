@@ -62,11 +62,11 @@ std::set<QString> Fooyin::CoverProvider::m_noCoverKeys;
 namespace {
 using Fooyin::CoverProvider;
 
-QString generateAlbumCoverKey(const Fooyin::Track& track, Fooyin::Track::Cover type,
-                              Fooyin::ArtworkSourcePreference sourcePreference)
+QString generateGroupedCoverKey(const QString& group, Fooyin::Track::Cover type,
+                                Fooyin::ArtworkSourcePreference sourcePreference)
 {
     return Fooyin::Utils::generateHash(
-        u"FyCover|%1|%2"_s.arg(static_cast<int>(type)).arg(static_cast<int>(sourcePreference)), track.albumHash());
+        u"FyCover|%1|%2"_s.arg(static_cast<int>(type)).arg(static_cast<int>(sourcePreference)), group);
 }
 
 QString generateTrackCoverKey(const Fooyin::Track& track, Fooyin::Track::Cover type,
@@ -167,6 +167,15 @@ QString findDirectoryCover(const Fooyin::CoverPaths& paths, const Fooyin::Track&
     }
 
     return {};
+}
+
+QString evaluateThumbnailGroupScript(const QString& script, const Fooyin::Track& track)
+{
+    static Fooyin::ScriptParser parser;
+    static std::mutex parserGuard;
+    const std::scoped_lock lock{parserGuard};
+
+    return parser.evaluate(script, track);
 }
 
 QImage readImage(const QString& path, int requestedSize, const QString& hintType)
@@ -409,6 +418,7 @@ public:
                                                  Track::Cover type) const;
     QPixmap loadCachedCover(const QString& key, int size = 0);
     [[nodiscard]] QFuture<bool> hasCover(const QString& key, const Track& track, Track::Cover type) const;
+    [[nodiscard]] QString thumbnailCoverKey(const Track& track, Track::Cover type) const;
     bool shouldRetryNoCover(const QString& key) const;
     void clearNoCoverRetry(const QString& key) const;
 
@@ -422,6 +432,7 @@ public:
 
     CoverPaths m_paths;
     ArtworkSourcePreference m_sourcePreference;
+    QString m_thumbnailGroupScript;
 };
 
 CoverProvider::CoverProviderPrivate::CoverProviderPrivate(CoverProvider* self, std::shared_ptr<AudioLoader> audioLoader,
@@ -432,6 +443,7 @@ CoverProvider::CoverProviderPrivate::CoverProviderPrivate(CoverProvider* self, s
     , m_paths{m_settings->value<Settings::Gui::Internal::TrackCoverPaths>().value<CoverPaths>()}
     , m_sourcePreference{static_cast<ArtworkSourcePreference>(
           m_settings->value<Settings::Gui::Internal::TrackCoverSourcePreference>())}
+    , m_thumbnailGroupScript{m_settings->value<Settings::Gui::Internal::TrackCoverThumbnailGroupScript>()}
 {
     auto updateCache = [](const int sizeMb) {
         m_coverCache.setMaxCost(sizeMb * 1024LL * 1024LL);
@@ -444,11 +456,25 @@ CoverProvider::CoverProviderPrivate::CoverProviderPrivate(CoverProvider* self, s
         m_self, [this](const QVariant& var) { m_paths = var.value<CoverPaths>(); });
     m_settings->subscribe<Settings::Gui::Internal::TrackCoverSourcePreference>(
         m_self, [this](int preference) { m_sourcePreference = static_cast<ArtworkSourcePreference>(preference); });
+    m_settings->subscribe<Settings::Gui::Internal::TrackCoverThumbnailGroupScript>(m_self, [this](QString script) {
+        m_thumbnailGroupScript = std::move(script);
+        m_noCoverKeys.clear();
+    });
     m_settings->subscribe<Settings::Gui::IconTheme>(m_self, []() {
         for(const auto size : {None, Tiny, Small, MediumSmall, Medium, Large, VeryLarge, ExtraLarge, Huge, Full}) {
             m_coverCache.remove(noCoverCacheKey(size));
         }
     });
+}
+
+QString CoverProvider::CoverProviderPrivate::thumbnailCoverKey(const Track& track, Track::Cover type) const
+{
+    QString group = evaluateThumbnailGroupScript(m_thumbnailGroupScript, track);
+    if(group.isEmpty()) {
+        group = track.albumHash();
+    }
+
+    return generateGroupedCoverKey(group, type, m_sourcePreference);
 }
 
 QPixmap CoverProvider::CoverProviderPrivate::loadNoCover(const ThumbnailSize size) const
@@ -734,7 +760,7 @@ QFuture<QPixmap> CoverProvider::trackCoverThumbnailAsync(const Track& track, Thu
         return makeReadyFuture(QPixmap{});
     }
 
-    const QString coverKey = generateAlbumCoverKey(track, type, p->m_sourcePreference);
+    const QString coverKey = p->thumbnailCoverKey(track, type);
     if(m_noCoverKeys.contains(coverKey)) {
         if(!p->shouldRetryNoCover(coverKey)) {
             return makeReadyFuture(QPixmap{});
@@ -761,7 +787,7 @@ QPixmap CoverProvider::trackCoverThumbnail(const Track& track, ThumbnailSize siz
         return p->m_usePlacerholder ? p->loadNoCover(size) : QPixmap{};
     }
 
-    const QString coverKey = generateAlbumCoverKey(track, type, p->m_sourcePreference);
+    const QString coverKey = p->thumbnailCoverKey(track, type);
     if(m_noCoverKeys.contains(coverKey)) {
         if(!p->m_pendingCovers.contains(coverKey) && p->shouldRetryNoCover(coverKey)) {
             m_noCoverKeys.erase(coverKey);
@@ -833,28 +859,40 @@ void CoverProvider::clearCache()
     m_noCoverKeys.clear();
 }
 
+void CoverProvider::removeFromCache(const Track& track, const SettingsManager& settings)
+{
+    const auto thumbnailGroupScript = settings.value<Settings::Gui::Internal::TrackCoverThumbnailGroupScript>();
+    QString group                   = evaluateThumbnailGroupScript(thumbnailGroupScript, track);
+    if(group.isEmpty()) {
+        group = track.albumHash();
+    }
+
+    removeFromCache(track, group);
+}
+
 void CoverProvider::removeFromCache(const Track& track)
+{
+    removeFromCache(track, track.albumHash());
+}
+
+void CoverProvider::removeFromCache(const Track& track, const QString& thumbnailGroup)
 {
     auto removeKey = [](const QString& key) {
         QDir cache{Fooyin::Gui::coverPath()};
         cache.remove(coverThumbnailPath(key));
         m_noCoverKeys.erase(key);
         m_coverCache.remove(key);
+
+        for(const auto size : {Tiny, Small, MediumSmall, Medium, Large, VeryLarge, ExtraLarge, Huge}) {
+            m_coverCache.remove(generateThumbCoverKey(key, size));
+        }
     };
 
     for(const auto type : {Track::Cover::Front, Track::Cover::Back, Track::Cover::Artist}) {
         for(const auto sourcePreference :
             {ArtworkSourcePreference::PreferDirectory, ArtworkSourcePreference::PreferEmbedded}) {
-            const QString albumKey = generateAlbumCoverKey(track, type, sourcePreference);
-            const QString trackKey = generateTrackCoverKey(track, type, sourcePreference);
-
-            removeKey(albumKey);
-            removeKey(trackKey);
-
-            for(const auto size : {Tiny, Small, MediumSmall, Medium, Large, VeryLarge, ExtraLarge, Huge}) {
-                m_coverCache.remove(generateThumbCoverKey(albumKey, size));
-                m_coverCache.remove(generateThumbCoverKey(trackKey, size));
-            }
+            removeKey(generateGroupedCoverKey(thumbnailGroup, type, sourcePreference));
+            removeKey(generateTrackCoverKey(track, type, sourcePreference));
         }
     }
 }

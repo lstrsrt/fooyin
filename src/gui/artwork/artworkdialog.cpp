@@ -160,9 +160,12 @@ void ArtworkDialog::accept()
         TrackCoverData coverData;
         coverData.tracks = m_tracks;
         coverData.coverData.emplace(m_type, CoverImage{.mimeType = saveResult.mimeType, .data = saveResult.image});
-        m_library->writeTrackCovers(coverData).finished.then(this, [tracks = m_tracks](const WriteResult& /*result*/) {
-            std::ranges::for_each(tracks, &CoverProvider::removeFromCache);
-        });
+        m_library->writeTrackCovers(coverData).finished.then(this,
+                                                             [this, tracks = m_tracks](const WriteResult& /*result*/) {
+                                                                 for(const Track& track : tracks) {
+                                                                     CoverProvider::removeFromCache(track, *m_settings);
+                                                                 }
+                                                             });
     }
     else {
         const QString path
@@ -171,7 +174,9 @@ void ArtworkDialog::accept()
 
         QFile file{cleanPath};
         if(file.open(QIODevice::WriteOnly) && file.write(saveResult.image) == saveResult.image.size()) {
-            std::ranges::for_each(m_tracks, CoverProvider::removeFromCache);
+            for(const Track& track : m_tracks) {
+                CoverProvider::removeFromCache(track, *m_settings);
+            }
         }
     }
 

@@ -177,6 +177,7 @@ enum GuiInternalSettings : uint32_t
     PropertiesSidebarTrackScript           = 47 | Type::String,
     StatusPlaylistScript                   = 48 | Type::String,
     StatusShowPlaylist                     = 49 | Type::Bool,
+    TrackCoverThumbnailGroupScript         = 50 | Type::String,
 };
 Q_ENUM_NS(GuiInternalSettings)
 } // namespace Settings::Gui::Internal

@@ -35,14 +35,15 @@ class ArtworkRow;
 class AudioLoader;
 struct ArtworkLoadResult;
 class MusicLibrary;
+class SettingsManager;
 
 class ArtworkProperties : public PropertiesTabWidget
 {
     Q_OBJECT
 
 public:
-    ArtworkProperties(AudioLoader* loader, MusicLibrary* library, TrackList tracks, bool readOnly,
-                      QWidget* parent = nullptr);
+    ArtworkProperties(AudioLoader* loader, MusicLibrary* library, SettingsManager* settings, TrackList tracks,
+                      bool readOnly, QWidget* parent = nullptr);
     ~ArtworkProperties() override;
 
     void loadTrackArtwork();
@@ -64,6 +65,7 @@ private:
 
     AudioLoader* m_audioLoader;
     MusicLibrary* m_library;
+    SettingsManager* m_settings;
 
     TrackList m_tracks;
     QFutureWatcher<std::shared_ptr<ArtworkLoadResult>>* m_watcher;

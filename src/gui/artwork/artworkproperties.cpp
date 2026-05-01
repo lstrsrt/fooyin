@@ -53,11 +53,12 @@ struct ArtworkLoadResult
     bool cancelled{false};
 };
 
-ArtworkProperties::ArtworkProperties(AudioLoader* loader, MusicLibrary* library, TrackList tracks, bool readOnly,
-                                     QWidget* parent)
+ArtworkProperties::ArtworkProperties(AudioLoader* loader, MusicLibrary* library, SettingsManager* settings,
+                                     TrackList tracks, bool readOnly, QWidget* parent)
     : PropertiesTabWidget{parent}
     , m_audioLoader{loader}
     , m_library{library}
+    , m_settings{settings}
     , m_tracks{std::move(tracks)}
     , m_watcher{new QFutureWatcher<std::shared_ptr<ArtworkLoadResult>>(this)}
     , m_cancelLoading{std::make_shared<std::atomic_bool>(false)}
@@ -233,7 +234,9 @@ void ArtworkProperties::apply()
     m_writeRequest = m_library->writeTrackCovers(coverData);
     m_writeRequest->finished.then(this, [this, tracks = m_tracks](const WriteResult& result) {
         if(result.succeeded > 0) {
-            std::ranges::for_each(tracks, CoverProvider::removeFromCache);
+            for(const Track& track : tracks) {
+                CoverProvider::removeFromCache(track, *m_settings);
+            }
         }
 
         if(const QString status = writeStatusMessage(result); !status.isEmpty()) {

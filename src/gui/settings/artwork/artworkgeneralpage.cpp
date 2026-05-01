@@ -24,6 +24,7 @@
 #include <gui/coverprovider.h>
 #include <gui/guiconstants.h>
 #include <gui/guipaths.h>
+#include <gui/widgets/scriptlineedit.h>
 #include <utils/fileutils.h>
 #include <utils/settings/settingsmanager.h>
 #include <utils/stringutils.h>
@@ -64,6 +65,7 @@ private:
     QRadioButton* m_preferDirectory;
     QRadioButton* m_preferEmbedded;
 
+    ScriptLineEdit* m_thumbnailGroupScript;
     QSpinBox* m_pixmapCache;
     QLabel* m_cacheSizeLabel;
 };
@@ -74,6 +76,7 @@ ArtworkPageWidget::ArtworkPageWidget(SettingsManager* settings)
     , m_preferSelection{new QRadioButton(tr("Prefer current selection"), this)}
     , m_preferDirectory{new QRadioButton(tr("Prefer directory artwork"), this)}
     , m_preferEmbedded{new QRadioButton(tr("Prefer embedded artwork"), this)}
+    , m_thumbnailGroupScript{new ScriptLineEdit(this)}
     , m_pixmapCache{new QSpinBox(this)}
     , m_cacheSizeLabel{new QLabel(this)}
 {
@@ -96,6 +99,18 @@ ArtworkPageWidget::ArtworkPageWidget(SettingsManager* settings)
 
     sourceLayout->addWidget(m_preferDirectory);
     sourceLayout->addWidget(m_preferEmbedded);
+
+    auto* thumbnailsGroupBox = new QGroupBox(tr("Thumbnails"), this);
+    auto* thumbnailsLayout   = new QGridLayout(thumbnailsGroupBox);
+
+    auto* thumbnailGroupLabel        = new QLabel(tr("Grouping script") + u":"_s, this);
+    const auto thumbnailGroupTooltip = tr("Groups artwork thumbnails that should share the same cached image");
+    thumbnailGroupLabel->setToolTip(thumbnailGroupTooltip);
+    m_thumbnailGroupScript->setToolTip(thumbnailGroupTooltip);
+
+    thumbnailsLayout->addWidget(thumbnailGroupLabel, 0, 0);
+    thumbnailsLayout->addWidget(m_thumbnailGroupScript, 0, 1);
+    thumbnailsLayout->setColumnStretch(1, 1);
 
     auto* cacheGroupBox = new QGroupBox(tr("Cache"), this);
     auto* cacheLayout   = new QGridLayout(cacheGroupBox);
@@ -122,7 +137,8 @@ ArtworkPageWidget::ArtworkPageWidget(SettingsManager* settings)
     auto* layout = new QGridLayout(this);
     layout->addWidget(displayGroupBox, 0, 0);
     layout->addWidget(sourceGroupBox, 1, 0);
-    layout->addWidget(cacheGroupBox, 2, 0);
+    layout->addWidget(thumbnailsGroupBox, 2, 0);
+    layout->addWidget(cacheGroupBox, 3, 0);
     layout->setRowStretch(layout->rowCount(), 1);
 }
 
@@ -148,6 +164,7 @@ void ArtworkPageWidget::load()
     }
 
     m_pixmapCache->setValue(m_settings->value<Settings::Gui::Internal::PixmapCacheSize>());
+    m_thumbnailGroupScript->setText(m_settings->value<Settings::Gui::Internal::TrackCoverThumbnailGroupScript>());
     updateCacheSize();
 }
 
@@ -160,6 +177,7 @@ void ArtworkPageWidget::apply()
 
     m_settings->set<Settings::Gui::Internal::TrackCoverDisplayOption>(static_cast<int>(option));
     m_settings->set<Settings::Gui::Internal::TrackCoverSourcePreference>(static_cast<int>(sourcePref));
+    m_settings->set<Settings::Gui::Internal::TrackCoverThumbnailGroupScript>(m_thumbnailGroupScript->text());
     m_settings->set<Settings::Gui::Internal::PixmapCacheSize>(m_pixmapCache->value());
 }
 
@@ -167,6 +185,7 @@ void ArtworkPageWidget::reset()
 {
     m_settings->reset<Settings::Gui::Internal::TrackCoverDisplayOption>();
     m_settings->reset<Settings::Gui::Internal::TrackCoverSourcePreference>();
+    m_settings->reset<Settings::Gui::Internal::TrackCoverThumbnailGroupScript>();
     m_settings->reset<Settings::Gui::Internal::PixmapCacheSize>();
 }
 
