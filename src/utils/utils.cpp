@@ -350,9 +350,10 @@ void restoreState(QWidget* widget, const QSettings& settings, const QString& nam
     const QString geometryKey = QStringLiteral("%1/Geometry").arg(keyGroup);
     const QString sizeKey     = QStringLiteral("%1/Size").arg(keyGroup);
 
-    const QByteArray geometry = settings.value(geometryKey).toByteArray();
-    if(!geometry.isEmpty()) {
-        widget->restoreGeometry(geometry);
+    if(settings.contains(geometryKey)) {
+        if(const QByteArray geometry = settings.value(geometryKey).toByteArray(); !geometry.isEmpty()) {
+            widget->restoreGeometry(geometry);
+        }
     }
 
     if(auto* window = qobject_cast<QMainWindow*>(widget)) {
@@ -363,8 +364,11 @@ void restoreState(QWidget* widget, const QSettings& settings, const QString& nam
         }
     }
 
-    const QSize size = settings.value(sizeKey).toSize();
-    widget->resize(size.isValid() ? size : widget->sizeHint());
+    if(settings.contains(sizeKey)) {
+        if(const QSize size = settings.value(sizeKey).toSize(); size.isValid()) {
+            widget->resize(size);
+        }
+    }
 }
 
 bool isDarkMode()
