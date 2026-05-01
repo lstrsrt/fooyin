@@ -62,6 +62,7 @@
 #include <core/playlist/playlistparser.h>
 #include <core/plugins/plugininfo.h>
 #include <core/plugins/pluginmanager.h>
+#include <core/scripting/scriptenvironmenthelpers.h>
 #include <gui/coverprovider.h>
 #include <gui/editablelayout.h>
 #include <gui/guiconstants.h>

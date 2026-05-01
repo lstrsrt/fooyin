@@ -24,6 +24,7 @@
 #include "scripting/scriptvariableproviders.h"
 
 #include <core/player/playercontroller.h>
+#include <core/scripting/scriptenvironmenthelpers.h>
 #include <gui/guisettings.h>
 #include <utils/settings/settingsmanager.h>
 

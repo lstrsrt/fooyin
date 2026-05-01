@@ -25,6 +25,7 @@
 
 namespace Fooyin {
 class FyWidget;
+class PlaylistHandler;
 class Track;
 class TrackSelectionController;
 
@@ -57,6 +58,7 @@ private:
 
     ActionManager* m_actionManager;
     PlayerController* m_playerController;
+    PlaylistHandler* m_playlistHandler;
     std::shared_ptr<AudioLoader> m_audioLoader;
     std::shared_ptr<NetworkAccessManager> m_networkAccess;
     TrackSelectionController* m_trackSelection;

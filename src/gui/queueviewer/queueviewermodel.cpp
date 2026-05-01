@@ -23,6 +23,7 @@
 
 #include <core/player/playbackqueue.h>
 #include <core/player/playercontroller.h>
+#include <core/scripting/scriptenvironmenthelpers.h>
 #include <gui/guiconstants.h>
 #include <gui/guisettings.h>
 #include <gui/iconloader.h>

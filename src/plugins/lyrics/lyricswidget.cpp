@@ -32,6 +32,8 @@
 
 #include <core/engine/enginecontroller.h>
 #include <core/player/playercontroller.h>
+#include <core/playlist/playlisthandler.h>
+#include <core/scripting/scriptenvironmenthelpers.h>
 #include <core/scripting/scriptparser.h>
 #include <gui/configdialog.h>
 #include <gui/guisettings.h>
@@ -128,10 +130,12 @@ int validatedEdgeFadeMode(int edgeFadeMode)
 } // namespace
 
 namespace Fooyin::Lyrics {
-LyricsWidget::LyricsWidget(PlayerController* playerController, LyricsFinder* lyricsFinder, LyricsSaver* lyricsSaver,
-                           SettingsManager* settings, QWidget* parent)
+LyricsWidget::LyricsWidget(PlayerController* playerController, PlaylistHandler* playlistHandler,
+                           LyricsFinder* lyricsFinder, LyricsSaver* lyricsSaver, SettingsManager* settings,
+                           QWidget* parent)
     : FyWidget{parent}
     , m_playerController{playerController}
+    , m_playlistHandler{playlistHandler}
     , m_settings{settings}
     , m_lyricsView{new LyricsView(this)}
     , m_model{new LyricsModel(this)}
@@ -867,7 +871,13 @@ void LyricsWidget::setCurrentTime(uint64_t time)
 
 RichText LyricsWidget::noLyricsDisplayText(const Track& track)
 {
-    const QString displayText = m_parser.evaluate(m_config.noLyricsScript, track);
+    auto contextData = makePlaybackScriptContext(m_playerController,
+                                                 m_playlistHandler ? m_playlistHandler->activePlaylist() : nullptr,
+                                                 TrackListContextPolicy::Fallback, {}, true, false,
+                                                 {m_settings->value<Fooyin::Settings::Gui::RatingFullStarSymbol>(),
+                                                  m_settings->value<Fooyin::Settings::Gui::RatingHalfStarSymbol>(),
+                                                  m_settings->value<Fooyin::Settings::Gui::RatingEmptyStarSymbol>()});
+    const QString displayText = m_parser.evaluate(m_config.noLyricsScript, track, contextData.context);
     if(displayText.isEmpty()) {
         return {};
     }

@@ -37,6 +37,7 @@ class QPropertyAnimation;
 namespace Fooyin {
 class EngineController;
 class PlayerController;
+class PlaylistHandler;
 class SettingsManager;
 class Track;
 struct RichText;
@@ -53,8 +54,9 @@ class LyricsWidget : public FyWidget
     Q_OBJECT
 
 public:
-    explicit LyricsWidget(PlayerController* playerController, LyricsFinder* lyricsFinder, LyricsSaver* lyricsSaver,
-                          SettingsManager* settings, QWidget* parent = nullptr);
+    explicit LyricsWidget(PlayerController* playerController, PlaylistHandler* playlistHandler,
+                          LyricsFinder* lyricsFinder, LyricsSaver* lyricsSaver, SettingsManager* settings,
+                          QWidget* parent = nullptr);
 
     static QString defaultNoLyricsScript();
 
@@ -129,6 +131,7 @@ private:
     [[nodiscard]] bool shouldEnableEdgeFade() const;
 
     PlayerController* m_playerController;
+    PlaylistHandler* m_playlistHandler;
     SettingsManager* m_settings;
 
     LyricsView* m_lyricsView;

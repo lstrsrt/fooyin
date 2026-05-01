@@ -25,6 +25,7 @@
 
 #include <core/player/playercontroller.h>
 #include <core/playlist/playlisthandler.h>
+#include <core/scripting/scriptenvironmenthelpers.h>
 #include <core/scripting/scriptparser.h>
 #include <core/track.h>
 #include <gui/configdialog.h>
