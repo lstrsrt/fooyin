@@ -292,13 +292,19 @@ void parseTag(Fooyin::Track& track, AVDictionaryEntry* tag)
     }
 };
 
-void interleaveSamples(uint8_t** in, Fooyin::AudioBuffer& buffer)
+bool interleaveSamples(uint8_t* const* in, Fooyin::AudioBuffer& buffer)
 {
     const auto format  = buffer.format();
     const int channels = format.channelCount();
     const int samples  = buffer.frameCount();
     const int bps      = format.bytesPerSample();
     auto* out          = buffer.data();
+
+    for(int channel{0}; channel < channels; ++channel) {
+        if(!in[channel]) {
+            return false;
+        }
+    }
 
     const int totalSamples = samples * channels;
 
@@ -310,17 +316,17 @@ void interleaveSamples(uint8_t** in, Fooyin::AudioBuffer& buffer)
         const auto outOffset = i * bps;
         std::memmove(out + outOffset, in[channelIndex] + inOffset, bps);
     }
+
+    return true;
 }
 
-void interleave(uint8_t** in, Fooyin::AudioBuffer& buffer)
+bool interleave(uint8_t* const* in, Fooyin::AudioBuffer& buffer)
 {
-    if(!buffer.isValid()) {
-        return;
+    if(!in || !buffer.isValid()) {
+        return false;
     }
 
-    if(buffer.format().sampleFormat() != Fooyin::SampleFormat::Unknown) {
-        interleaveSamples(in, buffer);
-    }
+    return interleaveSamples(in, buffer);
 }
 
 int ffRead(void* data, uint8_t* buffer, int size)
@@ -693,7 +699,13 @@ int FFmpegInputPrivate::receiveAVFrames()
         if(m_codec.isPlanar()) {
             m_buffer = {m_audioFormat, startTime};
             m_buffer.resize(static_cast<size_t>(sampleCount));
-            interleave(m_frame.avFrame()->data, m_buffer);
+
+            if(!interleave(m_frame.avFrame()->extended_data, m_buffer)) {
+                qCWarning(FFMPEG) << "Invalid planar audio frame";
+                m_buffer.clear();
+                m_error = true;
+                return AVERROR_INVALIDDATA;
+            }
         }
         else {
             m_buffer = {m_frame.avFrame()->data[0], static_cast<size_t>(sampleCount), m_audioFormat, startTime};
