@@ -30,6 +30,7 @@ class QLabel;
 class QPlainTextEdit;
 class QPushButton;
 class QSortFilterProxyModel;
+class QSplitter;
 class QTreeView;
 
 namespace Fooyin {
@@ -59,6 +60,8 @@ private:
     void finishSearch(const Track& track, bool foundAny);
     void updateSelection();
     void updateActionState();
+    void saveState();
+    void restoreState();
     bool applySelection();
     [[nodiscard]] int selectedSourceRow() const;
     [[nodiscard]] const Lyrics* selectedLyrics() const;
@@ -77,6 +80,7 @@ private:
     LyricsSearchModel* m_resultsModel;
     QSortFilterProxyModel* m_resultsProxyModel;
     QPlainTextEdit* m_preview;
+    QSplitter* m_splitter;
     QPushButton* m_okButton;
     QPushButton* m_applyButton;
 };

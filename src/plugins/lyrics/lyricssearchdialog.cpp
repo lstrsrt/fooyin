@@ -24,7 +24,9 @@
 #include "lyricssaver.h"
 #include "lyricssearchmodel.h"
 
+#include <core/coresettings.h>
 #include <gui/widgets/lineediteditor.h>
+#include <utils/utils.h>
 
 #include <QDialogButtonBox>
 #include <QGridLayout>
@@ -40,6 +42,10 @@
 #include <QTreeView>
 
 using namespace Qt::StringLiterals;
+
+constexpr auto SearchDialogStateGroup  = "Lyrics"_L1;
+constexpr auto SearchDialogHeaderState = "Lyrics/SearchDialogHeaderState"_L1;
+constexpr auto SearchDialogSplitter    = "Lyrics/SearchDialogSplitter"_L1;
 
 namespace Fooyin::Lyrics {
 class LyricsSearchProxyModel : public QSortFilterProxyModel
@@ -77,6 +83,7 @@ LyricsSearchDialog::LyricsSearchDialog(const Track& track, std::shared_ptr<Netwo
     , m_resultsModel{new LyricsSearchModel(this)}
     , m_resultsProxyModel{new LyricsSearchProxyModel(this)}
     , m_preview{new QPlainTextEdit(this)}
+    , m_splitter{new QSplitter(Qt::Horizontal, this)}
     , m_okButton{nullptr}
     , m_applyButton{nullptr}
 {
@@ -94,10 +101,9 @@ LyricsSearchDialog::LyricsSearchDialog(const Track& track, std::shared_ptr<Netwo
 
     auto* layout = new QVBoxLayout(this);
 
-    auto* splitter = new QSplitter(Qt::Horizontal, this);
-    layout->addWidget(splitter, 1);
+    layout->addWidget(m_splitter, 1);
 
-    auto* resultsWidget = new QWidget(splitter);
+    auto* resultsWidget = new QWidget(m_splitter);
     auto* resultsLayout = new QVBoxLayout(resultsWidget);
     resultsLayout->setContentsMargins(5, 0, 5, 0);
 
@@ -130,11 +136,11 @@ LyricsSearchDialog::LyricsSearchDialog(const Track& track, std::shared_ptr<Netwo
     m_resultsTable->sortByColumn(0, Qt::AscendingOrder);
 
     resultsLayout->addWidget(m_resultsTable, 1);
-    splitter->addWidget(resultsWidget);
+    m_splitter->addWidget(resultsWidget);
 
-    splitter->addWidget(m_preview);
-    splitter->setStretchFactor(0, 3);
-    splitter->setStretchFactor(1, 2);
+    m_splitter->addWidget(m_preview);
+    m_splitter->setStretchFactor(0, 3);
+    m_splitter->setStretchFactor(1, 2);
 
     auto* buttonBox
         = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Apply | QDialogButtonBox::Cancel, this);
@@ -160,6 +166,7 @@ LyricsSearchDialog::LyricsSearchDialog(const Track& track, std::shared_ptr<Netwo
     QObject::connect(buttonBox->button(QDialogButtonBox::Apply), &QPushButton::clicked, this,
                      &LyricsSearchDialog::applySelection);
     QObject::connect(buttonBox, &QDialogButtonBox::rejected, this, &QDialog::reject);
+    QObject::connect(this, &QDialog::finished, this, &LyricsSearchDialog::saveState);
     QObject::connect(m_finder, &LyricsFinder::lyricsFound, this, &LyricsSearchDialog::addResult);
     QObject::connect(m_finder, &LyricsFinder::lyricsSearchFinished, this, &LyricsSearchDialog::finishSearch);
 
@@ -170,6 +177,7 @@ LyricsSearchDialog::LyricsSearchDialog(const Track& track, std::shared_ptr<Netwo
     });
 
     updateActionState();
+    restoreState();
     search();
 }
 
@@ -260,6 +268,34 @@ void LyricsSearchDialog::updateActionState()
     }
     if(m_applyButton) {
         m_applyButton->setEnabled(canApply);
+    }
+}
+
+void LyricsSearchDialog::saveState()
+{
+    FyStateSettings stateSettings;
+    Utils::saveState(this, stateSettings, SearchDialogStateGroup);
+    stateSettings.setValue(SearchDialogHeaderState, m_resultsTable->header()->saveState());
+    stateSettings.setValue(SearchDialogSplitter, m_splitter->saveState());
+}
+
+void LyricsSearchDialog::restoreState()
+{
+    const FyStateSettings stateSettings;
+    Utils::restoreState(this, stateSettings, SearchDialogStateGroup);
+
+    if(stateSettings.contains(SearchDialogHeaderState)) {
+        if(const QByteArray headerState = stateSettings.value(SearchDialogHeaderState).toByteArray();
+           !headerState.isEmpty()) {
+            m_resultsTable->header()->restoreState(headerState);
+        }
+    }
+
+    if(stateSettings.contains(SearchDialogSplitter)) {
+        if(const QByteArray splitterState = stateSettings.value(SearchDialogSplitter).toByteArray();
+           !splitterState.isEmpty()) {
+            m_splitter->restoreState(splitterState);
+        }
     }
 }
 
