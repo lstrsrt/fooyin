@@ -48,10 +48,13 @@ TagEditorView::TagEditorView(ActionManager* actionManager, QWidget* parent)
     : ExtendableTableView{parent}
     , m_actionManager{actionManager}
     , m_editTrigger{AllEditTriggers}
-    , m_context{new WidgetContext(this, Context{"Context.TagEditor"}, this)}
+    , m_context{new WidgetContext(this, Context{Id{"Context.TagEditor."}.append(reinterpret_cast<uintptr_t>(this))},
+                                  this)}
     , m_capitaliseAction{new QAction(tr("Capitalise"), this)}
     , m_copyAction{new QAction(tr("Copy"), this)}
+    , m_copyCmd{m_actionManager->registerAction(m_copyAction, Constants::Actions::Copy, m_context->context())}
     , m_pasteAction{new QAction(tr("Paste"), this)}
+    , m_pasteCmd{m_actionManager->registerAction(m_pasteAction, Constants::Actions::Paste, m_context->context())}
     , m_pasteFields{new QAction(tr("Paste fields"), this)}
     , m_ratingRow{-1}
     , m_starDelegate{nullptr}
@@ -74,26 +77,20 @@ void TagEditorView::setupActions()
 {
     QObject::connect(m_capitaliseAction, &QAction::triggered, this, &TagEditorView::capitaliseSelection);
 
-    m_copyAction->setShortcut(QKeySequence::Copy);
-    if(auto* command = m_actionManager->command(Constants::Actions::Copy)) {
-        m_copyAction->setShortcuts(command->defaultShortcuts());
-    }
+    m_copyCmd->setDefaultShortcut(QKeySequence::Copy);
+    m_copyAction->setVisible(selectionModel()->hasSelection());
     QObject::connect(selectionModel(), &QItemSelectionModel::selectionChanged, this,
                      [this]() { m_copyAction->setVisible(selectionModel()->hasSelection()); });
     QObject::connect(m_copyAction, &QAction::triggered, this, &TagEditorView::copySelection);
-    m_copyAction->setVisible(selectionModel()->hasSelection());
 
-    m_pasteAction->setShortcut(QKeySequence::Paste);
-    if(auto* command = m_actionManager->command(Constants::Actions::Paste)) {
-        m_pasteAction->setShortcuts(command->defaultShortcuts());
-    }
+    m_pasteCmd->setDefaultShortcut(QKeySequence::Paste);
+    m_pasteAction->setVisible(selectionModel()->hasSelection());
+    m_pasteAction->setEnabled(!QApplication::clipboard()->text().isEmpty());
     QObject::connect(selectionModel(), &QItemSelectionModel::selectionChanged, this,
                      [this]() { m_pasteAction->setVisible(selectionModel()->hasSelection()); });
     QObject::connect(QApplication::clipboard(), &QClipboard::changed, this,
                      [this]() { m_pasteAction->setEnabled(!QApplication::clipboard()->text().isEmpty()); });
     QObject::connect(m_pasteAction, &QAction::triggered, this, [this]() { pasteSelection(false); });
-    m_pasteAction->setVisible(selectionModel()->hasSelection());
-    m_pasteAction->setEnabled(!QApplication::clipboard()->text().isEmpty());
 
     m_pasteFields->setShortcut(Qt::CTRL | Qt::SHIFT | Qt::Key_V);
     QObject::connect(QApplication::clipboard(), &QClipboard::changed, this,
@@ -157,13 +154,12 @@ int TagEditorView::sizeHintForRow(int row) const
 
 void TagEditorView::setupContextActions(QMenu* menu, const QPoint& /*pos*/)
 {
-    menu->addAction(m_copyAction);
-    menu->addAction(m_pasteAction);
+    menu->addAction(m_copyCmd->action());
+    menu->addAction(m_pasteCmd->action());
+    menu->addAction(m_pasteFields);
     menu->addSeparator();
     m_capitaliseAction->setEnabled(canCapitaliseSelection());
     menu->addAction(m_capitaliseAction);
-    menu->addSeparator();
-    menu->addAction(m_pasteFields);
 }
 
 void TagEditorView::resizeEvent(QResizeEvent* event)
@@ -238,14 +234,6 @@ void TagEditorView::keyPressEvent(QKeyEvent* event)
 {
     static constexpr QKeyCombination pasteSeq{Qt::CTRL | Qt::SHIFT | Qt::Key_V};
 
-    if((event == QKeySequence::Copy)) {
-        m_copyAction->trigger();
-        return;
-    }
-    if((event == QKeySequence::Paste)) {
-        m_pasteAction->trigger();
-        return;
-    }
     if(event->keyCombination() == pasteSeq) {
         m_pasteFields->trigger();
         return;

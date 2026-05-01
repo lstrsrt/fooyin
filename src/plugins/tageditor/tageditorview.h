@@ -22,6 +22,7 @@
 #include <gui/widgets/extendabletableview.h>
 
 namespace Fooyin {
+class Command;
 class StarDelegate;
 class WidgetContext;
 
@@ -70,7 +71,9 @@ private:
     WidgetContext* m_context;
     QAction* m_capitaliseAction;
     QAction* m_copyAction;
+    Command* m_copyCmd;
     QAction* m_pasteAction;
+    Command* m_pasteCmd;
     QAction* m_pasteFields;
 
     int m_ratingRow;
