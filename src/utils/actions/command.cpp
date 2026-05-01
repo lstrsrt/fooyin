@@ -41,7 +41,7 @@ public:
     CommandPrivate(Command* self, const Id& id)
         : m_self{self}
         , m_id{id}
-        , m_action{new ProxyAction(m_self)}
+        , m_action{new ProxyAction(this)}
     {
         m_action->setShortcutVisibleInToolTip(true);
         QObject::connect(m_action, &QAction::changed, this, &CommandPrivate::updateActiveState);
