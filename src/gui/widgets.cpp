@@ -370,7 +370,8 @@ void Widgets::registerPropertiesTabs()
         const bool canWrite = std::ranges::all_of(tracks, [this](const Track& track) {
             return !track.hasCue() && !track.isInArchive() && m_core->audioLoader()->canWriteMetadata(track);
         });
-        return new ArtworkProperties(m_core->audioLoader().get(), m_core->library(), tracks, !canWrite, m_window);
+        return new ArtworkProperties(m_core->audioLoader().get(), m_core->library(), m_settings, tracks, !canWrite,
+                                     m_window);
     });
 }
 
