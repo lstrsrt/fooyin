@@ -150,13 +150,8 @@ void EditableTabBar::mouseDoubleClickEvent(QMouseEvent* event)
 
 void EditableTabBar::mousePressEvent(QMouseEvent* event)
 {
-    if(event->button() > Qt::MiddleButton) {
+    if(event->button() != Qt::LeftButton) {
         event->ignore();
-        return;
-    }
-
-    if(event->button() & Qt::RightButton) {
-        event->accept();
         return;
     }
 
