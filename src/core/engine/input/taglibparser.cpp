@@ -1146,8 +1146,18 @@ void readId3Tags(const TagLib::ID3v2::Tag* id3Tags, Fooyin::Track& track)
     }
 
     const TagLib::ID3v2::FrameListMap& frames = id3Tags->frameListMap();
+    const unsigned int majorVersion           = id3Tags->header()->majorVersion();
 
-    if(id3Tags->header()->majorVersion() == 3) {
+    if(majorVersion == 4) {
+        // TDRC replaces TYER
+        if(frames.contains("TDRC") && frames.contains("TYER")) {
+            const TagLib::ID3v2::FrameList& dateFrame = frames["TDRC"];
+            if(!dateFrame.isEmpty()) {
+                track.setDate(convertString(dateFrame.front()->toString()));
+            }
+        }
+    }
+    else if(majorVersion == 3) {
         // Handle '/' being used as a separator for artists in v2.3
         if(frames.contains("TPE1")) {
             const TagLib::ID3v2::FrameList& artistsFrame = frames["TPE1"];
