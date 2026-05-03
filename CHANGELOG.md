@@ -1,5 +1,47 @@
 # Changelog
 
+## [0.10.5](https://github.com/fooyin/fooyin/releases/tag/v0.10.5) (2026-05-04)
+
+### Improvements
+
+* Interface
+  - Add support for wildcard artwork directory paths ([#1099](https://github.com/fooyin/fooyin/issues/1099))
+  - Split playlist and queue context-menu actions into separate configurable actions
+  - Improve playlist header appearance when artwork is hidden
+  - Add a playlist preset menu option for opening the preset settings page
+* Directory Browser
+  - Add search support ([#1106](https://github.com/fooyin/fooyin/issues/1106))
+  - Make context menu configurable
+* Library Tree
+  - Add support for right-aligned text with `<right>`
+  - Add configurable summary node script
+  - Add `%trackcount%`, `%childcount%`
+* Scripting
+  - Add support for preserving layout whitespace during evaluation
+
+### Fixes
+
+* Audio/Playback
+  - Refresh active stream metadata on track updates so ReplayGain changes apply immediately ([#1102](https://github.com/fooyin/fooyin/issues/1102))
+* Interface
+  - Fix editable tab middle-click handling
+* Library/Metadata
+  - Prefer ID3v2.4 `TDRC` over `TYER` when reading date tags ([#787](https://github.com/fooyin/fooyin/issues/787), [#1098](https://github.com/fooyin/fooyin/pull/1098))
+  - Fix autoplaylist refresh and playlist changesets for custom tag changes ([#860](https://github.com/fooyin/fooyin/issues/860))
+* Lyrics
+  - Avoid stale editor and widget updates after the edited track changes ([#748](https://github.com/fooyin/fooyin/issues/748), [#1101](https://github.com/fooyin/fooyin/pull/1101))
+
+### Build/System
+
+* Packaging
+  - Add zlib as an explicit dependency and Debian packaging dependency
+  - Drop Fedora 41 and add 44
+* Plugin API
+  - Remove the legacy plugin settings API
+* Translations
+  - Update translations and translation sources ([#1104](https://github.com/fooyin/fooyin/pull/1104), [#1105](https://github.com/fooyin/fooyin/pull/1105))
+
+
 ## [0.10.4](https://github.com/fooyin/fooyin/releases/tag/v0.10.4) (2026-05-02)
 
 ### New Features
