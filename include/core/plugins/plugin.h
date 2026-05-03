@@ -45,24 +45,6 @@ public:
      * @note The base class implementation of this function does nothing.
      */
     virtual void shutdown();
-
-    /*!
-     * Legacy plugin-level settings hook.
-     *
-     * For new GUI-owned plugin configuration dialogs, prefer implementing
-     * `PluginConfigGuiPlugin` instead. This legacy path remains supported as
-     * a fallback while plugins migrate.
-     */
-    [[nodiscard]] virtual bool hasSettings() const;
-
-    /*!
-     * Legacy plugin-level settings hook.
-     *
-     * For new GUI-owned plugin configuration dialogs, prefer implementing
-     * `PluginConfigGuiPlugin` instead. This legacy path remains supported as
-     * a fallback while plugins migrate.
-     */
-    virtual void showSettings(QWidget* parent);
 };
 } // namespace Fooyin
 

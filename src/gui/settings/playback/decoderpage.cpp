@@ -65,44 +65,24 @@ void applyChanges(std::vector<T> existing, std::vector<T> loaders,
     }
 }
 
-Fooyin::DecoderModel::SettingsHandlerMap inputSettingsHandlers(Fooyin::PluginManager* pluginManager,
-                                                               Fooyin::PluginSettingsRegistry* registry)
+Fooyin::DecoderModel::SettingsHandlerMap inputSettingsHandlers(Fooyin::PluginManager& pluginManager,
+                                                               Fooyin::PluginSettingsRegistry& registry)
 {
     Fooyin::DecoderModel::SettingsHandlerMap handlers;
 
-    if(!pluginManager) {
-        return handlers;
-    }
-
-    if(registry) {
-        for(const auto& [pluginId, pluginInfo] : pluginManager->allPluginInfo()) {
-            auto* const inputPlugin = pluginInfo ? qobject_cast<Fooyin::InputPlugin*>(pluginInfo->root()) : nullptr;
-            if(!inputPlugin) {
-                continue;
-            }
-
-            auto* provider = registry->providerFor(pluginId);
-            if(!provider) {
-                continue;
-            }
-
-            handlers[inputPlugin->inputName()] = [provider](QWidget* parent) {
-                provider->showSettings(parent);
-            };
-        }
-    }
-
-    const auto& plugins = pluginManager->allPluginInfo();
-    for(const auto& [_, pluginInfo] : plugins) {
-        auto* plugin      = pluginInfo ? pluginInfo->plugin() : nullptr;
-        auto* inputPlugin = pluginInfo ? qobject_cast<Fooyin::InputPlugin*>(pluginInfo->root()) : nullptr;
-
-        if(!plugin || !inputPlugin || !plugin->hasSettings() || handlers.contains(inputPlugin->inputName())) {
+    for(const auto& [pluginId, pluginInfo] : pluginManager.allPluginInfo()) {
+        auto* const inputPlugin = pluginInfo ? qobject_cast<Fooyin::InputPlugin*>(pluginInfo->root()) : nullptr;
+        if(!inputPlugin) {
             continue;
         }
 
-        handlers[inputPlugin->inputName()] = [plugin](QWidget* parent) {
-            plugin->showSettings(parent);
+        auto* provider = registry.providerFor(pluginId);
+        if(!provider) {
+            continue;
+        }
+
+        handlers[inputPlugin->inputName()] = [provider](QWidget* parent) {
+            provider->showSettings(parent);
         };
     }
 
@@ -231,7 +211,7 @@ DecoderPageWidget::DecoderPageWidget(AudioLoader* audioLoader, PluginManager* pl
 
 void DecoderPageWidget::load()
 {
-    const auto decoderHandlers = inputSettingsHandlers(m_pluginManager, m_pluginSettingsRegistry);
+    const auto decoderHandlers = inputSettingsHandlers(*m_pluginManager, *m_pluginSettingsRegistry);
     const auto decoders        = m_audioLoader->decoders();
 
     m_decoderModel->setup(decoders, decoderHandlers);

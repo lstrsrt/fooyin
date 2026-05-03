@@ -28,10 +28,6 @@
 namespace Fooyin {
 /*!
  * Optional GUI capability interface for plugin-level configuration dialogs.
- *
- * Prefer this interface for new plugin config UI exposed through the GUI
- * layer. The legacy `Plugin::hasSettings()` / `Plugin::showSettings()`
- * path remains supported as a fallback while existing plugins migrate.
  */
 class PluginConfigGuiPlugin
 {

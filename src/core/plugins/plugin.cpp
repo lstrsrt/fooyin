@@ -21,11 +21,4 @@
 
 namespace Fooyin {
 void Plugin::shutdown() { }
-
-bool Plugin::hasSettings() const
-{
-    return false;
-}
-
-void Plugin::showSettings(QWidget* /*parent*/) { }
 } // namespace Fooyin

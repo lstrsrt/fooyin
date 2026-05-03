@@ -197,7 +197,7 @@ void PluginPageWidget::selectionChanged()
 {
     if(const auto* plugin = currentPlugin()) {
         if(plugin->plugin()) {
-            m_configurePlugin->setEnabled(hasConfigProvider(plugin) || plugin->plugin()->hasSettings());
+            m_configurePlugin->setEnabled(hasConfigProvider(plugin));
             m_aboutPlugin->setEnabled(true);
             return;
         }
@@ -226,8 +226,6 @@ void PluginPageWidget::configurePlugin()
                 return;
             }
         }
-
-        plugin->plugin()->showSettings(this);
     }
 }
 
