@@ -181,23 +181,25 @@ void paintHeader(QPainter* painter, const QStyleOptionViewItem& option, const QM
     const auto [rightBound, totalRightWidth]
         = drawTextBlocks(painter, opt, rightRect, side | std::views::reverse, Qt::AlignVCenter | Qt::AlignRight);
 
-    const int leftWidth = rect.width() - coverFrameRect.width() - totalRightWidth;
+    const int contentLeft = cover.isNull() ? rect.left() + offset : coverFrameRect.right() + (2 * offset);
+    const int leftWidth   = cover.isNull() ? rect.right() - contentLeft + 1 - totalRightWidth
+                                           : rect.width() - coverFrameRect.width() - totalRightWidth;
 
-    QRect subtitleRect{coverFrameRect.right() + (2 * offset), rect.top(), leftWidth, rect.height()};
+    QRect subtitleRect{contentLeft, rect.top(), leftWidth, rect.height()};
     if(totalRightWidth > 0) {
         subtitleRect.setWidth(subtitleRect.width() - (5 * offset));
     }
     const auto [subtitleBound, _]
         = drawTextBlocks(painter, opt, subtitleRect, subtitle, Qt::AlignVCenter | Qt::AlignLeft);
 
-    const QRect titleRect{coverFrameRect.right() + (2 * offset), rect.top() + titleOffset, leftWidth, rect.height()};
+    const QRect titleRect{contentLeft, rect.top() + titleOffset, leftWidth, rect.height()};
     drawTextBlocks(painter, opt, titleRect, title, Qt::AlignTop);
 
-    const QRect infoRect{coverFrameRect.right() + (2 * offset), rect.top() - infoOffset, leftWidth, rect.height()};
+    const QRect infoRect{contentLeft, rect.top() - infoOffset, leftWidth, rect.height()};
     drawTextBlocks(painter, opt, infoRect, info, Qt::AlignBottom);
 
-    const QLineF headerLine(coverFrameRect.right() + (2 * offset), coverFrameRect.bottom() + coverFrameWidth,
-                            rect.right() - offset, coverFrameRect.bottom() + coverFrameWidth);
+    const QLineF headerLine(contentLeft, coverFrameRect.bottom() + coverFrameWidth, rect.right() - offset,
+                            coverFrameRect.bottom() + coverFrameWidth);
 
     painter->setPen(linePen);
     if(!subtitle.empty() && !side.empty() && rect.width() > 160) {
