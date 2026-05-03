@@ -233,4 +233,27 @@ RichTextMetrics measureRichText(const RichText& richText, const QFont& baseFont)
 
     return metrics;
 }
+
+RichTextBlockMetrics measureRichTextBlock(const RichText& richText, const QFont& baseFont, int minimumLineHeight)
+{
+    return measureRichTextBlock(splitRichTextLines(richText), baseFont, minimumLineHeight);
+}
+
+RichTextBlockMetrics measureRichTextBlock(const std::vector<RichText>& lines, const QFont& baseFont,
+                                          int minimumLineHeight)
+{
+    RichTextBlockMetrics blockMetrics;
+    blockMetrics.lines.reserve(lines.size());
+
+    for(const auto& line : lines) {
+        const auto metrics   = measureRichText(line, baseFont);
+        const int lineHeight = std::max(metrics.height, minimumLineHeight);
+
+        blockMetrics.width = std::max(blockMetrics.width, metrics.width);
+        blockMetrics.height += lineHeight;
+        blockMetrics.lines.push_back({.text = line, .metrics = metrics, .height = lineHeight});
+    }
+
+    return blockMetrics;
+}
 } // namespace Fooyin
