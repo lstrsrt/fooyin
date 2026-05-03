@@ -122,7 +122,7 @@ std::optional<PlaylistChangeset> buildPlaylistChangeset(const PlaylistTrackList&
         const int newIndex = newTrackIndexes.at(oldTrack.entryId);
         retainedTrackEntries.emplace_back(oldTrack.entryId);
 
-        if(oldTrack.track != newTracks.at(static_cast<size_t>(newIndex)).track) {
+        if(!oldTrack.track.sameDataAs(newTracks.at(static_cast<size_t>(newIndex)).track)) {
             result.updatedEntries.emplace_back(oldTrack.entryId);
         }
         else if(updatedTrackEntries.contains(oldTrack.entryId)) {

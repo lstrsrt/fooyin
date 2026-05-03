@@ -136,6 +136,26 @@ TEST(PlaylistChangesetTest, BuildsUpdatedIndexesForChangedTrackMetadata)
     EXPECT_EQ(changeSet->updatedEntries.front(), a);
 }
 
+TEST(PlaylistChangesetTest, BuildsUpdatedIndexesForChangedExtraTags)
+{
+    const UId playlistId = UId::create();
+    const UId a          = UId::create();
+    const UId b          = UId::create();
+
+    PlaylistTrack oldTrack = makePlaylistTrack(u"/music/a.flac"_s, playlistId, a, 0);
+    oldTrack.track.replaceExtraTag(u"CUSTOM"_s, QStringList{u"Before"_s});
+    const PlaylistTrack unchangedTrack = makePlaylistTrack(u"/music/b.flac"_s, playlistId, b, 1);
+
+    PlaylistTrack newTrack = makePlaylistTrack(u"/music/a.flac"_s, playlistId, a, 0);
+    newTrack.track.replaceExtraTag(u"CUSTOM"_s, QStringList{u"After"_s});
+
+    const auto changeSet = buildPlaylistChangeset({oldTrack, unchangedTrack}, {newTrack, unchangedTrack});
+    ASSERT_TRUE(changeSet.has_value());
+    EXPECT_FALSE(changeSet->requiresReset);
+    ASSERT_EQ(changeSet->updatedEntries.size(), 1);
+    EXPECT_EQ(changeSet->updatedEntries.front(), a);
+}
+
 TEST(PlaylistChangesetTest, BuildsUpdatedIndexesForExplicitlyUpdatedPaths)
 {
     const UId playlistId = UId::create();

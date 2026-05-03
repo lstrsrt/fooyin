@@ -1241,7 +1241,18 @@ void Playlist::replaceTracks(const TrackList& tracks)
 void Playlist::replaceTracks(const PlaylistTrackList& tracks)
 {
     const PlaylistTrackList updatedTracks = PlaylistTrack::updateIndexes(tracks);
-    if(playlistTracks() != updatedTracks) {
+    const PlaylistTrackList currentTracks{playlistTracks()};
+
+    const bool tracksChanged = currentTracks.size() != updatedTracks.size()
+                            || !std::ranges::equal(currentTracks, updatedTracks,
+                                                   [](const PlaylistTrack& current, const PlaylistTrack& updated) {
+                                                       return current.playlistId == updated.playlistId
+                                                           && current.entryId == updated.entryId
+                                                           && current.indexInPlaylist == updated.indexInPlaylist
+                                                           && current.track.sameDataAs(updated.track);
+                                                   });
+
+    if(tracksChanged) {
         const int previousCurrentIndex = currentTrackIndex();
         const UId previousCurrentEntry
             = playlistTrack(previousCurrentIndex).has_value() ? playlistTrack(previousCurrentIndex)->entryId : UId{};
