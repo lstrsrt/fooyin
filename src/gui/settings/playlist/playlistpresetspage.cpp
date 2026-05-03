@@ -19,6 +19,7 @@
 
 #include "playlistpresetspage.h"
 
+#include "internalguisettings.h"
 #include "playlist/playlistpreset.h"
 #include "playlist/presetregistry.h"
 
@@ -35,6 +36,7 @@
 #include <QLabel>
 #include <QLineEdit>
 #include <QPushButton>
+#include <QSignalBlocker>
 #include <QSpinBox>
 #include <QTabWidget>
 #include <QVBoxLayout>
@@ -162,7 +164,7 @@ class PlaylistPresetsPageWidget : public SettingsPageWidget
     Q_OBJECT
 
 public:
-    explicit PlaylistPresetsPageWidget(PresetRegistry* presetRegistry);
+    explicit PlaylistPresetsPageWidget(PresetRegistry* presetRegistry, SettingsManager* settings);
 
     void load() override;
     void apply() override;
@@ -181,6 +183,7 @@ private:
     void clearBlocks();
 
     PresetRegistry* m_presetRegistry;
+    SettingsManager* m_settings;
 
     QComboBox* m_presetBox;
     QTabWidget* m_presetTabs;
@@ -211,8 +214,9 @@ private:
     QPushButton* m_clonePreset;
 };
 
-PlaylistPresetsPageWidget::PlaylistPresetsPageWidget(PresetRegistry* presetRegistry)
+PlaylistPresetsPageWidget::PlaylistPresetsPageWidget(PresetRegistry* presetRegistry, SettingsManager* settings)
     : m_presetRegistry{presetRegistry}
+    , m_settings{settings}
     , m_presetBox{new QComboBox(this)}
     , m_presetTabs{new QTabWidget(this)}
     , m_headerTitle{new ScriptTextEdit(this)}
@@ -327,12 +331,22 @@ PlaylistPresetsPageWidget::PlaylistPresetsPageWidget(PresetRegistry* presetRegis
 
 void PlaylistPresetsPageWidget::load()
 {
+    const QSignalBlocker blocker{m_presetBox};
+
     m_presetBox->clear();
 
     const auto presets = m_presetRegistry->items();
     for(const auto& preset : presets) {
         m_presetBox->insertItem(preset.index, preset.name, preset.id);
     }
+
+    const int currentPresetId = m_settings->fileValue(Settings::Gui::Internal::PlaylistCurrentPreset).toInt();
+    const int currentIndex    = m_presetBox->findData(currentPresetId);
+    if(currentIndex >= 0) {
+        m_presetBox->setCurrentIndex(currentIndex);
+    }
+
+    selectionChanged();
 }
 
 void PlaylistPresetsPageWidget::apply()
@@ -504,7 +518,7 @@ PlaylistPresetsPage::PlaylistPresetsPage(PresetRegistry* presetRegistry, Setting
     setId(Constants::Page::PlaylistPresets);
     setName(tr("Presets"));
     setCategory({tr("Playlist"), tr("Presets")});
-    setWidgetCreator([presetRegistry] { return new PlaylistPresetsPageWidget(presetRegistry); });
+    setWidgetCreator([presetRegistry, settings] { return new PlaylistPresetsPageWidget(presetRegistry, settings); });
 }
 } // namespace Fooyin
 

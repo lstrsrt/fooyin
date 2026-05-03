@@ -376,6 +376,7 @@ void PlaylistWidget::loadLayoutData(const QJsonObject& layout)
         const int presetId = layout.value("Preset"_L1).toInt();
         if(const auto preset = m_presetRegistry->itemById(presetId)) {
             m_layoutState.currentPreset = preset.value();
+            m_settings->fileSet(PlaylistCurrentPreset, presetId);
         }
     }
     if(layout.contains("SingleMode"_L1)) {
@@ -810,6 +811,7 @@ void PlaylistWidget::handlePresetChanged(const PlaylistPreset& preset)
 void PlaylistWidget::changePreset(const PlaylistPreset& preset)
 {
     m_layoutState.currentPreset = preset;
+    m_settings->fileSet(PlaylistCurrentPreset, preset.id);
     m_playlistView->setExtendSpansIntoParents(m_layoutState.currentPreset.insetSubheadersToImageColumns);
     resetModelThrottled();
 }
