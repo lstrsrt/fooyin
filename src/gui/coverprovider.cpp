@@ -30,6 +30,7 @@
 #include <gui/iconloader.h>
 #include <utils/async.h>
 #include <utils/crypto.h>
+#include <utils/fileutils.h>
 #include <utils/settings/settingsmanager.h>
 #include <utils/utils.h>
 
@@ -156,13 +157,9 @@ QString findDirectoryCover(const Fooyin::CoverPaths& paths, const Fooyin::Track&
     }
 
     for(const auto& filter : filters) {
-        const QFileInfo fileInfo{QDir::cleanPath(filter)};
-        const QDir filePath{fileInfo.path()};
-        const QString filePattern  = fileInfo.fileName();
-        const QStringList fileList = filePath.entryList({filePattern}, QDir::Files);
-
-        if(!fileList.isEmpty()) {
-            return filePath.absoluteFilePath(fileList.constFirst());
+        const QStringList coverPaths = Fooyin::Utils::File::filesFromWildcardPath(filter);
+        if(!coverPaths.empty()) {
+            return coverPaths.constFirst();
         }
     }
 
