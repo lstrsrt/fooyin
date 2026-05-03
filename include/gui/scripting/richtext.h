@@ -23,16 +23,26 @@
 #include <QFont>
 #include <QVariant>
 
+#include <cstdint>
+
 namespace Fooyin {
+enum class RichAlignment : uint8_t
+{
+    Left = 0,
+    Right,
+};
+
 struct RichFormatting
 {
     QFont font;
     QColor colour;
     QString link;
+    RichAlignment alignment{RichAlignment::Left};
 
     bool operator==(const RichFormatting& other) const
     {
-        return std::tie(font, colour, link) == std::tie(other.font, other.colour, other.link);
+        return std::tie(font, colour, link, alignment)
+            == std::tie(other.font, other.colour, other.link, other.alignment);
     };
 };
 
