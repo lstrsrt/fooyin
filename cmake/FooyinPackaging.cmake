@@ -81,6 +81,7 @@ set(CPACK_DEBIAN_PACKAGE_DEPENDS
         libqt6svg6 (>= 6.4.0),
         qt6-image-formats-plugins (>= 6.4.0),
         qt6-qpa-plugins,
+        zlib1g,
         libasound2,
         ffmpeg (>= 7:4.4),
         pipewire,
