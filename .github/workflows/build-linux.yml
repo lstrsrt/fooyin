@@ -53,7 +53,7 @@ jobs:
         runner:
           - { os: ubuntu-latest, arch: amd64 }
           - { os: ubuntu-24.04-arm, arch: arm64 }
-        fedora_version: ['41', '42', '43']
+        fedora_version: ['42', '43', '44']
     container:
       image: fedora:${{matrix.fedora_version}}
     steps:
