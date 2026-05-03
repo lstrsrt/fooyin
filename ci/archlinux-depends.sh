@@ -10,6 +10,7 @@ $SUDO pacman -S --noconfirm --needed \
        ninja \
        alsa-lib \
        icu \
+       zlib \
        qt6-base \
        qt6-svg \
        qt6-tools \

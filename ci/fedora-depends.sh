@@ -14,6 +14,7 @@ dnf -y install --skip-broken \
      libicu-devel \
      libxkbcommon-x11-devel \
      libxkbcommon-devel \
+     zlib-ng-compat-devel \
      alsa-lib-devel \
      qt6-qtbase-devel \
      qt6-qtsvg-devel \

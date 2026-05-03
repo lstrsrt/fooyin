@@ -13,6 +13,7 @@ The following libraries are required:
 * [TagLib](https://taglib.org) (1.12+)
 * [FFmpeg](https://ffmpeg.org) (4.4+)
 * [ICU](https://icu.unicode.org/)
+* [zlib](https://zlib.net/)
 
 At least one of the following is required for audio output:
 
@@ -51,7 +52,7 @@ sudo apt install \
 ```
 sudo pacman -Syu
 sudo pacman -S --needed \
-    gcc git cmake pkgconf ninja alsa-lib pipewire icu ffmpeg \
+    gcc git cmake pkgconf ninja alsa-lib pipewire icu zlib ffmpeg \
     qt6-base qt6-svg qt6-imageformats qt6-tools kdsingleapplication \
     taglib libsndfile libopenmpt libgme libarchive libebur128 soundtouch libsoxr
 ```
@@ -61,7 +62,7 @@ sudo pacman -S --needed \
 ```
 sudo dnf update
 sudo dnf install \
-    cmake ninja-build glib2-devel libxkbcommon-x11-devel libxkbcommon-devel \
+    cmake ninja-build glib2-devel libxkbcommon-x11-devel libxkbcommon-devel zlib-ng-compat-devel \
     alsa-lib-devel qt6-qtbase-devel qt6-qtsvg-devel qt6-qttools-devel \
     libavcodec-free-devel libavformat-free-devel libavutil-free-devel libswresample-free-devel \
     taglib-devel kdsingleapplication-qt6-devel libicu-devel pipewire-devel \
