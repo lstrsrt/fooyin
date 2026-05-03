@@ -19,6 +19,7 @@
 
 #pragma once
 
+#include <gui/guiconstants.h>
 #include <gui/settings/context/staticcontextmenu.h>
 
 #include <array>
@@ -38,12 +39,28 @@ constexpr auto WidgetSeparator   = "Fooyin.Context.LibraryFilter.Widget.Separato
 constexpr auto TrackActions      = "Fooyin.Context.LibraryFilter.TrackActions";
 
 constexpr auto DefaultItems = std::to_array<StaticContextMenu::Item>({
-    {.id          = Playlist,
-     .title       = {.context = "FilterWidget", .sourceText = QT_TRANSLATE_NOOP("FilterWidget", "Playlist")},
+    {.id    = Constants::Actions::AddToCurrent,
+     .title = {.context = "FilterWidget", .sourceText = QT_TRANSLATE_NOOP("FilterWidget", "Add to current playlist")},
+     .isSeparator = false},
+    {.id    = Constants::Actions::AddToActive,
+     .title = {.context = "FilterWidget", .sourceText = QT_TRANSLATE_NOOP("FilterWidget", "Add to active playlist")},
+     .isSeparator = false},
+    {.id    = Constants::Actions::SendToCurrent,
+     .title = {.context = "FilterWidget", .sourceText = QT_TRANSLATE_NOOP("FilterWidget", "Replace current playlist")},
+     .isSeparator = false},
+    {.id          = Constants::Actions::SendToNew,
+     .title       = {.context = "FilterWidget", .sourceText = QT_TRANSLATE_NOOP("FilterWidget", "Create new playlist")},
      .isSeparator = false},
     {.id = PlaylistSeparator, .title = {}, .isSeparator = true},
-    {.id          = Queue,
-     .title       = {.context = "FilterWidget", .sourceText = QT_TRANSLATE_NOOP("FilterWidget", "Queue")},
+    {.id    = Constants::Actions::AddToQueue,
+     .title = {.context = "FilterWidget", .sourceText = QT_TRANSLATE_NOOP("FilterWidget", "Add to playback queue")},
+     .isSeparator = false},
+    {.id          = Constants::Actions::QueueNext,
+     .title       = {.context = "FilterWidget", .sourceText = QT_TRANSLATE_NOOP("FilterWidget", "Queue to play next")},
+     .isSeparator = false},
+    {.id = Constants::Actions::RemoveFromQueue,
+     .title
+     = {.context = "FilterWidget", .sourceText = QT_TRANSLATE_NOOP("FilterWidget", "Remove from playback queue")},
      .isSeparator = false},
     {.id = QueueSeparator, .title = {}, .isSeparator = true},
     {.id          = FilterOptions,
@@ -54,7 +71,8 @@ constexpr auto DefaultItems = std::to_array<StaticContextMenu::Item>({
      .isSeparator = false},
     {.id = WidgetSeparator, .title = {}, .isSeparator = true},
     {.id          = TrackActions,
-     .title       = {.context = "FilterWidget", .sourceText = QT_TRANSLATE_NOOP("FilterWidget", "Track actions")},
+     .title       = {.context = "FilterWidget", .sourceText = QT_TRANSLATE_NOOP("FilterWidget", "Track menu")},
      .isSeparator = false},
 });
+
 } // namespace Fooyin::Filters::FilterContextMenu

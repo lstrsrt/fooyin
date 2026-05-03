@@ -243,36 +243,71 @@ void FilterControllerPrivate::filterContextMenu(FilterWidget* widget, const QPoi
         m_settings->fileValue(FilterContextMenu::LayoutKey, QStringList{}).toStringList(),
         m_settings->fileValue(FilterContextMenu::DisabledSectionsKey, QStringList{}).toStringList(),
         [&](const auto& id, QMenu* targetMenu, const auto& sectionEnabled) {
-            if(id == QLatin1StringView{FilterContextMenu::Playlist}) {
-                if(!hasSelection || !m_trackSelection || !sectionEnabled(FilterContextMenu::Playlist)) {
+            if(id == QLatin1StringView{Constants::Actions::AddToCurrent}) {
+                if(!hasSelection || !m_trackSelection || !sectionEnabled(Constants::Actions::AddToCurrent)) {
                     return;
                 }
 
                 if(auto* addCurrentCmd = m_actionManager->command(Constants::Actions::AddToCurrent)) {
                     targetMenu->addAction(addCurrentCmd->action());
                 }
+                return;
+            }
+            if(id == QLatin1StringView{Constants::Actions::AddToActive}) {
+                if(!hasSelection || !m_trackSelection || !sectionEnabled(Constants::Actions::AddToActive)) {
+                    return;
+                }
+
                 if(auto* addActiveCmd = m_actionManager->command(Constants::Actions::AddToActive)) {
                     targetMenu->addAction(addActiveCmd->action());
                 }
+                return;
+            }
+            if(id == QLatin1StringView{Constants::Actions::SendToCurrent}) {
+                if(!hasSelection || !m_trackSelection || !sectionEnabled(Constants::Actions::SendToCurrent)) {
+                    return;
+                }
+
                 if(auto* sendCurrentCmd = m_actionManager->command(Constants::Actions::SendToCurrent)) {
                     targetMenu->addAction(sendCurrentCmd->action());
                 }
+                return;
+            }
+            if(id == QLatin1StringView{Constants::Actions::SendToNew}) {
+                if(!hasSelection || !m_trackSelection || !sectionEnabled(Constants::Actions::SendToNew)) {
+                    return;
+                }
+
                 if(auto* sendNewCmd = m_actionManager->command(Constants::Actions::SendToNew)) {
                     targetMenu->addAction(sendNewCmd->action());
                 }
                 return;
             }
-            if(id == QLatin1StringView{FilterContextMenu::Queue}) {
-                if(!hasSelection || !m_trackSelection || !sectionEnabled(FilterContextMenu::Queue)) {
+            if(id == QLatin1StringView{Constants::Actions::AddToQueue}) {
+                if(!hasSelection || !m_trackSelection || !sectionEnabled(Constants::Actions::AddToQueue)) {
                     return;
                 }
 
                 if(auto* addQueueCmd = m_actionManager->command(Constants::Actions::AddToQueue)) {
                     targetMenu->addAction(addQueueCmd->action());
                 }
+                return;
+            }
+            if(id == QLatin1StringView{Constants::Actions::QueueNext}) {
+                if(!hasSelection || !m_trackSelection || !sectionEnabled(Constants::Actions::QueueNext)) {
+                    return;
+                }
+
                 if(auto* queueNextCmd = m_actionManager->command(Constants::Actions::QueueNext)) {
                     targetMenu->addAction(queueNextCmd->action());
                 }
+                return;
+            }
+            if(id == QLatin1StringView{Constants::Actions::RemoveFromQueue}) {
+                if(!hasSelection || !m_trackSelection || !sectionEnabled(Constants::Actions::RemoveFromQueue)) {
+                    return;
+                }
+
                 if(auto* removeQueueCmd = m_actionManager->command(Constants::Actions::RemoveFromQueue)) {
                     targetMenu->addAction(removeQueueCmd->action());
                 }

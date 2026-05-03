@@ -19,9 +19,9 @@
 
 #pragma once
 
+#include <gui/guiconstants.h>
 #include <gui/settings/context/staticcontextmenu.h>
 
-#include <algorithm>
 #include <array>
 
 namespace Fooyin::ContextMenuIds {
@@ -75,13 +75,21 @@ constexpr auto DefaultItems = std::to_array<Item>({
      .title       = {.context = "PlaylistWidget", .sourceText = QT_TRANSLATE_NOOP("PlaylistWidget", "Presets")},
      .isSeparator = false},
     {.id = PresetsSeparator, .title = {}, .isSeparator = true},
-    {.id          = Queue,
-     .title       = {.context = "PlaylistWidget", .sourceText = QT_TRANSLATE_NOOP("PlaylistWidget", "Queue")},
+    {.id    = Constants::Actions::AddToQueue,
+     .title = {.context = "PlaylistWidget", .sourceText = QT_TRANSLATE_NOOP("PlaylistWidget", "Add to playback queue")},
+     .isSeparator = false},
+    {.id    = Constants::Actions::QueueNext,
+     .title = {.context = "PlaylistWidget", .sourceText = QT_TRANSLATE_NOOP("PlaylistWidget", "Queue to play next")},
+     .isSeparator = false},
+    {.id = Constants::Actions::RemoveFromQueue,
+     .title
+     = {.context = "PlaylistWidget", .sourceText = QT_TRANSLATE_NOOP("PlaylistWidget", "Remove from playback queue")},
      .isSeparator = false},
     {.id          = TrackActions,
-     .title       = {.context = "PlaylistWidget", .sourceText = QT_TRANSLATE_NOOP("PlaylistWidget", "Track actions")},
+     .title       = {.context = "PlaylistWidget", .sourceText = QT_TRANSLATE_NOOP("PlaylistWidget", "Track menu")},
      .isSeparator = false},
 });
+
 } // namespace Playlist
 
 namespace LibraryTree {
@@ -102,12 +110,34 @@ constexpr auto DefaultItems = std::to_array<Item>({
      .title       = {.context = "LibraryTreeWidget", .sourceText = QT_TRANSLATE_NOOP("LibraryTreeWidget", "Play")},
      .isSeparator = false},
     {.id = PlaybackSeparator, .title = {}, .isSeparator = true},
-    {.id          = Playlist,
-     .title       = {.context = "LibraryTreeWidget", .sourceText = QT_TRANSLATE_NOOP("LibraryTreeWidget", "Playlist")},
+    {.id          = Constants::Actions::AddToCurrent,
+     .title       = {.context    = "LibraryTreeWidget",
+                     .sourceText = QT_TRANSLATE_NOOP("LibraryTreeWidget", "Add to current playlist")},
+     .isSeparator = false},
+    {.id = Constants::Actions::AddToActive,
+     .title
+     = {.context = "LibraryTreeWidget", .sourceText = QT_TRANSLATE_NOOP("LibraryTreeWidget", "Add to active playlist")},
+     .isSeparator = false},
+    {.id          = Constants::Actions::SendToCurrent,
+     .title       = {.context    = "LibraryTreeWidget",
+                     .sourceText = QT_TRANSLATE_NOOP("LibraryTreeWidget", "Replace current playlist")},
+     .isSeparator = false},
+    {.id = Constants::Actions::SendToNew,
+     .title
+     = {.context = "LibraryTreeWidget", .sourceText = QT_TRANSLATE_NOOP("LibraryTreeWidget", "Create new playlist")},
      .isSeparator = false},
     {.id = PlaylistSeparator, .title = {}, .isSeparator = true},
-    {.id          = Queue,
-     .title       = {.context = "LibraryTreeWidget", .sourceText = QT_TRANSLATE_NOOP("LibraryTreeWidget", "Queue")},
+    {.id = Constants::Actions::AddToQueue,
+     .title
+     = {.context = "LibraryTreeWidget", .sourceText = QT_TRANSLATE_NOOP("LibraryTreeWidget", "Add to playback queue")},
+     .isSeparator = false},
+    {.id = Constants::Actions::QueueNext,
+     .title
+     = {.context = "LibraryTreeWidget", .sourceText = QT_TRANSLATE_NOOP("LibraryTreeWidget", "Queue to play next")},
+     .isSeparator = false},
+    {.id          = Constants::Actions::RemoveFromQueue,
+     .title       = {.context    = "LibraryTreeWidget",
+                     .sourceText = QT_TRANSLATE_NOOP("LibraryTreeWidget", "Remove from playback queue")},
      .isSeparator = false},
     {.id = QueueSeparator, .title = {}, .isSeparator = true},
     {.id          = Grouping,
@@ -121,7 +151,7 @@ constexpr auto DefaultItems = std::to_array<Item>({
      .title = {.context = "LibraryTreeWidget", .sourceText = QT_TRANSLATE_NOOP("LibraryTreeWidget", "Open folder")},
      .isSeparator = false},
     {.id    = TrackActions,
-     .title = {.context = "LibraryTreeWidget", .sourceText = QT_TRANSLATE_NOOP("LibraryTreeWidget", "Track actions")},
+     .title = {.context = "LibraryTreeWidget", .sourceText = QT_TRANSLATE_NOOP("LibraryTreeWidget", "Track menu")},
      .isSeparator = false},
 });
 } // namespace LibraryTree

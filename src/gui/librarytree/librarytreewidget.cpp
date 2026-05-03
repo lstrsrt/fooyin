@@ -742,36 +742,71 @@ void LibraryTreeWidget::populateContextMenu(QMenu* menu)
                 }
                 return;
             }
-            if(id == QLatin1StringView{ContextMenuIds::LibraryTree::Playlist}) {
-                if(!hasSelection || !sectionEnabled(ContextMenuIds::LibraryTree::Playlist)) {
+            if(id == QLatin1StringView{Constants::Actions::AddToCurrent}) {
+                if(!hasSelection || !sectionEnabled(Constants::Actions::AddToCurrent)) {
                     return;
                 }
 
                 if(auto* addCurrentCmd = m_actionManager->command(Constants::Actions::AddToCurrent)) {
                     targetMenu->addAction(addCurrentCmd->action());
                 }
+                return;
+            }
+            if(id == QLatin1StringView{Constants::Actions::AddToActive}) {
+                if(!hasSelection || !sectionEnabled(Constants::Actions::AddToActive)) {
+                    return;
+                }
+
                 if(auto* addActiveCmd = m_actionManager->command(Constants::Actions::AddToActive)) {
                     targetMenu->addAction(addActiveCmd->action());
                 }
+                return;
+            }
+            if(id == QLatin1StringView{Constants::Actions::SendToCurrent}) {
+                if(!hasSelection || !sectionEnabled(Constants::Actions::SendToCurrent)) {
+                    return;
+                }
+
                 if(auto* sendCurrentCmd = m_actionManager->command(Constants::Actions::SendToCurrent)) {
                     targetMenu->addAction(sendCurrentCmd->action());
                 }
+                return;
+            }
+            if(id == QLatin1StringView{Constants::Actions::SendToNew}) {
+                if(!hasSelection || !sectionEnabled(Constants::Actions::SendToNew)) {
+                    return;
+                }
+
                 if(auto* sendNewCmd = m_actionManager->command(Constants::Actions::SendToNew)) {
                     targetMenu->addAction(sendNewCmd->action());
                 }
                 return;
             }
-            if(id == QLatin1StringView{ContextMenuIds::LibraryTree::Queue}) {
-                if(!hasSelection || !sectionEnabled(ContextMenuIds::LibraryTree::Queue)) {
+            if(id == QLatin1StringView{Constants::Actions::AddToQueue}) {
+                if(!hasSelection || !sectionEnabled(Constants::Actions::AddToQueue)) {
                     return;
                 }
 
                 if(auto* addQueueCmd = m_actionManager->command(Constants::Actions::AddToQueue)) {
                     targetMenu->addAction(addQueueCmd->action());
                 }
+                return;
+            }
+            if(id == QLatin1StringView{Constants::Actions::QueueNext}) {
+                if(!hasSelection || !sectionEnabled(Constants::Actions::QueueNext)) {
+                    return;
+                }
+
                 if(auto* queueNextCmd = m_actionManager->command(Constants::Actions::QueueNext)) {
                     targetMenu->addAction(queueNextCmd->action());
                 }
+                return;
+            }
+            if(id == QLatin1StringView{Constants::Actions::RemoveFromQueue}) {
+                if(!hasSelection || !sectionEnabled(Constants::Actions::RemoveFromQueue)) {
+                    return;
+                }
+
                 if(auto* removeQueueCmd = m_actionManager->command(Constants::Actions::RemoveFromQueue)) {
                     targetMenu->addAction(removeQueueCmd->action());
                 }

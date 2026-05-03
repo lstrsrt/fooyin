@@ -517,26 +517,45 @@ void PlaylistWidget::populateTrackContextMenu(QMenu* menu, const QModelIndexList
                 }
                 return;
             }
-            if(id == QLatin1StringView{ContextMenuIds::Playlist::Queue}) {
-                if(!state.hasSelection || !sectionEnabled(ContextMenuIds::Playlist::Queue)) {
+            if(id == QLatin1StringView{Constants::Actions::AddToQueue}) {
+                if(!state.hasSelection || !sectionEnabled(Constants::Actions::AddToQueue)) {
+                    return;
+                }
+
+                if(state.usePlaylistQueueCommands && m_session->addToQueueAction()) {
+                    targetMenu->addAction(m_session->addToQueueAction());
+                }
+                else if(auto* addQueueCmd = m_actionManager->command(Constants::Actions::AddToQueue)) {
+                    targetMenu->addAction(addQueueCmd->action());
+                }
+                return;
+            }
+            if(id == QLatin1StringView{Constants::Actions::QueueNext}) {
+                if(!state.hasSelection || !sectionEnabled(Constants::Actions::QueueNext)) {
+                    return;
+                }
+
+                if(state.usePlaylistQueueCommands && m_session->queueNextAction()) {
+                    targetMenu->addAction(m_session->queueNextAction());
+                }
+                else if(auto* queueNextCmd = m_actionManager->command(Constants::Actions::QueueNext)) {
+                    targetMenu->addAction(queueNextCmd->action());
+                }
+                return;
+            }
+            if(id == QLatin1StringView{Constants::Actions::RemoveFromQueue}) {
+                if(!state.hasSelection || !sectionEnabled(Constants::Actions::RemoveFromQueue)) {
                     return;
                 }
 
                 if(state.usePlaylistQueueCommands) {
-                    if(auto* addQueueCmd = m_actionManager->command(Constants::Actions::AddToQueue)) {
-                        targetMenu->addAction(addQueueCmd->action());
+                    if(auto* action = m_session->removeFromQueueAction(); action && action->isVisible()) {
+                        targetMenu->addAction(action);
                     }
-                    if(auto* addQueueNextCmd = m_actionManager->command(Constants::Actions::QueueNext)) {
-                        targetMenu->addAction(addQueueNextCmd->action());
-                    }
-                    if(auto* removeQueueCmd = m_actionManager->command(Constants::Actions::RemoveFromQueue)) {
-                        targetMenu->addAction(removeQueueCmd->action());
-                    }
-
-                    return;
                 }
-
-                m_selectionController->addTrackQueueContextMenu(targetMenu);
+                else if(auto* removeQueueCmd = m_actionManager->command(Constants::Actions::RemoveFromQueue)) {
+                    targetMenu->addAction(removeQueueCmd->action());
+                }
                 return;
             }
             if(id == QLatin1StringView{ContextMenuIds::Playlist::TrackActions}) {
