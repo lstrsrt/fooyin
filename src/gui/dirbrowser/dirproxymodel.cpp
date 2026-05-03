@@ -26,6 +26,7 @@
 
 #include <QAbstractFileIconProvider>
 #include <QApplication>
+#include <QFileInfo>
 #include <QFileSystemModel>
 #include <QPalette>
 #include <QPixmap>
@@ -42,6 +43,7 @@ DirProxyModel::DirProxyModel(bool flat, QObject* parent)
     , m_playingColour{QApplication::palette().highlight().color()}
 {
     m_playingColour.setAlpha(90);
+    setRecursiveFilteringEnabled(true);
 }
 
 void DirProxyModel::reset(const QModelIndex& root)
@@ -316,6 +318,45 @@ void DirProxyModel::setPlayingPath(const QString& path)
     Utils::recursiveDataChanged(this, {}, {Qt::BackgroundRole, Qt::DecorationRole});
 }
 
+void DirProxyModel::setSearchText(const QString& text)
+{
+    if(std::exchange(m_searchText, text) == text) {
+        return;
+    }
+
+    if(m_flat) {
+        reset(m_sourceRoot);
+    }
+    else {
+#if QT_VERSION >= QT_VERSION_CHECK(6, 10, 0)
+        beginFilterChange();
+        endFilterChange(QSortFilterProxyModel::Direction::Rows);
+#else
+        invalidateRowsFilter();
+#endif
+    }
+}
+
+bool DirProxyModel::filterAcceptsRow(int sourceRow, const QModelIndex& sourceParent) const
+{
+    if(m_flat || m_searchText.isEmpty()) {
+        return QSortFilterProxyModel::filterAcceptsRow(sourceRow, sourceParent);
+    }
+
+    return matchesSearch(sourceModel()->index(sourceRow, 0, sourceParent));
+}
+
+bool DirProxyModel::matchesSearch(const QModelIndex& sourceIndex) const
+{
+    if(m_searchText.isEmpty()) {
+        return true;
+    }
+
+    const QString path = sourceIndex.data(QFileSystemModel::FilePathRole).toString();
+    const QString name = path.isEmpty() ? sourceIndex.data(Qt::DisplayRole).toString() : QFileInfo{path}.fileName();
+    return name.contains(m_searchText, Qt::CaseInsensitive);
+}
+
 void DirProxyModel::populate()
 {
     m_nodes.clear();
@@ -335,7 +376,10 @@ void DirProxyModel::populate()
     m_nodes.reserve(m_nodes.size() + rowCount);
 
     for(int row{0}; row <= last; ++row) {
-        m_nodes.emplace_back(std::make_unique<DirNode>(sourceModel()->index(row, 0, m_sourceRoot)));
+        const QModelIndex sourceIndex = sourceModel()->index(row, 0, m_sourceRoot);
+        if(matchesSearch(sourceIndex)) {
+            m_nodes.emplace_back(std::make_unique<DirNode>(sourceIndex));
+        }
     }
 }
 
@@ -346,6 +390,11 @@ int DirProxyModel::nodeCount() const
 
 void DirProxyModel::sourceRowsRemoved(const QModelIndex& parent, int first, int last)
 {
+    if(!m_searchText.isEmpty()) {
+        reset(m_sourceRoot);
+        return;
+    }
+
     const QString path = parent.data(QFileSystemModel::FilePathRole).toString();
     if(path != m_rootPath) {
         return;

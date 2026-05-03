@@ -69,6 +69,7 @@ public:
     [[nodiscard]] QString layoutName() const override;
     void saveLayoutData(QJsonObject& layout) override;
     void loadLayoutData(const QJsonObject& layout) override;
+    void searchEvent(const SearchRequest& request) override;
 
     void updateDir(const QString& dir);
 
@@ -107,6 +108,8 @@ protected:
     void contextMenuEvent(QContextMenuEvent* event) override;
     void keyPressEvent(QKeyEvent* event) override;
 
+    void openConfigDialog() override;
+
 private:
     void checkIconProvider();
 
@@ -131,11 +134,11 @@ private:
     void setRootPath(const QString& rootPath);
     [[nodiscard]] QString rootPath() const;
 
+    void updateFilters();
     void setControlsEnabled(bool enabled);
     void setLocationEnabled(bool enabled);
     void setShowSymLinksEnabled(bool enabled);
     void setShowHidden(bool enabled);
-    void updateFilters();
     void changeMode(Mode newMode);
     void startPlayback(const TrackList& tracks, int row);
     void updateControlState() const;
@@ -144,7 +147,6 @@ private:
 
     static void saveConfigToLayout(const ConfigData& config, QJsonObject& layout);
     [[nodiscard]] ConfigData configFromLayout(const QJsonObject& layout) const;
-    void openConfigDialog() override;
 
     QStringList m_supportedExtensions;
     ActionManager* m_actionManager;

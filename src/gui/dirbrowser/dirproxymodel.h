@@ -23,6 +23,7 @@
 
 #include <QColor>
 #include <QSortFilterProxyModel>
+#include <QString>
 
 class QAbstractFileIconProvider;
 class QDir;
@@ -52,14 +53,14 @@ public:
     [[nodiscard]] Qt::ItemFlags flags(const QModelIndex& index) const override;
     [[nodiscard]] QVariant headerData(int section, Qt::Orientation orientation, int role) const override;
     [[nodiscard]] QVariant data(const QModelIndex& index, int role) const override;
+    [[nodiscard]] QModelIndex parent(const QModelIndex& index) const override;
+    [[nodiscard]] QModelIndex sibling(int row, int column, const QModelIndex& index) const override;
+    [[nodiscard]] bool hasChildren(const QModelIndex& parent) const override;
     [[nodiscard]] QModelIndex index(int row, int column, const QModelIndex& parent = {}) const override;
     [[nodiscard]] int rowCount(const QModelIndex& index) const override;
     [[nodiscard]] int columnCount(const QModelIndex& index) const override;
     [[nodiscard]] QModelIndex mapFromSource(const QModelIndex& index) const override;
     [[nodiscard]] QModelIndex mapToSource(const QModelIndex& index) const override;
-    [[nodiscard]] QModelIndex parent(const QModelIndex& index) const override;
-    [[nodiscard]] QModelIndex sibling(int row, int column, const QModelIndex& index) const override;
-    [[nodiscard]] bool hasChildren(const QModelIndex& parent) const override;
 
     [[nodiscard]] bool canGoUp() const;
 
@@ -67,8 +68,13 @@ public:
     void setIconsEnabled(bool enabled);
     void setPlayState(Player::PlayState state);
     void setPlayingPath(const QString& path);
+    void setSearchText(const QString& text);
+
+protected:
+    [[nodiscard]] bool filterAcceptsRow(int sourceRow, const QModelIndex& sourceParent) const override;
 
 private:
+    [[nodiscard]] bool matchesSearch(const QModelIndex& sourceIndex) const;
     void populate();
     [[nodiscard]] int nodeCount() const;
     void sourceRowsRemoved(const QModelIndex& parent, int first, int last);
@@ -83,6 +89,7 @@ private:
 
     Player::PlayState m_playingState;
     QString m_playingTrackPath;
+    QString m_searchText;
 
     bool m_showIcons;
     QColor m_playingColour;
