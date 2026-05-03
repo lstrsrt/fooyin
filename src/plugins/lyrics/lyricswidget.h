@@ -106,7 +106,7 @@ private:
     void loadLyrics(const Lyrics& lyrics);
     void handleLyricsSearchFinished(const Track& track, bool foundAny);
     void handleSavedLyrics(const Track& track, const Lyrics& lyrics);
-    void changeLyrics(const Lyrics& lyrics);
+    void changeLyrics(const Lyrics& lyrics, bool onEdit = false);
     void openEditor(const Lyrics& lyrics);
     void openSearchDialog();
 
@@ -147,6 +147,7 @@ private:
     int m_currentLineEnd;
 
     Track m_currentTrack;
+    std::optional<Track> m_editingTrack;
     std::vector<Lyrics> m_lyrics;
     QMetaObject::Connection m_finderConnection;
     ScriptParser m_parser;
