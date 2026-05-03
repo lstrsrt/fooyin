@@ -21,21 +21,22 @@
 
 #include <core/engine/outputplugin.h>
 #include <core/plugins/plugin.h>
+#include <gui/plugins/pluginconfigguiplugin.h>
+#include <gui/plugins/pluginsettingsprovider.h>
 
 namespace Fooyin::Alsa {
 class AlsaPlugin : public QObject,
                    public Plugin,
-                   public OutputPlugin
+                   public OutputPlugin,
+                   public PluginConfigGuiPlugin
 {
     Q_OBJECT
     Q_PLUGIN_METADATA(IID "org.fooyin.fooyin.plugin/1.0" FILE "alsa.json")
-    Q_INTERFACES(Fooyin::Plugin Fooyin::OutputPlugin)
+    Q_INTERFACES(Fooyin::Plugin Fooyin::OutputPlugin Fooyin::PluginConfigGuiPlugin)
 
 public:
     [[nodiscard]] QString name() const override;
     [[nodiscard]] OutputCreator creator() const override;
-
-    [[nodiscard]] bool hasSettings() const override;
-    void showSettings(QWidget* parent) override;
+    [[nodiscard]] std::unique_ptr<PluginSettingsProvider> settingsProvider() const override;
 };
 } // namespace Fooyin::Alsa

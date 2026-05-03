@@ -25,6 +25,19 @@
 using namespace Qt::StringLiterals;
 
 namespace Fooyin::Alsa {
+namespace {
+class AlsaPluginSettingsProvider : public PluginSettingsProvider
+{
+public:
+    void showSettings(QWidget* parent) override
+    {
+        auto* dialog = new AlsaSettings(parent);
+        dialog->setAttribute(Qt::WA_DeleteOnClose);
+        dialog->show();
+    }
+};
+} // namespace
+
 QString AlsaPlugin::name() const
 {
     return u"ALSA"_s;
@@ -37,16 +50,9 @@ OutputCreator AlsaPlugin::creator() const
     };
 }
 
-bool AlsaPlugin::hasSettings() const
+std::unique_ptr<PluginSettingsProvider> AlsaPlugin::settingsProvider() const
 {
-    return true;
-}
-
-void AlsaPlugin::showSettings(QWidget* parent)
-{
-    auto* dialog = new AlsaSettings(parent);
-    dialog->setAttribute(Qt::WA_DeleteOnClose);
-    dialog->show();
+    return std::make_unique<AlsaPluginSettingsProvider>();
 }
 } // namespace Fooyin::Alsa
 
