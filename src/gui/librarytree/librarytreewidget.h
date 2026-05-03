@@ -91,6 +91,8 @@ public:
         bool showHeader{true};
         bool showScrollbar{true};
         bool alternatingRows{false};
+        bool showSummaryNode{true};
+        QString summaryNodeTitle;
         int rowHeight{0};
         QSize iconSize{36, 36};
     };

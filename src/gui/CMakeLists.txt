@@ -170,6 +170,8 @@ set(SOURCES
     librarytree/librarytreemodel.h
     librarytree/librarytreepopulator.cpp
     librarytree/librarytreepopulator.h
+    librarytree/librarytreescriptenvironment.cpp
+    librarytree/librarytreescriptenvironment.h
     librarytree/librarytreeview.cpp
     librarytree/librarytreeview.h
     librarytree/librarytreewidget.cpp

@@ -57,6 +57,8 @@ private:
     QLineEdit* m_playlistName;
 
     QCheckBox* m_restoreState;
+    QCheckBox* m_showSummaryNode;
+    QLineEdit* m_summaryNodeTitle;
 
     QCheckBox* m_animated;
     QCheckBox* m_header;

@@ -57,6 +57,7 @@ public:
     [[nodiscard]] const RichText& rightRichTitle() const;
     [[nodiscard]] const TrackList& tracks() const;
     [[nodiscard]] int trackCount() const;
+    [[nodiscard]] int scriptChildCount() const;
     [[nodiscard]] const Md5Hash& key() const;
     [[nodiscard]] std::optional<Track::Cover> coverType() const;
     [[nodiscard]] QStyleOptionViewItem::Position coverPosition() const;
@@ -67,6 +68,7 @@ public:
     void setTitleSource(const QString& title);
     void setRichTitle(const RichText& title);
     void setRichTitles(const RichText& leftTitle, const RichText& rightTitle);
+    void setScriptChildCount(int count);
     void setKey(const Md5Hash& key);
 
     void addTrack(const Track& track);
@@ -87,5 +89,6 @@ private:
     std::optional<Track::Cover> m_coverType;
     QStyleOptionViewItem::Position m_coverPosition;
     TrackList m_tracks;
+    int m_scriptChildCount;
 };
 } // namespace Fooyin

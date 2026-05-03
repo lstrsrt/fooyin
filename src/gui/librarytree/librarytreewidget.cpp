@@ -27,6 +27,7 @@
 #include "librarytreegroupeditordialog.h"
 #include "librarytreegroupregistry.h"
 #include "librarytreemodel.h"
+#include "librarytreescriptenvironment.h"
 #include "librarytreeview.h"
 #include "playlist/playlistcontroller.h"
 
@@ -74,19 +75,21 @@ using namespace Qt::StringLiterals;
 constexpr auto LibTreePlaylist = "␟LibTreePlaylist␟";
 
 // Settings
-constexpr auto LibTreeDoubleClickKey     = u"LibraryTree/DoubleClickBehaviour";
-constexpr auto LibTreeMiddleClickKey     = u"LibraryTree/MiddleClickBehaviour";
-constexpr auto LibTreePlaylistEnabledKey = u"LibraryTree/SelectionPlaylistEnabled";
-constexpr auto LibTreeAutoSwitchKey      = u"LibraryTree/SelectionPlaylistAutoSwitch";
-constexpr auto LibTreeAutoPlaylistKey    = u"LibraryTree/SelectionPlaylistName";
-constexpr auto LibTreeScrollBarKey       = u"LibraryTree/Scrollbar";
-constexpr auto LibTreeAltColoursKey      = u"LibraryTree/AlternatingColours";
-constexpr auto LibTreeRowHeightKey       = u"LibraryTree/RowHeight";
-constexpr auto LibTreeSendPlaybackKey    = u"LibraryTree/StartPlaybackOnSend";
-constexpr auto LibTreeRestoreStateKey    = u"LibraryTree/RestoreState";
-constexpr auto LibTreeKeepAliveKey       = u"LibraryTree/KeepAlive";
-constexpr auto LibTreeAnimatedKey        = u"LibraryTree/Animated";
-constexpr auto LibTreeHeaderKey          = u"LibraryTree/Header";
+constexpr auto LibTreeDoubleClickKey      = u"LibraryTree/DoubleClickBehaviour";
+constexpr auto LibTreeMiddleClickKey      = u"LibraryTree/MiddleClickBehaviour";
+constexpr auto LibTreePlaylistEnabledKey  = u"LibraryTree/SelectionPlaylistEnabled";
+constexpr auto LibTreeAutoSwitchKey       = u"LibraryTree/SelectionPlaylistAutoSwitch";
+constexpr auto LibTreeAutoPlaylistKey     = u"LibraryTree/SelectionPlaylistName";
+constexpr auto LibTreeScrollBarKey        = u"LibraryTree/Scrollbar";
+constexpr auto LibTreeAltColoursKey       = u"LibraryTree/AlternatingColours";
+constexpr auto LibTreeRowHeightKey        = u"LibraryTree/RowHeight";
+constexpr auto LibTreeSendPlaybackKey     = u"LibraryTree/StartPlaybackOnSend";
+constexpr auto LibTreeRestoreStateKey     = u"LibraryTree/RestoreState";
+constexpr auto LibTreeKeepAliveKey        = u"LibraryTree/KeepAlive";
+constexpr auto LibTreeAnimatedKey         = u"LibraryTree/Animated";
+constexpr auto LibTreeHeaderKey           = u"LibraryTree/Header";
+constexpr auto LibTreeShowSummaryNodeKey  = u"LibraryTree/ShowSummaryNode";
+constexpr auto LibTreeSummaryNodeTitleKey = u"LibraryTree/SummaryNodeTitle";
 
 namespace {
 QModelIndexList filterAncestors(const QModelIndexList& indexes)
@@ -319,6 +322,8 @@ LibraryTreeWidget::ConfigData LibraryTreeWidget::factoryConfig() const
         .showHeader        = true,
         .showScrollbar     = true,
         .alternatingRows   = false,
+        .showSummaryNode   = true,
+        .summaryNodeTitle  = defaultLibraryTreeSummaryTitle(),
         .rowHeight         = 0,
         .iconSize          = QSize{36, 36},
     };
@@ -340,6 +345,8 @@ LibraryTreeWidget::ConfigData LibraryTreeWidget::defaultConfig() const
     config.showHeader        = m_settings->fileValue(LibTreeHeaderKey, config.showHeader).toBool();
     config.showScrollbar     = m_settings->fileValue(LibTreeScrollBarKey, config.showScrollbar).toBool();
     config.alternatingRows   = m_settings->fileValue(LibTreeAltColoursKey, config.alternatingRows).toBool();
+    config.showSummaryNode   = m_settings->fileValue(LibTreeShowSummaryNodeKey, config.showSummaryNode).toBool();
+    config.summaryNodeTitle  = m_settings->fileValue(LibTreeSummaryNodeTitleKey, config.summaryNodeTitle).toString();
     config.rowHeight         = m_settings->fileValue(LibTreeRowHeightKey, config.rowHeight).toInt();
     config.iconSize          = m_settings->value<LibTreeIconSize>().toSize();
 
@@ -365,6 +372,8 @@ void LibraryTreeWidget::saveDefaults(const ConfigData& config) const
     m_settings->fileSet(LibTreeHeaderKey, config.showHeader);
     m_settings->fileSet(LibTreeScrollBarKey, config.showScrollbar);
     m_settings->fileSet(LibTreeAltColoursKey, config.alternatingRows);
+    m_settings->fileSet(LibTreeShowSummaryNodeKey, config.showSummaryNode);
+    m_settings->fileSet(LibTreeSummaryNodeTitleKey, config.summaryNodeTitle);
     m_settings->fileSet(LibTreeRowHeightKey, config.rowHeight);
     m_settings->set<LibTreeIconSize>(config.iconSize);
 }
@@ -383,6 +392,8 @@ void LibraryTreeWidget::clearSavedDefaults() const
     m_settings->fileRemove(LibTreeHeaderKey);
     m_settings->fileRemove(LibTreeScrollBarKey);
     m_settings->fileRemove(LibTreeAltColoursKey);
+    m_settings->fileRemove(LibTreeShowSummaryNodeKey);
+    m_settings->fileRemove(LibTreeSummaryNodeTitleKey);
     m_settings->fileRemove(LibTreeRowHeightKey);
     m_settings->reset<LibTreeIconSize>();
 }
@@ -396,6 +407,9 @@ void LibraryTreeWidget::applyConfig(const ConfigData& config)
     }
 
     m_config.rowHeight = std::max(m_config.rowHeight, 0);
+    if(m_config.summaryNodeTitle.isEmpty()) {
+        m_config.summaryNodeTitle = factoryConfig().summaryNodeTitle;
+    }
 
     m_doubleClickAction = static_cast<TrackAction>(m_config.doubleClickAction);
     m_middleClickAction = static_cast<TrackAction>(m_config.middleClickAction);
@@ -408,6 +422,7 @@ void LibraryTreeWidget::applyConfig(const ConfigData& config)
     setScrollbarEnabled(m_config.showScrollbar);
     m_libraryTree->setAlternatingRowColors(m_config.alternatingRows);
     m_model->setRowHeight(m_config.rowHeight);
+    m_model->setSummaryNodeConfig(m_config.showSummaryNode, m_config.summaryNodeTitle);
     m_libraryTree->setIconSize(m_config.iconSize);
 
     QMetaObject::invokeMethod(m_libraryTree->itemDelegate(), "sizeHintChanged", Q_ARG(QModelIndex, {}));
@@ -472,6 +487,12 @@ LibraryTreeWidget::ConfigData LibraryTreeWidget::configFromLayout(const QJsonObj
     if(layout.contains("AlternatingRows"_L1)) {
         config.alternatingRows = layout.value("AlternatingRows"_L1).toBool();
     }
+    if(layout.contains("ShowSummaryNode"_L1)) {
+        config.showSummaryNode = layout.value("ShowSummaryNode"_L1).toBool();
+    }
+    if(layout.contains("SummaryNodeTitle"_L1)) {
+        config.summaryNodeTitle = layout.value("SummaryNodeTitle"_L1).toString();
+    }
     if(layout.contains("RowHeight"_L1)) {
         config.rowHeight = layout.value("RowHeight"_L1).toInt();
     }
@@ -484,6 +505,9 @@ LibraryTreeWidget::ConfigData LibraryTreeWidget::configFromLayout(const QJsonObj
     }
 
     config.rowHeight = std::max(config.rowHeight, 0);
+    if(config.summaryNodeTitle.isEmpty()) {
+        config.summaryNodeTitle = factoryConfig().summaryNodeTitle;
+    }
 
     return config;
 }
@@ -502,6 +526,8 @@ void LibraryTreeWidget::saveConfigToLayout(const ConfigData& config, QJsonObject
     layout["ShowHeader"_L1]        = config.showHeader;
     layout["ShowScrollbar"_L1]     = config.showScrollbar;
     layout["AlternatingRows"_L1]   = config.alternatingRows;
+    layout["ShowSummaryNode"_L1]   = config.showSummaryNode;
+    layout["SummaryNodeTitle"_L1]  = config.summaryNodeTitle;
     layout["RowHeight"_L1]         = config.rowHeight;
     layout["IconWidth"_L1]         = config.iconSize.width();
     layout["IconHeight"_L1]        = config.iconSize.height();

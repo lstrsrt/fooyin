@@ -21,14 +21,18 @@
 
 #include "internalguisettings.h"
 #include "librarytreepopulator.h"
+#include "librarytreescriptenvironment.h"
 
 #include <core/coresettings.h>
 #include <core/library/tracksort.h>
+#include <core/scripting/scriptparser.h>
 #include <gui/coverprovider.h>
 #include <gui/guiconstants.h>
 #include <gui/guisettings.h>
 #include <gui/guiutils.h>
 #include <gui/iconloader.h>
+#include <gui/scripting/richtextutils.h>
+#include <gui/scripting/scriptformatter.h>
 #include <gui/trackmimedata.h>
 #include <utils/datastream.h>
 #include <utils/settings/settingsmanager.h>
@@ -55,6 +59,7 @@ QFont libraryTreeFont()
 }
 
 using NodeParentMap = std::unordered_map<Fooyin::Md5Hash, Fooyin::Md5Hash>;
+
 bool cmpItemsReverse(Fooyin::LibraryTreeItem* pItem1, Fooyin::LibraryTreeItem* pItem2)
 {
     Fooyin::LibraryTreeItem* item1{pItem1};
@@ -255,8 +260,12 @@ public:
                                      std::shared_ptr<AudioLoader> audioLoader, SettingsManager* settings);
 
     void updateSummary();
+    void ensureSummaryNodeVisible();
+    void removeSummaryNode();
     void queueRichTitleUpdate(ItemKeyMap items);
     void startRichTitleUpdate(ItemKeyMap items);
+    [[nodiscard]] int childCountForScript(const LibraryTreeItem& item) const;
+    [[nodiscard]] int summaryChildCountForScript();
 
     void removeTracks(const TrackList& tracks);
     void mergeTrackParents(const TrackIdNodeMap& parents);
@@ -289,6 +298,8 @@ public:
     LibraryTreePopulator m_populator;
 
     LibraryTreeItem m_summaryNode;
+    bool m_showSummaryNode{true};
+    QString m_summaryNodeTitle;
     NodeKeyMap m_pendingNodes;
     ItemKeyMap m_nodes;
     NodeParentMap m_nodeParents;
@@ -324,13 +335,87 @@ LibraryTreeModelPrivate::LibraryTreeModelPrivate(LibraryTreeModel* self, Library
 
 void LibraryTreeModelPrivate::updateSummary()
 {
-    m_summaryNode.setTitle(LibraryTreeModel::tr("All Music") + u" (%L1)"_s.arg(m_self->rootItem()->childCount() - 1));
+    if(!m_showSummaryNode) {
+        return;
+    }
+
+    QString title{m_summaryNodeTitle};
+    if(title.isEmpty()) {
+        title = defaultLibraryTreeSummaryTitle();
+    }
+
+    LibraryTreeScriptEnvironment environment;
+    environment.setNodeVariablePolicy(LibraryTreeNodePolicy::Value);
+    environment.setNodeCounts(static_cast<int>(m_trackParents.size()), summaryChildCountForScript());
+
+    ScriptParser parser;
+    parser.addProvider(libraryTreeNodeVariableProvider());
+    title = parser.evaluate(title, ScriptContext{.environment = &environment},
+                            {.whitespaceMode = ScriptWhitespaceMode::Preserve});
+
+    ScriptFormatter formatter;
+    const RichText richTitle = trimRichText(formatter.evaluate(title));
+
+    m_summaryNode.setTitle(richTitle.joinedText());
+    m_summaryNode.setTitleSource(m_summaryNodeTitle);
+    m_summaryNode.setRichTitle(richTitle);
+}
+
+void LibraryTreeModelPrivate::ensureSummaryNodeVisible()
+{
+    if(m_self->rootItem()->hasChild(&m_summaryNode)) {
+        return;
+    }
+
+    m_self->beginInsertRows({}, 0, 0);
+    m_self->rootItem()->insertChild(0, &m_summaryNode);
+    m_self->endInsertRows();
+}
+
+void LibraryTreeModelPrivate::removeSummaryNode()
+{
+    if(!m_self->rootItem()->hasChild(&m_summaryNode)) {
+        return;
+    }
+
+    const int row = m_summaryNode.row();
+    m_self->beginRemoveRows({}, row, row);
+    m_self->rootItem()->removeChild(row);
+    m_self->endRemoveRows();
+}
+
+int LibraryTreeModelPrivate::childCountForScript(const LibraryTreeItem& item) const
+{
+    int childCount = item.childCount();
+    if(const auto pendingIt = m_pendingNodes.find(item.key()); pendingIt != m_pendingNodes.end()) {
+        childCount += static_cast<int>(pendingIt->second.size());
+    }
+    return childCount;
+}
+
+int LibraryTreeModelPrivate::summaryChildCountForScript()
+{
+    auto* root     = m_self->rootItem();
+    int childCount = root->childCount();
+    if(root->hasChild(&m_summaryNode)) {
+        --childCount;
+    }
+    if(const auto pendingIt = m_pendingNodes.find(root->key()); pendingIt != m_pendingNodes.end()) {
+        childCount += static_cast<int>(pendingIt->second.size());
+    }
+    return childCount;
 }
 
 void LibraryTreeModelPrivate::queueRichTitleUpdate(ItemKeyMap items)
 {
     if(items.empty()) {
         return;
+    }
+
+    for(auto& [key, item] : items) {
+        if(const auto nodeIt = m_nodes.find(key); nodeIt != m_nodes.end()) {
+            item.setScriptChildCount(childCountForScript(nodeIt->second));
+        }
     }
 
     if(m_populatorThread.isRunning() && m_populator.state() == Worker::Running) {
@@ -636,6 +721,7 @@ void LibraryTreeModelPrivate::applyUpdatedItems(const ItemKeyMap& items)
         }
 
         auto& node = nodeIt->second;
+        node.setScriptChildCount(item.scriptChildCount());
         if(node.richTitle() == item.richTitle() && node.rightRichTitle() == item.rightRichTitle()) {
             continue;
         }
@@ -657,8 +743,11 @@ void LibraryTreeModelPrivate::populateModel(PendingTreeData& data)
 {
     QModelIndexList changedIndexes;
     ItemKeyMap itemsToUpdate;
+    std::vector<Md5Hash> childCountItemsToUpdate;
 
     for(auto& [key, item] : data.items) {
+        const bool itemUsesChildCount = usesLibraryTreeChildCount(item.titleSource());
+
         if(m_nodes.contains(key)) {
             auto& node = m_nodes.at(key);
 
@@ -671,7 +760,8 @@ void LibraryTreeModelPrivate::populateModel(PendingTreeData& data)
                 }
             }
 
-            if(node.richTitle() != item.richTitle() || node.rightRichTitle() != item.rightRichTitle()) {
+            if(!itemUsesChildCount
+               && (node.richTitle() != item.richTitle() || node.rightRichTitle() != item.rightRichTitle())) {
                 node.setRichTitles(item.richTitle(), item.rightRichTitle());
                 if(!node.pending()) {
                     changedIndexes.emplace_back(m_self->indexOfItem(&node));
@@ -679,10 +769,14 @@ void LibraryTreeModelPrivate::populateModel(PendingTreeData& data)
             }
 
             node.addTracks(item.tracks());
+            node.setScriptChildCount(item.scriptChildCount());
             itemsToUpdate.insert_or_assign(key, node);
         }
         else {
             m_nodes.emplace(key, std::move(item));
+            if(itemUsesChildCount) {
+                childCountItemsToUpdate.push_back(key);
+            }
         }
     }
     mergeTrackParents(data.trackParents);
@@ -723,6 +817,12 @@ void LibraryTreeModelPrivate::populateModel(PendingTreeData& data)
         updatePendingNodes(data);
     }
 
+    for(const auto& key : childCountItemsToUpdate) {
+        if(const auto nodeIt = m_nodes.find(key); nodeIt != m_nodes.end()) {
+            itemsToUpdate.insert_or_assign(key, nodeIt->second);
+        }
+    }
+
     applyUpdatedItems(data.updatedItems);
     queueRichTitleUpdate(std::move(itemsToUpdate));
     updateSummary();
@@ -738,7 +838,9 @@ void LibraryTreeModelPrivate::beginReset()
     m_addedNodes.clear();
 
     m_summaryNode = LibraryTreeItem{LibraryTreeModel::tr("All Music"), m_self->rootItem(), -1};
-    m_self->rootItem()->appendChild(&m_summaryNode);
+    if(m_showSummaryNode) {
+        m_self->rootItem()->appendChild(&m_summaryNode);
+    }
     updateSummary();
 }
 
@@ -808,6 +910,29 @@ void LibraryTreeModel::setRowHeight(int height)
 {
     p->m_rowHeight = height;
     Q_EMIT dataUpdated({}, {});
+}
+
+void LibraryTreeModel::setSummaryNodeConfig(bool show, const QString& title)
+{
+    const bool visibilityChanged = p->m_showSummaryNode != show;
+    p->m_showSummaryNode         = show;
+    p->m_summaryNodeTitle        = title;
+
+    if(show) {
+        if(visibilityChanged) {
+            p->ensureSummaryNodeVisible();
+        }
+        p->updateSummary();
+        const QModelIndex index = indexOfItem(&p->m_summaryNode);
+        if(index.isValid()) {
+            Q_EMIT dataChanged(index, index,
+                               {Qt::DisplayRole, Qt::ToolTipRole, Qt::SizeHintRole, LibraryTreeItem::RichTitle,
+                                LibraryTreeItem::RightRichTitle});
+        }
+    }
+    else if(visibilityChanged) {
+        p->removeSummaryNode();
+    }
 }
 
 void LibraryTreeModel::setPlayState(Player::PlayState state)

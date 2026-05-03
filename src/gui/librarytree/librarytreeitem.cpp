@@ -92,6 +92,7 @@ LibraryTreeItem::LibraryTreeItem(QString title, LibraryTreeItem* parent, int lev
     , m_titleSource{m_title}
     , m_richTitle{plainTextToRichText(m_title)}
     , m_coverPosition{QStyleOptionViewItem::Left}
+    , m_scriptChildCount{-1}
 {
     if(m_title.contains(QLatin1String{Constants::FrontCover})) {
         m_coverType     = Track::Cover::Front;
@@ -160,6 +161,11 @@ int LibraryTreeItem::trackCount() const
     return static_cast<int>(m_tracks.size());
 }
 
+int LibraryTreeItem::scriptChildCount() const
+{
+    return m_scriptChildCount >= 0 ? m_scriptChildCount : childCount();
+}
+
 const Md5Hash& LibraryTreeItem::key() const
 {
     return m_key;
@@ -220,6 +226,11 @@ void LibraryTreeItem::setRichTitles(const RichText& leftTitle, const RichText& r
         removeCoverMarker(m_richTitle, Constants::ArtistPicture);
         removeCoverMarker(m_rightRichTitle, Constants::ArtistPicture);
     }
+}
+
+void LibraryTreeItem::setScriptChildCount(int count)
+{
+    m_scriptChildCount = count;
 }
 
 void LibraryTreeItem::setKey(const Md5Hash& key)

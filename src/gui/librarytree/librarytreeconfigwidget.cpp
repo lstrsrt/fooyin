@@ -20,6 +20,7 @@
 #include "librarytreeconfigwidget.h"
 
 #include "librarytreegroupeditordialog.h"
+#include "librarytreescriptenvironment.h"
 
 #include <gui/trackselectioncontroller.h>
 
@@ -48,6 +49,8 @@ LibraryTreeConfigDialog::LibraryTreeConfigDialog(LibraryTreeWidget* libraryTree,
     , m_keepAlive{new QCheckBox(tr("Keep alive"), this)}
     , m_playlistName{new QLineEdit(this)}
     , m_restoreState{new QCheckBox(tr("Restore state on startup"), this)}
+    , m_showSummaryNode{new QCheckBox(tr("Show summary node"), this)}
+    , m_summaryNodeTitle{new QLineEdit(this)}
     , m_animated{new QCheckBox(tr("Expand/collapse animation"), this)}
     , m_header{new QCheckBox(tr("Show header"), this)}
     , m_showScrollbar{new QCheckBox(tr("Show scrollbar"), this)}
@@ -60,6 +63,9 @@ LibraryTreeConfigDialog::LibraryTreeConfigDialog(LibraryTreeWidget* libraryTree,
 {
     m_playbackOnSend->setToolTip(
         tr(R"(For "Replace current playlist" and "Create new playlist", start playback immediately.)"));
+    m_summaryNodeTitle->setPlaceholderText(defaultLibraryTreeSummaryTitle());
+    m_summaryNodeTitle->setToolTip(
+        tr("Supports <right> for right-aligned text, %trackcount% for tracks, and %childcount% for child nodes."));
 
     auto* tabs = new QTabWidget(this);
 
@@ -96,8 +102,13 @@ LibraryTreeConfigDialog::LibraryTreeConfigDialog(LibraryTreeWidget* libraryTree,
     auto* generalGroup       = new QGroupBox(tr("General"), generalTab);
     auto* generalGroupLayout = new QGridLayout(generalGroup);
 
-    generalGroupLayout->addWidget(m_restoreState);
-    generalGroupLayout->addWidget(m_manageGroupings, 2, 0);
+    row = 0;
+    generalGroupLayout->addWidget(m_restoreState, row++, 0, 1, 3);
+    generalGroupLayout->addWidget(m_showSummaryNode, row++, 0, 1, 3);
+    generalGroupLayout->addWidget(new QLabel(tr("Summary title") + u":"_s, this), row, 0);
+    generalGroupLayout->addWidget(m_summaryNodeTitle, row++, 1, 1, 2);
+    generalGroupLayout->addWidget(m_manageGroupings, row++, 0, 1, 3);
+    generalGroupLayout->setColumnStretch(2, 1);
 
     auto* appearanceGroup       = new QGroupBox(tr("Appearance"), styleTab);
     auto* appearanceGroupLayout = new QGridLayout(appearanceGroup);
@@ -183,6 +194,7 @@ LibraryTreeConfigDialog::LibraryTreeConfigDialog(LibraryTreeWidget* libraryTree,
     addTrackAction(m_middleClick, tr("Replace playback queue"), TrackAction::SendToQueue);
 
     QObject::connect(m_overrideRowHeight, &QCheckBox::toggled, m_rowHeight, &QWidget::setEnabled);
+    QObject::connect(m_showSummaryNode, &QCheckBox::toggled, m_summaryNodeTitle, &QWidget::setEnabled);
     QObject::connect(m_playlistEnabled, &QCheckBox::toggled, this, [this](bool checked) {
         m_playlistName->setEnabled(checked);
         m_autoSwitch->setEnabled(checked);
@@ -211,6 +223,8 @@ LibraryTreeWidget::ConfigData LibraryTreeConfigDialog::config() const
         .showHeader        = m_header->isChecked(),
         .showScrollbar     = m_showScrollbar->isChecked(),
         .alternatingRows   = m_altColours->isChecked(),
+        .showSummaryNode   = m_showSummaryNode->isChecked(),
+        .summaryNodeTitle  = m_summaryNodeTitle->text(),
         .rowHeight         = m_overrideRowHeight->isChecked() ? m_rowHeight->value() : 0,
         .iconSize          = {m_iconWidth->value(), m_iconHeight->value()},
     };
@@ -236,6 +250,9 @@ void LibraryTreeConfigDialog::setConfig(const LibraryTreeWidget::ConfigData& con
     m_header->setChecked(config.showHeader);
     m_showScrollbar->setChecked(config.showScrollbar);
     m_altColours->setChecked(config.alternatingRows);
+    m_showSummaryNode->setChecked(config.showSummaryNode);
+    m_summaryNodeTitle->setText(config.summaryNodeTitle);
+    m_summaryNodeTitle->setEnabled(m_showSummaryNode->isChecked());
     m_overrideRowHeight->setChecked(config.rowHeight > 0);
     m_rowHeight->setValue(config.rowHeight > 0 ? config.rowHeight : 1);
     m_rowHeight->setEnabled(m_overrideRowHeight->isChecked());

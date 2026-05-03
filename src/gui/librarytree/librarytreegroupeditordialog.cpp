@@ -98,11 +98,11 @@ LibraryTreeGroupEditorWidget::LibraryTreeGroupEditorWidget(LibraryTreeGroupRegis
     artworkHint->setWordWrap(true);
     artworkHint->setTextFormat(Qt::RichText);
 
-    auto* rightTextHint
-        = new QLabel(u"🛈 "_s
-                         + tr("Use <code>&lt;right&gt;</code> in a display level to show text right-aligned. "
-                              "Use <code>%trackcount%</code> to show the number of tracks in each tree node."),
-                     this);
+    auto* rightTextHint = new QLabel(
+        u"🛈 "_s
+            + tr("Use <code>&lt;right&gt;</code> in a display level to show text right-aligned. "
+                 "Use <code>%trackcount%</code> for tracks and <code>%childcount%</code> for child nodes."),
+        this);
     rightTextHint->setWordWrap(true);
     rightTextHint->setTextFormat(Qt::RichText);
 

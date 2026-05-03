@@ -64,6 +64,7 @@ public:
 
     void resetPalette();
     void setRowHeight(int height);
+    void setSummaryNodeConfig(bool show, const QString& title);
     void setPlayState(Player::PlayState state);
     void setPlayingPath(const QString& parentNode, const QString& path);
 
