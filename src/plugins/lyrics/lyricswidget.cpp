@@ -787,22 +787,30 @@ void LyricsWidget::handleSavedLyrics(const Track& track, const Lyrics& lyrics)
     changeLyrics(lyrics);
 }
 
-void LyricsWidget::changeLyrics(const Lyrics& lyrics)
+void LyricsWidget::changeLyrics(const Lyrics& lyrics, bool onEdit)
 {
-    m_currentLyrics = lyrics;
+    const bool fullUpdate = !onEdit || m_currentTrack.sameIdentityAs(*m_editingTrack);
+
+    if(fullUpdate) {
+        m_currentLyrics = lyrics;
+    }
 
     if(!lyrics.isLocal) {
         m_lyricsSaver->autoSaveLyrics(lyrics, m_currentTrack);
     }
 
     if(lyrics.isValid()) {
-        m_model->setLyrics(m_currentLyrics);
-        m_lyricsView->setDisplayString({});
+        if(fullUpdate) {
+            m_lyricsView->setDisplayString({});
+            m_model->setLyrics(m_currentLyrics);
+        }
         updateEdgeFadeState();
     }
     else {
-        m_lyricsView->setDisplayString(noLyricsDisplayText(m_currentTrack));
-        m_model->setLyrics({});
+        if(fullUpdate) {
+            m_lyricsView->setDisplayString(noLyricsDisplayText(m_currentTrack));
+            m_model->setLyrics({});
+        }
         m_lyricsView->setEdgeFadeEnabled(false);
     }
 
@@ -815,13 +823,20 @@ void LyricsWidget::openEditor(const Lyrics& lyrics)
         = new LyricsEditorDialog(m_currentTrack, lyrics, m_playerController, m_lyricsSaver, Utils::getMainWindow());
     dlg->setAttribute(Qt::WA_DeleteOnClose);
 
-    QObject::connect(dlg, &QDialog::finished, dlg, &LyricsEditorDialog::saveState);
+    m_editingTrack = m_currentTrack;
+
+    QObject::connect(dlg, &QDialog::finished, dlg, [this, dlg] {
+        dlg->saveState();
+        m_editingTrack = {};
+    });
     QObject::connect(dlg, &LyricsEditorDialog::lyricsEdited, this, [this](const Lyrics& updatedLyrics) {
-        std::erase_if(m_lyrics, [](const Lyrics& existingLyrics) { return existingLyrics.isLocal; });
-        if(updatedLyrics.isValid()) {
-            m_lyrics.insert(m_lyrics.begin(), updatedLyrics);
+        if(m_currentTrack.sameIdentityAs(*m_editingTrack)) {
+            std::erase_if(m_lyrics, [](const Lyrics& existingLyrics) { return existingLyrics.isLocal; });
+            if(updatedLyrics.isValid()) {
+                m_lyrics.insert(m_lyrics.begin(), updatedLyrics);
+            }
         }
-        changeLyrics(updatedLyrics);
+        changeLyrics(updatedLyrics, true);
     });
 
     dlg->show();
