@@ -44,4 +44,8 @@ FYUTILS_EXPORT QList<QUrl> getUrlsInDirRecursive(const QDir& baseDirectory, cons
 FYUTILS_EXPORT QStringList getFiles(const QStringList& paths, const QStringList& fileExtensions = {});
 FYUTILS_EXPORT QStringList getFiles(const QList<QUrl>& urls, const QStringList& fileExtensions = {});
 FYUTILS_EXPORT QStringList getAllSubdirectories(const QDir& dir);
+
+FYUTILS_EXPORT bool pathContainsWildcard(const QString& path);
+FYUTILS_EXPORT QStringList directoriesFromWildcardPath(const QString& pathPattern);
+FYUTILS_EXPORT QStringList filesFromWildcardPath(const QString& pathPattern);
 } // namespace Fooyin::Utils::File

@@ -24,6 +24,43 @@
 #include <QDirIterator>
 #include <QFile>
 
+using namespace Qt::StringLiterals;
+
+namespace {
+struct PathParts
+{
+    QString root;
+    QStringList segments;
+};
+
+PathParts splitPath(const QString& path)
+{
+    QString root;
+    QString remainder = QDir::fromNativeSeparators(path);
+
+    if(remainder.size() >= 3 && remainder.at(0).isLetter() && remainder.at(1) == ':'_L1 && remainder.at(2) == '/'_L1) {
+        root      = remainder.left(3);
+        remainder = remainder.mid(3);
+    }
+    else if(remainder.startsWith("//"_L1)) {
+        const qsizetype serverEnd = remainder.indexOf('/'_L1, 2);
+        if(serverEnd >= 0) {
+            const qsizetype shareEnd = remainder.indexOf('/'_L1, serverEnd + 1);
+            if(shareEnd >= 0) {
+                root      = remainder.left(shareEnd + 1);
+                remainder = remainder.mid(shareEnd + 1);
+            }
+        }
+    }
+    else if(remainder.startsWith('/'_L1)) {
+        root      = u"/"_s;
+        remainder = remainder.mid(1);
+    }
+
+    return {.root = root, .segments = remainder.split('/'_L1, Qt::SkipEmptyParts)};
+}
+} // namespace
+
 namespace Fooyin::Utils::File {
 QString cleanPath(const QString& path)
 {
@@ -221,5 +258,85 @@ QStringList getAllSubdirectories(const QDir& dir)
     }
 
     return directories;
+}
+
+bool pathContainsWildcard(const QString& path)
+{
+    return path.contains('*'_L1);
+}
+
+QStringList directoriesFromWildcardPath(const QString& pathPattern)
+{
+    const QString cleanPath = QDir::fromNativeSeparators(QDir::cleanPath(pathPattern));
+    if(!pathContainsWildcard(cleanPath)) {
+        return QFileInfo{cleanPath}.isDir() ? QStringList{cleanPath} : QStringList{};
+    }
+
+    const auto [root, segments] = splitPath(cleanPath);
+    if(segments.empty()) {
+        return {};
+    }
+
+    int firstWildcardSegment{0};
+    while(firstWildcardSegment < segments.size() && !pathContainsWildcard(segments.at(firstWildcardSegment))) {
+        ++firstWildcardSegment;
+    }
+
+    QString basePath = segments.sliced(0, firstWildcardSegment).join('/'_L1);
+    basePath.prepend(root);
+    if(basePath.isEmpty()) {
+        basePath = root.isEmpty() ? u"."_s : root;
+    }
+
+    QStringList dirs{basePath};
+
+    const auto wildcardSegments = segments.sliced(firstWildcardSegment);
+    for(const QString& segment : wildcardSegments) {
+        QStringList nextDirs;
+
+        for(const QString& dirPath : std::as_const(dirs)) {
+            const QDir dir{dirPath};
+            if(pathContainsWildcard(segment)) {
+                const auto entries = dir.entryList({segment}, QDir::Dirs | QDir::NoDotAndDotDot, QDir::Name);
+                for(const QString& entry : entries) {
+                    nextDirs.emplace_back(dir.absoluteFilePath(entry));
+                }
+            }
+            else {
+                const QString nextDir = dir.absoluteFilePath(segment);
+                if(QFileInfo{nextDir}.isDir()) {
+                    nextDirs.emplace_back(nextDir);
+                }
+            }
+        }
+
+        dirs = std::move(nextDirs);
+        if(dirs.empty()) {
+            break;
+        }
+    }
+
+    return dirs;
+}
+
+QStringList filesFromWildcardPath(const QString& pathPattern)
+{
+    const QString cleanPath     = QDir::fromNativeSeparators(QDir::cleanPath(pathPattern));
+    const qsizetype slash       = cleanPath.lastIndexOf('/'_L1);
+    const QString dirPattern    = slash >= 0 ? cleanPath.left(slash) : u"."_s;
+    const QString filenameMatch = slash >= 0 ? cleanPath.mid(slash + 1) : cleanPath;
+
+    QStringList files;
+
+    const auto dirs = directoriesFromWildcardPath(dirPattern);
+    for(const QString& dirPath : dirs) {
+        const QDir dir{dirPath};
+        const auto entries = dir.entryList({filenameMatch}, QDir::Files, QDir::Name);
+        for(const QString& file : entries) {
+            files.emplace_back(dir.absoluteFilePath(file));
+        }
+    }
+
+    return files;
 }
 } // namespace Fooyin::Utils::File
