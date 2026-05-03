@@ -105,6 +105,17 @@ DateRange calculateDateRange(const Fooyin::Expression& expr)
     return range;
 }
 
+Fooyin::ScriptScanner::WhitespaceMode whitespaceMode(Fooyin::ScriptWhitespaceMode mode)
+{
+    switch(mode) {
+        case Fooyin::ScriptWhitespaceMode::Preserve:
+            return Fooyin::ScriptScanner::WhitespaceMode::Preserve;
+        case Fooyin::ScriptWhitespaceMode::IgnoreLayout:
+            break;
+    }
+    return Fooyin::ScriptScanner::WhitespaceMode::IgnoreLayout;
+}
+
 QStringList evalStringList(const Fooyin::ScriptResult& evalExpr, const QStringList& result)
 {
     QStringList listResult;
@@ -235,7 +246,8 @@ public:
     ScriptResult evalLimit(const BoundExpression& exp);
     ScriptResult evalSort(const BoundExpression& exp);
 
-    ParsedScript parse(const QString& input);
+    ParsedScript parse(const QString& input,
+                       ScriptScanner::WhitespaceMode whitespaceMode = ScriptScanner::WhitespaceMode::IgnoreLayout);
     ParsedScript parseQuery(const QString& input);
     QString evaluate(const ParsedScript& input, const auto& tracks);
 
@@ -1605,25 +1617,34 @@ ScriptResult ScriptParserPrivate::evalSort(const BoundExpression& exp)
     return result;
 }
 
-ParsedScript ScriptParserPrivate::parse(const QString& input)
+ParsedScript ScriptParserPrivate::parse(const QString& input, ScriptScanner::WhitespaceMode whitespaceMode)
 {
     if(input.isEmpty()) {
         return {};
     }
 
     m_isQuery = false;
-    m_scanner.setWhitespaceMode(ScriptScanner::WhitespaceMode::IgnoreLayout);
+    m_scanner.setWhitespaceMode(whitespaceMode);
     m_currentScript = {};
 
-    if(m_scriptCache.contains(input)) {
-        return m_scriptCache.get(input);
+    QString cacheKey{input};
+
+    if(whitespaceMode != ScriptScanner::WhitespaceMode::IgnoreLayout) {
+        const QString separator = QString::fromLatin1(Constants::UnitSeparator);
+        QString key{separator};
+        key += QString::number(static_cast<int>(whitespaceMode));
+        key += separator;
+        key += input;
+        cacheKey = key;
+    }
+
+    if(m_scriptCache.contains(cacheKey)) {
+        return m_scriptCache.get(cacheKey);
     }
 
     m_currentInput          = input;
     m_currentScript.input   = input;
     m_currentScript.cacheId = nextParsedScriptId().fetch_add(1, std::memory_order_relaxed);
-    m_scanner.setup(input);
-
     m_scanner.setup(input);
 
     advance();
@@ -1635,7 +1656,7 @@ ParsedScript ScriptParserPrivate::parse(const QString& input)
     }
 
     consume(TokenType::TokEos, QObject::tr("Expected end of script"));
-    m_scriptCache.insert(input, m_currentScript);
+    m_scriptCache.insert(cacheKey, m_currentScript);
 
     return m_currentScript;
 }
@@ -2035,6 +2056,12 @@ QString ScriptParser::evaluate(const QString& input, const ScriptContext& contex
     return evaluate(input, Track{}, context);
 }
 
+QString ScriptParser::evaluate(const QString& input, const ScriptContext& context,
+                               const ScriptEvaluationOptions& options)
+{
+    return evaluate(input, Track{}, context, options);
+}
+
 QString ScriptParser::evaluate(const ParsedScript& input, const ScriptContext& context)
 {
     return evaluate(input, Track{}, context);
@@ -2063,11 +2090,17 @@ QString ScriptParser::evaluate(const ParsedScript& input, const Track& track)
 
 QString ScriptParser::evaluate(const QString& input, const Track& track, const ScriptContext& context)
 {
+    return evaluate(input, track, context, {});
+}
+
+QString ScriptParser::evaluate(const QString& input, const Track& track, const ScriptContext& context,
+                               const ScriptEvaluationOptions& options)
+{
     if(input.isEmpty()) {
         return {};
     }
 
-    const auto script = parse(input);
+    const auto script = p->parse(input, whitespaceMode(options.whitespaceMode));
     return evaluate(script, track, context);
 }
 
@@ -2099,11 +2132,17 @@ QString ScriptParser::evaluate(const ParsedScript& input, const TrackList& track
 
 QString ScriptParser::evaluate(const QString& input, const TrackList& tracks, const ScriptContext& context)
 {
+    return evaluate(input, tracks, context, {});
+}
+
+QString ScriptParser::evaluate(const QString& input, const TrackList& tracks, const ScriptContext& context,
+                               const ScriptEvaluationOptions& options)
+{
     if(input.isEmpty()) {
         return {};
     }
 
-    const auto script = parse(input);
+    const auto script = p->parse(input, whitespaceMode(options.whitespaceMode));
     return evaluate(script, tracks, context);
 }
 
@@ -2135,11 +2174,17 @@ QString ScriptParser::evaluate(const ParsedScript& input, const Playlist& playli
 
 QString ScriptParser::evaluate(const QString& input, const Playlist& playlist, const ScriptContext& context)
 {
+    return evaluate(input, playlist, context, {});
+}
+
+QString ScriptParser::evaluate(const QString& input, const Playlist& playlist, const ScriptContext& context,
+                               const ScriptEvaluationOptions& options)
+{
     if(input.isEmpty()) {
         return {};
     }
 
-    const auto script = parse(input);
+    const auto script = p->parse(input, whitespaceMode(options.whitespaceMode));
     return evaluate(script, playlist, context);
 }
 
