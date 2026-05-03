@@ -106,7 +106,7 @@ private:
     void loadLyrics(const Lyrics& lyrics);
     void handleLyricsSearchFinished(const Track& track, bool foundAny);
     void handleSavedLyrics(const Track& track, const Lyrics& lyrics);
-    void changeLyrics(const Lyrics& lyrics, bool onEdit = false);
+    void changeLyrics(const Lyrics& lyrics, const Track* sourceTrack = nullptr);
     void openEditor(const Lyrics& lyrics);
     void openSearchDialog();
 
@@ -116,10 +116,9 @@ private:
     void playStateChanged(Player::PlayState state);
 
     void setCurrentTime(uint64_t time);
-    void seekTo(const QModelIndex& index, const QPoint& pos);
     [[nodiscard]] RichText noLyricsDisplayText(const Track& track);
     void updateViewportPadding();
-    void updateEdgeFadeState();
+    void seekTo(const QModelIndex& index, const QPoint& pos);
 
     void highlightCurrentLine();
     void scrollToCurrentLine(int scrollValue);
@@ -128,6 +127,7 @@ private:
     void checkStartAutoScrollPos(uint64_t pos);
     void checkStartAutoScroll(int startValue = -1);
     void updateAutoScroll(int startValue);
+    void updateEdgeFadeState();
     [[nodiscard]] bool shouldEnableEdgeFade() const;
 
     PlayerController* m_playerController;
@@ -147,7 +147,6 @@ private:
     int m_currentLineEnd;
 
     Track m_currentTrack;
-    std::optional<Track> m_editingTrack;
     std::vector<Lyrics> m_lyrics;
     QMetaObject::Connection m_finderConnection;
     ScriptParser m_parser;

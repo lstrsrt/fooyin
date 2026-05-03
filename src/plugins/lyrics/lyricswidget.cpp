@@ -299,6 +299,11 @@ void LyricsWidget::loadLayoutData(const QJsonObject& layout)
     applyConfig(configFromLayout(layout));
 }
 
+LyricsWidget::ConfigData LyricsWidget::factoryConfig() const
+{
+    return {};
+}
+
 LyricsWidget::ConfigData LyricsWidget::defaultConfig() const
 {
     auto config{factoryConfig()};
@@ -330,11 +335,6 @@ LyricsWidget::ConfigData LyricsWidget::defaultConfig() const
     config.wordFont     = m_settings->fileValue(Settings::WordFont, config.wordFont).toString();
 
     return config;
-}
-
-LyricsWidget::ConfigData LyricsWidget::factoryConfig() const
-{
-    return {};
 }
 
 const LyricsWidget::ConfigData& LyricsWidget::currentConfig() const
@@ -445,171 +445,6 @@ void LyricsWidget::applyConfig(const ConfigData& config)
     }
 }
 
-LyricsWidget::ConfigData LyricsWidget::configFromLayout(const QJsonObject& layout) const
-{
-    ConfigData config{defaultConfig()};
-
-    if(layout.contains("SeekOnClick"_L1)) {
-        config.seekOnClick = layout.value("SeekOnClick"_L1).toBool();
-    }
-    if(layout.contains("NoLyricsScript"_L1)) {
-        config.noLyricsScript = layout.value("NoLyricsScript"_L1).toString();
-    }
-    if(layout.contains("ScrollDuration"_L1)) {
-        config.scrollDuration = layout.value("ScrollDuration"_L1).toInt();
-    }
-    if(layout.contains("ScrollMode"_L1)) {
-        config.scrollMode = layout.value("ScrollMode"_L1).toInt();
-    }
-    if(layout.contains("EdgeFadeMode"_L1)) {
-        config.edgeFadeMode = layout.value("EdgeFadeMode"_L1).toInt();
-    }
-    if(layout.contains("EdgeFadeSize"_L1)) {
-        config.edgeFadeSize = layout.value("EdgeFadeSize"_L1).toInt();
-    }
-    if(layout.contains("ShowScrollbar"_L1)) {
-        config.showScrollbar = layout.value("ShowScrollbar"_L1).toBool();
-    }
-    if(layout.contains("Alignment"_L1)) {
-        config.alignment = layout.value("Alignment"_L1).toInt();
-    }
-    if(layout.contains("LineSpacing"_L1)) {
-        config.lineSpacing = layout.value("LineSpacing"_L1).toInt();
-    }
-    if(layout.contains("CentreFirstSyncedLine"_L1)) {
-        config.centreFirstSyncedLine = layout.value("CentreFirstSyncedLine"_L1).toBool();
-    }
-    if(layout.contains("CentreLastSyncedLine"_L1)) {
-        config.centreLastSyncedLine = layout.value("CentreLastSyncedLine"_L1).toBool();
-    }
-
-    QMargins margins{config.margins};
-    if(layout.contains("LeftMargin"_L1)) {
-        margins.setLeft(layout.value("LeftMargin"_L1).toInt());
-    }
-    if(layout.contains("TopMargin"_L1)) {
-        margins.setTop(layout.value("TopMargin"_L1).toInt());
-    }
-    if(layout.contains("RightMargin"_L1)) {
-        margins.setRight(layout.value("RightMargin"_L1).toInt());
-    }
-    if(layout.contains("BottomMargin"_L1)) {
-        margins.setBottom(layout.value("BottomMargin"_L1).toInt());
-    }
-    config.margins = margins;
-
-    if(layout.contains("UseCustomColours"_L1)) {
-        if(layout.value("UseCustomColours"_L1).toBool()) {
-            Colours colours;
-
-            auto setColour = [&layout, &colours](const QString& key, Colours::Type type) {
-                if(!layout.contains(key)) {
-                    return;
-                }
-
-                const QColor colour{layout.value(key).toString()};
-                if(colour.isValid()) {
-                    colours.setColour(type, colour);
-                }
-            };
-
-            setColour(u"BackgroundColour"_s, Colours::Type::Background);
-            setColour(u"UnsyncedLineColour"_s, Colours::Type::LineUnsynced);
-            setColour(u"UnplayedLineColour"_s, Colours::Type::LineUnplayed);
-            setColour(u"PlayedLineColour"_s, Colours::Type::LinePlayed);
-            setColour(u"CurrentLineColour"_s, Colours::Type::LineSynced);
-            setColour(u"CurrentWordLineColour"_s, Colours::Type::WordLineSynced);
-            setColour(u"CurrentWordColour"_s, Colours::Type::WordSynced);
-            config.colours = QVariant::fromValue(colours);
-        }
-        else {
-            config.colours = QVariant{};
-        }
-    }
-
-    if(layout.contains("LineFont"_L1)) {
-        config.lineFont = layout.value("LineFont"_L1).toString();
-    }
-    if(layout.contains("BaseFont"_L1)) {
-        config.baseFont = layout.value("BaseFont"_L1).toString();
-    }
-    if(layout.contains("WordLineFont"_L1)) {
-        config.wordLineFont = layout.value("WordLineFont"_L1).toString();
-    }
-    if(layout.contains("WordFont"_L1)) {
-        config.wordFont = layout.value("WordFont"_L1).toString();
-    }
-
-    return config;
-}
-
-void LyricsWidget::saveConfigToLayout(const ConfigData& config, QJsonObject& layout) const
-{
-    layout["SeekOnClick"_L1]           = config.seekOnClick;
-    layout["NoLyricsScript"_L1]        = config.noLyricsScript;
-    layout["ScrollDuration"_L1]        = config.scrollDuration;
-    layout["ScrollMode"_L1]            = config.scrollMode;
-    layout["EdgeFadeMode"_L1]          = config.edgeFadeMode;
-    layout["EdgeFadeSize"_L1]          = config.edgeFadeSize;
-    layout["ShowScrollbar"_L1]         = config.showScrollbar;
-    layout["Alignment"_L1]             = config.alignment;
-    layout["LineSpacing"_L1]           = config.lineSpacing;
-    layout["CentreFirstSyncedLine"_L1] = config.centreFirstSyncedLine;
-    layout["CentreLastSyncedLine"_L1]  = config.centreLastSyncedLine;
-    layout["LeftMargin"_L1]            = config.margins.left();
-    layout["TopMargin"_L1]             = config.margins.top();
-    layout["RightMargin"_L1]           = config.margins.right();
-    layout["BottomMargin"_L1]          = config.margins.bottom();
-
-    const bool customColours      = config.colours.isValid() && config.colours.canConvert<Colours>()
-                                 && !config.colours.value<Colours>().isEmpty();
-    layout["UseCustomColours"_L1] = customColours;
-
-    const auto saveColour = [&layout](const Colours& colours, const QString& key, Colours::Type type) {
-        if(colours.hasOverride(type)) {
-            layout[key] = colours.lyricsColours.value(type).name(QColor::HexArgb);
-        }
-        else {
-            layout.remove(key);
-        }
-    };
-
-    if(customColours) {
-        const Colours colours = config.colours.value<Colours>();
-        saveColour(colours, u"BackgroundColour"_s, Colours::Type::Background);
-        saveColour(colours, u"UnsyncedLineColour"_s, Colours::Type::LineUnsynced);
-        saveColour(colours, u"UnplayedLineColour"_s, Colours::Type::LineUnplayed);
-        saveColour(colours, u"PlayedLineColour"_s, Colours::Type::LinePlayed);
-        saveColour(colours, u"CurrentLineColour"_s, Colours::Type::LineSynced);
-        saveColour(colours, u"CurrentWordLineColour"_s, Colours::Type::WordLineSynced);
-        saveColour(colours, u"CurrentWordColour"_s, Colours::Type::WordSynced);
-    }
-    else {
-        layout.remove("BackgroundColour"_L1);
-        layout.remove("UnsyncedLineColour"_L1);
-        layout.remove("UnplayedLineColour"_L1);
-        layout.remove("PlayedLineColour"_L1);
-        layout.remove("CurrentLineColour"_L1);
-        layout.remove("CurrentWordLineColour"_L1);
-        layout.remove("CurrentWordColour"_L1);
-    }
-
-    layout["BaseFont"_L1]     = config.baseFont;
-    layout["LineFont"_L1]     = config.lineFont;
-    layout["WordLineFont"_L1] = config.wordLineFont;
-    layout["WordFont"_L1]     = config.wordFont;
-}
-
-void LyricsWidget::timerEvent(QTimerEvent* event)
-{
-    if(event->timerId() == m_scrollTimer.timerId()) {
-        m_scrollTimer.stop();
-        m_isUserScrolling = false;
-        checkStartAutoScroll(m_lyricsView->verticalScrollBar()->value());
-    }
-    FyWidget::timerEvent(event);
-}
-
 void LyricsWidget::changeEvent(QEvent* event)
 {
     FyWidget::changeEvent(event);
@@ -623,6 +458,16 @@ void LyricsWidget::changeEvent(QEvent* event)
         default:
             break;
     }
+}
+
+void LyricsWidget::timerEvent(QTimerEvent* event)
+{
+    if(event->timerId() == m_scrollTimer.timerId()) {
+        m_scrollTimer.stop();
+        m_isUserScrolling = false;
+        checkStartAutoScroll(m_lyricsView->verticalScrollBar()->value());
+    }
+    FyWidget::timerEvent(event);
 }
 
 void LyricsWidget::contextMenuEvent(QContextMenuEvent* event)
@@ -787,30 +632,26 @@ void LyricsWidget::handleSavedLyrics(const Track& track, const Lyrics& lyrics)
     changeLyrics(lyrics);
 }
 
-void LyricsWidget::changeLyrics(const Lyrics& lyrics, bool onEdit)
+void LyricsWidget::changeLyrics(const Lyrics& lyrics, const Track* sourceTrack)
 {
-    const bool fullUpdate = !onEdit || m_currentTrack.sameIdentityAs(*m_editingTrack);
-
-    if(fullUpdate) {
-        m_currentLyrics = lyrics;
+    if(sourceTrack && !m_currentTrack.sameIdentityAs(*sourceTrack)) {
+        return;
     }
+
+    m_currentLyrics = lyrics;
 
     if(!lyrics.isLocal) {
         m_lyricsSaver->autoSaveLyrics(lyrics, m_currentTrack);
     }
 
     if(lyrics.isValid()) {
-        if(fullUpdate) {
-            m_lyricsView->setDisplayString({});
-            m_model->setLyrics(m_currentLyrics);
-        }
+        m_lyricsView->setDisplayString({});
+        m_model->setLyrics(m_currentLyrics);
         updateEdgeFadeState();
     }
     else {
-        if(fullUpdate) {
-            m_lyricsView->setDisplayString(noLyricsDisplayText(m_currentTrack));
-            m_model->setLyrics({});
-        }
+        m_lyricsView->setDisplayString(noLyricsDisplayText(m_currentTrack));
+        m_model->setLyrics({});
         m_lyricsView->setEdgeFadeEnabled(false);
     }
 
@@ -823,21 +664,18 @@ void LyricsWidget::openEditor(const Lyrics& lyrics)
         = new LyricsEditorDialog(m_currentTrack, lyrics, m_playerController, m_lyricsSaver, Utils::getMainWindow());
     dlg->setAttribute(Qt::WA_DeleteOnClose);
 
-    m_editingTrack = m_currentTrack;
-
-    QObject::connect(dlg, &QDialog::finished, dlg, [this, dlg] {
-        dlg->saveState();
-        m_editingTrack = {};
-    });
-    QObject::connect(dlg, &LyricsEditorDialog::lyricsEdited, this, [this](const Lyrics& updatedLyrics) {
-        if(m_currentTrack.sameIdentityAs(*m_editingTrack)) {
-            std::erase_if(m_lyrics, [](const Lyrics& existingLyrics) { return existingLyrics.isLocal; });
-            if(updatedLyrics.isValid()) {
-                m_lyrics.insert(m_lyrics.begin(), updatedLyrics);
-            }
-        }
-        changeLyrics(updatedLyrics, true);
-    });
+    QObject::connect(dlg, &QDialog::finished, dlg, &LyricsEditorDialog::saveState);
+    QObject::connect(dlg, &LyricsEditorDialog::lyricsEdited, this,
+                     [this, editingTrack = m_currentTrack](const Lyrics& updatedLyrics) {
+                         if(m_currentTrack.sameIdentityAs(editingTrack)) {
+                             std::erase_if(m_lyrics,
+                                           [](const Lyrics& existingLyrics) { return existingLyrics.isLocal; });
+                             if(updatedLyrics.isValid()) {
+                                 m_lyrics.insert(m_lyrics.begin(), updatedLyrics);
+                             }
+                         }
+                         changeLyrics(updatedLyrics, &editingTrack);
+                     });
 
     dlg->show();
     dlg->restoreState();
@@ -853,6 +691,161 @@ void LyricsWidget::openSearchDialog()
                                           Utils::getMainWindow());
     dialog->setAttribute(Qt::WA_DeleteOnClose);
     dialog->open();
+}
+
+LyricsWidget::ConfigData LyricsWidget::configFromLayout(const QJsonObject& layout) const
+{
+    ConfigData config{defaultConfig()};
+
+    if(layout.contains("SeekOnClick"_L1)) {
+        config.seekOnClick = layout.value("SeekOnClick"_L1).toBool();
+    }
+    if(layout.contains("NoLyricsScript"_L1)) {
+        config.noLyricsScript = layout.value("NoLyricsScript"_L1).toString();
+    }
+    if(layout.contains("ScrollDuration"_L1)) {
+        config.scrollDuration = layout.value("ScrollDuration"_L1).toInt();
+    }
+    if(layout.contains("ScrollMode"_L1)) {
+        config.scrollMode = layout.value("ScrollMode"_L1).toInt();
+    }
+    if(layout.contains("EdgeFadeMode"_L1)) {
+        config.edgeFadeMode = layout.value("EdgeFadeMode"_L1).toInt();
+    }
+    if(layout.contains("EdgeFadeSize"_L1)) {
+        config.edgeFadeSize = layout.value("EdgeFadeSize"_L1).toInt();
+    }
+    if(layout.contains("ShowScrollbar"_L1)) {
+        config.showScrollbar = layout.value("ShowScrollbar"_L1).toBool();
+    }
+    if(layout.contains("Alignment"_L1)) {
+        config.alignment = layout.value("Alignment"_L1).toInt();
+    }
+    if(layout.contains("LineSpacing"_L1)) {
+        config.lineSpacing = layout.value("LineSpacing"_L1).toInt();
+    }
+    if(layout.contains("CentreFirstSyncedLine"_L1)) {
+        config.centreFirstSyncedLine = layout.value("CentreFirstSyncedLine"_L1).toBool();
+    }
+    if(layout.contains("CentreLastSyncedLine"_L1)) {
+        config.centreLastSyncedLine = layout.value("CentreLastSyncedLine"_L1).toBool();
+    }
+
+    QMargins margins{config.margins};
+    if(layout.contains("LeftMargin"_L1)) {
+        margins.setLeft(layout.value("LeftMargin"_L1).toInt());
+    }
+    if(layout.contains("TopMargin"_L1)) {
+        margins.setTop(layout.value("TopMargin"_L1).toInt());
+    }
+    if(layout.contains("RightMargin"_L1)) {
+        margins.setRight(layout.value("RightMargin"_L1).toInt());
+    }
+    if(layout.contains("BottomMargin"_L1)) {
+        margins.setBottom(layout.value("BottomMargin"_L1).toInt());
+    }
+    config.margins = margins;
+
+    if(layout.contains("UseCustomColours"_L1)) {
+        if(layout.value("UseCustomColours"_L1).toBool()) {
+            Colours colours;
+
+            auto setColour = [&layout, &colours](const QString& key, Colours::Type type) {
+                if(!layout.contains(key)) {
+                    return;
+                }
+
+                const QColor colour{layout.value(key).toString()};
+                if(colour.isValid()) {
+                    colours.setColour(type, colour);
+                }
+            };
+
+            setColour(u"BackgroundColour"_s, Colours::Type::Background);
+            setColour(u"UnsyncedLineColour"_s, Colours::Type::LineUnsynced);
+            setColour(u"UnplayedLineColour"_s, Colours::Type::LineUnplayed);
+            setColour(u"PlayedLineColour"_s, Colours::Type::LinePlayed);
+            setColour(u"CurrentLineColour"_s, Colours::Type::LineSynced);
+            setColour(u"CurrentWordLineColour"_s, Colours::Type::WordLineSynced);
+            setColour(u"CurrentWordColour"_s, Colours::Type::WordSynced);
+            config.colours = QVariant::fromValue(colours);
+        }
+        else {
+            config.colours = QVariant{};
+        }
+    }
+
+    if(layout.contains("LineFont"_L1)) {
+        config.lineFont = layout.value("LineFont"_L1).toString();
+    }
+    if(layout.contains("BaseFont"_L1)) {
+        config.baseFont = layout.value("BaseFont"_L1).toString();
+    }
+    if(layout.contains("WordLineFont"_L1)) {
+        config.wordLineFont = layout.value("WordLineFont"_L1).toString();
+    }
+    if(layout.contains("WordFont"_L1)) {
+        config.wordFont = layout.value("WordFont"_L1).toString();
+    }
+
+    return config;
+}
+
+void LyricsWidget::saveConfigToLayout(const ConfigData& config, QJsonObject& layout) const
+{
+    layout["SeekOnClick"_L1]           = config.seekOnClick;
+    layout["NoLyricsScript"_L1]        = config.noLyricsScript;
+    layout["ScrollDuration"_L1]        = config.scrollDuration;
+    layout["ScrollMode"_L1]            = config.scrollMode;
+    layout["EdgeFadeMode"_L1]          = config.edgeFadeMode;
+    layout["EdgeFadeSize"_L1]          = config.edgeFadeSize;
+    layout["ShowScrollbar"_L1]         = config.showScrollbar;
+    layout["Alignment"_L1]             = config.alignment;
+    layout["LineSpacing"_L1]           = config.lineSpacing;
+    layout["CentreFirstSyncedLine"_L1] = config.centreFirstSyncedLine;
+    layout["CentreLastSyncedLine"_L1]  = config.centreLastSyncedLine;
+    layout["LeftMargin"_L1]            = config.margins.left();
+    layout["TopMargin"_L1]             = config.margins.top();
+    layout["RightMargin"_L1]           = config.margins.right();
+    layout["BottomMargin"_L1]          = config.margins.bottom();
+
+    const bool customColours      = config.colours.isValid() && config.colours.canConvert<Colours>()
+                                 && !config.colours.value<Colours>().isEmpty();
+    layout["UseCustomColours"_L1] = customColours;
+
+    const auto saveColour = [&layout](const Colours& colours, const QString& key, Colours::Type type) {
+        if(colours.hasOverride(type)) {
+            layout[key] = colours.lyricsColours.value(type).name(QColor::HexArgb);
+        }
+        else {
+            layout.remove(key);
+        }
+    };
+
+    if(customColours) {
+        const Colours colours = config.colours.value<Colours>();
+        saveColour(colours, u"BackgroundColour"_s, Colours::Type::Background);
+        saveColour(colours, u"UnsyncedLineColour"_s, Colours::Type::LineUnsynced);
+        saveColour(colours, u"UnplayedLineColour"_s, Colours::Type::LineUnplayed);
+        saveColour(colours, u"PlayedLineColour"_s, Colours::Type::LinePlayed);
+        saveColour(colours, u"CurrentLineColour"_s, Colours::Type::LineSynced);
+        saveColour(colours, u"CurrentWordLineColour"_s, Colours::Type::WordLineSynced);
+        saveColour(colours, u"CurrentWordColour"_s, Colours::Type::WordSynced);
+    }
+    else {
+        layout.remove("BackgroundColour"_L1);
+        layout.remove("UnsyncedLineColour"_L1);
+        layout.remove("UnplayedLineColour"_L1);
+        layout.remove("PlayedLineColour"_L1);
+        layout.remove("CurrentLineColour"_L1);
+        layout.remove("CurrentWordLineColour"_L1);
+        layout.remove("CurrentWordColour"_L1);
+    }
+
+    layout["BaseFont"_L1]     = config.baseFont;
+    layout["LineFont"_L1]     = config.lineFont;
+    layout["WordLineFont"_L1] = config.wordLineFont;
+    layout["WordFont"_L1]     = config.wordFont;
 }
 
 void LyricsWidget::playStateChanged(Player::PlayState state)
@@ -1150,6 +1143,7 @@ bool LyricsWidget::shouldEnableEdgeFade() const
 
     return false;
 }
+
 } // namespace Fooyin::Lyrics
 
 #include "moc_lyricswidget.cpp"
