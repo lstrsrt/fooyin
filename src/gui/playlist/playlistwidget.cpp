@@ -1068,6 +1068,13 @@ void PlaylistWidget::addPresetMenu(QMenu* parent)
         presetsMenu->addAction(switchPreset);
     }
 
+    auto* moreSettings = new QAction(tr("More…"), presetsMenu);
+    QObject::connect(moreSettings, &QAction::triggered, this,
+                     [this]() { m_settingsDialog->openAtPage(Constants::Page::PlaylistPresets); });
+
+    presetsMenu->addSeparator();
+    presetsMenu->addAction(moreSettings);
+
     parent->addMenu(presetsMenu);
 }
 
