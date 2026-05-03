@@ -64,6 +64,18 @@ QString normaliseTitle(QString text)
     text.remove(QLatin1String{Fooyin::Constants::ArtistPicture});
     return text;
 }
+
+Fooyin::RichText richTextForAlignment(const Fooyin::RichText& richText, Fooyin::RichAlignment alignment)
+{
+    Fooyin::RichText alignedText;
+    for(auto block : richText.blocks) {
+        if(block.format.alignment == alignment) {
+            block.format.alignment = Fooyin::RichAlignment::Left;
+            alignedText.blocks.push_back(std::move(block));
+        }
+    }
+    return alignedText;
+}
 } // namespace
 
 namespace Fooyin {
@@ -133,6 +145,11 @@ const RichText& LibraryTreeItem::richTitle() const
     return m_richTitle;
 }
 
+const RichText& LibraryTreeItem::rightRichTitle() const
+{
+    return m_rightRichTitle;
+}
+
 const TrackList& LibraryTreeItem::tracks() const
 {
     return m_tracks;
@@ -168,7 +185,7 @@ void LibraryTreeItem::setTitle(const QString& title)
     m_title       = title;
     m_sortTitle   = normaliseTitle(title);
     m_titleSource = m_title;
-    m_richTitle   = plainTextToRichText(m_title);
+    setRichTitle(plainTextToRichText(m_title));
 }
 
 void LibraryTreeItem::setSortTitle(const QString& title)
@@ -183,16 +200,25 @@ void LibraryTreeItem::setTitleSource(const QString& title)
 
 void LibraryTreeItem::setRichTitle(const RichText& title)
 {
-    m_richTitle = title;
+    setRichTitles(richTextForAlignment(title, RichAlignment::Left), richTextForAlignment(title, RichAlignment::Right));
+}
+
+void LibraryTreeItem::setRichTitles(const RichText& leftTitle, const RichText& rightTitle)
+{
+    m_richTitle      = leftTitle;
+    m_rightRichTitle = rightTitle;
 
     if(m_coverType == Track::Cover::Front) {
         removeCoverMarker(m_richTitle, Constants::FrontCover);
+        removeCoverMarker(m_rightRichTitle, Constants::FrontCover);
     }
     else if(m_coverType == Track::Cover::Back) {
         removeCoverMarker(m_richTitle, Constants::BackCover);
+        removeCoverMarker(m_rightRichTitle, Constants::BackCover);
     }
     else if(m_coverType == Track::Cover::Artist) {
         removeCoverMarker(m_richTitle, Constants::ArtistPicture);
+        removeCoverMarker(m_rightRichTitle, Constants::ArtistPicture);
     }
 }
 

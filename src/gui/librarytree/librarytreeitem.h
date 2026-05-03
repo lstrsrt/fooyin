@@ -37,6 +37,7 @@ public:
     {
         Title = Qt::UserRole,
         RichTitle,
+        RightRichTitle,
         Level,
         Key,
         Tracks,
@@ -53,6 +54,7 @@ public:
     [[nodiscard]] const QString& sortTitle() const;
     [[nodiscard]] const QString& titleSource() const;
     [[nodiscard]] const RichText& richTitle() const;
+    [[nodiscard]] const RichText& rightRichTitle() const;
     [[nodiscard]] const TrackList& tracks() const;
     [[nodiscard]] int trackCount() const;
     [[nodiscard]] const Md5Hash& key() const;
@@ -64,6 +66,7 @@ public:
     void setSortTitle(const QString& title);
     void setTitleSource(const QString& title);
     void setRichTitle(const RichText& title);
+    void setRichTitles(const RichText& leftTitle, const RichText& rightTitle);
     void setKey(const Md5Hash& key);
 
     void addTrack(const Track& track);
@@ -80,6 +83,7 @@ private:
     QString m_sortTitle;
     QString m_titleSource;
     RichText m_richTitle;
+    RichText m_rightRichTitle;
     std::optional<Track::Cover> m_coverType;
     QStyleOptionViewItem::Position m_coverPosition;
     TrackList m_tracks;

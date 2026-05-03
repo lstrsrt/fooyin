@@ -29,12 +29,26 @@
 #include <gui/scripting/scriptformatter.h>
 #include <utils/settings/settingsmanager.h>
 
+#include <unordered_set>
+
 using namespace Qt::StringLiterals;
 
 constexpr int InitialBatchSize = 3000;
 constexpr int BatchSize        = 4000;
 
 namespace Fooyin {
+namespace {
+QString identityText(const RichText& richText)
+{
+    return richText.joinedText().trimmed();
+}
+
+bool usesTrackCount(QStringView text)
+{
+    return text.contains(u"%trackcount%"_s, Qt::CaseInsensitive);
+}
+} // namespace
+
 class LibraryTreePopulatorPrivate
 {
 public:
@@ -43,13 +57,18 @@ public:
         : m_self{self}
         , m_settings{settings}
         , m_scriptEnvironment{libraryManager}
+        , m_identityScriptEnvironment{libraryManager}
     {
-        m_scriptContext.environment = &m_scriptEnvironment;
+        m_scriptContext.environment         = &m_scriptEnvironment;
+        m_identityScriptContext.environment = &m_identityScriptEnvironment;
         m_parser.addProvider(artworkMarkerVariableProvider());
     }
 
     LibraryTreeItem* getOrInsertItem(const Md5Hash& key, const LibraryTreeItem* parent, const QString& title,
                                      const RichText& richTitle, const QString& sortTitle, int level);
+    void updateRichTitle(LibraryTreeItem& item);
+    PendingTreeData buildBatchData();
+    void clearBatchData();
     void iterateTrack(const Track& track);
     bool runBatch(int size);
 
@@ -59,14 +78,19 @@ public:
     ScriptParser m_parser;
     ScriptFormatter m_formatter;
     LibraryScriptEnvironment m_scriptEnvironment;
+    LibraryScriptEnvironment m_identityScriptEnvironment;
     ScriptContext m_scriptContext;
+    ScriptContext m_identityScriptContext;
 
     LibraryTreeGrouping m_currentGrouping;
     ParsedScript m_displayScript;
     ParsedScript m_sortScript;
 
     LibraryTreeItem m_root;
+    ItemKeyMap m_items;
     PendingTreeData m_data;
+    std::unordered_set<Md5Hash> m_touchedItems;
+    std::unordered_set<Md5Hash> m_emittedItems;
     TrackList m_pendingTracks;
     size_t m_pendingTrackIndex{0};
 };
@@ -75,7 +99,7 @@ LibraryTreeItem* LibraryTreePopulatorPrivate::getOrInsertItem(const Md5Hash& key
                                                               const QString& title, const RichText& richTitle,
                                                               const QString& sortTitle, int level)
 {
-    auto [node, inserted] = m_data.items.try_emplace(key, LibraryTreeItem{title, nullptr, level});
+    auto [node, inserted] = m_items.try_emplace(key, LibraryTreeItem{title, nullptr, level});
     if(inserted) {
         node->second.setKey(key);
         node->second.setTitleSource(title);
@@ -83,16 +107,62 @@ LibraryTreeItem* LibraryTreePopulatorPrivate::getOrInsertItem(const Md5Hash& key
         node->second.setSortTitle(sortTitle);
     }
     LibraryTreeItem* child = &node->second;
+    m_touchedItems.insert(key);
 
     if(child->sortTitle().isEmpty() && !sortTitle.isEmpty()) {
         child->setSortTitle(sortTitle);
     }
 
-    if(!child->pending()) {
-        child->setPending(true);
+    if(!m_emittedItems.contains(key) && !m_data.items.contains(key)) {
         m_data.nodes[parent->key()].push_back(key);
     }
     return child;
+}
+
+void LibraryTreePopulatorPrivate::updateRichTitle(LibraryTreeItem& item)
+{
+    QString title = item.titleSource();
+    if(usesTrackCount(title)) {
+        title = m_parser.evaluate(title, item.tracks(), m_scriptContext,
+                                  {.whitespaceMode = ScriptWhitespaceMode::Preserve});
+    }
+    item.setRichTitle(trimRichText(m_formatter.evaluate(title)));
+}
+
+PendingTreeData LibraryTreePopulatorPrivate::buildBatchData()
+{
+    PendingTreeData data;
+    data.nodes        = m_data.nodes;
+    data.trackParents = m_data.trackParents;
+
+    for(const auto& key : m_touchedItems) {
+        auto itemIt = m_items.find(key);
+        if(itemIt == m_items.end()) {
+            continue;
+        }
+
+        updateRichTitle(itemIt->second);
+
+        if(auto batchIt = m_data.items.find(key); batchIt != m_data.items.end()) {
+            batchIt->second.setRichTitles(itemIt->second.richTitle(), itemIt->second.rightRichTitle());
+            data.items.emplace(key, batchIt->second);
+        }
+        else if(m_emittedItems.contains(key)) {
+            data.updatedItems.emplace(key, itemIt->second);
+        }
+    }
+
+    return data;
+}
+
+void LibraryTreePopulatorPrivate::clearBatchData()
+{
+    for(const auto& key : m_touchedItems) {
+        m_emittedItems.insert(key);
+    }
+
+    m_data.clear();
+    m_touchedItems.clear();
 }
 
 void LibraryTreePopulatorPrivate::iterateTrack(const Track& track)
@@ -119,17 +189,34 @@ void LibraryTreePopulatorPrivate::iterateTrack(const Track& track)
         const bool pairSortItems       = displayItems.size() == sortItems.size();
 
         for(int level{0}; const QString& item : displayItems) {
-            const RichText richTitle = trimRichText(m_formatter.evaluate(item));
-            const QString title      = richTitle.joinedText();
+            const RichText richTitle   = trimRichText(m_formatter.evaluate(item));
+            const QString identityItem = m_parser.evaluate(item, track, m_identityScriptContext);
+            const QString title        = identityText(trimRichText(m_formatter.evaluate(identityItem)));
 
-            const auto key = Utils::generateMd5Hash(parent->key(), title);
-            const QString sortTitle
-                = pairSortItems ? trimRichText(m_formatter.evaluate(sortItems.value(level))).joinedText() : title;
+            const auto key          = Utils::generateMd5Hash(parent->key(), title);
+            const QString sortTitle = [&] {
+                if(!pairSortItems) {
+                    return title;
+                }
+                const QString sortItem = m_parser.evaluate(sortItems.value(level), track, m_identityScriptContext);
+                return identityText(trimRichText(m_formatter.evaluate(sortItem)));
+            }();
 
             auto* node = getOrInsertItem(key, parent, title, richTitle, sortTitle.isEmpty() ? title : sortTitle, level);
             node->setTitleSource(item);
 
             node->addTrack(track);
+
+            auto [batchNode, inserted] = m_data.items.try_emplace(key, LibraryTreeItem{title, nullptr, level});
+            if(inserted) {
+                batchNode->second.setKey(key);
+                batchNode->second.setPending(true);
+                batchNode->second.setTitleSource(item);
+                batchNode->second.setRichTitle(richTitle);
+                batchNode->second.setSortTitle(sortTitle.isEmpty() ? title : sortTitle);
+            }
+            batchNode->second.addTrack(track);
+
             m_data.trackParents[track.id()].push_back(node->key());
 
             parent = node;
@@ -162,9 +249,9 @@ bool LibraryTreePopulatorPrivate::runBatch(int size)
         return false;
     }
 
-    Q_EMIT m_self->populated(std::make_shared<PendingTreeData>(std::move(m_data)));
+    Q_EMIT m_self->populated(std::make_shared<PendingTreeData>(buildBatchData()));
 
-    m_data              = {};
+    clearBatchData();
     m_pendingTrackIndex = batchEnd;
 
     const auto remaining = static_cast<int>(m_pendingTracks.size() - m_pendingTrackIndex);
@@ -188,11 +275,18 @@ void LibraryTreePopulator::run(const LibraryTreeGrouping& grouping, const TrackL
     setState(Running);
 
     p->m_data.clear();
+    p->m_items.clear();
+    p->m_touchedItems.clear();
+    p->m_emittedItems.clear();
 
     p->m_scriptEnvironment.setRatingStarSymbols({p->m_settings->value<Settings::Gui::RatingFullStarSymbol>(),
                                                  p->m_settings->value<Settings::Gui::RatingHalfStarSymbol>(),
                                                  p->m_settings->value<Settings::Gui::RatingEmptyStarSymbol>()});
     p->m_scriptEnvironment.setEvaluationPolicy(TrackListContextPolicy::Unresolved, {}, true, useVarious);
+    p->m_identityScriptEnvironment.setRatingStarSymbols({p->m_settings->value<Settings::Gui::RatingFullStarSymbol>(),
+                                                         p->m_settings->value<Settings::Gui::RatingHalfStarSymbol>(),
+                                                         p->m_settings->value<Settings::Gui::RatingEmptyStarSymbol>()});
+    p->m_identityScriptEnvironment.setEvaluationPolicy(TrackListContextPolicy::Placeholder, u""_s, true, useVarious);
 
     if(std::exchange(p->m_currentGrouping, grouping) != grouping) {
         p->m_displayScript = p->m_parser.parse(p->m_currentGrouping.script);
@@ -210,6 +304,31 @@ void LibraryTreePopulator::run(const LibraryTreeGrouping& grouping, const TrackL
     if(success) {
         Q_EMIT finished();
     }
+}
+
+void LibraryTreePopulator::updateItems(ItemKeyMap items, bool useVarious)
+{
+    setState(Running);
+
+    p->m_scriptEnvironment.setRatingStarSymbols({p->m_settings->value<Settings::Gui::RatingFullStarSymbol>(),
+                                                 p->m_settings->value<Settings::Gui::RatingHalfStarSymbol>(),
+                                                 p->m_settings->value<Settings::Gui::RatingEmptyStarSymbol>()});
+    p->m_scriptEnvironment.setEvaluationPolicy(TrackListContextPolicy::Unresolved, {}, true, useVarious);
+
+    PendingTreeData data;
+    for(auto& [key, item] : items) {
+        if(!mayRun()) {
+            setState(Idle);
+            return;
+        }
+        p->updateRichTitle(item);
+        data.updatedItems.emplace(key, std::move(item));
+    }
+
+    Q_EMIT populated(std::make_shared<PendingTreeData>(std::move(data)));
+    Q_EMIT finished();
+
+    setState(Idle);
 }
 } // namespace Fooyin
 

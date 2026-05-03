@@ -41,12 +41,14 @@ using TrackIdNodeMap = std::unordered_map<int, std::vector<Md5Hash>>;
 struct PendingTreeData
 {
     ItemKeyMap items;
+    ItemKeyMap updatedItems;
     NodeKeyMap nodes;
     TrackIdNodeMap trackParents;
 
     void clear()
     {
         items.clear();
+        updatedItems.clear();
         nodes.clear();
         trackParents.clear();
     }
@@ -65,6 +67,7 @@ public:
     void setFont(const QFont& font);
 
     void run(const LibraryTreeGrouping& grouping, const TrackList& tracks, bool useVarious);
+    void updateItems(ItemKeyMap items, bool useVarious);
 
 Q_SIGNALS:
     void populated(Fooyin::PendingTreeDataPtr data);

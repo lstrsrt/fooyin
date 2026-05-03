@@ -85,8 +85,7 @@ LibraryTreeGroupEditorWidget::LibraryTreeGroupEditorWidget(LibraryTreeGroupRegis
         u"🛈 "_s
             + tr("Use <code>||</code> to split tree levels. <b>Sort Grouping</b> must use the same <code>||</code> "
                  "level structure as <b>Display Grouping</b>; each sort level applies to the matching display level, "
-                 "and a sort level may be empty (for example <code>||%year%||</code>). Leave the whole sort grouping "
-                 "empty to use the display grouping for sorting."),
+                 "and a sort level may be empty (for example <code>||%year%||</code>)."),
         this);
     hint->setWordWrap(true);
     hint->setTextFormat(Qt::RichText);
@@ -99,6 +98,14 @@ LibraryTreeGroupEditorWidget::LibraryTreeGroupEditorWidget(LibraryTreeGroupRegis
     artworkHint->setWordWrap(true);
     artworkHint->setTextFormat(Qt::RichText);
 
+    auto* rightTextHint
+        = new QLabel(u"🛈 "_s
+                         + tr("Use <code>&lt;right&gt;</code> in a display level to show text right-aligned. "
+                              "Use <code>%trackcount%</code> to show the number of tracks in each tree node."),
+                     this);
+    rightTextHint->setWordWrap(true);
+    rightTextHint->setTextFormat(Qt::RichText);
+
     m_hintFrame->setFrameShape(QFrame::StyledPanel);
     m_hintFrame->setFrameShadow(QFrame::Plain);
 
@@ -106,6 +113,7 @@ LibraryTreeGroupEditorWidget::LibraryTreeGroupEditorWidget(LibraryTreeGroupRegis
     hintLayout->setContentsMargins(10, 8, 10, 8);
     hintLayout->addWidget(hint);
     hintLayout->addWidget(artworkHint);
+    hintLayout->addWidget(rightTextHint);
 
     auto* mainLayout = new QVBoxLayout(this);
     mainLayout->addWidget(m_groupList);

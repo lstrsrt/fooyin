@@ -29,8 +29,6 @@
 #include <gui/guisettings.h>
 #include <gui/guiutils.h>
 #include <gui/iconloader.h>
-#include <gui/scripting/richtextutils.h>
-#include <gui/scripting/scriptformatter.h>
 #include <gui/trackmimedata.h>
 #include <utils/datastream.h>
 #include <utils/settings/settingsmanager.h>
@@ -125,6 +123,24 @@ void appendItemTracks(const Fooyin::LibraryTreeItem* item, Fooyin::TrackList& tr
 {
     const auto& itemTracks = item->tracks();
     tracks.insert(tracks.end(), itemTracks.cbegin(), itemTracks.cend());
+}
+
+QString tooltipText(const Fooyin::LibraryTreeItem* item)
+{
+    if(!item) {
+        return {};
+    }
+
+    QString leftText        = item->richTitle().joinedText();
+    const QString rightText = item->rightRichTitle().joinedText();
+
+    if(leftText.isEmpty()) {
+        return rightText.isEmpty() ? item->title() : rightText;
+    }
+    if(rightText.isEmpty()) {
+        return leftText;
+    }
+    return leftText + u"\n"_s + rightText;
 }
 
 QByteArray saveTrackIds(const Fooyin::TrackList& tracks)
@@ -239,6 +255,8 @@ public:
                                      std::shared_ptr<AudioLoader> audioLoader, SettingsManager* settings);
 
     void updateSummary();
+    void queueRichTitleUpdate(ItemKeyMap items);
+    void startRichTitleUpdate(ItemKeyMap items);
 
     void removeTracks(const TrackList& tracks);
     void mergeTrackParents(const TrackIdNodeMap& parents);
@@ -253,6 +271,7 @@ public:
     bool ensureItemVisible(const Md5Hash& key);
     void ensureChildrenAvailable(LibraryTreeItem* parentItem) const;
     void updatePendingNodes(const PendingTreeData& data);
+    void applyUpdatedItems(const ItemKeyMap& items);
 
     void populateModel(PendingTreeData& data);
     void beginReset();
@@ -278,6 +297,7 @@ public:
     bool m_addingTracks{false};
 
     TrackList m_tracksPendingRemoval;
+    ItemKeyMap m_pendingRichTitleUpdates;
 
     Player::PlayState m_playingState;
     QString m_parentNode;
@@ -307,10 +327,41 @@ void LibraryTreeModelPrivate::updateSummary()
     m_summaryNode.setTitle(LibraryTreeModel::tr("All Music") + u" (%L1)"_s.arg(m_self->rootItem()->childCount() - 1));
 }
 
+void LibraryTreeModelPrivate::queueRichTitleUpdate(ItemKeyMap items)
+{
+    if(items.empty()) {
+        return;
+    }
+
+    if(m_populatorThread.isRunning() && m_populator.state() == Worker::Running) {
+        for(auto& [key, item] : items) {
+            m_pendingRichTitleUpdates.insert_or_assign(key, std::move(item));
+        }
+        return;
+    }
+
+    startRichTitleUpdate(std::move(items));
+}
+
+void LibraryTreeModelPrivate::startRichTitleUpdate(ItemKeyMap items)
+{
+    if(!m_populatorThread.isRunning()) {
+        m_populatorThread.start();
+    }
+
+    const QFont font      = libraryTreeFont();
+    const bool useVarious = m_settings->value<Settings::Core::UseVariousForCompilations>();
+    QMetaObject::invokeMethod(&m_populator, [this, font, items = std::move(items), useVarious]() mutable {
+        m_populator.setFont(font);
+        m_populator.updateItems(std::move(items), useVarious);
+    });
+}
+
 void LibraryTreeModelPrivate::removeTracks(const TrackList& tracks)
 {
     std::set<LibraryTreeItem*, cmpItems> items;
     std::set<LibraryTreeItem*> pendingItems;
+    ItemKeyMap itemsToUpdate;
 
     for(const Track& track : tracks) {
         const int id = track.id();
@@ -339,9 +390,12 @@ void LibraryTreeModelPrivate::removeTracks(const TrackList& tracks)
             removePendingNode(item->key());
             m_nodes.erase(item->key());
         }
+        else {
+            itemsToUpdate.insert_or_assign(item->key(), m_nodes.at(item->key()));
+        }
     }
 
-    for(const auto* item : items) {
+    for(auto* item : items) {
         if(item->trackCount() == 0) {
             auto* parent  = item->parent();
             const int row = item->row();
@@ -354,8 +408,12 @@ void LibraryTreeModelPrivate::removeTracks(const TrackList& tracks)
             removePendingNode(item->key());
             m_nodes.erase(item->key());
         }
+        else {
+            itemsToUpdate.insert_or_assign(item->key(), *item);
+        }
     }
 
+    queueRichTitleUpdate(std::move(itemsToUpdate));
     updateSummary();
 }
 
@@ -567,9 +625,38 @@ void LibraryTreeModelPrivate::updatePendingNodes(const PendingTreeData& data)
     }
 }
 
+void LibraryTreeModelPrivate::applyUpdatedItems(const ItemKeyMap& items)
+{
+    QModelIndexList changedIndexes;
+
+    for(const auto& [key, item] : items) {
+        auto nodeIt = m_nodes.find(key);
+        if(nodeIt == m_nodes.end()) {
+            continue;
+        }
+
+        auto& node = nodeIt->second;
+        if(node.richTitle() == item.richTitle() && node.rightRichTitle() == item.rightRichTitle()) {
+            continue;
+        }
+
+        node.setRichTitles(item.richTitle(), item.rightRichTitle());
+        if(!node.pending()) {
+            changedIndexes.emplace_back(m_self->indexOfItem(&node));
+        }
+    }
+
+    for(const QModelIndex& index : changedIndexes) {
+        Q_EMIT m_self->dataChanged(index, index,
+                                   {Qt::DisplayRole, Qt::ToolTipRole, Qt::SizeHintRole, LibraryTreeItem::RichTitle,
+                                    LibraryTreeItem::RightRichTitle});
+    }
+}
+
 void LibraryTreeModelPrivate::populateModel(PendingTreeData& data)
 {
     QModelIndexList changedIndexes;
+    ItemKeyMap itemsToUpdate;
 
     for(auto& [key, item] : data.items) {
         if(m_nodes.contains(key)) {
@@ -584,14 +671,15 @@ void LibraryTreeModelPrivate::populateModel(PendingTreeData& data)
                 }
             }
 
-            if(node.richTitle() != item.richTitle()) {
-                node.setRichTitle(item.richTitle());
+            if(node.richTitle() != item.richTitle() || node.rightRichTitle() != item.rightRichTitle()) {
+                node.setRichTitles(item.richTitle(), item.rightRichTitle());
                 if(!node.pending()) {
                     changedIndexes.emplace_back(m_self->indexOfItem(&node));
                 }
             }
 
             node.addTracks(item.tracks());
+            itemsToUpdate.insert_or_assign(key, node);
         }
         else {
             m_nodes.emplace(key, std::move(item));
@@ -610,7 +698,8 @@ void LibraryTreeModelPrivate::populateModel(PendingTreeData& data)
 
     for(const QModelIndex& index : changedIndexes) {
         Q_EMIT m_self->dataChanged(index, index,
-                                   {Qt::DisplayRole, Qt::ToolTipRole, Qt::SizeHintRole, LibraryTreeItem::RichTitle});
+                                   {Qt::DisplayRole, Qt::ToolTipRole, Qt::SizeHintRole, LibraryTreeItem::RichTitle,
+                                    LibraryTreeItem::RightRichTitle});
     }
 
     if(m_resetting) {
@@ -634,6 +723,8 @@ void LibraryTreeModelPrivate::populateModel(PendingTreeData& data)
         updatePendingNodes(data);
     }
 
+    applyUpdatedItems(data.updatedItems);
+    queueRichTitleUpdate(std::move(itemsToUpdate));
     updateSummary();
 }
 
@@ -663,6 +754,14 @@ LibraryTreeModel::LibraryTreeModel(LibraryManager* libraryManager, const std::sh
 
     QObject::connect(&p->m_populator, &Worker::finished, this, [this]() {
         p->updateSummary();
+
+        if(!p->m_pendingRichTitleUpdates.empty()) {
+            ItemKeyMap items = std::move(p->m_pendingRichTitleUpdates);
+            p->m_pendingRichTitleUpdates.clear();
+            p->startRichTitleUpdate(std::move(items));
+            return;
+        }
+
         p->m_populator.stopThread();
         p->m_populatorThread.quit();
         if(!p->m_loaded) {
@@ -701,28 +800,7 @@ void LibraryTreeModel::resetPalette()
     p->m_playingColour = QApplication::palette().highlight().color();
     p->m_playingColour.setAlpha(90);
 
-    ScriptFormatter formatter;
-    formatter.setBaseFont(libraryTreeFont());
-
-    QModelIndexList changedIndexes;
-    changedIndexes.reserve(static_cast<qsizetype>(p->m_nodes.size()));
-
-    for(auto& item : p->m_nodes | std::views::values) {
-        const RichText richTitle = trimRichText(formatter.evaluate(item.titleSource()));
-
-        if(item.richTitle() != richTitle) {
-            item.setRichTitle(richTitle);
-
-            if(!item.pending()) {
-                changedIndexes.emplace_back(indexOfItem(&item));
-            }
-        }
-    }
-
-    for(const QModelIndex& index : changedIndexes) {
-        Q_EMIT dataChanged(index, index,
-                           {Qt::DisplayRole, Qt::ToolTipRole, Qt::SizeHintRole, LibraryTreeItem::RichTitle});
-    }
+    p->queueRichTitleUpdate(p->m_nodes);
     invalidateData();
 }
 
@@ -801,15 +879,18 @@ QVariant LibraryTreeModel::data(const QModelIndex& index, int role) const
     }
 
     switch(role) {
-        case Qt::DisplayRole:
-        case Qt::ToolTipRole: {
+        case Qt::DisplayRole: {
             const QString& name = item->title();
             return !name.isEmpty() ? name : u"?"_s;
         }
+        case Qt::ToolTipRole:
+            return tooltipText(item);
         case LibraryTreeItem::Title:
             return item->title();
         case LibraryTreeItem::RichTitle:
             return item->richTitle();
+        case LibraryTreeItem::RightRichTitle:
+            return item->rightRichTitle();
         case LibraryTreeItem::Level:
             return item->level();
         case LibraryTreeItem::Key:

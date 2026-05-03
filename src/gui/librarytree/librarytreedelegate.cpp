@@ -27,6 +27,8 @@
 #include <QApplication>
 #include <QPainter>
 
+constexpr auto RightContentPadding = 5;
+
 namespace Fooyin {
 namespace {
 struct DrawTextResult
@@ -36,9 +38,23 @@ struct DrawTextResult
     int maxHeight{0};
 };
 
+struct PaintLine
+{
+    DrawTextResult measure;
+    RichText text;
+    int height{0};
+};
+
+struct PaintBlock
+{
+    std::vector<PaintLine> lines;
+    int width{0};
+    int height{0};
+};
+
 RichText fallbackRichText(const QStyleOptionViewItem& option, const QModelIndex& index)
 {
-    const auto richText = index.data(LibraryTreeItem::RichTitle).value<RichText>();
+    auto richText = index.data(LibraryTreeItem::RichTitle).value<RichText>();
     if(!richText.empty()) {
         return richText;
     }
@@ -54,6 +70,11 @@ RichText fallbackRichText(const QStyleOptionViewItem& option, const QModelIndex&
     block.format.font = option.font;
     fallback.blocks.push_back(std::move(block));
     return fallback;
+}
+
+RichText rightRichText(const QModelIndex& index)
+{
+    return index.data(LibraryTreeItem::RightRichTitle).value<RichText>();
 }
 
 DrawTextResult drawTextBlocks(QPainter* painter, const QStyleOptionViewItem& option, QRect rect,
@@ -141,16 +162,62 @@ void paintTextBlocks(QPainter* painter, const QStyleOptionViewItem& option, QRec
     }
 }
 
-QSize richTextSize(const QStyleOptionViewItem& option, const QModelIndex& index)
+PaintBlock measureDrawTextBlock(QPainter* painter, const QStyleOptionViewItem& option, const QRect& rect,
+                                const std::vector<RichText>& lines)
 {
-    const auto richText = fallbackRichText(option, index);
+    PaintBlock block;
+    block.lines.reserve(lines.size());
+
+    for(const auto& line : lines) {
+        const DrawTextResult measure = drawTextBlocks(painter, option, rect, line.blocks);
+        const int lineHeight         = std::max(measure.maxHeight, option.fontMetrics.height());
+
+        block.width = std::max(block.width, measure.totalWidth);
+        block.height += lineHeight;
+        block.lines.push_back({.measure = measure, .text = line, .height = lineHeight});
+    }
+
+    return block;
+}
+
+void paintMeasuredBlock(QPainter* painter, const QStyleOptionViewItem& option, QRect rect, const PaintBlock& block)
+{
+    int y{rect.y()};
+
+    for(const auto& line : block.lines) {
+        if(line.measure.totalWidth > 0) {
+            QRect lineRect{rect.x(), y, rect.width(), line.height};
+            if(option.direction == Qt::RightToLeft) {
+                lineRect.setLeft(rect.right() - line.measure.totalWidth + 1);
+                lineRect.setWidth(line.measure.totalWidth);
+            }
+            paintTextBlocks(painter, option, lineRect, line.measure, line.text.blocks);
+        }
+
+        y += line.height;
+        if(y > rect.bottom()) {
+            break;
+        }
+    }
+}
+
+QSize richTextSize(const QStyleOptionViewItem& option, const QModelIndex& index, int textGap)
+{
+    const auto richText  = fallbackRichText(option, index);
+    const auto rightText = rightRichText(index);
     if(richText.empty()) {
         const QFontMetrics metrics{option.font};
         return metrics.size(Qt::TextSingleLine, index.data(Qt::DisplayRole).toString());
     }
 
-    const auto metrics = measureRichText(richText, option.font);
-    return {metrics.width, metrics.firstLineHeight + metrics.extraLineHeight};
+    const auto lines      = splitRichTextLines(richText);
+    const auto rightLines = splitRichTextLines(rightText);
+    const auto leftBlock  = measureRichTextBlock(lines, option.font, option.fontMetrics.height());
+    const auto rightBlock = measureRichTextBlock(rightLines, option.font, option.fontMetrics.height());
+
+    const int width = leftBlock.width + (rightBlock.width > 0 ? textGap + RightContentPadding + rightBlock.width : 0);
+    const QSize result{width, std::max(leftBlock.height, rightBlock.height)};
+    return result;
 }
 } // namespace
 
@@ -165,8 +232,9 @@ void LibraryTreeDelegate::paint(QPainter* painter, const QStyleOptionViewItem& o
         opt.decorationPosition = decPos;
     }
 
-    QStyle* style       = option.widget ? option.widget->style() : QApplication::style();
-    const auto richText = fallbackRichText(opt, index);
+    const QStyle* style  = option.widget ? option.widget->style() : QApplication::style();
+    const auto richText  = fallbackRichText(opt, index);
+    const auto rightText = rightRichText(index);
 
     painter->save();
 
@@ -180,32 +248,38 @@ void LibraryTreeDelegate::paint(QPainter* painter, const QStyleOptionViewItem& o
 
     if(!richText.empty()) {
         QRect textRect       = style->subElementRect(QStyle::SE_ItemViewItemText, &opt, option.widget);
-        const int textMargin = style->pixelMetric(QStyle::PM_FocusFrameHMargin, &opt, option.widget) * 2;
+        const int textMargin = style->pixelMetric(QStyle::PM_FocusFrameHMargin, nullptr, option.widget) * 2;
         textRect.adjust(textMargin, 0, -textMargin, 0);
 
-        const auto lines = splitRichTextLines(richText);
-        std::vector<std::pair<DrawTextResult, std::vector<RichTextBlock>>> logicalLines;
-        logicalLines.reserve(lines.size());
+        const auto lines      = splitRichTextLines(richText);
+        const auto rightLines = splitRichTextLines(rightText);
 
-        int totalHeight{0};
-        for(const auto& line : lines) {
-            const DrawTextResult measure = drawTextBlocks(painter, opt, textRect, line.blocks);
-            totalHeight += std::max(measure.maxHeight, opt.fontMetrics.height());
-            logicalLines.emplace_back(measure, line.blocks);
+        const PaintBlock rightBlock = measureDrawTextBlock(painter, opt, textRect, rightLines);
+
+        QRect leftMeasureRect{textRect};
+        if(rightBlock.width > 0) {
+            leftMeasureRect.setWidth(
+                std::max(0, leftMeasureRect.width() - rightBlock.width - textMargin - RightContentPadding));
         }
+        const PaintBlock leftBlock = measureDrawTextBlock(painter, opt, leftMeasureRect, lines);
+        const int totalHeight      = std::max(leftBlock.height, rightBlock.height);
 
         int y = textRect.y();
         if(totalHeight < textRect.height()) {
             y += (textRect.height() - totalHeight) / 2;
         }
 
-        for(const auto& [measure, line] : logicalLines) {
-            const int lineHeight = std::max(measure.maxHeight, opt.fontMetrics.height());
-            paintTextBlocks(painter, opt, {textRect.x(), y, textRect.width(), lineHeight}, measure, line);
-            y += lineHeight;
-            if(y > textRect.bottom()) {
-                break;
-            }
+        QRect leftRect{textRect.x(), y + ((totalHeight - leftBlock.height) / 2), textRect.width(), leftBlock.height};
+        if(rightBlock.width > 0) {
+            leftRect.setWidth(std::max(0, leftRect.width() - rightBlock.width - textMargin - RightContentPadding));
+        }
+
+        paintMeasuredBlock(painter, opt, leftRect, leftBlock);
+
+        if(rightBlock.width > 0) {
+            const QRect rightRect{textRect.right() - rightBlock.width + 1, y + ((totalHeight - rightBlock.height) / 2),
+                                  rightBlock.width, rightBlock.height};
+            paintMeasuredBlock(painter, opt, rightRect, rightBlock);
         }
     }
 
@@ -224,8 +298,14 @@ QSize LibraryTreeDelegate::sizeHint(const QStyleOptionViewItem& option, const QM
     }
 
     const QStyle* style  = opt.widget ? opt.widget->style() : QApplication::style();
-    const QSize textSize = richTextSize(opt, index);
-    QSize size           = style->sizeFromContents(QStyle::CT_ItemViewItem, &opt, textSize, opt.widget);
+    const int textGap    = style->pixelMetric(QStyle::PM_FocusFrameHMargin, nullptr, opt.widget) * 2;
+    const QSize textSize = richTextSize(opt, index, textGap);
+    const QSize baseTextSize{textSize.width(), opt.fontMetrics.height()};
+    const QSize baseSize     = style->sizeFromContents(QStyle::CT_ItemViewItem, &opt, baseTextSize, opt.widget);
+    const int verticalMargin = std::max(0, baseSize.height() - baseTextSize.height());
+
+    QSize size = style->sizeFromContents(QStyle::CT_ItemViewItem, &opt, textSize, opt.widget);
+    size.setHeight(std::max(size.height(), textSize.height() + verticalMargin));
 
     const QSize sizeHint = index.data(Qt::SizeHintRole).toSize();
     if(sizeHint.height() > 0) {
