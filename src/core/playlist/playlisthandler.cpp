@@ -114,6 +114,18 @@ PlaylistTrackList rebuildPlaylistTracks(Playlist* playlist, const TrackList& tra
 
     return result;
 }
+
+bool playlistTracksSameData(const PlaylistTrackList& lhs, const PlaylistTrackList& rhs)
+{
+    if(lhs.size() != rhs.size()) {
+        return false;
+    }
+
+    return std::ranges::equal(lhs, rhs, [](const PlaylistTrack& left, const PlaylistTrack& right) {
+        return left.playlistId == right.playlistId && left.entryId == right.entryId
+            && left.indexInPlaylist == right.indexInPlaylist && left.track.sameDataAs(right.track);
+    });
+}
 } // namespace
 
 using PlaylistPtrList = std::vector<std::unique_ptr<Playlist>>;
@@ -418,7 +430,7 @@ void PlaylistHandlerPrivate::replacePlaylistTracks(Playlist* playlist, const Pla
 
     const PlaylistTrackList oldTracks = playlist->playlistTracks();
     const PlaylistTrackList newTracks = PlaylistTrack::updateIndexes(tracks);
-    if(oldTracks == newTracks) {
+    if(playlistTracksSameData(oldTracks, newTracks)) {
         return;
     }
 
@@ -814,7 +826,7 @@ Playlist* PlaylistHandler::createAutoPlaylist(const QString& name, const QString
             const TrackList regeneratedTracks      = playlist->autoPlaylistTracks(p->m_library->tracks());
             const PlaylistTrackList playlistTracks = rebuildPlaylistTracks(playlist, regeneratedTracks);
 
-            if(playlist->playlistTracks() != PlaylistTrack::updateIndexes(playlistTracks)) {
+            if(!playlistTracksSameData(playlist->playlistTracks(), PlaylistTrack::updateIndexes(playlistTracks))) {
                 p->replacePlaylistTracks(playlist, playlistTracks);
             }
             else if(!isNew) {

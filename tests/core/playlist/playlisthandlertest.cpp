@@ -32,6 +32,7 @@
 
 #include <QCoreApplication>
 #include <QDir>
+#include <QFileInfo>
 #include <QStandardPaths>
 #include <QTemporaryDir>
 
@@ -97,6 +98,7 @@ Track makeTrack(const QString& path, int id)
 {
     Track track{path, 0};
     track.setId(id);
+    track.setTitle(QFileInfo{path}.completeBaseName());
     track.generateHash();
     return track;
 }
@@ -361,5 +363,43 @@ TEST(PlaylistHandlerTest, TracksMetadataChangedUpdatesPlaylistTrackWhenFilepathC
     ASSERT_TRUE(updatedTrack.has_value());
     EXPECT_EQ(updatedTrack->track.id(), renamedTrack.id());
     EXPECT_EQ(updatedTrack->track.filepath(), renamedTrack.filepath());
+}
+
+TEST(PlaylistHandlerTest, TracksMetadataChangedUpdatesAutoPlaylistTrackCustomTags)
+{
+    ensureCoreApplication();
+    SettingsManager settings{QDir::tempPath() + u"/fooyin_playlisthandler_auto_custom_tag_update_test.ini"_s};
+    registerCoreSettings(settings);
+    PlaylistHandlerHarness harness{settings};
+    ASSERT_TRUE(harness.dbInitialised);
+
+    Track originalTrack = makeTrack(u"/tmp/custom-tag.flac"_s, 1);
+    originalTrack.replaceExtraTag(u"CUSTOM"_s, QStringList{u"Before"_s});
+    harness.library.setTracks({originalTrack});
+
+    auto* playlist = harness.handler.createNewAutoPlaylist(u"Custom Tag Auto"_s, u"title PRESENT"_s);
+    ASSERT_NE(playlist, nullptr);
+    ASSERT_EQ(playlist->trackCount(), 1);
+
+    PlaylistChangeset changeSet;
+    QObject::connect(
+        &harness.handler, &PlaylistHandler::tracksPatched, &harness.handler,
+        [&changeSet, playlist](Playlist* changedPlaylist, const PlaylistChangeset& changed, PlaylistTrackChangeSource) {
+            if(changedPlaylist == playlist) {
+                changeSet = changed;
+            }
+        });
+
+    Track updatedTrack = makeTrack(u"/tmp/custom-tag.flac"_s, 1);
+    updatedTrack.replaceExtraTag(u"CUSTOM"_s, QStringList{u"After"_s});
+    ASSERT_EQ(updatedTrack.metaValue(u"custom"_s), u"After"_s);
+    harness.library.setTracks({updatedTrack});
+    Q_EMIT harness.library.tracksMetadataChanged({updatedTrack});
+
+    const auto playlistTrack = playlist->playlistTrack(0);
+    ASSERT_TRUE(playlistTrack.has_value());
+    ASSERT_EQ(changeSet.updatedEntries.size(), 1);
+    EXPECT_EQ(playlistTrack->track.metaValue(u"custom"_s), u"After"_s);
+    EXPECT_EQ(changeSet.updatedEntries.front(), playlistTrack->entryId);
 }
 } // namespace Fooyin::Testing
