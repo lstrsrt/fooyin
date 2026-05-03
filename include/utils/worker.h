@@ -24,6 +24,7 @@
 #include <QObject>
 
 #include <atomic>
+#include <mutex>
 #include <stop_token>
 
 namespace Fooyin {
@@ -64,6 +65,7 @@ protected:
 private:
     std::atomic<State> m_state;
     std::atomic<bool> m_closing;
+    mutable std::mutex m_stopSourceMutex;
     std::stop_source m_stopSource;
 };
 } // namespace Fooyin

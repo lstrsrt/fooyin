@@ -76,21 +76,25 @@ bool Worker::closing() const
 
 std::stop_token Worker::stopToken() const
 {
+    const std::scoped_lock lock{m_stopSourceMutex};
     return m_stopSource.get_token();
 }
 
 bool Worker::stopRequested() const
 {
-    return stopToken().stop_requested();
+    const std::scoped_lock lock{m_stopSourceMutex};
+    return m_stopSource.stop_requested();
 }
 
 void Worker::resetStopSource()
 {
+    const std::scoped_lock lock{m_stopSourceMutex};
     m_stopSource = std::stop_source{};
 }
 
 void Worker::requestStop()
 {
+    const std::scoped_lock lock{m_stopSourceMutex};
     m_stopSource.request_stop();
 }
 } // namespace Fooyin
