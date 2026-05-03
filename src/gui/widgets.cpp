@@ -323,6 +323,17 @@ void Widgets::registerPages()
              = QT_TRANSLATE_NOOP("PlaylistWidget", "Unchecked items will be hidden from the playlist context menu.")},
             ContextMenuIds::Playlist::DefaultItems, m_settings),
         this);
+    new StaticContextMenuPage(
+        m_settings,
+        makeStaticContextMenuDescriptor<Settings::Gui::Internal::ContextMenuDirBrowserDisabledSections,
+                                        Settings::Gui::Internal::ContextMenuDirBrowserLayout>(
+            Constants::Page::InterfaceContextMenuDirBrowser,
+            {.context = "DirBrowser", .sourceText = QT_TRANSLATE_NOOP("DirBrowser", "Directory Browser")},
+            {.context    = "DirBrowser",
+             .sourceText = QT_TRANSLATE_NOOP(
+                 "DirBrowser", "Unchecked items will be hidden from the directory browser context menu.")},
+            ContextMenuIds::DirBrowser::DefaultItems, m_settings),
+        this);
 
     new ArtworkGeneralPage(m_settings, this);
     new ArtworkSearchingPage(m_settings, this);

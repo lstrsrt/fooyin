@@ -176,6 +176,10 @@ GuiSettings::GuiSettings(SettingsManager* settingsManager)
         QStringList{}, u"Interface/ContextMenuLibraryTreeDisabledSections"_s);
     m_settings->createSetting<Internal::ContextMenuLibraryTreeLayout>(QStringList{},
                                                                       u"Interface/ContextMenuLibraryTreeLayout"_s);
+    m_settings->createSetting<Internal::ContextMenuDirBrowserDisabledSections>(
+        QStringList{}, u"Interface/ContextMenuDirBrowserDisabledSections"_s);
+    m_settings->createSetting<Internal::ContextMenuDirBrowserLayout>(QStringList{},
+                                                                     u"Interface/ContextMenuDirBrowserLayout"_s);
     m_settings->createSetting<Internal::PropertiesSidebarTrackScript>(u"[%track%. ]%title%"_s,
                                                                       u"Interface/PropertiesSidebarTrackScript "_s);
 }

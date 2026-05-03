@@ -30,6 +30,8 @@
 #include <core/playlist/playlist.h>
 #include <core/playlist/playlisthandler.h>
 #include <core/track.h>
+#include <gui/contextmenuids.h>
+#include <gui/contextmenuutils.h>
 #include <gui/guiconstants.h>
 #include <gui/guisettings.h>
 #include <gui/iconloader.h>
@@ -502,34 +504,111 @@ void DirBrowser::playlistTrackChanged(const PlaylistTrack& track)
 
 void DirBrowser::contextMenuEvent(QContextMenuEvent* event)
 {
+    using namespace Settings::Gui::Internal;
+
     auto* menu = new QMenu(this);
     menu->setAttribute(Qt::WA_DeleteOnClose);
 
-    menu->addAction(m_playAction);
-    menu->addSeparator();
-    menu->addAction(m_addCurrent);
-    menu->addAction(m_addActive);
-    menu->addAction(m_sendCurrent);
-    menu->addAction(m_sendNew);
-    menu->addSeparator();
-    menu->addAction(m_addQueue);
-    menu->addAction(m_queueNext);
-    menu->addAction(m_sendQueue);
-    menu->addSeparator();
-
     const QModelIndex index = m_dirTree->indexAt(m_dirTree->mapFromGlobal(event->globalPos()));
+    const QFileInfo selectedPath{index.data(QFileSystemModel::FilePathRole).toString()};
+    const bool hasSelection = !m_dirTree->selectionModel()->selectedRows().empty();
 
-    if(index.isValid()) {
-        const QFileInfo selectedPath{index.data(QFileSystemModel::FilePathRole).toString()};
-        if(selectedPath.isDir()) {
-            const QString dir = index.data(QFileSystemModel::FilePathRole).toString();
-            auto* setRoot     = new QAction(tr("Set as root"), menu);
-            QObject::connect(setRoot, &QAction::triggered, this, [this, dir]() { changeRoot(dir); });
-            menu->addAction(setRoot);
-        }
-    }
+    ContextMenuUtils::renderStaticContextMenu(
+        menu, ContextMenuIds::DirBrowser::DefaultItems, m_settings->value<ContextMenuDirBrowserLayout>(),
+        m_settings->value<ContextMenuDirBrowserDisabledSections>(),
+        [&](const auto& id, QMenu* targetMenu, const auto& sectionEnabled) {
+            if(id == QLatin1StringView{ContextMenuIds::DirBrowser::Play}) {
+                if(hasSelection && sectionEnabled(ContextMenuIds::DirBrowser::Play)) {
+                    targetMenu->addAction(m_playAction);
+                }
+                return;
+            }
+            if(id == QLatin1StringView{Constants::Actions::AddToCurrent}) {
+                if(hasSelection && sectionEnabled(Constants::Actions::AddToCurrent)) {
+                    targetMenu->addAction(m_addCurrent);
+                }
+                return;
+            }
+            if(id == QLatin1StringView{Constants::Actions::AddToActive}) {
+                if(hasSelection && sectionEnabled(Constants::Actions::AddToActive)) {
+                    targetMenu->addAction(m_addActive);
+                }
+                return;
+            }
+            if(id == QLatin1StringView{Constants::Actions::SendToCurrent}) {
+                if(hasSelection && sectionEnabled(Constants::Actions::SendToCurrent)) {
+                    targetMenu->addAction(m_sendCurrent);
+                }
+                return;
+            }
+            if(id == QLatin1StringView{Constants::Actions::SendToNew}) {
+                if(hasSelection && sectionEnabled(Constants::Actions::SendToNew)) {
+                    targetMenu->addAction(m_sendNew);
+                }
+                return;
+            }
+            if(id == QLatin1StringView{Constants::Actions::AddToQueue}) {
+                if(hasSelection && sectionEnabled(Constants::Actions::AddToQueue)) {
+                    targetMenu->addAction(m_addQueue);
+                }
+                return;
+            }
+            if(id == QLatin1StringView{Constants::Actions::QueueNext}) {
+                if(hasSelection && sectionEnabled(Constants::Actions::QueueNext)) {
+                    targetMenu->addAction(m_queueNext);
+                }
+                return;
+            }
+            if(id == QLatin1StringView{ContextMenuIds::DirBrowser::SendQueue}) {
+                if(hasSelection && sectionEnabled(ContextMenuIds::DirBrowser::SendQueue)) {
+                    targetMenu->addAction(m_sendQueue);
+                }
+                return;
+            }
+            if(id == QLatin1StringView{ContextMenuIds::DirBrowser::SetRoot}) {
+                if(index.isValid() && selectedPath.isDir() && sectionEnabled(ContextMenuIds::DirBrowser::SetRoot)) {
+                    const QString dir = selectedPath.absoluteFilePath();
+                    auto* setRoot     = new QAction(tr("Set as root"), targetMenu);
+                    QObject::connect(setRoot, &QAction::triggered, this, [this, dir]() { changeRoot(dir); });
+                    targetMenu->addAction(setRoot);
+                }
+                return;
+            }
+            if(id == QLatin1StringView{ContextMenuIds::DirBrowser::ViewMode}) {
+                if(sectionEnabled(ContextMenuIds::DirBrowser::ViewMode)) {
+                    auto* viewModeMenu = new QMenu(tr("View mode"), targetMenu);
+                    auto* modeGroup    = new QActionGroup(viewModeMenu);
 
-    addConfigureAction(menu);
+                    auto* listMode = new QAction(tr("List"), modeGroup);
+                    listMode->setCheckable(true);
+                    listMode->setChecked(m_mode == Mode::List);
+                    QObject::connect(listMode, &QAction::triggered, this, [this]() {
+                        auto config{m_config};
+                        config.mode = Mode::List;
+                        applyConfig(config);
+                    });
+
+                    auto* treeMode = new QAction(tr("Tree"), modeGroup);
+                    treeMode->setCheckable(true);
+                    treeMode->setChecked(m_mode == Mode::Tree);
+                    QObject::connect(treeMode, &QAction::triggered, this, [this]() {
+                        auto config{m_config};
+                        config.mode = Mode::Tree;
+                        applyConfig(config);
+                    });
+
+                    viewModeMenu->addAction(listMode);
+                    viewModeMenu->addAction(treeMode);
+                    targetMenu->addMenu(viewModeMenu);
+                }
+                return;
+            }
+            if(id == QLatin1StringView{ContextMenuIds::DirBrowser::Configure}) {
+                if(sectionEnabled(ContextMenuIds::DirBrowser::Configure)) {
+                    addConfigureAction(targetMenu, false);
+                }
+            }
+        });
 
     menu->popup(event->globalPos());
 }
@@ -1031,6 +1110,7 @@ DirBrowser::ConfigData DirBrowser::configFromLayout(const QJsonObject& layout) c
 
     return config;
 }
+
 } // namespace Fooyin
 
 #include "moc_dirbrowser.cpp"

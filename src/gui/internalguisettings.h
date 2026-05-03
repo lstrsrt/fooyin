@@ -178,6 +178,8 @@ enum GuiInternalSettings : uint32_t
     StatusPlaylistScript                   = 48 | Type::String,
     StatusShowPlaylist                     = 49 | Type::Bool,
     TrackCoverThumbnailGroupScript         = 50 | Type::String,
+    ContextMenuDirBrowserDisabledSections  = 51 | Type::StringList,
+    ContextMenuDirBrowserLayout            = 52 | Type::StringList,
 };
 Q_ENUM_NS(GuiInternalSettings)
 } // namespace Settings::Gui::Internal

@@ -155,4 +155,54 @@ constexpr auto DefaultItems = std::to_array<Item>({
      .isSeparator = false},
 });
 } // namespace LibraryTree
+
+namespace DirBrowser {
+constexpr auto Play              = "Fooyin.Context.DirBrowser.Play";
+constexpr auto PlaybackSeparator = "Fooyin.Context.DirBrowser.Playback.Separator";
+constexpr auto PlaylistSeparator = "Fooyin.Context.DirBrowser.Playlist.Separator";
+constexpr auto SendQueue         = "Fooyin.Context.DirBrowser.SendQueue";
+constexpr auto QueueSeparator    = "Fooyin.Context.DirBrowser.Queue.Separator";
+constexpr auto SetRoot           = "Fooyin.Context.DirBrowser.SetRoot";
+constexpr auto ViewMode          = "Fooyin.Context.DirBrowser.ViewMode";
+constexpr auto Configure         = "Fooyin.Context.DirBrowser.Configure";
+
+constexpr auto DefaultItems = std::to_array<Item>({
+    {.id          = Play,
+     .title       = {.context = "DirBrowser", .sourceText = QT_TRANSLATE_NOOP("DirBrowser", "Play")},
+     .isSeparator = false},
+    {.id = PlaybackSeparator, .title = {}, .isSeparator = true},
+    {.id          = Constants::Actions::AddToCurrent,
+     .title       = {.context = "DirBrowser", .sourceText = QT_TRANSLATE_NOOP("DirBrowser", "Add to current playlist")},
+     .isSeparator = false},
+    {.id          = Constants::Actions::AddToActive,
+     .title       = {.context = "DirBrowser", .sourceText = QT_TRANSLATE_NOOP("DirBrowser", "Add to active playlist")},
+     .isSeparator = false},
+    {.id    = Constants::Actions::SendToCurrent,
+     .title = {.context = "DirBrowser", .sourceText = QT_TRANSLATE_NOOP("DirBrowser", "Replace current playlist")},
+     .isSeparator = false},
+    {.id          = Constants::Actions::SendToNew,
+     .title       = {.context = "DirBrowser", .sourceText = QT_TRANSLATE_NOOP("DirBrowser", "Create new playlist")},
+     .isSeparator = false},
+    {.id = PlaylistSeparator, .title = {}, .isSeparator = true},
+    {.id          = Constants::Actions::AddToQueue,
+     .title       = {.context = "DirBrowser", .sourceText = QT_TRANSLATE_NOOP("DirBrowser", "Add to playback queue")},
+     .isSeparator = false},
+    {.id          = Constants::Actions::QueueNext,
+     .title       = {.context = "DirBrowser", .sourceText = QT_TRANSLATE_NOOP("DirBrowser", "Queue to play next")},
+     .isSeparator = false},
+    {.id          = SendQueue,
+     .title       = {.context = "DirBrowser", .sourceText = QT_TRANSLATE_NOOP("DirBrowser", "Replace playback queue")},
+     .isSeparator = false},
+    {.id = QueueSeparator, .title = {}, .isSeparator = true},
+    {.id          = SetRoot,
+     .title       = {.context = "DirBrowser", .sourceText = QT_TRANSLATE_NOOP("DirBrowser", "Set as root")},
+     .isSeparator = false},
+    {.id          = ViewMode,
+     .title       = {.context = "DirBrowser", .sourceText = QT_TRANSLATE_NOOP("DirBrowser", "View mode")},
+     .isSeparator = false},
+    {.id          = Configure,
+     .title       = {.context = "DirBrowser", .sourceText = QT_TRANSLATE_NOOP("DirBrowser", "Configure")},
+     .isSeparator = false},
+});
+} // namespace DirBrowser
 } // namespace Fooyin::ContextMenuIds
