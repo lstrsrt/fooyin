@@ -95,6 +95,7 @@ public:
 
     void setDspChain(const Engine::DspChains& chain);
     void updateLiveDspSettings(const Engine::LiveDspSettingsUpdate& update);
+    void updateCurrentTrackMetadata(const Track& track);
 
     void restorePosition(uint64_t positionMs, bool pause) const;
 

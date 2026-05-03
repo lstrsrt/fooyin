@@ -4418,6 +4418,31 @@ void AudioEngine::setVolume(double volume)
     m_pipeline.setOutputVolume(m_volume);
 }
 
+void AudioEngine::updateCurrentTrackMetadata(const Track& track)
+{
+    if(!track.isValid() || !sameTrackIdentity(m_currentTrack, track)) {
+        return;
+    }
+
+    m_currentTrack = track;
+
+    if(auto stream = m_decoder.activeStream(); stream && sameTrackIdentity(stream->track(), track)) {
+        stream->setTrack(track);
+    }
+
+    if(m_preparedGaplessTransition.preCommitTimingStream
+       && sameTrackIdentity(m_preparedGaplessTransition.preCommitTimingStream->track(), track)) {
+        m_preparedGaplessTransition.preCommitTimingStream->setTrack(track);
+    }
+
+    if(m_preparedNext && sameTrackIdentity(m_preparedNext->item.track, track)) {
+        m_preparedNext->item.track = track;
+        if(m_preparedNext->preparedStream && sameTrackIdentity(m_preparedNext->preparedStream->track(), track)) {
+            m_preparedNext->preparedStream->setTrack(track);
+        }
+    }
+}
+
 void AudioEngine::setAudioOutput(const OutputCreator& output, const QString& device)
 {
     qCDebug(ENGINE) << "Setting audio output, device:" << device;

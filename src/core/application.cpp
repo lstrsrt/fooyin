@@ -210,6 +210,8 @@ void ApplicationPrivate::setupConnections()
 
     QObject::connect(m_playerController, &PlayerController::currentTrackChanged, m_self,
                      [this](const Track& track) { markTrack(track); });
+    QObject::connect(m_playerController, &PlayerController::currentTrackUpdated, &m_engine,
+                     &EngineHandler::updateCurrentTrackMetadata);
 
     m_settings->subscribe<Settings::Core::Shutdown>(m_self, [this]() {
         const auto state = m_engine.engineState();

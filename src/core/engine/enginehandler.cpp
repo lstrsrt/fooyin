@@ -732,6 +732,11 @@ void EngineHandler::updateVolume(double volume)
     dispatchCommand(&AudioEngine::setVolume, volume);
 }
 
+void EngineHandler::updateCurrentTrackMetadata(const Track& track)
+{
+    dispatchCommand(&AudioEngine::updateCurrentTrackMetadata, track);
+}
+
 void EngineHandler::dispatchSeek(uint64_t positionMs)
 {
     uint64_t requestId = m_nextSeekRequestId++;

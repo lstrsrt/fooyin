@@ -165,6 +165,7 @@ public Q_SLOTS:
     void seek(uint64_t positionMs);
     void seekWithRequest(uint64_t positionMs, uint64_t requestId);
     void setVolume(double volume);
+    void updateCurrentTrackMetadata(const Fooyin::Track& track);
 
     void setAudioOutput(const Fooyin::OutputCreator& output, const QString& device);
     void applyOutputProfile(const Fooyin::OutputCreator& output, const QString& device, SampleFormat bitdepth,
