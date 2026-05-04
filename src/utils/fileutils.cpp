@@ -319,7 +319,7 @@ QStringList directoriesFromWildcardPath(const QString& pathPattern)
     return dirs;
 }
 
-QStringList filesFromWildcardPath(const QString& pathPattern)
+QStringList filesFromWildcardPath(const QString& pathPattern, QDir::Filters filters, QDir::SortFlags sort)
 {
     const QString cleanPath     = QDir::fromNativeSeparators(QDir::cleanPath(pathPattern));
     const qsizetype slash       = cleanPath.lastIndexOf('/'_L1);
@@ -331,7 +331,7 @@ QStringList filesFromWildcardPath(const QString& pathPattern)
     const auto dirs = directoriesFromWildcardPath(dirPattern);
     for(const QString& dirPath : dirs) {
         const QDir dir{dirPath};
-        const auto entries = dir.entryList({filenameMatch}, QDir::Files, QDir::Name);
+        const auto entries = dir.entryList({filenameMatch}, filters, sort);
         for(const QString& file : entries) {
             files.emplace_back(dir.absoluteFilePath(file));
         }

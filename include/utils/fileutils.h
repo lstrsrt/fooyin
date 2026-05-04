@@ -21,11 +21,10 @@
 
 #include "fyutils_export.h"
 
+#include <QDir>
 #include <QFile>
 #include <QStringList>
 #include <QUrl>
-
-class QDir;
 
 namespace Fooyin::Utils::File {
 FYUTILS_EXPORT QString cleanPath(const QString& path);
@@ -47,5 +46,6 @@ FYUTILS_EXPORT QStringList getAllSubdirectories(const QDir& dir);
 
 FYUTILS_EXPORT bool pathContainsWildcard(const QString& path);
 FYUTILS_EXPORT QStringList directoriesFromWildcardPath(const QString& pathPattern);
-FYUTILS_EXPORT QStringList filesFromWildcardPath(const QString& pathPattern);
+FYUTILS_EXPORT QStringList filesFromWildcardPath(const QString& pathPattern, QDir::Filters filters = QDir::Files,
+                                                 QDir::SortFlags sort = QDir::Name);
 } // namespace Fooyin::Utils::File
