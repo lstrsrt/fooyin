@@ -24,6 +24,7 @@
 #include "widgets/statuswidget.h"
 
 #include <core/ratingsymbols.h>
+#include <gui/coverprovider.h>
 #include <gui/guiconstants.h>
 #include <gui/guisettings.h>
 #include <utils/settings/settingsmanager.h>

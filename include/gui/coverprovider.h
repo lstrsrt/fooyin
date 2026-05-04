@@ -37,6 +37,12 @@ namespace Fooyin {
 class AudioLoader;
 class SettingsManager;
 
+enum class ArtworkSourcePreference : uint8_t
+{
+    PreferDirectory = 0,
+    PreferEmbedded
+};
+
 /*!
  * Provides access to track album artwork.
  */
@@ -69,6 +75,13 @@ public:
      * @note this is enabled by default.
      */
     void setUsePlaceholder(bool enabled);
+
+    /*!
+     * Sets the local source preference for artwork.
+     * If std::nullopt is passed, the global user-facing setting will be used.
+     * @note the global setting is used by default.
+     */
+    void setSourcePreference(std::optional<ArtworkSourcePreference> preference);
 
     /** Returns @c true if @p track has a cover of the specific @p type. */
     [[nodiscard]] QFuture<bool> trackHasCover(const Track& track, Track::Cover type = Track::Cover::Front) const;

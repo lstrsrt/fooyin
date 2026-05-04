@@ -302,7 +302,7 @@ bool prefersEmbedded(const CoverLoader& loader)
     return loader.sourcePreference == Fooyin::ArtworkSourcePreference::PreferEmbedded;
 }
 
-bool hasImageInDirectory(CoverLoader& loader)
+bool hasImageInDirectory(const CoverLoader& loader)
 {
     const QString dirPath = findDirectoryCover(loader.paths, loader.track, loader.type);
     if(dirPath.isEmpty()) {
@@ -313,7 +313,7 @@ bool hasImageInDirectory(CoverLoader& loader)
     return file.size() > 0;
 }
 
-QImage loadImageFromDirectory(CoverLoader& loader)
+QImage loadImageFromDirectory(const CoverLoader& loader)
 {
     const QString dirPath = findDirectoryCover(loader.paths, loader.track, loader.type);
     if(dirPath.isEmpty()) {
@@ -354,7 +354,7 @@ QImage loadImageFromEmbedded(const CoverLoader& loader, const QString& cachePath
     return cover;
 }
 
-bool hasCoverImage(CoverLoader loader)
+bool hasCoverImage(const CoverLoader& loader)
 {
     if(prefersEmbedded(loader)) {
         return hasEmbeddedCover(loader) || hasImageInDirectory(loader);
@@ -363,7 +363,7 @@ bool hasCoverImage(CoverLoader loader)
     return hasImageInDirectory(loader) || hasEmbeddedCover(loader);
 }
 
-CoverLoader loadCoverImage(CoverLoader loader)
+CoverLoader loadCoverImage(const CoverLoader& loader)
 {
     CoverLoader result{loader};
 
@@ -423,12 +423,13 @@ public:
     std::shared_ptr<AudioLoader> m_audioLoader;
     SettingsManager* m_settings;
 
-    bool m_usePlacerholder{true};
+    bool m_usePlaceholder{true};
     std::set<QString> m_pendingCovers;
     mutable std::unordered_map<QString, int64_t> m_noCoverRetryAfterMs;
 
     CoverPaths m_paths;
     ArtworkSourcePreference m_sourcePreference;
+    bool m_manualSourcePreference{false};
     QString m_thumbnailGroupScript;
 };
 
@@ -451,8 +452,11 @@ CoverProvider::CoverProviderPrivate::CoverProviderPrivate(CoverProvider* self, s
 
     m_settings->subscribe<Settings::Gui::Internal::TrackCoverPaths>(
         m_self, [this](const QVariant& var) { m_paths = var.value<CoverPaths>(); });
-    m_settings->subscribe<Settings::Gui::Internal::TrackCoverSourcePreference>(
-        m_self, [this](int preference) { m_sourcePreference = static_cast<ArtworkSourcePreference>(preference); });
+    m_settings->subscribe<Settings::Gui::Internal::TrackCoverSourcePreference>(m_self, [this](int preference) {
+        if(!m_manualSourcePreference) {
+            m_sourcePreference = static_cast<ArtworkSourcePreference>(preference);
+        }
+    });
     m_settings->subscribe<Settings::Gui::Internal::TrackCoverThumbnailGroupScript>(m_self, [this](QString script) {
         m_thumbnailGroupScript = std::move(script);
         m_noCoverKeys.clear();
@@ -694,7 +698,20 @@ CoverProvider::~CoverProvider() = default;
 
 void CoverProvider::setUsePlaceholder(bool enabled)
 {
-    p->m_usePlacerholder = enabled;
+    p->m_usePlaceholder = enabled;
+}
+
+void CoverProvider::setSourcePreference(std::optional<ArtworkSourcePreference> preference)
+{
+    if(!preference) {
+        p->m_sourcePreference = static_cast<ArtworkSourcePreference>(
+            p->m_settings->value<Settings::Gui::Internal::TrackCoverSourcePreference>());
+        p->m_manualSourcePreference = false;
+    }
+    else {
+        p->m_sourcePreference       = *preference;
+        p->m_manualSourcePreference = true;
+    }
 }
 
 QFuture<bool> CoverProvider::trackHasCover(const Track& track, Track::Cover type) const
@@ -715,7 +732,7 @@ QFuture<bool> CoverProvider::trackHasCover(const Track& track, Track::Cover type
 QPixmap CoverProvider::trackCover(const Track& track, Track::Cover type) const
 {
     if(!track.isValid()) {
-        return p->m_usePlacerholder ? p->loadNoCover() : QPixmap{};
+        return p->m_usePlaceholder ? p->loadNoCover() : QPixmap{};
     }
 
     const QString coverKey = generateTrackCoverKey(track, type, p->m_sourcePreference);
@@ -729,7 +746,7 @@ QPixmap CoverProvider::trackCover(const Track& track, Track::Cover type) const
         p->fetchCover(coverKey, track, type, false);
     }
 
-    return p->m_usePlacerholder ? p->loadNoCover() : QPixmap{};
+    return p->m_usePlaceholder ? p->loadNoCover() : QPixmap{};
 }
 
 QFuture<QPixmap> CoverProvider::trackCoverFull(const Track& track, Track::Cover type) const
@@ -781,7 +798,7 @@ QFuture<QPixmap> CoverProvider::trackCoverThumbnailAsync(const Track& track, con
 QPixmap CoverProvider::trackCoverThumbnail(const Track& track, ThumbnailSize size, Track::Cover type) const
 {
     if(!track.isValid()) {
-        return p->m_usePlacerholder ? p->loadNoCover(size) : QPixmap{};
+        return p->m_usePlaceholder ? p->loadNoCover(size) : QPixmap{};
     }
 
     const QString coverKey = p->thumbnailCoverKey(track, type);
@@ -792,7 +809,7 @@ QPixmap CoverProvider::trackCoverThumbnail(const Track& track, ThumbnailSize siz
             p->fetchCover(coverKey, track, type, true, size);
         }
 
-        return p->m_usePlacerholder ? p->loadNoCover(size) : QPixmap{};
+        return p->m_usePlaceholder ? p->loadNoCover(size) : QPixmap{};
     }
 
     if(!p->m_pendingCovers.contains(coverKey)) {
@@ -805,7 +822,7 @@ QPixmap CoverProvider::trackCoverThumbnail(const Track& track, ThumbnailSize siz
         p->fetchCover(coverKey, track, type, true, size);
     }
 
-    return p->m_usePlacerholder ? p->loadNoCover(size) : QPixmap{};
+    return p->m_usePlaceholder ? p->loadNoCover(size) : QPixmap{};
 }
 
 QPixmap CoverProvider::trackCoverThumbnail(const Track& track, const QSize& size, Track::Cover type) const

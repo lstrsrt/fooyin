@@ -42,12 +42,6 @@ enum class SelectionDisplay : uint8_t
     PreferSelection
 };
 
-enum class ArtworkSourcePreference : uint8_t
-{
-    PreferDirectory = 0,
-    PreferEmbedded
-};
-
 struct CoverPaths
 {
     QStringList frontCoverPaths;
