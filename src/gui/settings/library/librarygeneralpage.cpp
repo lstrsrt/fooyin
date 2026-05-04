@@ -167,7 +167,8 @@ LibraryGeneralPageWidget::LibraryGeneralPageWidget(LibraryManager* libraryManage
     fileTypesLayout->addWidget(m_restrictTypes, row++, 1);
     fileTypesLayout->addWidget(new QLabel(tr("Exclude") + ":"_L1, this), row, 0);
     fileTypesLayout->addWidget(m_excludeTypes, row++, 1);
-    fileTypesLayout->addWidget(new QLabel(u"🛈 e.g. \"mp3;m4a\""_s, this), row++, 1);
+    //: Example of semicolon-separated file extensions (e.g. mp3;m4a)
+    fileTypesLayout->addWidget(new QLabel(u"🛈 "_s + tr("e.g. \"%1\"").arg("mp3;m4a"), this), row++, 1);
     fileTypesLayout->setColumnStretch(1, 1);
 
     auto* scanningGroup  = new QGroupBox(tr("Scanning"), this);
@@ -300,7 +301,7 @@ void LibraryGeneralPageWidget::addLibrary() const
     const QFileInfo info{dir};
     const QString name = info.fileName();
 
-    m_model->markForAddition({name, dir});
+    m_model->markForAddition({.name = name, .path = dir});
 }
 
 LibraryGeneralPage::LibraryGeneralPage(LibraryManager* libraryManager, MusicLibrary* library, SettingsManager* settings,
