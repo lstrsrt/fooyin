@@ -1,5 +1,18 @@
 enable_language(C)
 
+string(TOLOWER "${CMAKE_SYSTEM_PROCESSOR}" PFFFT_SYSTEM_PROCESSOR)
+
+set(PFFFT_USE_SIMD_DEFAULT ON)
+if(PFFFT_SYSTEM_PROCESSOR MATCHES "^(ppc|powerpc)")
+    set(PFFFT_USE_SIMD_DEFAULT OFF)
+endif()
+
+option(
+    PFFFT_USE_SIMD
+    "Use SIMD optimisations in the bundled PFFFT library"
+    ${PFFFT_USE_SIMD_DEFAULT}
+)
+
 add_library(
     fooyin_pffft STATIC
     src/pffft.h
@@ -26,8 +39,12 @@ target_compile_definitions(
             _USE_MATH_DEFINES
 )
 
-if(CMAKE_SYSTEM_PROCESSOR MATCHES "^(aarch64|arm64|ARM64)$")
-    target_compile_definitions(fooyin_pffft PRIVATE PFFFT_ENABLE_NEON=1)
+if(PFFFT_USE_SIMD)
+    if(PFFFT_SYSTEM_PROCESSOR MATCHES "^(aarch64|arm64)$")
+        target_compile_definitions(fooyin_pffft PRIVATE PFFFT_ENABLE_NEON=1)
+    endif()
+else()
+    target_compile_definitions(fooyin_pffft PRIVATE PFFFT_SIMD_DISABLE=1)
 endif()
 
 if(NOT MSVC)
