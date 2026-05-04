@@ -26,6 +26,7 @@
 #include "filterdelegate.h"
 #include "filteritem.h"
 #include "filtermodel.h"
+#include "gui/coverprovider.h"
 
 #include <gui/guiconstants.h>
 #include <gui/trackselectioncontroller.h>
@@ -327,10 +328,18 @@ void FilterWidget::saveLayoutData(QJsonObject& layout)
         columns.push_back(colStr);
     }
 
+    const auto coverSourceToInt = [](std::optional<ArtworkSourcePreference> source) -> int {
+        if(!source) {
+            return -1;
+        }
+        return static_cast<int>(*source);
+    };
+
     layout["Columns"_L1]         = columns.join(u"|"_s);
     layout["Display"_L1]         = static_cast<int>(m_view->viewMode());
     layout["Captions"_L1]        = static_cast<int>(m_view->captionDisplay());
     layout["Artwork"_L1]         = static_cast<int>(m_model->coverType());
+    layout["Source"_L1]          = coverSourceToInt(m_model->coverSource());
     layout["ShowSummary"_L1]     = m_model->showSummary();
     layout["ShowHeader"_L1]      = m_showHeader;
     layout["ShowScrollbar"_L1]   = m_showScrollbar;
@@ -379,6 +388,15 @@ void FilterWidget::loadLayoutData(const QJsonObject& layout)
     }
     if(layout.contains("Artwork"_L1)) {
         m_model->setCoverType(static_cast<Track::Cover>(layout.value("Artwork"_L1).toInt()));
+    }
+    if(layout.contains("Source"_L1)) {
+        auto source = layout.value("Source"_L1).toInt();
+        if(source == -1) {
+            m_model->setCoverSource(std::nullopt);
+        }
+        else {
+            m_model->setCoverSource(static_cast<ArtworkSourcePreference>(source));
+        }
     }
     if(layout.contains("ShowSummary"_L1)) {
         m_model->setShowSummary(layout.value("ShowSummary"_L1).toBool());
@@ -781,6 +799,7 @@ void FilterWidget::addDisplayMenu(QMenu* menu)
     auto* displayMenu  = new QMenu(FilterWidget::tr("Display"), menu);
     auto* displayGroup = new QActionGroup(displayMenu);
     auto* coverGroup   = new QActionGroup(displayMenu);
+    auto* sourceGroup  = new QActionGroup(displayMenu);
 
     auto* displayList      = new QAction(FilterWidget::tr("Columns"), displayGroup);
     auto* displayArtBottom = new QAction(FilterWidget::tr("Artwork (bottom labels)"), displayGroup);
@@ -789,6 +808,9 @@ void FilterWidget::addDisplayMenu(QMenu* menu)
     auto* coverFront       = new QAction(FilterWidget::tr("Front cover"), coverGroup);
     auto* coverBack        = new QAction(FilterWidget::tr("Back cover"), coverGroup);
     auto* coverArtist      = new QAction(FilterWidget::tr("Artist"), coverGroup);
+    auto* sourceEmbedded   = new QAction(FilterWidget::tr("Use embedded covers"), sourceGroup);
+    auto* sourceDirectory  = new QAction(FilterWidget::tr("Use directory covers"), sourceGroup);
+    auto* sourceDefault    = new QAction(FilterWidget::tr("Use default source"), sourceGroup);
 
     displayList->setCheckable(true);
     displayArtBottom->setCheckable(true);
@@ -797,10 +819,14 @@ void FilterWidget::addDisplayMenu(QMenu* menu)
     coverFront->setCheckable(true);
     coverBack->setCheckable(true);
     coverArtist->setCheckable(true);
+    sourceEmbedded->setCheckable(true);
+    sourceDirectory->setCheckable(true);
+    sourceDefault->setCheckable(true);
 
     const auto currentMode     = m_view->viewMode();
     const auto currentCaptions = m_view->captionDisplay();
     const auto currentType     = m_model->coverType();
+    const auto currentSource   = m_model->coverSource();
 
     using ViewMode       = ExpandedTreeView::ViewMode;
     using CaptionDisplay = ExpandedTreeView::CaptionDisplay;
@@ -828,6 +854,16 @@ void FilterWidget::addDisplayMenu(QMenu* menu)
         coverArtist->setChecked(true);
     }
 
+    if(!currentSource) {
+        sourceDefault->setChecked(true);
+    }
+    else if(*currentSource == ArtworkSourcePreference::PreferEmbedded) {
+        sourceEmbedded->setChecked(true);
+    }
+    else if(*currentSource == ArtworkSourcePreference::PreferDirectory) {
+        sourceDirectory->setChecked(true);
+    }
+
     QObject::connect(displayList, &QAction::triggered, this, [this]() {
         updateViewMode(ViewMode::Tree);
         updateCaptions(CaptionDisplay::Bottom);
@@ -847,6 +883,11 @@ void FilterWidget::addDisplayMenu(QMenu* menu)
     QObject::connect(coverFront, &QAction::triggered, this, [this]() { m_model->setCoverType(Track::Cover::Front); });
     QObject::connect(coverBack, &QAction::triggered, this, [this]() { m_model->setCoverType(Track::Cover::Back); });
     QObject::connect(coverArtist, &QAction::triggered, this, [this]() { m_model->setCoverType(Track::Cover::Artist); });
+    QObject::connect(sourceDefault, &QAction::triggered, this, [this]() { m_model->setCoverSource(std::nullopt); });
+    QObject::connect(sourceEmbedded, &QAction::triggered, this,
+                     [this]() { m_model->setCoverSource(ArtworkSourcePreference::PreferEmbedded); });
+    QObject::connect(sourceDirectory, &QAction::triggered, this,
+                     [this]() { m_model->setCoverSource(ArtworkSourcePreference::PreferDirectory); });
 
     auto* displaySummary = new QAction(FilterWidget::tr("Summary item"), displayMenu);
     displaySummary->setCheckable(true);
@@ -886,6 +927,8 @@ void FilterWidget::addDisplayMenu(QMenu* menu)
     displayMenu->addAction(alternatingRows);
     displayMenu->addSeparator();
     displayMenu->addActions(coverGroup->actions());
+    displayMenu->addSeparator();
+    displayMenu->addActions(sourceGroup->actions());
 
     menu->addMenu(displayMenu);
 }

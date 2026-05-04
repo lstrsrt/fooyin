@@ -24,6 +24,7 @@
 #include "filterrows.h"
 
 #include <core/track.h>
+#include <gui/coverprovider.h>
 #include <utils/stringcollator.h>
 #include <utils/treemodel.h>
 
@@ -62,6 +63,7 @@ public:
 
     [[nodiscard]] bool showSummary() const;
     [[nodiscard]] Track::Cover coverType() const;
+    [[nodiscard]] std::optional<ArtworkSourcePreference> coverSource() const;
 
     void setRowHeight(int height);
     void setIconSize(const QSize& size);
@@ -69,6 +71,7 @@ public:
     void setShowDecoration(bool show);
     void setShowLabels(bool show);
     void setCoverType(Track::Cover type);
+    void setCoverSource(std::optional<ArtworkSourcePreference> source);
     void setColumnOrder(const std::vector<int>& order);
 
     [[nodiscard]] Qt::ItemFlags flags(const QModelIndex& index) const override;
