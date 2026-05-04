@@ -26,8 +26,8 @@
 #include "filterdelegate.h"
 #include "filteritem.h"
 #include "filtermodel.h"
-#include "gui/coverprovider.h"
 
+#include <gui/coverprovider.h>
 #include <gui/guiconstants.h>
 #include <gui/trackselectioncontroller.h>
 #include <gui/widgets/autoheaderview.h>
@@ -90,15 +90,15 @@ protected:
 };
 
 FilterWidget::FilterWidget(ActionManager* actionManager, FilterColumnRegistry* columnRegistry,
-                           LibraryManager* /*libraryManager*/, MusicLibrary* library, CoverProvider* coverProvider,
-                           SettingsManager* settings, QWidget* parent)
+                           LibraryManager* /*libraryManager*/, MusicLibrary* library,
+                           std::shared_ptr<AudioLoader> audioLoader, SettingsManager* settings, QWidget* parent)
     : FyWidget{parent}
     , m_actionManager{actionManager}
     , m_columnRegistry{columnRegistry}
     , m_settings{settings}
     , m_view{new FilterView(this)}
     , m_header{new AutoHeaderView(Qt::Horizontal, this)}
-    , m_model{new FilterModel(library, coverProvider, m_settings, this)}
+    , m_model{new FilterModel(library, new CoverProvider(std::move(audioLoader), settings), m_settings, this)}
     , m_sortProxy{new FilterSortModel(this)}
     , m_index{-1}
     , m_multipleColumns{false}

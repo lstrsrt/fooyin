@@ -27,6 +27,7 @@
 #include <gui/widgets/expandedtreeview.h>
 
 namespace Fooyin {
+class AudioLoader;
 class AutoHeaderView;
 class ActionManager;
 class CoverProvider;
@@ -55,8 +56,9 @@ public:
     };
 
     explicit FilterWidget(ActionManager* actionManager, FilterColumnRegistry* columnRegistry,
-                          LibraryManager* libraryManager, MusicLibrary* library, CoverProvider* coverProvider,
-                          SettingsManager* settings, QWidget* parent = nullptr);
+                          LibraryManager* libraryManager, MusicLibrary* library,
+                          std::shared_ptr<AudioLoader> audioLoader, SettingsManager* settings,
+                          QWidget* parent = nullptr);
     ~FilterWidget() override;
 
     [[nodiscard]] Id group() const;
@@ -151,6 +153,7 @@ private:
     ActionManager* m_actionManager;
     FilterColumnRegistry* m_columnRegistry;
     SettingsManager* m_settings;
+    CoverProvider* m_coverProvider;
 
     FilterView* m_view;
     AutoHeaderView* m_header;
