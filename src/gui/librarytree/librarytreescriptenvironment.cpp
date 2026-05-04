@@ -37,7 +37,7 @@ Fooyin::ScriptResult nodeVariable(const Fooyin::ScriptContext& context, const QS
         case Fooyin::LibraryTreeNodePolicy::Placeholder:
             return {.value = {}, .cond = true};
         case Fooyin::LibraryTreeNodePolicy::Value: {
-            const int value = name.compare(u"TRACKCOUNT"_s, Qt::CaseInsensitive) == 0 ? environment->nodeTrackCount()
+            const int value = name.compare("TRACKCOUNT"_L1, Qt::CaseInsensitive) == 0 ? environment->nodeTrackCount()
                                                                                       : environment->nodeChildCount();
             return {.value = QString::number(value), .cond = true};
         }
@@ -45,7 +45,7 @@ Fooyin::ScriptResult nodeVariable(const Fooyin::ScriptContext& context, const QS
             break;
     }
 
-    return {.value = u"%%1%"_s.arg(name.toLower()), .cond = true};
+    return {.value = u"\uE000LIBTREE_NODE_%1\uE001"_s.arg(name.toUpper()), .cond = true};
 }
 } // namespace
 
@@ -94,14 +94,24 @@ QString defaultLibraryTreeSummaryTitle()
     return QCoreApplication::translate("Fooyin::LibraryTree", "All Music (%trackcount%)");
 }
 
+QString resolveLibraryTreeNodeVariables(QString title, int trackCount, int childCount)
+{
+    title.replace(u"\uE000LIBTREE_NODE_TRACKCOUNT\uE001"_s, QString::number(trackCount));
+    title.replace(u"\uE000LIBTREE_NODE_CHILDCOUNT\uE001"_s, QString::number(childCount));
+    return title;
+}
+
 bool usesLibraryTreeNodeVariables(QStringView text)
 {
-    return text.contains(u"%trackcount%"_s, Qt::CaseInsensitive)
-        || text.contains(u"%childcount%"_s, Qt::CaseInsensitive);
+    return text.contains("%trackcount%"_L1, Qt::CaseInsensitive)
+        || text.contains("%childcount%"_L1, Qt::CaseInsensitive)
+        || text.contains("\uE000LIBTREE_NODE_TRACKCOUNT\uE001"_L1)
+        || text.contains("\uE000LIBTREE_NODE_CHILDCOUNT\uE001"_L1);
 }
 
 bool usesLibraryTreeChildCount(QStringView text)
 {
-    return text.contains(u"%childcount%"_s, Qt::CaseInsensitive);
+    return text.contains("%childcount%"_L1, Qt::CaseInsensitive)
+        || text.contains("\uE000LIBTREE_NODE_CHILDCOUNT\uE001"_L1);
 }
 } // namespace Fooyin

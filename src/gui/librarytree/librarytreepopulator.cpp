@@ -53,10 +53,8 @@ public:
         : m_self{self}
         , m_settings{settings}
         , m_scriptEnvironment{libraryManager}
-        , m_identityScriptEnvironment{libraryManager}
     {
-        m_scriptContext.environment         = &m_scriptEnvironment;
-        m_identityScriptContext.environment = &m_identityScriptEnvironment;
+        m_scriptContext.environment = &m_scriptEnvironment;
         m_parser.addProvider(artworkMarkerVariableProvider());
         m_parser.addProvider(libraryTreeNodeVariableProvider());
     }
@@ -75,7 +73,6 @@ public:
     ScriptParser m_parser;
     ScriptFormatter m_formatter;
     LibraryTreeScriptEnvironment m_scriptEnvironment;
-    LibraryTreeScriptEnvironment m_identityScriptEnvironment;
     ScriptContext m_scriptContext;
     ScriptContext m_identityScriptContext;
 
@@ -120,14 +117,8 @@ LibraryTreeItem* LibraryTreePopulatorPrivate::getOrInsertItem(const Md5Hash& key
 
 void LibraryTreePopulatorPrivate::updateRichTitle(LibraryTreeItem& item)
 {
-    QString title = item.titleSource();
-    if(usesLibraryTreeNodeVariables(title)) {
-        m_scriptEnvironment.setNodeVariablePolicy(LibraryTreeNodePolicy::Value);
-        m_scriptEnvironment.setNodeCounts(item.trackCount(), item.scriptChildCount());
-        title = m_parser.evaluate(title, item.tracks(), m_scriptContext,
-                                  {.whitespaceMode = ScriptWhitespaceMode::Preserve});
-        m_scriptEnvironment.setNodeVariablePolicy(LibraryTreeNodePolicy::Unresolved);
-    }
+    const QString title
+        = resolveLibraryTreeNodeVariables(item.titleSource(), item.trackCount(), item.scriptChildCount());
     item.setRichTitle(trimRichText(m_formatter.evaluate(title)));
 }
 
@@ -187,22 +178,22 @@ void LibraryTreePopulatorPrivate::iterateTrack(const Track& track)
             continue;
         }
 
-        LibraryTreeItem* parent        = &m_root;
+        const LibraryTreeItem* parent  = &m_root;
         const QStringList displayItems = displayValue.split(u"||"_s);
         const QStringList sortItems    = pairSortValues ? sortValues.value(valueIndex).split(u"||"_s) : QStringList{};
         const bool pairSortItems       = displayItems.size() == sortItems.size();
 
         for(int level{0}; const QString& item : displayItems) {
-            const RichText richTitle   = trimRichText(m_formatter.evaluate(item));
-            const QString identityItem = m_parser.evaluate(item, track, m_identityScriptContext);
-            const QString title        = identityText(trimRichText(m_formatter.evaluate(identityItem)));
+            const QString identityItem = resolveLibraryTreeNodeVariables(item, 0, 0);
+            QString title              = identityText(trimRichText(m_formatter.evaluate(identityItem)));
+            const RichText richTitle   = trimRichText(m_formatter.evaluate(identityItem));
 
             const auto key          = Utils::generateMd5Hash(parent->key(), title);
             const QString sortTitle = [&] {
                 if(!pairSortItems) {
                     return title;
                 }
-                const QString sortItem = m_parser.evaluate(sortItems.value(level), track, m_identityScriptContext);
+                const QString sortItem = resolveLibraryTreeNodeVariables(sortItems.value(level), 0, 0);
                 return identityText(trimRichText(m_formatter.evaluate(sortItem)));
             }();
 
@@ -284,16 +275,12 @@ void LibraryTreePopulator::run(const LibraryTreeGrouping& grouping, const TrackL
     p->m_emittedItems.clear();
     p->m_childKeys.clear();
 
-    p->m_scriptEnvironment.setRatingStarSymbols({p->m_settings->value<Settings::Gui::RatingFullStarSymbol>(),
-                                                 p->m_settings->value<Settings::Gui::RatingHalfStarSymbol>(),
-                                                 p->m_settings->value<Settings::Gui::RatingEmptyStarSymbol>()});
+    p->m_scriptEnvironment.setRatingStarSymbols(
+        {.fullStarSymbol  = p->m_settings->value<Settings::Gui::RatingFullStarSymbol>(),
+         .halfStarSymbol  = p->m_settings->value<Settings::Gui::RatingHalfStarSymbol>(),
+         .emptyStarSymbol = p->m_settings->value<Settings::Gui::RatingEmptyStarSymbol>()});
     p->m_scriptEnvironment.setEvaluationPolicy(TrackListContextPolicy::Unresolved, {}, true, useVarious);
     p->m_scriptEnvironment.setNodeVariablePolicy(LibraryTreeNodePolicy::Unresolved);
-    p->m_identityScriptEnvironment.setRatingStarSymbols({p->m_settings->value<Settings::Gui::RatingFullStarSymbol>(),
-                                                         p->m_settings->value<Settings::Gui::RatingHalfStarSymbol>(),
-                                                         p->m_settings->value<Settings::Gui::RatingEmptyStarSymbol>()});
-    p->m_identityScriptEnvironment.setEvaluationPolicy(TrackListContextPolicy::Placeholder, u""_s, true, useVarious);
-    p->m_identityScriptEnvironment.setNodeVariablePolicy(LibraryTreeNodePolicy::Placeholder);
 
     if(std::exchange(p->m_currentGrouping, grouping) != grouping) {
         p->m_displayScript = p->m_parser.parse(p->m_currentGrouping.script);
@@ -317,9 +304,10 @@ void LibraryTreePopulator::updateItems(ItemKeyMap items, bool useVarious)
 {
     setState(Running);
 
-    p->m_scriptEnvironment.setRatingStarSymbols({p->m_settings->value<Settings::Gui::RatingFullStarSymbol>(),
-                                                 p->m_settings->value<Settings::Gui::RatingHalfStarSymbol>(),
-                                                 p->m_settings->value<Settings::Gui::RatingEmptyStarSymbol>()});
+    p->m_scriptEnvironment.setRatingStarSymbols(
+        {.fullStarSymbol  = p->m_settings->value<Settings::Gui::RatingFullStarSymbol>(),
+         .halfStarSymbol  = p->m_settings->value<Settings::Gui::RatingHalfStarSymbol>(),
+         .emptyStarSymbol = p->m_settings->value<Settings::Gui::RatingEmptyStarSymbol>()});
     p->m_scriptEnvironment.setEvaluationPolicy(TrackListContextPolicy::Unresolved, {}, true, useVarious);
     p->m_scriptEnvironment.setNodeVariablePolicy(LibraryTreeNodePolicy::Unresolved);
 

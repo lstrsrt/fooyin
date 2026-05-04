@@ -57,6 +57,8 @@ private:
 
 [[nodiscard]] QString defaultLibraryTreeSummaryTitle();
 
+[[nodiscard]] QString resolveLibraryTreeNodeVariables(QString title, int trackCount, int childCount);
+
 [[nodiscard]] bool usesLibraryTreeNodeVariables(QStringView text);
 [[nodiscard]] bool usesLibraryTreeChildCount(QStringView text);
 } // namespace Fooyin
