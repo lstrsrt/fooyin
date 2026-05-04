@@ -21,6 +21,7 @@
 
 #include "settings/lyricssettings.h"
 
+#include <utils/fileutils.h>
 #include <utils/settings/settingsmanager.h>
 
 #include <QDir>
@@ -52,13 +53,10 @@ void LocalLyrics::search(const SearchParams& params)
     QStringList lrcPaths;
 
     for(const auto& filter : filters) {
-        const QFileInfo fileInfo{QDir::cleanPath(filter)};
-        const QDir filePath{fileInfo.path()};
-        const QString filePattern  = fileInfo.fileName();
-        const QStringList fileList = filePath.entryList({filePattern}, QDir::Files | QDir::Hidden);
-
+        const QStringList fileList
+            = Utils::File::filesFromWildcardPath(filter, QDir::Files | QDir::Hidden, QDir::NoSort);
         for(const QString& file : fileList) {
-            lrcPaths.emplace_back(filePath.absoluteFilePath(file));
+            lrcPaths.emplace_back(file);
         }
     }
 
