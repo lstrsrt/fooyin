@@ -27,6 +27,7 @@
 #include <QObject>
 
 #include <memory>
+#include <optional>
 #include <set>
 
 class QPixmap;
