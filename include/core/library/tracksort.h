@@ -120,7 +120,7 @@ public:
     auto calcSortEntries(const SortScript& sort, const Container& items, Extractor extractor)
         -> std::vector<SortEntry<typename Container::value_type>>
     {
-        using Item = typename Container::value_type;
+        using Item = Container::value_type;
         std::vector<SortEntry<Item>> entries;
         entries.reserve(items.size());
 
@@ -146,7 +146,7 @@ public:
     auto calcOwnedSortEntries(const SortScript& sort, Container items, Extractor extractor)
         -> std::vector<SortEntry<typename Container::value_type>>
     {
-        using Item = typename Container::value_type;
+        using Item = Container::value_type;
         std::vector<SortEntry<Item>> entries;
         entries.reserve(items.size());
 

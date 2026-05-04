@@ -19,6 +19,8 @@
 
 #include <core/library/tracksort.h>
 
+#include <utility>
+
 namespace Fooyin {
 TrackSorter::TrackSorter()
     : TrackSorter{nullptr}
@@ -56,7 +58,7 @@ TrackList TrackSorter::calcSortTracks(const ParsedScript& sortScript, TrackList 
     tracksToSort.reserve(indexes.size());
 
     auto validIndexes = indexes | std::views::filter([&sortedTracks](int index) {
-                            return (index >= 0 && index < static_cast<int>(sortedTracks.size()));
+                            return (index >= 0 && std::cmp_less(index, sortedTracks.size()));
                         });
 
     for(const int index : validIndexes) {
@@ -68,7 +70,7 @@ TrackList TrackSorter::calcSortTracks(const ParsedScript& sortScript, TrackList 
     auto sortedSubTracks = stripSortEntries<TrackList>(std::move(sortEntries));
 
     for(auto i{0}; const int index : validIndexes) {
-        sortedTracks[index] = std::move(sortedSubTracks.at(i++));
+        sortedTracks[index] = sortedSubTracks.at(i++);
     }
 
     return sortedTracks;
