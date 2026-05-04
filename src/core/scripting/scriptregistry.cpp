@@ -117,9 +117,9 @@ QString trackInfo(const Fooyin::Track& track, const QStringList& args)
 QString trackChannels(const Fooyin::Track& track)
 {
     switch(track.channels()) {
-        case(1):
+        case 1:
             return u"Mono"_s;
-        case(2):
+        case 2:
             return u"Stereo"_s;
         default:
             return u"%1ch"_s.arg(track.channels());
@@ -358,17 +358,35 @@ std::optional<ScriptRegistry::FuncRet> trackMetadataValue(const VariableKind kin
         case VariableKind::Subsong:
             return track.subsong();
         case VariableKind::RGTrackGain:
-            return formatGain(track.effectiveRGTrackGain());
+            if(track.hasEffectiveTrackGain()) {
+                return formatGain(track.effectiveRGTrackGain());
+            }
+            return QString{};
         case VariableKind::RGTrackPeak:
-            return track.effectiveRGTrackPeak();
+            if(track.hasEffectiveTrackPeak()) {
+                return track.effectiveRGTrackPeak();
+            }
+            return QString{};
         case VariableKind::RGTrackPeakDB:
-            return formatPeak(track.effectiveRGTrackPeak());
+            if(track.hasEffectiveTrackPeak()) {
+                return formatPeak(track.effectiveRGTrackPeak());
+            }
+            return QString{};
         case VariableKind::RGAlbumGain:
-            return formatGain(track.effectiveRGAlbumGain());
+            if(track.hasEffectiveAlbumGain()) {
+                return formatGain(track.effectiveRGAlbumGain());
+            }
+            return QString{};
         case VariableKind::RGAlbumPeak:
-            return track.effectiveRGAlbumPeak();
+            if(track.hasEffectiveAlbumPeak()) {
+                return track.effectiveRGAlbumPeak();
+            }
+            return QString{};
         case VariableKind::RGAlbumPeakDB:
-            return formatPeak(track.effectiveRGAlbumPeak());
+            if(track.hasEffectiveAlbumPeak()) {
+                return formatPeak(track.effectiveRGAlbumPeak());
+            }
+            return QString{};
         default:
             return {};
     }

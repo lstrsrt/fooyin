@@ -503,6 +503,19 @@ TEST_F(ScriptParserTest, MetadataTest)
     EXPECT_EQ(paddedStars, m_parser.evaluate(u"%rating_stars_padded%"_s, track));
     EXPECT_EQ(u"7", m_parser.evaluate(u"%rating_editor%"_s, track));
 
+    EXPECT_EQ(u"", m_parser.evaluate(u"%replaygain_track_gain%"_s, track));
+    EXPECT_EQ(u"", m_parser.evaluate(u"%replaygain_album_gain%"_s, track));
+    EXPECT_EQ(u"false", m_parser.evaluate(u"$if(%replaygain_track_gain%,true,false)"_s, track));
+    EXPECT_EQ(u"false", m_parser.evaluate(u"$if(%replaygain_album_gain%,true,false)"_s, track));
+
+    track.setRGTrackGain(-7.25F);
+    track.setRGAlbumGain(-5.0F);
+
+    EXPECT_EQ(u"-7.25 dB", m_parser.evaluate(u"%replaygain_track_gain%"_s, track));
+    EXPECT_EQ(u"-5 dB", m_parser.evaluate(u"%replaygain_album_gain%"_s, track));
+    EXPECT_EQ(u"true", m_parser.evaluate(u"$if(%replaygain_track_gain%,true,false)"_s, track));
+    EXPECT_EQ(u"true", m_parser.evaluate(u"$if(%replaygain_album_gain%,true,false)"_s, track));
+
     EXPECT_EQ(u"", m_parser.evaluate(u"[%disc% - %track%]"_s, track));
 }
 
