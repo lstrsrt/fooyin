@@ -40,6 +40,7 @@ public:
     void processData(const WaveformData<float>& waveData);
 
     void setPlayState(Player::PlayState state);
+    void setSeekable(bool seekable);
     void setPosition(uint64_t pos);
     void setShowCursor(bool show);
     void setCursorWidth(int width);
@@ -82,6 +83,7 @@ private:
     void drawSeekTip();
 
     Player::PlayState m_playState;
+    bool m_seekable;
     WaveformData<float> m_data;
     double m_scale;
     uint64_t m_position;

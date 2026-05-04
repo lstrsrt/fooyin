@@ -552,8 +552,11 @@ void EngineHandler::handleTrackCommitted(const Engine::TrackCommitContext& conte
     }
 }
 
-void EngineHandler::handleTrackStatus(Engine::TrackStatus status, const Track& track, uint64_t generation)
+void EngineHandler::handleTrackStatus(Engine::TrackStatus status, const Track& track, uint64_t generation,
+                                      bool seekable)
 {
+    m_playerController->setCurrentTrackSeekable(seekable);
+
     switch(status) {
         case Engine::TrackStatus::NoTrack:
             clearNextTrackReadiness();
@@ -616,7 +619,7 @@ void EngineHandler::handleTrackStatus(Engine::TrackStatus status, const Track& t
     }
 
     Q_EMIT trackStatusContextChanged(
-        Engine::TrackStatusContext{.status = status, .track = track, .generation = generation});
+        Engine::TrackStatusContext{.status = status, .track = track, .generation = generation, .seekable = seekable});
 }
 
 void EngineHandler::requestPlay() const
@@ -739,6 +742,10 @@ void EngineHandler::updateCurrentTrackMetadata(const Track& track)
 
 void EngineHandler::dispatchSeek(uint64_t positionMs)
 {
+    if(!m_playerController->currentTrackSeekable()) {
+        return;
+    }
+
     uint64_t requestId = m_nextSeekRequestId++;
 
     if(requestId == 0) {

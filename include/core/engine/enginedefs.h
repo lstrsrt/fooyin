@@ -56,6 +56,7 @@ struct TrackStatusContext
     TrackStatus status{TrackStatus::NoTrack};
     Track track;
     uint64_t generation{0};
+    bool seekable{false};
 };
 
 //! Callback payload emitted shortly before the active track reaches end.

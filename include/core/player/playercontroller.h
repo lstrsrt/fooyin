@@ -57,6 +57,8 @@ public:
     [[nodiscard]] bool playedThresholdReached() const;
     /** Returns the current bitrate. */
     [[nodiscard]] int bitrate() const;
+    /** Returns @c true if the current track can be seeked. */
+    [[nodiscard]] bool currentTrackSeekable() const;
 
     /*!
      * Returns the currently playing track.
@@ -105,6 +107,7 @@ public:
     void restorePlaybackProgress(uint64_t positionMs, uint64_t timeListenedMs);
     void setCurrentPosition(uint64_t ms);
     void setBitrate(int bitrate);
+    void setCurrentTrackSeekable(bool seekable);
 
     void changeCurrentTrack(const Track& track);
     void changeCurrentTrack(const PlaylistTrack& track,
@@ -165,6 +168,8 @@ Q_SIGNALS:
     void currentTrackChanged(const Fooyin::Track& track);
     /*! Emitted when metadata for the current playback track is refreshed in place. */
     void currentTrackUpdated(const Fooyin::Track& track);
+    /*! Emitted when whether the current track can be seeked changes. */
+    void currentTrackSeekableChanged(bool seekable);
     /*!
      * Emitted when the actual playback track changes and the playlist-backed reference for that new track is known.
      * Unlike playlistTrackUpdated(), this is not emitted for in-place playlist reference remaps of the same

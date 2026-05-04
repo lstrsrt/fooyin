@@ -88,6 +88,7 @@ WaveBarWidget::WaveBarWidget(std::shared_ptr<AudioLoader> audioLoader, DbConnect
     m_container->insertWidget(1, m_seekbar);
 
     m_seekbar->setPlayState(m_playerController->playState());
+    m_seekbar->setSeekable(m_playerController->currentTrackSeekable());
     m_seekbar->setPosition(m_playerController->currentPosition());
 
     m_config = defaultConfig();
@@ -99,6 +100,8 @@ WaveBarWidget::WaveBarWidget(std::shared_ptr<AudioLoader> audioLoader, DbConnect
 
     QObject::connect(playerController, &PlayerController::positionChanged, m_seekbar, &WaveSeekBar::setPosition);
     QObject::connect(playerController, &PlayerController::playStateChanged, m_seekbar, &WaveSeekBar::setPlayState);
+    QObject::connect(playerController, &PlayerController::currentTrackSeekableChanged, m_seekbar,
+                     &WaveSeekBar::setSeekable);
     QObject::connect(m_seekbar, &WaveSeekBar::sliderMoved, playerController, &PlayerController::seek);
     QObject::connect(m_seekbar, &WaveSeekBar::seekForward, playerController,
                      [this]() { m_playerController->seekForward(m_settings->value<Settings::Gui::SeekStepSmall>()); });

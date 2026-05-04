@@ -174,6 +174,10 @@ SeekContainer::SeekContainer(PlayerController* playerController, QWidget* parent
                      [this](Player::PlayState state) { p->stateChanged(state); });
     QObject::connect(p->m_playerController, &PlayerController::currentTrackChanged, this,
                      [this](const Track& track) { p->trackChanged(track); });
+    QObject::connect(p->m_playerController, &PlayerController::currentTrackSeekableChanged, this, [this]() {
+        p->updateLabels(p->m_playerController->currentPosition());
+        p->updateLabelWidths();
+    });
     QObject::connect(p->m_playerController, &PlayerController::positionChanged, this,
                      [this](uint64_t pos) { p->updateLabels(pos); });
 

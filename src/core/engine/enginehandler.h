@@ -154,7 +154,7 @@ private:
     void clearPendingBoundaryAdvance();
     void clearEngineOwnedTransition();
     void handleTrackCommitted(const Engine::TrackCommitContext& context);
-    void handleTrackStatus(Engine::TrackStatus status, const Track& track, uint64_t generation);
+    void handleTrackStatus(Engine::TrackStatus status, const Track& track, uint64_t generation, bool seekable);
 
     void requestPlay() const;
     void requestPause() const;

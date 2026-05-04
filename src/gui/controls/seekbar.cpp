@@ -133,7 +133,8 @@ void TrackSlider::stopSeeking()
 
 void TrackSlider::mousePressEvent(QMouseEvent* event)
 {
-    if(m_max == 0) {
+    if(!isEnabled() || m_max == 0) {
+        event->ignore();
         return;
     }
 
@@ -166,7 +167,8 @@ void TrackSlider::mousePressEvent(QMouseEvent* event)
 
 void TrackSlider::mouseReleaseEvent(QMouseEvent* event)
 {
-    if(m_max == 0) {
+    if(!isEnabled() || m_max == 0) {
+        event->ignore();
         return;
     }
 
@@ -185,7 +187,8 @@ void TrackSlider::mouseReleaseEvent(QMouseEvent* event)
 
 void TrackSlider::mouseMoveEvent(QMouseEvent* event)
 {
-    if(m_max == 0) {
+    if(!isEnabled() || m_max == 0) {
+        event->ignore();
         return;
     }
 
@@ -201,6 +204,11 @@ void TrackSlider::mouseMoveEvent(QMouseEvent* event)
 
 void TrackSlider::keyPressEvent(QKeyEvent* event)
 {
+    if(!isEnabled()) {
+        event->ignore();
+        return;
+    }
+
     const auto key = event->key();
 
     if(key == Qt::Key_Right || key == Qt::Key_Up) {
@@ -218,6 +226,11 @@ void TrackSlider::keyPressEvent(QKeyEvent* event)
 
 void TrackSlider::wheelEvent(QWheelEvent* event)
 {
+    if(!isEnabled()) {
+        event->ignore();
+        return;
+    }
+
     if(event->angleDelta().y() < 0) {
         Q_EMIT seekBackward();
     }
@@ -294,8 +307,8 @@ SeekBar::SeekBar(PlayerController* playerController, SettingsManager* settings, 
     layout->addWidget(m_container);
     m_container->insertWidget(1, m_slider);
 
-    m_slider->setEnabled(playerController->currentTrack().isValid());
     trackChanged(playerController->currentTrack());
+    updateSeekEnabled();
 
     QObject::connect(m_slider, &TrackSlider::sliderDropped, playerController, &PlayerController::seek);
     QObject::connect(m_slider, &TrackSlider::seekForward, this,
@@ -305,6 +318,8 @@ SeekBar::SeekBar(PlayerController* playerController, SettingsManager* settings, 
 
     QObject::connect(m_playerController, &PlayerController::playStateChanged, this, &SeekBar::stateChanged);
     QObject::connect(m_playerController, &PlayerController::currentTrackChanged, this, &SeekBar::trackChanged);
+    QObject::connect(m_playerController, &PlayerController::currentTrackSeekableChanged, this,
+                     &SeekBar::updateSeekEnabled);
     QObject::connect(m_playerController, &PlayerController::positionChanged, this, &SeekBar::setCurrentPosition);
     QObject::connect(m_playerController, &PlayerController::positionMoved, this, &SeekBar::setCurrentPosition);
 }
@@ -368,8 +383,20 @@ void SeekBar::contextMenuEvent(QContextMenuEvent* event)
 void SeekBar::reset()
 {
     m_max = 0;
+    m_slider->stopSeeking();
     m_slider->setValue(0);
     m_slider->updateMaximum(m_max);
+}
+
+void SeekBar::updateSeekEnabled() const
+{
+    const bool enabled = m_playerController->playState() != Player::PlayState::Stopped
+                      && m_playerController->currentTrack().isValid() && m_playerController->currentTrackSeekable()
+                      && m_max > 0;
+    if(!enabled) {
+        m_slider->stopSeeking();
+    }
+    m_slider->setEnabled(enabled);
 }
 
 void SeekBar::trackChanged(const Track& track)
@@ -379,6 +406,10 @@ void SeekBar::trackChanged(const Track& track)
         m_slider->setValue(0);
         m_slider->updateMaximum(m_max);
     }
+    else {
+        reset();
+    }
+    updateSeekEnabled();
 }
 
 void SeekBar::setCurrentPosition(uint64_t pos) const
@@ -389,20 +420,20 @@ void SeekBar::setCurrentPosition(uint64_t pos) const
 void SeekBar::stateChanged(Player::PlayState state)
 {
     switch(state) {
-        case(Player::PlayState::Paused):
+        case Player::PlayState::Paused:
             break;
-        case(Player::PlayState::Stopped):
+        case Player::PlayState::Stopped:
             reset();
-            m_slider->setEnabled(false);
             break;
-        case(Player::PlayState::Playing): {
+        case Player::PlayState::Playing: {
             if(m_max == 0) {
                 trackChanged(m_playerController->currentTrack());
             }
-            m_slider->setEnabled(true);
             break;
         }
     }
+
+    updateSeekEnabled();
 }
 } // namespace Fooyin
 

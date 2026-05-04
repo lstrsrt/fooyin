@@ -176,7 +176,8 @@ public Q_SLOTS:
 
 Q_SIGNALS:
     void stateChanged(Fooyin::Engine::PlaybackState state);
-    void trackStatusContextChanged(Fooyin::Engine::TrackStatus status, const Fooyin::Track& track, uint64_t generation);
+    void trackStatusContextChanged(Fooyin::Engine::TrackStatus status, const Fooyin::Track& track, uint64_t generation,
+                                   bool seekable);
     void positionChanged(uint64_t positionMs);
     void positionChangedWithContext(uint64_t positionMs, uint64_t trackGeneration, uint64_t timelineEpoch,
                                     uint64_t seekRequestId);

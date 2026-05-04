@@ -46,6 +46,7 @@ protected:
 
 private:
     void reset();
+    void updateSeekEnabled() const;
     void trackChanged(const Track& track);
     void setCurrentPosition(uint64_t pos) const;
     void stateChanged(Player::PlayState state);

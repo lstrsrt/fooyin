@@ -160,6 +160,7 @@ public:
 
     Player::UpcomingTrack m_lastUpcomingTrack;
     uint64_t m_nextPlaybackItemId{1};
+    bool m_currentTrackSeekable{false};
 
     PlaybackQueue m_queue;
     PlaybackOrderNavigator m_navigator;
@@ -396,6 +397,7 @@ bool PlayerControllerPrivate::enterStoppedState(bool requestTransportStop)
         return false;
     }
 
+    m_self->setCurrentTrackSeekable(false);
     emitPositionSignals(m_progressTracker.resetPosition());
 
     if(requestTransportStop) {
@@ -982,6 +984,7 @@ void PlayerController::reset()
     p->m_cursor.reset();
     p->m_session.clearPendingRequest();
     p->updateBitrate(0);
+    setCurrentTrackSeekable(false);
 
     p->emitPositionSignals(p->m_progressTracker.resetPosition());
     Q_EMIT playbackSnapshotChanged(playbackSnapshot());
@@ -1377,7 +1380,7 @@ void PlayerController::setPlayMode(Playlist::PlayModes mode)
 
 void PlayerController::seek(uint64_t ms)
 {
-    if(p->m_progressTracker.totalDuration() < 100) {
+    if(!p->m_currentTrackSeekable || p->m_progressTracker.totalDuration() < 100) {
         return;
     }
 
@@ -1475,6 +1478,11 @@ int PlayerController::bitrate() const
     return p->m_progressTracker.bitrate();
 }
 
+bool PlayerController::currentTrackSeekable() const
+{
+    return p->m_currentTrackSeekable;
+}
+
 Track PlayerController::currentTrack() const
 {
     return p->m_session.currentTrack().track;
@@ -1493,6 +1501,13 @@ bool PlayerController::currentIsQueueTrack() const
 PlaylistTrack PlayerController::currentPlaylistTrack() const
 {
     return p->m_session.currentTrack();
+}
+
+void PlayerController::setCurrentTrackSeekable(bool seekable)
+{
+    if(std::exchange(p->m_currentTrackSeekable, seekable) != seekable) {
+        Q_EMIT currentTrackSeekableChanged(seekable);
+    }
 }
 
 void PlayerController::queueTrack(const Track& track)

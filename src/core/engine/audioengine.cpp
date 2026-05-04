@@ -610,7 +610,7 @@ bool AudioEngine::startTrackCrossfade(const Engine::PlaybackItem& item, bool isM
 
 void AudioEngine::performSeek(uint64_t positionMs, uint64_t requestId)
 {
-    if(!m_decoder.isValid()) {
+    if(!m_decoder.isValid() || !m_decoder.isSeekable()) {
         return;
     }
 
@@ -784,6 +784,10 @@ void AudioEngine::startSeekCrossfade(uint64_t positionMs, int fadeOutDurationMs,
 
 void AudioEngine::performSimpleSeek(uint64_t positionMs, uint64_t requestId, int prefillTargetMs)
 {
+    if(!m_decoder.isValid() || !m_decoder.isSeekable()) {
+        return;
+    }
+
     m_decoder.clearDecodeReserve();
 
     const bool wasPlaying  = hasPlaybackState(Engine::PlaybackState::Playing);
@@ -2603,8 +2607,9 @@ void AudioEngine::updatePlaybackState(Engine::PlaybackState state)
 void AudioEngine::updateTrackStatus(Engine::TrackStatus status, bool flushDspOnEnd)
 {
     const auto prevStatus = m_trackStatus.exchange(status, std::memory_order_relaxed);
+    const bool seekable   = m_decoder.isValid() && m_decoder.isSeekable();
     if(prevStatus != status) {
-        Q_EMIT trackStatusContextChanged(status, m_currentTrack, m_trackGeneration);
+        Q_EMIT trackStatusContextChanged(status, m_currentTrack, m_trackGeneration, seekable);
     }
 
     if(status == Engine::TrackStatus::Loading) {
@@ -3001,7 +3006,7 @@ bool AudioEngine::setupNewTrackStream(const Track& track, bool applyPendingSeek)
         }
 
         const auto pendingSeek = m_transitions.takePendingInitialSeekForTrack(track.id());
-        if(!pendingSeek.has_value()) {
+        if(!pendingSeek.has_value() || !m_decoder.isSeekable()) {
             prefillActiveStream(startupPrefillMs);
             return true;
         }
@@ -4403,6 +4408,10 @@ void AudioEngine::seekWithRequest(uint64_t positionMs, uint64_t requestId)
             loadTrack(currentPlaybackItem(), false);
             play();
         }
+        return;
+    }
+
+    if(!m_decoder.isSeekable()) {
         return;
     }
 

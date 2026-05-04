@@ -67,6 +67,7 @@ namespace Fooyin::WaveBar {
 WaveSeekBar::WaveSeekBar(QWidget* parent)
     : QWidget{parent}
     , m_playState{Player::PlayState::Stopped}
+    , m_seekable{false}
     , m_scale{1.0}
     , m_position{0}
     , m_showCursor{true}
@@ -95,6 +96,13 @@ void WaveSeekBar::processData(const WaveformData<float>& waveData)
 void WaveSeekBar::setPlayState(Player::PlayState state)
 {
     m_playState = state;
+}
+
+void WaveSeekBar::setSeekable(bool seekable)
+{
+    if(std::exchange(m_seekable, seekable) != seekable && !seekable) {
+        stopSeeking();
+    }
 }
 
 void WaveSeekBar::setPosition(uint64_t pos)
@@ -275,6 +283,11 @@ void WaveSeekBar::paintEvent(QPaintEvent* event)
 
 void WaveSeekBar::mouseMoveEvent(QMouseEvent* event)
 {
+    if(!m_seekable) {
+        event->ignore();
+        return;
+    }
+
     if(isSeeking() && event->buttons() & Qt::LeftButton) {
         updateMousePosition(event->position().toPoint());
         if(!m_pressPos.isNull() && std::abs(m_pressPos.x() - event->position().x()) > ToolTipDelay) {
@@ -288,6 +301,11 @@ void WaveSeekBar::mouseMoveEvent(QMouseEvent* event)
 
 void WaveSeekBar::mousePressEvent(QMouseEvent* event)
 {
+    if(!m_seekable) {
+        event->ignore();
+        return;
+    }
+
     if(!m_data.empty() && event->button() == Qt::LeftButton) {
         m_pressPos = event->position().toPoint();
         updateMousePosition(event->position().toPoint());
@@ -299,6 +317,11 @@ void WaveSeekBar::mousePressEvent(QMouseEvent* event)
 
 void WaveSeekBar::mouseReleaseEvent(QMouseEvent* event)
 {
+    if(!m_seekable) {
+        event->ignore();
+        return;
+    }
+
     if(event->button() != Qt::LeftButton || !isSeeking()) {
         QWidget::mouseReleaseEvent(event);
         return;
@@ -313,6 +336,11 @@ void WaveSeekBar::mouseReleaseEvent(QMouseEvent* event)
 
 void WaveSeekBar::wheelEvent(QWheelEvent* event)
 {
+    if(!m_seekable) {
+        event->ignore();
+        return;
+    }
+
     if(event->angleDelta().y() < 0) {
         Q_EMIT seekBackward();
     }
@@ -325,6 +353,11 @@ void WaveSeekBar::wheelEvent(QWheelEvent* event)
 
 void WaveSeekBar::keyPressEvent(QKeyEvent* event)
 {
+    if(!m_seekable) {
+        event->ignore();
+        return;
+    }
+
     const auto key = event->key();
 
     if(key == Qt::Key_Right || key == Qt::Key_Up) {
