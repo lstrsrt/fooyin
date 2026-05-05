@@ -105,13 +105,13 @@ bool usesLibraryTreeNodeVariables(QStringView text)
 {
     return text.contains("%trackcount%"_L1, Qt::CaseInsensitive)
         || text.contains("%childcount%"_L1, Qt::CaseInsensitive)
-        || text.contains("\uE000LIBTREE_NODE_TRACKCOUNT\uE001"_L1)
-        || text.contains("\uE000LIBTREE_NODE_CHILDCOUNT\uE001"_L1);
+        || text.contains(u"\uE000LIBTREE_NODE_TRACKCOUNT\uE001"_s)
+        || text.contains(u"\uE000LIBTREE_NODE_CHILDCOUNT\uE001"_s);
 }
 
 bool usesLibraryTreeChildCount(QStringView text)
 {
     return text.contains("%childcount%"_L1, Qt::CaseInsensitive)
-        || text.contains("\uE000LIBTREE_NODE_CHILDCOUNT\uE001"_L1);
+        || text.contains(u"\uE000LIBTREE_NODE_CHILDCOUNT\uE001"_s);
 }
 } // namespace Fooyin
