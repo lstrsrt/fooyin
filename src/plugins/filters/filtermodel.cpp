@@ -158,6 +158,7 @@ public:
     CoverProvider::ThumbnailSize m_decorationSize;
     bool m_showLabels{true};
     Track::Cover m_coverType{Track::Cover::Front};
+    std::optional<ArtworkSourcePreference> m_coverSource{std::nullopt};
     std::vector<int> m_columnOrder;
 
     using ColumnAlignments = std::vector<Qt::Alignment>;
@@ -325,6 +326,11 @@ Track::Cover FilterModel::coverType() const
     return p->m_coverType;
 }
 
+std::optional<ArtworkSourcePreference> FilterModel::coverSource() const
+{
+    return p->m_coverSource;
+}
+
 void FilterModel::setRowHeight(int height)
 {
     p->m_rowHeight = height;
@@ -384,6 +390,14 @@ void FilterModel::setShowLabels(bool show)
 void FilterModel::setCoverType(Track::Cover type)
 {
     if(std::exchange(p->m_coverType, type) != type) {
+        p->dataUpdated({Qt::DecorationRole});
+    }
+}
+
+void FilterModel::setCoverSource(std::optional<ArtworkSourcePreference> source)
+{
+    if(std::exchange(p->m_coverSource, source) != source) {
+        p->m_coverProvider->setSourcePreference(source);
         p->dataUpdated({Qt::DecorationRole});
     }
 }

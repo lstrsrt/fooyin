@@ -182,8 +182,8 @@ public:
     MusicLibrary* m_library;
     LibraryManager* m_libraryManager;
     TrackSelectionController* m_trackSelection;
+    std::shared_ptr<AudioLoader> m_audioLoader;
     EditableLayout* m_editableLayout;
-    CoverProvider m_coverProvider;
     SettingsManager* m_settings;
 
     FilterManager* m_manager;
@@ -204,8 +204,8 @@ FilterControllerPrivate::FilterControllerPrivate(FilterController* self, ActionM
     , m_library{core.library}
     , m_libraryManager{core.libraryManager}
     , m_trackSelection{trackSelection}
+    , m_audioLoader{core.audioLoader}
     , m_editableLayout{editableLayout}
-    , m_coverProvider{core.audioLoader, settings}
     , m_settings{settings}
     , m_manager{new FilterManager(m_self, m_editableLayout, m_self)}
     , m_columnRegistry{new FilterColumnRegistry(settings, m_self)}
@@ -976,7 +976,7 @@ QString FilterController::defaultPlaylistName()
 FilterWidget* FilterController::createFilter()
 {
     auto* widget = new FilterWidget(p->m_actionManager, p->m_columnRegistry, p->m_libraryManager, p->m_library,
-                                    &p->m_coverProvider, p->m_settings);
+                                    p->m_audioLoader, p->m_settings);
 
     widget->setGroup(p->m_defaultId);
     p->attachWidget(widget, p->m_defaultId);
