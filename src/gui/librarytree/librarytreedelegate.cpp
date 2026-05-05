@@ -297,6 +297,8 @@ QSize LibraryTreeDelegate::sizeHint(const QStyleOptionViewItem& option, const QM
         opt.decorationPosition = decPos;
     }
 
+    opt.text.clear();
+
     const QStyle* style  = opt.widget ? opt.widget->style() : QApplication::style();
     const int textGap    = style->pixelMetric(QStyle::PM_FocusFrameHMargin, nullptr, opt.widget) * 2;
     const QSize textSize = richTextSize(opt, index, textGap);
