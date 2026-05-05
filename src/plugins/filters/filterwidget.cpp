@@ -98,7 +98,7 @@ FilterWidget::FilterWidget(ActionManager* actionManager, FilterColumnRegistry* c
     , m_settings{settings}
     , m_view{new FilterView(this)}
     , m_header{new AutoHeaderView(Qt::Horizontal, this)}
-    , m_model{new FilterModel(library, new CoverProvider(std::move(audioLoader), settings), m_settings, this)}
+    , m_model{new FilterModel(library, new CoverProvider(std::move(audioLoader), settings, this), m_settings, this)}
     , m_sortProxy{new FilterSortModel(this)}
     , m_index{-1}
     , m_multipleColumns{false}
