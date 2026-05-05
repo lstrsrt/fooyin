@@ -153,7 +153,6 @@ private:
     ActionManager* m_actionManager;
     FilterColumnRegistry* m_columnRegistry;
     SettingsManager* m_settings;
-    CoverProvider* m_coverProvider;
 
     FilterView* m_view;
     AutoHeaderView* m_header;
