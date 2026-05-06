@@ -611,6 +611,15 @@ TEST_F(ScriptParserTest, MetaTest)
     EXPECT_EQ(u"3.5", m_parser.evaluate(u"%rating%"_s, track));
     EXPECT_EQ(u"0.7", m_parser.evaluate(u"%rating_normalized%"_s, track));
     EXPECT_EQ(u"7", m_parser.evaluate(u"$meta(RATING)"_s, track));
+
+    track.setArtists({u"He"_s, u"She"_s, u"They"_s});
+    track.addExtraTag(u"MOOD"_s, QStringList{u"Calm"_s, u"Bright"_s});
+
+    EXPECT_EQ(u"He, She, They", m_parser.evaluate(u"$meta(artist)"_s, track));
+    EXPECT_EQ(u"She", m_parser.evaluate(u"$meta(artist,1)"_s, track));
+    EXPECT_EQ(u"", m_parser.evaluate(u"$meta(artist,3)"_s, track));
+    EXPECT_EQ(u"Calm, Bright", m_parser.evaluate(u"$meta(mood)"_s, track));
+    EXPECT_EQ(u"Bright", m_parser.evaluate(u"$meta(mood,1)"_s, track));
 }
 
 TEST_F(ScriptParserTest, InfoTest)
@@ -933,6 +942,7 @@ TEST_F(ScriptParserTest, QueryTest)
     EXPECT_EQ(1, m_parser.filter(u"rating>=3"_s, tracks).size());
     EXPECT_EQ(2, m_parser.filter(u"rating>1"_s, tracks).size());
     EXPECT_EQ(1, m_parser.filter(u"rating_normalized>=0.6"_s, tracks).size());
+    EXPECT_EQ(0, m_parser.filter(u"$unknown(duration)=210000"_s, tracks).size());
 
     // Logical operator tests
     EXPECT_EQ(1, m_parser.filter(u"title=Wandering Horizon AND genre MISSING"_s, tracks).size());
@@ -954,6 +964,15 @@ TEST_F(ScriptParserTest, QueryTest)
     EXPECT_EQ(1, m_parser.filter(u"title:wandering hor"_s, tracks).size());
     EXPECT_EQ(0, m_parser.filter(u"title=wandering hor"_s, tracks).size());
     EXPECT_EQ(2, m_parser.filter(u"title:Wa"_s, tracks).size());
+    track1.setArtists({u"Ke$ha"_s});
+    track1.setComment(u"Costs $5 [sale] 100% %artist%"_s);
+    tracks[0] = track1;
+    EXPECT_EQ(1, m_parser.filter(u"Ke$ha"_s, tracks).size());
+    EXPECT_EQ(1, m_parser.filter(u"$5"_s, tracks).size());
+    EXPECT_EQ(1, m_parser.filter(u"$"_s, tracks).size());
+    EXPECT_EQ(1, m_parser.filter(u"[sale]"_s, tracks).size());
+    EXPECT_EQ(1, m_parser.filter(u"100%"_s, tracks).size());
+    EXPECT_EQ(1, m_parser.filter(u"%artist%"_s, tracks).size());
 
     // Date comparisons
     EXPECT_EQ(1, m_parser.filter(u"date BEFORE 2000"_s, tracks).size());

@@ -189,6 +189,27 @@ bool isQueryExpression(Fooyin::Expr::Type type)
 
     return false;
 }
+
+Fooyin::ParsedScript makeLiteralQuery(const QString& input)
+{
+    Fooyin::ParsedScript script;
+    script.input   = input;
+    script.cacheId = nextParsedScriptId().fetch_add(1, std::memory_order_relaxed);
+    script.expressions.emplace_back(Fooyin::Expr::Literal, input.trimmed());
+    return script;
+}
+
+bool canEvaluateAsQuery(const Fooyin::ParsedScript& script)
+{
+    if(!script.isValid()) {
+        return false;
+    }
+
+    return std::ranges::all_of(script.expressions, [](const Fooyin::Expression& expr) {
+        return expr.type == Fooyin::Expr::Literal || expr.type == Fooyin::Expr::QuotedLiteral
+            || isQueryExpression(expr.type);
+    });
+}
 } // namespace
 
 namespace Fooyin {
@@ -2199,7 +2220,10 @@ TrackList ScriptParser::filter(const QString& input, const TrackList& tracks)
         return {};
     }
 
-    const auto script = parseQuery(input);
+    auto script = parseQuery(input);
+    if(!canEvaluateAsQuery(script)) {
+        script = makeLiteralQuery(input);
+    }
     return filter(script, tracks);
 }
 
@@ -2220,7 +2244,10 @@ PlaylistTrackList ScriptParser::filter(const QString& input, const PlaylistTrack
         return {};
     }
 
-    const auto script = parseQuery(input);
+    auto script = parseQuery(input);
+    if(!canEvaluateAsQuery(script)) {
+        script = makeLiteralQuery(input);
+    }
     return filter(script, tracks);
 }
 
