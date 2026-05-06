@@ -21,6 +21,8 @@ create_fooyin_plugin_internal(
             tagfilloperation.h
             tagfilldialog.cpp
             tagfilldialog.h
+            tageditorpanel.cpp
+            tageditorpanel.h
             tagfillpreviewmodel.cpp
             tagfillpreviewmodel.h
             tageditorplugin.cpp
