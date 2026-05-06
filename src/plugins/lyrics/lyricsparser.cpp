@@ -210,14 +210,11 @@ Token timestamp(Fooyin::Lyrics::Lyrics& lyrics, LineContext& context)
         milliseconds *= 10;
     }
 
-    uint64_t time = ((minutes * 60 + seconds) * 1000) + milliseconds;
-
-    // Apply signed offset (may be negative). Clamp to zero to avoid underflow.
-    int64_t adjusted = static_cast<int64_t>(time) + static_cast<int64_t>(lyrics.offset);
-    if(adjusted < 0) {
-        adjusted = 0;
-    }
-    time = static_cast<uint64_t>(adjusted);
+    uint64_t time = (((minutes * 60) + seconds) * 1000) + milliseconds;
+    // LRC offset is a playback correction: positive values make lyrics appear earlier
+    int64_t adjusted = static_cast<int64_t>(time) - lyrics.offset;
+    adjusted         = std::max<int64_t>(adjusted, 0);
+    time             = static_cast<uint64_t>(adjusted);
 
     Token token;
     token.type      = isWord ? TokWordTimestamp : TokTimestamp;
