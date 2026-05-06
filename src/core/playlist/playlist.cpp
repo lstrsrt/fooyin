@@ -777,12 +777,28 @@ int PlaylistPrivate::getNextIndexFrom(const int currentIndex, const int delta, c
 {
     NavigationState prevState = navigationState();
 
+    const bool canKeepTrackShufflePreview
+        = onlyCheck && (mode & Playlist::ShuffleTracks) && prevState.trackShuffleOrder.empty();
+    const bool canKeepAlbumShufflePreview
+        = onlyCheck && (mode & Playlist::ShuffleAlbums) && prevState.albumShuffleOrder.empty();
+
     m_currentTrackIndex = currentIndex;
     syncShuffleStateToCurrentTrack();
 
-    const int nextIndex = getNextIndex(delta, mode, onlyCheck);
+    const int nextIndex          = getNextIndex(delta, mode, onlyCheck);
+    NavigationState previewState = navigationState();
 
     restoreNavigationState(std::move(prevState));
+
+    if(canKeepTrackShufflePreview && !previewState.trackShuffleOrder.empty()) {
+        m_trackShuffleIndex = previewState.trackShuffleIndex;
+        m_trackShuffleOrder = std::move(previewState.trackShuffleOrder);
+    }
+    else if(canKeepAlbumShufflePreview && !previewState.albumShuffleOrder.empty()) {
+        m_albumShuffleIndex = previewState.albumShuffleIndex;
+        m_trackInAlbumIndex = previewState.trackInAlbumIndex;
+        m_albumShuffleOrder = std::move(previewState.albumShuffleOrder);
+    }
 
     return nextIndex;
 }

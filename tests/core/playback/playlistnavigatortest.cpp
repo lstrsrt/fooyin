@@ -154,4 +154,32 @@ TEST(PlaylistNavigatorTest, ShufflePreviewFromIndexUsesThatTrackAsTheAnchor)
     ASSERT_TRUE(syncedStatePreview.isValid());
     EXPECT_NE(syncedStatePreview.indexInPlaylist, secondPreview.indexInPlaylist);
 }
+
+TEST(PlaylistNavigatorTest, FirstShufflePreviewSeedsOrderUsedByAdvance)
+{
+    SettingsManager settings{QDir::tempPath() + u"/fooyin_playlistnavigator_shuffle_preview_seed_test.ini"_s};
+    auto playlist = PlaylistTestUtils::createPlaylist(u"ShufflePreviewSeed"_s, &settings);
+    ASSERT_TRUE(playlist);
+
+    TrackList tracks;
+    tracks.reserve(50);
+    for(int i{0}; i < 50; ++i) {
+        tracks.emplace_back(makeTrack(u"/tmp/shuffle-preview-seed-%1.flac"_s.arg(i), 0, 2000));
+    }
+
+    PlaylistTestUtils::replaceTracks(*playlist, tracks);
+    PlaylistTestUtils::changeCurrentIndex(*playlist, 17);
+
+    const auto mode = Playlist::PlayModes(Playlist::ShuffleTracks | Playlist::RepeatPlaylist);
+
+    const int previewIndex = playlist->nextIndexFrom(17, 1, mode);
+    ASSERT_GE(previewIndex, 0);
+    ASSERT_LT(previewIndex, playlist->trackCount());
+    EXPECT_EQ(playlist->currentTrackIndex(), 17);
+
+    const Track advancedTrack = playlist->nextTrackChangeFrom(17, 1, mode);
+    ASSERT_TRUE(advancedTrack.isValid());
+    EXPECT_EQ(playlist->currentTrackIndex(), previewIndex);
+    EXPECT_EQ(advancedTrack.uniqueFilepath(), tracks.at(previewIndex).uniqueFilepath());
+}
 } // namespace Fooyin::Testing
