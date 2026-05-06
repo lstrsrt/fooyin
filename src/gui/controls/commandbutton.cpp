@@ -43,6 +43,7 @@ using namespace Qt::StringLiterals;
 
 constexpr auto CommandIdKey   = "CommandButton/CommandId";
 constexpr auto TextKey        = "CommandButton/Text";
+constexpr auto IconNameKey    = "CommandButton/IconName";
 constexpr auto IconPathKey    = "CommandButton/IconPath";
 constexpr auto ButtonStyleKey = "CommandButton/ToolButtonStyle";
 
@@ -82,6 +83,17 @@ QString commandDescription(const QString& commandId)
     }
 
     return {};
+}
+
+QIcon themeIcon(const QString& iconName)
+{
+    const QString trimmed = iconName.trimmed();
+    if(trimmed.isEmpty()) {
+        return {};
+    }
+
+    const QIcon icon = Fooyin::Gui::iconFromTheme(trimmed);
+    return icon.isNull() ? QIcon{} : icon;
 }
 } // namespace
 
@@ -153,6 +165,7 @@ CommandButton::ConfigData CommandButton::defaultConfig() const
 
     config.commandId       = m_settings->fileValue(CommandIdKey, config.commandId).toString().trimmed();
     config.text            = m_settings->fileValue(TextKey, config.text).toString();
+    config.iconName        = m_settings->fileValue(IconNameKey, config.iconName).toString().trimmed();
     config.iconPath        = m_settings->fileValue(IconPathKey, config.iconPath).toString().trimmed();
     config.toolButtonStyle = m_settings->fileValue(ButtonStyleKey, config.toolButtonStyle).toInt();
 
@@ -166,15 +179,13 @@ const CommandButton::ConfigData& CommandButton::currentConfig() const
 
 QIcon CommandButton::previewIcon(const ConfigData& config) const
 {
-    QIcon configuredIcon = customIcon(config.iconPath);
-    if(!configuredIcon.isNull()) {
-        return configuredIcon;
+    QIcon configuredIcon = themeIcon(config.iconName);
+    if(configuredIcon.isNull()) {
+        configuredIcon = customIcon(config.iconPath);
     }
 
-    const bool customIconRequested = !config.iconPath.trimmed().isEmpty();
-
-    if(customIconRequested) {
-        return fallbackIcon(config.commandId);
+    if(!configuredIcon.isNull()) {
+        return configuredIcon;
     }
 
     return fallbackIcon(config.commandId);
@@ -184,6 +195,7 @@ void CommandButton::applyConfig(const ConfigData& config)
 {
     m_config.commandId       = config.commandId.trimmed();
     m_config.text            = config.text;
+    m_config.iconName        = config.iconName.trimmed();
     m_config.iconPath        = config.iconPath.trimmed();
     m_config.toolButtonStyle = config.toolButtonStyle;
 
@@ -196,6 +208,7 @@ void CommandButton::saveDefaults(const ConfigData& config) const
 {
     m_settings->fileSet(CommandIdKey, config.commandId.trimmed());
     m_settings->fileSet(TextKey, config.text);
+    m_settings->fileSet(IconNameKey, config.iconName.trimmed());
     m_settings->fileSet(IconPathKey, config.iconPath.trimmed());
     m_settings->fileSet(ButtonStyleKey, config.toolButtonStyle);
 }
@@ -204,6 +217,7 @@ void CommandButton::clearSavedDefaults() const
 {
     m_settings->fileRemove(CommandIdKey);
     m_settings->fileRemove(TextKey);
+    m_settings->fileRemove(IconNameKey);
     m_settings->fileRemove(IconPathKey);
     m_settings->fileRemove(ButtonStyleKey);
 }
@@ -262,6 +276,9 @@ CommandButton::ConfigData CommandButton::configFromLayout(const QJsonObject& lay
     if(layout.contains("Text"_L1)) {
         config.text = layout.value("Text"_L1).toString();
     }
+    if(layout.contains("IconName"_L1)) {
+        config.iconName = layout.value("IconName"_L1).toString().trimmed();
+    }
     if(layout.contains("IconPath"_L1)) {
         config.iconPath = layout.value("IconPath"_L1).toString().trimmed();
     }
@@ -276,6 +293,7 @@ void CommandButton::saveConfigToLayout(const ConfigData& config, QJsonObject& la
 {
     layout["CommandId"_L1]       = config.commandId.trimmed();
     layout["Text"_L1]            = config.text;
+    layout["IconName"_L1]        = config.iconName.trimmed();
     layout["IconPath"_L1]        = config.iconPath.trimmed();
     layout["ToolButtonStyle"_L1] = config.toolButtonStyle;
 }
@@ -309,7 +327,14 @@ void CommandButton::rebindAction()
 
 void CommandButton::updateButton()
 {
-    const QIcon configuredIcon     = customIcon(m_config.iconPath);
+    QIcon configuredIcon              = themeIcon(m_config.iconName);
+    const bool themeIconRequested     = !m_config.iconName.isEmpty();
+    const bool usingThemeIconFallback = themeIconRequested && configuredIcon.isNull();
+
+    if(configuredIcon.isNull()) {
+        configuredIcon = customIcon(m_config.iconPath);
+    }
+
     const bool customIconRequested = !m_config.iconPath.isEmpty();
     const bool usingCustomFallback = customIconRequested && configuredIcon.isNull();
     const bool canExecute          = m_commandHandler && m_commandHandler->canExecute(m_config.commandId);
@@ -319,7 +344,7 @@ void CommandButton::updateButton()
 
     const QString description = currentDescription(m_config.commandId, m_config.text);
     m_button->setText(description);
-    m_button->setToolTip(currentToolTip(usingCustomFallback));
+    m_button->setToolTip(currentToolTip(usingThemeIconFallback, usingCustomFallback));
     m_button->setStatusTip(m_button->toolTip());
     m_button->setWhatsThis(m_button->toolTip());
     m_button->updateGeometry();
@@ -416,7 +441,7 @@ QString CommandButton::currentDescription(const QString& commandId, const QStrin
     return commandId;
 }
 
-QString CommandButton::currentToolTip(bool usingFallbackForCustomIcon) const
+QString CommandButton::currentToolTip(bool usingFallbackForThemeIcon, bool usingFallbackForCustomIcon) const
 {
     QString toolTip;
 
@@ -437,6 +462,10 @@ QString CommandButton::currentToolTip(bool usingFallbackForCustomIcon) const
 
     if(!m_config.commandId.isEmpty() && !canExecute) {
         toolTip += u"\n"_s + tr("Command is currently unavailable.");
+    }
+
+    if(usingFallbackForThemeIcon) {
+        toolTip += u"\n"_s + tr("Built-in icon missing.");
     }
 
     if(usingFallbackForCustomIcon) {

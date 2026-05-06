@@ -47,6 +47,8 @@ protected:
 private:
     void browseForIcon();
     void clearIcon();
+    void builtInIconChanged();
+    void customIconPathChanged(const QString& path);
     void updatePreview();
 
     struct CommandOption
@@ -60,6 +62,7 @@ private:
 
     [[nodiscard]] std::vector<CommandOption> buildCommandOptions() const;
     [[nodiscard]] QString currentCommandId() const;
+    [[nodiscard]] QString currentIconName() const;
 
     ActionManager* m_actionManager;
 
@@ -67,6 +70,7 @@ private:
     QLineEdit* m_text;
     QComboBox* m_buttonStyle;
     QPushButton* m_iconPreview;
+    ExpandingComboBox* m_iconName;
     QLineEdit* m_iconPath;
     QAction* m_browseIconAction;
     QAction* m_clearIconAction;

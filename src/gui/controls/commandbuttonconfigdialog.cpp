@@ -37,6 +37,7 @@
 #include <QLabel>
 #include <QLineEdit>
 #include <QPushButton>
+#include <QSignalBlocker>
 
 #include <vector>
 
@@ -78,6 +79,7 @@ CommandButtonConfigDialog::CommandButtonConfigDialog(CommandButton* button, Acti
     , m_text{new QLineEdit(this)}
     , m_buttonStyle{new QComboBox(this)}
     , m_iconPreview{new QPushButton(this)}
+    , m_iconName{new ExpandingComboBox(this)}
     , m_iconPath{new QLineEdit(this)}
     , m_browseIconAction{new QAction(this)}
     , m_clearIconAction{new QAction(this)}
@@ -96,12 +98,14 @@ CommandButtonConfigDialog::CommandButtonConfigDialog(CommandButton* button, Acti
     QObject::connect(m_iconPreview, &QAbstractButton::clicked, this, &CommandButtonConfigDialog::browseForIcon);
     QObject::connect(m_browseIconAction, &QAction::triggered, this, &CommandButtonConfigDialog::browseForIcon);
     QObject::connect(m_clearIconAction, &QAction::triggered, this, &CommandButtonConfigDialog::clearIcon);
+    QObject::connect(m_iconName, qOverload<int>(&QComboBox::currentIndexChanged), this,
+                     &CommandButtonConfigDialog::builtInIconChanged);
     QObject::connect(m_command, qOverload<int>(&QComboBox::currentIndexChanged), this,
                      &CommandButtonConfigDialog::updatePreview);
     if(auto* lineEdit = m_command->lineEdit()) {
         QObject::connect(lineEdit, &QLineEdit::textChanged, this, &CommandButtonConfigDialog::updatePreview);
     }
-    QObject::connect(m_iconPath, &QLineEdit::textChanged, this, &CommandButtonConfigDialog::updatePreview);
+    QObject::connect(m_iconPath, &QLineEdit::textChanged, this, &CommandButtonConfigDialog::customIconPathChanged);
 
     m_iconPreview->setIconSize({64, 64});
     m_iconPreview->setFixedSize(92, 92);
@@ -114,6 +118,12 @@ CommandButtonConfigDialog::CommandButtonConfigDialog(CommandButton* button, Acti
     m_clearIconAction->setToolTip(tr("Clear custom icon"));
     m_iconPath->addAction(m_clearIconAction, QLineEdit::TrailingPosition);
     m_iconPath->addAction(m_browseIconAction, QLineEdit::TrailingPosition);
+
+    m_iconName->addItem(tr("Use command icon"), QString{});
+    for(const QString& iconName : Gui::availableThemeIcons()) {
+        m_iconName->addItem(Gui::iconFromTheme(iconName), iconName, iconName);
+    }
+    m_iconName->setSizeAdjustPolicy(QComboBox::AdjustToMinimumContentsLengthWithIcon);
 
     auto* commandGroup  = new QGroupBox(tr("Button"), this);
     auto* commandLayout = new QGridLayout(commandGroup);
@@ -136,14 +146,17 @@ CommandButtonConfigDialog::CommandButtonConfigDialog(CommandButton* button, Acti
     auto* previewLabel = new QLabel(tr("Preview") + u":"_s, this);
 
     auto* iconHint = new QLabel(
-        tr("Click the image to choose a custom icon. If none is set, the button uses the command's default icon."),
+        tr("Choose a built-in icon or custom image. If none is set, the button uses the command's default icon."),
         this);
     iconHint->setWordWrap(true);
 
     row = 0;
     iconLayout->addWidget(previewLabel, row, 0, Qt::AlignRight | Qt::AlignVCenter);
     iconLayout->addWidget(m_iconPreview, row++, 1, Qt::AlignLeft | Qt::AlignVCenter);
-    iconLayout->addWidget(m_iconPath, row++, 0, 1, 3);
+    iconLayout->addWidget(new QLabel(tr("Built-in") + u":"_s, this), row, 0);
+    iconLayout->addWidget(m_iconName, row++, 1, 1, 2);
+    iconLayout->addWidget(new QLabel(tr("Custom") + u":"_s, this), row, 0);
+    iconLayout->addWidget(m_iconPath, row++, 1, 1, 2);
     iconLayout->addWidget(iconHint, row++, 0, 1, 3);
     iconLayout->setColumnStretch(1, 1);
 
@@ -160,6 +173,7 @@ CommandButtonConfigDialog::CommandButtonConfigDialog(CommandButton* button, Acti
     }
     m_text->setPlaceholderText(tr("Use command label"));
     m_iconPath->setPlaceholderText(tr("No custom icon selected"));
+    m_iconName->resizeDropDown();
 
     const auto commands = buildCommandOptions();
     for(const auto& choice : commands) {
@@ -177,13 +191,36 @@ void CommandButtonConfigDialog::browseForIcon()
     const QString selectedIcon
         = QFileDialog::getOpenFileName(this, tr("Select Icon"), m_iconPath->text(), imageFilter());
     if(!selectedIcon.isEmpty()) {
+        const QSignalBlocker iconNameBlocker{m_iconName};
+        m_iconName->setCurrentIndex(0);
         m_iconPath->setText(selectedIcon);
     }
 }
 
 void CommandButtonConfigDialog::clearIcon()
 {
+    m_iconName->setCurrentIndex(0);
     m_iconPath->clear();
+}
+
+void CommandButtonConfigDialog::builtInIconChanged()
+{
+    if(!currentIconName().isEmpty() && !m_iconPath->text().isEmpty()) {
+        const QSignalBlocker pathBlocker{m_iconPath};
+        m_iconPath->clear();
+    }
+
+    updatePreview();
+}
+
+void CommandButtonConfigDialog::customIconPathChanged(const QString& path)
+{
+    if(!path.trimmed().isEmpty() && !currentIconName().isEmpty()) {
+        const QSignalBlocker iconNameBlocker{m_iconName};
+        m_iconName->setCurrentIndex(0);
+    }
+
+    updatePreview();
 }
 
 void CommandButtonConfigDialog::updatePreview()
@@ -191,11 +228,12 @@ void CommandButtonConfigDialog::updatePreview()
     const CommandButton::ConfigData previewConfig{
         .commandId = currentCommandId(),
         .text      = m_text->text(),
+        .iconName  = currentIconName(),
         .iconPath  = m_iconPath->text().trimmed(),
     };
 
     m_iconPreview->setIcon(widget()->previewIcon(previewConfig));
-    m_clearIconAction->setEnabled(!previewConfig.iconPath.isEmpty());
+    m_clearIconAction->setEnabled(!previewConfig.iconName.isEmpty() || !previewConfig.iconPath.isEmpty());
 }
 
 std::vector<CommandButtonConfigDialog::CommandOption> CommandButtonConfigDialog::buildCommandOptions() const
@@ -279,6 +317,11 @@ QString CommandButtonConfigDialog::currentCommandId() const
     return text;
 }
 
+QString CommandButtonConfigDialog::currentIconName() const
+{
+    return m_iconName->currentData().toString().trimmed();
+}
+
 void CommandButtonConfigDialog::setConfig(const CommandButton::ConfigData& config)
 {
     if(const int index = m_command->findData(config.commandId); index >= 0) {
@@ -289,7 +332,15 @@ void CommandButtonConfigDialog::setConfig(const CommandButton::ConfigData& confi
         m_command->setEditText(config.commandId);
     }
 
-    m_iconPath->setText(config.iconPath);
+    {
+        const QSignalBlocker iconNameBlocker{m_iconName};
+        const QSignalBlocker iconPathBlocker{m_iconPath};
+
+        const int iconIndex = m_iconName->findData(config.iconName);
+        m_iconName->setCurrentIndex(iconIndex >= 0 ? iconIndex : 0);
+        m_iconPath->setText(iconIndex > 0 ? QString{} : config.iconPath);
+    }
+
     m_text->setText(config.text);
     if(const int index = m_buttonStyle->findData(config.toolButtonStyle); index >= 0) {
         m_buttonStyle->setCurrentIndex(index);
@@ -302,6 +353,7 @@ CommandButton::ConfigData CommandButtonConfigDialog::config() const
     return {
         .commandId       = currentCommandId(),
         .text            = m_text->text(),
+        .iconName        = currentIconName(),
         .iconPath        = m_iconPath->text().trimmed(),
         .toolButtonStyle = m_buttonStyle->currentData().toInt(),
     };

@@ -46,6 +46,7 @@ public:
     {
         QString commandId;
         QString text;
+        QString iconName;
         QString iconPath;
         int toolButtonStyle{Qt::ToolButtonIconOnly};
     };
@@ -87,7 +88,7 @@ private:
     [[nodiscard]] QIcon customIcon(const QString& iconPath) const;
     [[nodiscard]] QIcon fallbackIcon(const QString& commandId) const;
     [[nodiscard]] QString currentDescription(const QString& commandId, const QString& text) const;
-    [[nodiscard]] QString currentToolTip(bool usingFallbackForCustomIcon) const;
+    [[nodiscard]] QString currentToolTip(bool usingFallbackForThemeIcon, bool usingFallbackForCustomIcon) const;
     [[nodiscard]] QString resolvedIconPath(const QString& iconPath) const;
     [[nodiscard]] QString actionDescription(const QString& commandId) const;
 

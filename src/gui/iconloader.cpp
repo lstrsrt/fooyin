@@ -17,13 +17,18 @@
  *
  */
 
+#include <gui/guiconstants.h>
+#include <gui/iconloader.h>
+
 #include <QAction>
+#include <QDir>
 #include <QFile>
 #include <QIcon>
 #include <QObject>
 #include <QPixmap>
 #include <QPixmapCache>
-#include <gui/iconloader.h>
+#include <QSet>
+#include <QStringList>
 
 using namespace Qt::StringLiterals;
 
@@ -125,6 +130,25 @@ QIcon iconFromTheme(const QString& icon)
 QIcon iconFromTheme(const char* icon)
 {
     return iconFromTheme(QString::fromLatin1(icon));
+}
+
+QStringList availableThemeIcons()
+{
+    QSet<QString> icons;
+
+    for(const QString& theme : {QString::fromLatin1(Fooyin::Constants::LightIconTheme),
+                                QString::fromLatin1(Fooyin::Constants::DarkIconTheme)}) {
+        const QDir iconDir{u":/icons/%1/scalable/actions"_s.arg(theme)};
+        const QStringList entries = iconDir.entryList({u"*.svg"_s}, QDir::Files);
+
+        for(const QString& entry : entries) {
+            icons.insert(entry.chopped(4));
+        }
+    }
+
+    QStringList sorted = icons.values();
+    sorted.sort(Qt::CaseInsensitive);
+    return sorted;
 }
 
 void setThemeIcon(QAction* action, const QString& icon)
