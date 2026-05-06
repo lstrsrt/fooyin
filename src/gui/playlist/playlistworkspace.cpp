@@ -47,9 +47,10 @@ void PlaylistWorkspace::restoreLastPlaylist(PlaylistHandler* handler, PlayerCont
 
     if(lastId >= 0) {
         m_currentPlaylist = handler->playlistByDbId(lastId);
-        if(!m_currentPlaylist) {
-            m_currentPlaylist = handler->playlistByIndex(0);
-        }
+    }
+
+    if(!m_currentPlaylist) {
+        m_currentPlaylist = handler->playlistByIndex(0);
     }
 
     if(m_currentPlaylist && !handler->activePlaylist() && playerController->playState() == Player::PlayState::Stopped) {
