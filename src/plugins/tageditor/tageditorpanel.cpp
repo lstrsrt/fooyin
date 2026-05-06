@@ -71,7 +71,7 @@ QString TagEditorPanel::name() const
 
 QString TagEditorPanel::layoutName() const
 {
-    return u"TagEditorPanel"_s;
+    return u"TagEditor"_s;
 }
 
 void TagEditorPanel::saveLayoutData(QJsonObject& layout)
