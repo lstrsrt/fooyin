@@ -52,6 +52,8 @@ public:
     void setHeaderSectionWidths(const std::map<int, double>& widths);
     void setHeaderSectionAlignment(int logical, Qt::Alignment alignment);
 
+    void resizeColumnToContents(int logical);
+
     [[nodiscard]] bool isStretchEnabled() const;
     void setStretchEnabled(bool enabled);
 

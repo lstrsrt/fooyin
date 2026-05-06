@@ -25,6 +25,8 @@
 #include <QLoggingCategory>
 #include <QMenu>
 #include <QMouseEvent>
+#include <QTableView>
+#include <QTreeView>
 
 Q_LOGGING_CATEGORY(AUTO_HEADER, "fy.autoheader")
 
@@ -89,12 +91,16 @@ void AutoHeaderViewPrivate::calculateSectionWidths()
     m_sectionWidths.clear();
 
     const int sectionCount = m_self->count();
-    const int headerWidth  = m_self->width();
+    const int headerSize   = m_self->orientation() == Qt::Horizontal ? m_self->width() : m_self->height();
+
+    if(headerSize <= 0) {
+        return;
+    }
 
     m_sectionWidths.resize(sectionCount);
 
     for(int section{0}; section < sectionCount; ++section) {
-        const auto width         = static_cast<double>(m_self->sectionSize(section)) / headerWidth;
+        const auto width         = static_cast<double>(m_self->sectionSize(section)) / headerSize;
         m_sectionWidths[section] = width;
     }
 }
@@ -148,7 +154,11 @@ void AutoHeaderViewPrivate::updateWidths(const SectionIndexes& sections) const
     }
 
     const int sectionCount = static_cast<int>(m_sectionWidths.size());
-    const int headerWidth  = m_self->width();
+    const int headerSize   = m_self->orientation() == Qt::Horizontal ? m_self->width() : m_self->height();
+
+    if(headerSize <= 0) {
+        return;
+    }
 
     for(int section{0}; section < sectionCount; ++section) {
         const int logical = m_self->logicalIndex(section);
@@ -159,7 +169,7 @@ void AutoHeaderViewPrivate::updateWidths(const SectionIndexes& sections) const
 
         const bool visible           = !m_self->isSectionHidden(logical);
         const double normalisedWidth = m_sectionWidths.at(logical);
-        const int width              = !visible ? 0 : static_cast<int>(normalisedWidth * headerWidth);
+        const int width              = !visible ? 0 : static_cast<int>(normalisedWidth * headerSize);
 
         if(!sections.empty() && !sections.contains(logical)) {
             continue;
@@ -333,7 +343,7 @@ void AutoHeaderView::resetSections()
     const int sectionCount = count();
 
     if(sectionCount > 0) {
-        const int headerWidth = width();
+        const int headerWidth = orientation() == Qt::Horizontal ? width() : height();
 
         const auto width = headerWidth / sectionCount;
 
@@ -455,6 +465,27 @@ void AutoHeaderView::setHeaderSectionAlignment(int logical, Qt::Alignment alignm
     const QModelIndex index = model()->index(0, logical);
     if(index.isValid()) {
         model()->setData(index, alignment.toInt(), Qt::TextAlignmentRole);
+    }
+}
+
+void AutoHeaderView::resizeColumnToContents(int logical)
+{
+    if(orientation() == Qt::Vertical) {
+        return;
+    }
+
+    const auto resizeColumn = [this, logical](const auto& view) {
+        view->resizeColumnToContents(logical);
+        p->calculateSectionWidths();
+        p->normaliseWidths();
+        p->updateWidths();
+    };
+
+    if(auto* tree = qobject_cast<QTreeView*>(parentWidget())) {
+        resizeColumn(tree);
+    }
+    else if(auto* table = qobject_cast<QTableView*>(parentWidget())) {
+        resizeColumn(table);
     }
 }
 
