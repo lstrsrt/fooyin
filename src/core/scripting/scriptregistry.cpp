@@ -102,7 +102,17 @@ QString trackMeta(const Fooyin::ScriptFunctionCallContext& call)
         return formattedRatingStars(*call.subject.track, call.context ? *call.context : Fooyin::ScriptContext{}, true);
     }
 
-    return call.subject.track->metaValue(tag);
+    const QStringList values = call.subject.track->metaValues(tag);
+    if(call.args.size() == 1) {
+        return values.join(", "_L1);
+    }
+
+    bool indexOk{false};
+    const int index = call.args[1].value.toInt(&indexOk);
+    if(!indexOk || index < 0 || std::cmp_greater_equal(index, values.size())) {
+        return {};
+    }
+    return values.at(index);
 }
 
 QString trackInfo(const Fooyin::Track& track, const QStringList& args)
