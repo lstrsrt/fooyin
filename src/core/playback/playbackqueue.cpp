@@ -162,8 +162,9 @@ QueueTracks PlaybackQueue::removeTracks(const QueueTracks& tracks)
     QueueTracks removedTracks;
 
     std::set<QString> tracksToRemove;
-    tracksToRemove.insert_range(
-        std::views::transform(tracks, [](const PlaylistTrack& track) { return track.track.hash(); }));
+    for(const auto& track : tracks) {
+        tracksToRemove.insert(track.track.hash());
+    }
 
     auto matchingTrack = [&tracksToRemove](const PlaylistTrack& track) {
         return tracksToRemove.contains(track.track.hash());
