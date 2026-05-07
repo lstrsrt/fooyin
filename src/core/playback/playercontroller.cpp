@@ -1257,11 +1257,7 @@ void PlayerController::changeCurrentTrack(const PlaylistTrack& track, const Play
         return;
     }
 
-    p->requestTrackChange({
-        .track        = track,
-        .context      = context,
-        .isQueueTrack = false,
-    });
+    p->requestTrackChange({.track = track, .context = context, .isQueueTrack = p->m_queue.containsTrack(track)});
 }
 
 void PlayerController::commitCurrentTrack(const Track& track)
