@@ -683,6 +683,32 @@ void GuiApplicationPrivate::registerActions()
     muteCmd->setCategories(volumeCategory);
     QObject::connect(muteAction, &QAction::triggered, m_mainWindow.get(), [this]() { mute(); });
 
+    auto* clearPlaylistAction = new QAction(GuiApplication::tr("Clear Current Playlist"), m_mainWindow.get());
+    clearPlaylistAction->setStatusTip(GuiApplication::tr("Remove all tracks from the current playlist"));
+    Gui::setThemeIcon(clearPlaylistAction, Constants::Icons::Clear);
+    auto* clearPlaylistCmd = m_actionManager->registerAction(clearPlaylistAction, Constants::Actions::ClearPlaylist);
+    clearPlaylistCmd->setCategories({GuiApplication::tr("Playlist")});
+    clearPlaylistCmd->setAttribute(ProxyAction::UpdateText);
+    QObject::connect(clearPlaylistAction, &QAction::triggered, m_mainWindow.get(),
+                     [this]() { m_playlistController->clearCurrentPlaylist(); });
+
+    auto updateClearPlaylistState = [this, clearPlaylistAction]() {
+        clearPlaylistAction->setEnabled(m_playlistController->canClearCurrentPlaylist());
+    };
+    QObject::connect(m_playlistController.get(), &PlaylistController::playlistsLoaded, m_mainWindow.get(),
+                     updateClearPlaylistState);
+    QObject::connect(m_playlistController.get(), &PlaylistController::currentPlaylistChanged, m_mainWindow.get(),
+                     updateClearPlaylistState);
+    QObject::connect(m_playlistController.get(), &PlaylistController::currentPlaylistUpdated, m_mainWindow.get(),
+                     updateClearPlaylistState);
+    QObject::connect(m_playlistController.get(), &PlaylistController::currentPlaylistTracksPatched, m_mainWindow.get(),
+                     updateClearPlaylistState);
+    QObject::connect(m_playlistController.get(), &PlaylistController::currentPlaylistTracksChanged, m_mainWindow.get(),
+                     updateClearPlaylistState);
+    QObject::connect(m_playlistController.get(), &PlaylistController::currentPlaylistTracksRemoved, m_mainWindow.get(),
+                     updateClearPlaylistState);
+    updateClearPlaylistState();
+
     const QStringList seekCategory = {GuiApplication::tr("Playback"), GuiApplication::tr("Seek")};
 
     auto* seekForwardSmall    = new QAction(GuiApplication::tr("Seek forward (small step)"), m_mainWindow.get());

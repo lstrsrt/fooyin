@@ -98,7 +98,6 @@ private:
     void playStateChanged(Player::PlayState state) const;
     void updateTabIcon(int i, Player::PlayState state) const;
     void createEmptyPlaylist() const;
-    void clearCurrentPlaylist() const;
 
     PlaylistController* m_playlistController;
     PlaylistHandler* m_playlistHandler;

@@ -557,7 +557,7 @@ void PlaylistTabs::setupButtons()
         addButton->setToolTip(tr("Add playlist"));
         addButton->setIcon(Gui::iconFromTheme(Constants::Icons::Add));
         addButton->setAutoRaise(true);
-        QObject::connect(addButton, &ToolButton::pressed, this, [this]() { createEmptyPlaylist(); });
+        QObject::connect(addButton, &ToolButton::pressed, this, &PlaylistTabs::createEmptyPlaylist);
         m_buttonsLayout->addWidget(addButton);
     }
     if(hasClearButton) {
@@ -565,7 +565,8 @@ void PlaylistTabs::setupButtons()
         clearButton->setToolTip(tr("Clear playlist"));
         clearButton->setIcon(Gui::iconFromTheme(Constants::Icons::Clear));
         clearButton->setAutoRaise(true);
-        QObject::connect(clearButton, &ToolButton::pressed, this, [this]() { clearCurrentPlaylist(); });
+        QObject::connect(clearButton, &ToolButton::pressed, m_playlistController,
+                         &PlaylistController::clearCurrentPlaylist);
         m_buttonsLayout->addWidget(clearButton);
     }
 
@@ -652,17 +653,6 @@ void PlaylistTabs::createEmptyPlaylist() const
     if(auto* playlist = m_playlistHandler->createEmptyPlaylist()) {
         m_playlistController->changeCurrentPlaylist(playlist);
     }
-}
-
-void PlaylistTabs::clearCurrentPlaylist() const
-{
-    const int index = m_tabs->currentIndex();
-    if(index < 0) {
-        return;
-    }
-
-    const auto id = m_tabs->tabBar()->tabData(index).value<UId>();
-    m_playlistHandler->clearPlaylistTracks(id);
 }
 
 void PlaylistTabs::playStateChanged(Player::PlayState state) const

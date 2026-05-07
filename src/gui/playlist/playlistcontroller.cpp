@@ -20,6 +20,7 @@
 #include "playlistcontroller.h"
 
 #include "playlistcolumnregistry.h"
+#include "playlistcommands.h"
 #include "playlistuicontroller.h"
 #include "playlistworkspace.h"
 #include "presetregistry.h"
@@ -187,10 +188,21 @@ void PlaylistController::changePlaylistIndex(const UId& playlistId, int index)
     m_handler->changePlaylistIndex(playlistId, index);
 }
 
+bool PlaylistController::canClearCurrentPlaylist() const
+{
+    const auto* currentPlaylist = m_workspace->currentPlaylist();
+    return currentPlaylist && !currentPlaylist->isAutoPlaylist() && currentPlaylist->trackCount() > 0;
+}
+
 void PlaylistController::clearCurrentPlaylist()
 {
     if(auto* currentPlaylist = m_workspace->currentPlaylist()) {
-        m_handler->clearPlaylistTracks(currentPlaylist->id());
+        if(!canClearCurrentPlaylist()) {
+            return;
+        }
+
+        auto* resetCmd = new ResetTracks(m_handler, currentPlaylist->id(), currentPlaylist->playlistTracks(), {});
+        addToHistory(resetCmd);
     }
 }
 

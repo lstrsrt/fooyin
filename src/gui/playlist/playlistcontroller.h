@@ -82,6 +82,7 @@ public:
     void changeCurrentPlaylist(Playlist* playlist);
     void changeCurrentPlaylist(const UId& id);
     void changePlaylistIndex(const UId& playlistId, int index);
+    [[nodiscard]] bool canClearCurrentPlaylist() const;
     void clearCurrentPlaylist();
 
     [[nodiscard]] QString currentSearch(Playlist* playlist) const;
