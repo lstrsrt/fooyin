@@ -143,10 +143,12 @@ QueueTracks PlaybackQueue::removeTracks(const QueueTracks& tracks)
 {
     QueueTracks removedTracks;
 
-    std::set<PlaylistTrack> tracksToRemove{tracks.cbegin(), tracks.cend()};
+    std::set<QString> tracksToRemove;
+    tracksToRemove.insert_range(
+        std::views::transform(tracks, [](const PlaylistTrack& track) { return track.track.hash(); }));
 
     auto matchingTrack = [&tracksToRemove](const PlaylistTrack& track) {
-        return tracksToRemove.contains(track);
+        return tracksToRemove.contains(track.track.hash());
     };
 
     std::ranges::copy_if(m_tracks, std::back_inserter(removedTracks), matchingTrack);
