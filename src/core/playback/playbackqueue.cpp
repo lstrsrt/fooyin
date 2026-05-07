@@ -147,13 +147,13 @@ void PlaybackQueue::replaceTracks(const QueueTracks& tracks)
 
 std::optional<PlaylistTrack> PlaybackQueue::removeFirstMatchingTrack(const PlaylistTrack& track)
 {
-    const auto it = std::ranges::find(m_tracks, track);
-    if(it == m_tracks.end()) {
+    const auto index = getTrackIndex(track);
+    if(index == -1) {
         return {};
     }
 
-    PlaylistTrack removedTrack{*it};
-    m_tracks.erase(it);
+    PlaylistTrack removedTrack{m_tracks.at(index)};
+    m_tracks.erase(m_tracks.begin() + index);
     return removedTrack;
 }
 
