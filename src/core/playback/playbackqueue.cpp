@@ -112,6 +112,24 @@ PlaylistTrack PlaybackQueue::nextTrackChange()
     return track;
 }
 
+int PlaybackQueue::getTrackIndex(const PlaylistTrack& track) const
+{
+    auto it = std::ranges::find_if(
+        m_tracks.cbegin(), m_tracks.cend(),
+        [hash = track.track.hash()](const PlaylistTrack& track) { return hash == track.track.hash(); });
+
+    if(it == m_tracks.cend()) {
+        return -1;
+    }
+
+    return static_cast<int>(std::distance(m_tracks.cbegin(), it));
+}
+
+bool PlaybackQueue::containsTrack(const PlaylistTrack& track) const
+{
+    return getTrackIndex(track) >= 0;
+}
+
 void PlaybackQueue::addTracks(const QueueTracks& tracks, int index)
 {
     if(index >= 0) {

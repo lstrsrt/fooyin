@@ -52,6 +52,8 @@ public:
     [[nodiscard]] PlaylistTrack nextTrack() const;
     PlaylistTrack nextTrackChange();
 
+    [[nodiscard]] int getTrackIndex(const PlaylistTrack& track) const;
+    [[nodiscard]] bool containsTrack(const PlaylistTrack& track) const;
     void addTracks(const QueueTracks& tracks, int index = -1);
     void replaceTracks(const QueueTracks& tracks);
     std::optional<PlaylistTrack> removeFirstMatchingTrack(const PlaylistTrack& track);
