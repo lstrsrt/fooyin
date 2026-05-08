@@ -207,7 +207,13 @@ float parseReplayPeak(const QString& peakStr)
     return ok ? peak : Fooyin::Constants::InvalidPeak;
 }
 
-void parseTag(Fooyin::Track& track, AVDictionaryEntry* tag)
+enum class TagScope : uint8_t
+{
+    Global,
+    Track
+};
+
+void parseTag(Fooyin::Track& track, const AVDictionaryEntry* tag, TagScope scope, int chapterCount)
 {
     if(strcasecmp(tag->key, "album") == 0) {
         track.setAlbum(convertString(tag->value));
@@ -219,7 +225,12 @@ void parseTag(Fooyin::Track& track, AVDictionaryEntry* tag)
         track.setAlbumArtists({convertString(tag->value)});
     }
     else if(strcasecmp(tag->key, "title") == 0) {
-        track.setTitle(convertString(tag->value));
+        if(scope == TagScope::Global && chapterCount > 1 && track.album().isEmpty()) {
+            track.setAlbum(convertString(tag->value));
+        }
+        else {
+            track.setTitle(convertString(tag->value));
+        }
     }
     else if(strcasecmp(tag->key, "genre") == 0) {
         track.setGenres({convertString(tag->value)});
@@ -286,6 +297,24 @@ void parseTag(Fooyin::Track& track, AVDictionaryEntry* tag)
     }
     else if(strcasecmp(tag->key, "REPLAYGAIN_ALBUM_PEAK") == 0) {
         track.setRGAlbumPeak(parseReplayPeak(convertString(tag->value)));
+    }
+    else if(strcasecmp(tag->key, "REPLAYGAIN_GAIN") == 0) {
+        const float gain = parseReplayGain(convertString(tag->value));
+        if(scope == TagScope::Global) {
+            track.setRGAlbumGain(gain);
+        }
+        else {
+            track.setRGTrackGain(gain);
+        }
+    }
+    else if(strcasecmp(tag->key, "REPLAYGAIN_PEAK") == 0) {
+        const float peak = parseReplayPeak(convertString(tag->value));
+        if(scope == TagScope::Global) {
+            track.setRGAlbumPeak(peak);
+        }
+        else {
+            track.setRGTrackPeak(peak);
+        }
     }
     else {
         track.addExtraTag(convertString(tag->key).toUpper(), convertString(tag->value));
@@ -946,7 +975,8 @@ public:
             m_ioContext.reset();
         }
 
-        m_stream = {};
+        m_stream       = {};
+        m_chapterCount = 0;
     }
 
     bool setup(const AudioSource& source)
@@ -962,12 +992,21 @@ public:
         }
 
         m_stream = Utils::findAudioStream(m_context.get());
-        return m_stream.isValid();
+        if(!m_stream.isValid()) {
+            return false;
+        }
+
+        if(m_context->nb_chapters >= 1) {
+            m_chapterCount = static_cast<int>(m_context->nb_chapters);
+        }
+
+        return true;
     }
 
     IOContextPtr m_ioContext;
     FormatContextPtr m_context;
     Stream m_stream;
+    int m_chapterCount{0};
 };
 
 FFmpegReader::FFmpegReader()
@@ -990,6 +1029,11 @@ bool FFmpegReader::canReadCover() const
 bool FFmpegReader::canWriteMetaData() const
 {
     return false;
+}
+
+int FFmpegReader::subsongCount() const
+{
+    return p->m_chapterCount > 1 ? p->m_chapterCount : 1;
 }
 
 bool FFmpegReader::init(const AudioSource& source)
@@ -1047,7 +1091,7 @@ bool FFmpegReader::readTrack(const AudioSource& /*source*/, Track& track)
             duration = p->m_context->duration;
             timeBase = TimeBaseAv;
         }
-        const uint64_t durationMs = av_rescale_q(duration, timeBase, TimeBaseMs);
+        const auto durationMs = static_cast<uint64_t>(av_rescale_q(duration, timeBase, TimeBaseMs));
         track.setDuration(durationMs);
     }
 
@@ -1059,9 +1103,39 @@ bool FFmpegReader::readTrack(const AudioSource& /*source*/, Track& track)
         track.setBitrate(bitrate);
     }
 
-    AVDictionaryEntry* tag{nullptr};
+    const AVDictionaryEntry* tag{nullptr};
     while((tag = av_dict_get(p->m_context->metadata, "", tag, AV_DICT_IGNORE_SUFFIX))) {
-        parseTag(track, tag);
+        parseTag(track, tag, TagScope::Global, p->m_chapterCount);
+    }
+
+    const AVDictionaryEntry* streamTag{nullptr};
+    while((streamTag = av_dict_get(avStream->metadata, "", streamTag, AV_DICT_IGNORE_SUFFIX))) {
+        parseTag(track, streamTag, TagScope::Track, p->m_chapterCount);
+    }
+
+    const int subsong = track.subsong();
+    if(p->m_chapterCount > 1 && subsong >= 0 && subsong < p->m_chapterCount) {
+        const AVChapter* chapter = p->m_context->chapters[subsong];
+
+        const auto startMs = static_cast<uint64_t>(av_rescale_q(chapter->start, chapter->time_base, TimeBaseMs));
+        const auto endMs   = static_cast<uint64_t>(av_rescale_q(chapter->end, chapter->time_base, TimeBaseMs));
+
+        track.setOffset(startMs);
+
+        // Set default track number before parsing chapter tags
+        track.setTrackNumber(QString::number(subsong + 1));
+
+        // Read chapter-level metadata (overrides container tags where defined)
+        const AVDictionaryEntry* chapterTag{nullptr};
+        while((chapterTag = av_dict_get(chapter->metadata, "", chapterTag, AV_DICT_IGNORE_SUFFIX))) {
+            parseTag(track, chapterTag, TagScope::Track, p->m_chapterCount);
+        }
+
+        // Ensure chapter timing and totals are authoritative
+        track.setDuration(endMs - startMs);
+        track.setTrackTotal(QString::number(p->m_chapterCount));
+
+        track.setIsChapter(true);
     }
 
     return true;
