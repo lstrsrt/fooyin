@@ -34,6 +34,11 @@ AudioDecoder::AudioDecoder()
 
 AudioDecoder::~AudioDecoder() = default;
 
+QStringList AudioDecoder::preferredExtensions() const
+{
+    return {};
+}
+
 AudioDecoder::PlaybackHints AudioDecoder::playbackHints() const
 {
     return p->playbackHints;
@@ -65,6 +70,11 @@ int AudioDecoder::bitrate() const
 }
 
 void AudioDecoder::start() { }
+
+QStringList AudioReader::preferredExtensions() const
+{
+    return {};
+}
 
 bool AudioReader::canWriteCover() const
 {

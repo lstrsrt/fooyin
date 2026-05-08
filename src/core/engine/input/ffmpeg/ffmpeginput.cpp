@@ -99,6 +99,15 @@ QStringList fileExtensions(bool allSupported)
     return extensions;
 }
 
+QStringList ffmpegPreferredExtensions()
+{
+    const Fooyin::FySettings settings;
+    return settings
+        .value(Fooyin::Settings::Core::Internal::FFmpegPriorityExtensions,
+               Fooyin::Settings::Core::Internal::defaultFFmpegPriorityExtensions())
+        .toStringList();
+}
+
 QString getCodec(AVCodecID codec)
 {
     switch(codec) {
@@ -860,6 +869,11 @@ QStringList FFmpegDecoder::extensions() const
     return fileExtensions(settings.value(Settings::Core::Internal::FFmpegAllExtensions).toBool());
 }
 
+QStringList FFmpegDecoder::preferredExtensions() const
+{
+    return ffmpegPreferredExtensions();
+}
+
 int FFmpegDecoder::bitrate() const
 {
     return p->m_bitrate;
@@ -1019,6 +1033,11 @@ QStringList FFmpegReader::extensions() const
 {
     const FySettings settings;
     return fileExtensions(settings.value(Settings::Core::Internal::FFmpegAllExtensions).toBool());
+}
+
+QStringList FFmpegReader::preferredExtensions() const
+{
+    return ffmpegPreferredExtensions();
 }
 
 bool FFmpegReader::canReadCover() const

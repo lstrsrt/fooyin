@@ -44,6 +44,13 @@ FyStateSettings::FyStateSettings(QObject* parent)
     : QSettings{Core::statePath(), QSettings::IniFormat, parent}
 { }
 
+namespace Settings::Core::Internal {
+QStringList defaultFFmpegPriorityExtensions()
+{
+    return {u"m4a"_s, u"m4b"_s, u"mp4"_s, u"mka"_s, u"mkv"_s};
+}
+} // namespace Settings::Core::Internal
+
 CoreSettings::CoreSettings(SettingsManager* settingsManager)
     : m_settings{settingsManager}
 {

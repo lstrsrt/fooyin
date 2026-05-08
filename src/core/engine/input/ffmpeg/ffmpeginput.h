@@ -40,6 +40,7 @@ public:
     ~FFmpegDecoder() override;
 
     [[nodiscard]] QStringList extensions() const override;
+    [[nodiscard]] QStringList preferredExtensions() const override;
     [[nodiscard]] int bitrate() const override;
 
     std::optional<AudioFormat> init(const AudioSource& source, const Track& track, DecoderOptions options) override;
@@ -65,6 +66,7 @@ public:
     ~FFmpegReader() override;
 
     [[nodiscard]] QStringList extensions() const override;
+    [[nodiscard]] QStringList preferredExtensions() const override;
     [[nodiscard]] bool canReadCover() const override;
     [[nodiscard]] bool canWriteMetaData() const override;
 

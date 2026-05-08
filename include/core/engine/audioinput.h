@@ -120,6 +120,11 @@ public:
      */
     [[nodiscard]] virtual QStringList extensions() const = 0;
     /*!
+     * Returns extensions this decoder should be preferred for over higher-priority loaders.
+     * Base class implementation returns an empty list.
+     */
+    [[nodiscard]] virtual QStringList preferredExtensions() const;
+    /*!
      * Returns @c true if track is seekable.
      * @note Called only after `init()` succeeds.
      */
@@ -219,6 +224,11 @@ public:
      * i.e. "flac,mp3"
      */
     [[nodiscard]] virtual QStringList extensions() const = 0;
+    /*!
+     * Returns extensions this reader should be preferred for over higher-priority loaders.
+     * Base class implementation returns an empty list.
+     */
+    [[nodiscard]] virtual QStringList preferredExtensions() const;
     //! True when embedded cover art can be read.
     [[nodiscard]] virtual bool canReadCover() const = 0;
     //! True when embedded cover art can be written.

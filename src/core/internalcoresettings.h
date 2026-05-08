@@ -23,6 +23,8 @@
 
 #include <utils/settings/settingsentry.h>
 
+#include <QStringList>
+
 namespace Fooyin {
 class SettingsManager;
 
@@ -54,6 +56,9 @@ constexpr auto LibraryExcludeTypes            = "Library/ExcludeTypes";
 constexpr auto ExternalRestrictTypes          = "Library/ExternalRestrictTypes";
 constexpr auto ExternalExcludeTypes           = "Library/ExternalExcludeTypes";
 constexpr auto FFmpegAllExtensions            = "Engine/FFmpegAllExtensions";
+constexpr auto FFmpegPriorityExtensions       = "Engine/FFmpegPriorityExtensions";
+
+[[nodiscard]] FYCORE_EXPORT QStringList defaultFFmpegPriorityExtensions();
 
 enum CoreInternalSettings : uint32_t
 {

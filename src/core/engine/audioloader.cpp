@@ -98,16 +98,27 @@ CreatorT selectTrackIoCreator(const std::vector<EntryT>& loaders, const QString&
         if(!loader.enabled) {
             continue;
         }
-        if(isInArchive && loader.isArchiveWrapper) {
-            ret.push_back(loader.creator);
-            break;
+        if(isInArchive) {
+            if(loader.isArchiveWrapper) {
+                ret.push_back(loader.creator);
+                break;
+            }
+            continue;
         }
-        if(!isInArchive && !loader.isArchiveWrapper && loader.extensions.contains(ext)) {
+        if(!loader.isArchiveWrapper && loader.extensions.contains(ext)) {
             ret.push_back(loader.creator);
         }
     }
 
     return ret;
+}
+
+template <typename T>
+void prioritisePreferredLoaders(std::vector<std::unique_ptr<T>>& loaders, const QString& ext)
+{
+    std::ranges::stable_partition(loaders, [&ext](const auto& loader) {
+        return loader && normaliseExtensions(loader->preferredExtensions()).contains(ext);
+    });
 }
 
 bool openFileSource(Fooyin::LoadedSource& input, const QString& filepath)
@@ -443,6 +454,9 @@ std::vector<std::unique_ptr<AudioDecoder>> AudioLoader::decodersForFile(const QS
     for(const DecoderCreator& creator : creators) {
         ret.push_back(creator());
     }
+    if(!isInArchive) {
+        prioritisePreferredLoaders(ret, ext);
+    }
 
     return ret;
 }
@@ -469,6 +483,9 @@ std::vector<std::unique_ptr<AudioReader>> AudioLoader::readersForFile(const QStr
 
     for(const ReaderCreator& creator : creators) {
         ret.push_back(creator());
+    }
+    if(!isInArchive) {
+        prioritisePreferredLoaders(ret, ext);
     }
 
     return ret;

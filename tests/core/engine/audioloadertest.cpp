@@ -74,6 +74,7 @@ struct DecoderState
 {
     QString label;
     QStringList extensions;
+    QStringList preferredExtensions;
     bool initSucceeds{true};
     bool requireDevice{false};
     bool requireArchiveReader{false};
@@ -110,6 +111,11 @@ public:
     QStringList extensions() const override
     {
         return m_state->extensions;
+    }
+
+    QStringList preferredExtensions() const override
+    {
+        return m_state->preferredExtensions;
     }
 
     bool isSeekable() const override
@@ -164,6 +170,7 @@ struct ReaderState
 {
     QString label;
     QStringList extensions;
+    QStringList preferredExtensions;
     bool canReadCover{false};
     bool canWriteMetadata{false};
     bool canWriteCover{false};
@@ -211,6 +218,11 @@ public:
     QStringList extensions() const override
     {
         return m_state->extensions;
+    }
+
+    QStringList preferredExtensions() const override
+    {
+        return m_state->preferredExtensions;
     }
 
     bool canReadCover() const override
@@ -656,6 +668,27 @@ TEST_F(AudioLoaderTest, CanReorderDisableAndReloadRegularLoaders)
     EXPECT_TRUE(loader.readersForFile(u"/tmp/test.mp3"_s).empty());
     EXPECT_EQ((QStringList{u"decoder-one"_s}), decoderLabels(loader.decodersForFile(u"/tmp/test.aac"_s)));
     EXPECT_EQ((QStringList{u"reader-one"_s}), readerLabels(loader.readersForFile(u"/tmp/test.aac"_s)));
+}
+
+TEST_F(AudioLoaderTest, PrioritisesLoadersWithPreferredExtensions)
+{
+    AudioLoader loader;
+    addDecoder(loader, u"first-decoder"_s, {u"m4b"_s, u"mp3"_s}, 0);
+    const auto preferredDecoder           = addDecoder(loader, u"preferred-decoder"_s, {u"m4b"_s, u"mp3"_s}, 99);
+    preferredDecoder->preferredExtensions = {u"m4b"_s};
+
+    addReader(loader, u"first-reader"_s, {u"m4b"_s, u"mp3"_s}, 0);
+    const auto preferredReader           = addReader(loader, u"preferred-reader"_s, {u"m4b"_s, u"mp3"_s}, 99);
+    preferredReader->preferredExtensions = {u"m4b"_s};
+
+    EXPECT_EQ((QStringList{u"preferred-decoder"_s, u"first-decoder"_s}),
+              decoderLabels(loader.decodersForFile(u"/tmp/test.m4b"_s)));
+    EXPECT_EQ((QStringList{u"first-decoder"_s, u"preferred-decoder"_s}),
+              decoderLabels(loader.decodersForFile(u"/tmp/test.mp3"_s)));
+    EXPECT_EQ((QStringList{u"preferred-reader"_s, u"first-reader"_s}),
+              readerLabels(loader.readersForFile(u"/tmp/test.m4b"_s)));
+    EXPECT_EQ((QStringList{u"first-reader"_s, u"preferred-reader"_s}),
+              readerLabels(loader.readersForFile(u"/tmp/test.mp3"_s)));
 }
 
 TEST_F(AudioLoaderTest, LoadsDecoderAndReaderForRegularTracks)
