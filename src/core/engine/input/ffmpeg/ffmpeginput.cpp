@@ -470,11 +470,9 @@ QByteArray findCover(AVFormatContext* context, Fooyin::Track::Cover type)
         if(avStream->disposition & AV_DISPOSITION_ATTACHED_PIC) {
             AVDictionaryEntry* tag{nullptr};
             QString coverType;
-            while((tag = av_dict_get(avStream->metadata, "", tag, AV_DICT_IGNORE_SUFFIX))) {
-                if(convertString(tag->key) == "comment"_L1) {
-                    coverType = convertString(tag->value).toLower();
-                    break;
-                }
+            tag = av_dict_get(avStream->metadata, "comment", tag, AV_DICT_IGNORE_SUFFIX);
+            if(tag) {
+                coverType = convertString(tag->value).toLower();
             }
 
             if((type == Cover::Front && (coverType.isEmpty() || coverType.contains("front"_L1)))
