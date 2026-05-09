@@ -1,5 +1,56 @@
 # Changelog
 
+## Unreleased
+
+### Improvements
+
+* Filters
+  - Add an option to change cover source preference ([#1021](https://github.com/fooyin/fooyin/issues/1021), [#1111](https://github.com/fooyin/fooyin/pull/1111), [#1124](https://github.com/fooyin/fooyin/issues/1124))
+* Interface
+  - Add the Tag Editor as a layout widget ([#1012](https://github.com/fooyin/fooyin/pull/1012))
+  - Add filter for searching shortcuts and improve the shortcut editor
+  - Add support for selecting built-in theme icons in Command Button widgets
+  - Add an unsplit/remove split action for single-child layout widget containers ([#1132](https://github.com/fooyin/fooyin/issues/1132))
+  - Improve layout editing context menus and menu header appearance
+  - Split playlist settings into focused pages
+  - Add a separate action for clearing the current playlist
+  - Add autocomplete to inline playlist editing ([#1136](https://github.com/fooyin/fooyin/issues/1136))
+* Library/Metadata
+  - Add configurable rating tag read/write handling for text tags and ID3 POPM frames ([#370](https://github.com/fooyin/fooyin/issues/370), [#786](https://github.com/fooyin/fooyin/issues/786), [#1120](https://github.com/fooyin/fooyin/pull/1120))
+  - Add support for multi-chapter files ([#694](https://github.com/fooyin/fooyin/issues/694), [#945](https://github.com/fooyin/fooyin/pull/945))
+* Lyrics
+  - Support finding local lyrics with directory wildcards
+* Scripting
+  - Add support for retrieving multiple and single meta tag values
+  - Fall back to literal search when query syntax is invalid ([#1125](https://github.com/fooyin/fooyin/issues/1125))
+
+### Fixes
+
+* Audio/Playback
+  - Respect current track seekability in playback controls and WaveBar
+  - Fix several playback queue issues after session restore ([#1130](https://github.com/fooyin/fooyin/pull/1130))
+  - Fix potential incorrect shuffle order ([#1127](https://github.com/fooyin/fooyin/issues/1127))
+* Interface
+  - Fall back to the default or first playlist when restoring the active playlist fails
+  - Fix Library Tree sorting and searching when strings contain scripting syntax ([#1117](https://github.com/fooyin/fooyin/issues/1117), [#1125](https://github.com/fooyin/fooyin/issues/1125))
+  - Fix Library Tree row height with multiline titles
+* Library/Metadata
+  - Fix missing ReplayGain values evaluating as true in scripts ([#1112](https://github.com/fooyin/fooyin/issues/1112))
+* Lyrics
+  - Fix LRC offset calculation ([#1121](https://github.com/fooyin/fooyin/issues/1121))
+* Scripting
+  - Fall back to literal search when query syntax is invalid ([#1125](https://github.com/fooyin/fooyin/issues/1125))
+  - Fix `$rand` bounds ([#1133](https://github.com/fooyin/fooyin/pull/1133))
+
+### Build/System
+
+* Build
+  - Add a `PFFFT_USE_SIMD` CMake option for the PFFFT library ([#1110](https://github.com/fooyin/fooyin/issues/1110))
+* Translations
+  - Mark file extension hint labels translatable ([#1108](https://github.com/fooyin/fooyin/issues/1108))
+  - Update translations and translation sources ([#1134](https://github.com/fooyin/fooyin/pull/1134), [#1135](https://github.com/fooyin/fooyin/pull/1135))
+
+
 ## [0.10.5](https://github.com/fooyin/fooyin/releases/tag/v0.10.5) (2026-05-04)
 
 ### Improvements

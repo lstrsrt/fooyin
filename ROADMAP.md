@@ -38,7 +38,6 @@ This document outlines the upcoming features for fooyin.
 | Add icon/artwork mode to Library Filter        | ✅ 0.5.0 |
 | Customise default tag editor fields            | ✅ 0.7.0 |
 | Variable bitrate display                       | ✅ 0.7.0 |
-| Per-playlist playback queue                    | ❓ TBD   |
 
 ## Widgets
 
