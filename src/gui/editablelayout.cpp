@@ -95,6 +95,17 @@ void preserveWidgetIds(QJsonObject& widgetObject, Fooyin::FyWidget* widget)
 
     widgetObject[widgetName] = widgetData;
 }
+
+void addMenuSeparator(QMenu* menu)
+{
+    if(!menu || menu->isEmpty()) {
+        return;
+    }
+
+    if(const auto actions = menu->actions(); !actions.empty() && !actions.back()->isSeparator()) {
+        menu->addSeparator();
+    }
+}
 } // namespace
 
 namespace Fooyin {
@@ -228,7 +239,7 @@ public:
     void setupAddWidgetMenu(QMenu* menu, WidgetContainer* parent, FyWidget* prev, FyWidget* current) const;
     bool setupMoveWidgetMenu(QMenu* menu, WidgetContainer* parent, FyWidget* current) const;
     void setupUnsplitAction(QMenu* menu, WidgetContainer* parent, FyWidget* current) const;
-    void setupPasteAction(QMenu* menu, FyWidget* prev, FyWidget* current);
+    void setupPasteMenu(QMenu* menu, WidgetContainer* parent, FyWidget* prev, FyWidget* current, bool isDummy);
     void setupContextMenu(FyWidget* widget, QMenu* menu);
 
     [[nodiscard]] WidgetList findAllWidgets() const;
@@ -376,14 +387,62 @@ void EditableLayoutPrivate::hideOverlay() const
 void EditableLayoutPrivate::setupAddWidgetMenu(QMenu* menu, WidgetContainer* parent, FyWidget* prev,
                                                FyWidget* current) const
 {
+    const auto addWidgetMenu = [this](QMenu* targetMenu, WidgetContainer* container, int index) {
+        m_widgetProvider->setupAddWidgetMenu(m_self, targetMenu, container, index);
+        return !targetMenu->isEmpty();
+    };
+
     if(auto* container = qobject_cast<WidgetContainer*>(current)) {
-        auto* addMenu = new QMenu(EditableLayout::tr("&Insert"), menu);
-        addMenu->setEnabled(container->canAddWidget());
-        const int insertIndex = current == prev ? container->widgetCount() : container->widgetIndex(prev->id()) + 1;
-        m_widgetProvider->setupAddWidgetMenu(m_self, addMenu, container, insertIndex);
-        menu->addMenu(addMenu);
+        auto* insertMenu = new QMenu(EditableLayout::tr("&Insert"), menu);
+
+        if(current != prev) {
+            if(container->canAddWidget()) {
+                const int previousIndex = container->widgetIndex(prev->id());
+
+                auto* beforeMenu = new QMenu(EditableLayout::tr("&Before"), insertMenu);
+                if(addWidgetMenu(beforeMenu, container, previousIndex)) {
+                    insertMenu->addMenu(beforeMenu);
+                }
+
+                auto* afterMenu = new QMenu(EditableLayout::tr("&After"), insertMenu);
+                if(addWidgetMenu(afterMenu, container, previousIndex + 1)) {
+                    insertMenu->addMenu(afterMenu);
+                }
+            }
+        }
+        else {
+            if(parent && parent->canAddWidget()) {
+                const int currentIndex = parent->widgetIndex(current->id());
+
+                auto* beforeMenu = new QMenu(EditableLayout::tr("&Before"), insertMenu);
+                if(addWidgetMenu(beforeMenu, parent, currentIndex)) {
+                    insertMenu->addMenu(beforeMenu);
+                }
+
+                auto* afterMenu = new QMenu(EditableLayout::tr("&After"), insertMenu);
+                if(addWidgetMenu(afterMenu, parent, currentIndex + 1)) {
+                    insertMenu->addMenu(afterMenu);
+                }
+            }
+
+            if(container->canAddWidget()) {
+                auto* insideMenu      = new QMenu(EditableLayout::tr("&Inside"), insertMenu);
+                const int insertIndex = container->widgetCount();
+                if(addWidgetMenu(insideMenu, container, insertIndex)) {
+                    insertMenu->addMenu(insideMenu);
+                }
+            }
+        }
+
+        if(!insertMenu->isEmpty()) {
+            menu->addMenu(insertMenu);
+        }
     }
     else if(qobject_cast<Dummy*>(current)) {
+        if(!parent || !parent->canAddWidget()) {
+            return;
+        }
+
         auto* addMenu = new QMenu(EditableLayout::tr("&Insert"), menu);
         addMenu->setEnabled(parent->canAddWidget());
         m_widgetProvider->setupReplaceWidgetMenu(m_self, addMenu, parent, current->id());
@@ -400,28 +459,29 @@ bool EditableLayoutPrivate::setupMoveWidgetMenu(QMenu* menu, WidgetContainer* pa
     const int widgetIndex = parent->widgetIndex(current->id());
     const bool horizontal = parent->orientation() == Qt::Horizontal;
 
-    auto* moveLeft = new QAction(horizontal ? EditableLayout::tr("Left") : EditableLayout::tr("Up"), menu);
+    auto* moveLeft = new QAction(horizontal ? EditableLayout::tr("&Left") : EditableLayout::tr("&Up"), menu);
     moveLeft->setEnabled(parent->canMoveWidget(widgetIndex, widgetIndex - 1));
     QObject::connect(moveLeft, &QAction::triggered, parent, [this, parent, widgetIndex] {
         m_layoutHistory->push(new MoveWidgetCommand(m_self, m_widgetProvider, parent, widgetIndex, widgetIndex - 1));
     });
     menu->addAction(moveLeft);
 
-    auto* moveRight = new QAction(horizontal ? EditableLayout::tr("Right") : EditableLayout::tr("Down"), menu);
+    auto* moveRight = new QAction(horizontal ? EditableLayout::tr("&Right") : EditableLayout::tr("&Down"), menu);
     moveRight->setEnabled(parent->canMoveWidget(widgetIndex, widgetIndex + 1));
     QObject::connect(moveRight, &QAction::triggered, parent, [this, parent, widgetIndex] {
         m_layoutHistory->push(new MoveWidgetCommand(m_self, m_widgetProvider, parent, widgetIndex, widgetIndex + 1));
     });
     menu->addAction(moveRight);
 
-    auto* moveFarLeft = new QAction(horizontal ? EditableLayout::tr("Far Left") : EditableLayout::tr("Top"), menu);
+    auto* moveFarLeft = new QAction(horizontal ? EditableLayout::tr("Far Lef&t") : EditableLayout::tr("&Top"), menu);
     moveFarLeft->setEnabled(parent->canMoveWidget(widgetIndex, 0));
     QObject::connect(moveFarLeft, &QAction::triggered, parent, [this, parent, widgetIndex] {
         m_layoutHistory->push(new MoveWidgetCommand(m_self, m_widgetProvider, parent, widgetIndex, 0));
     });
     menu->addAction(moveFarLeft);
 
-    auto* moveFarRight = new QAction(horizontal ? EditableLayout::tr("Far Right") : EditableLayout::tr("Bottom"), menu);
+    auto* moveFarRight
+        = new QAction(horizontal ? EditableLayout::tr("Far Rig&ht") : EditableLayout::tr("&Bottom"), menu);
     moveFarRight->setEnabled(parent->canMoveWidget(widgetIndex, parent->fullWidgetCount() - 1));
     QObject::connect(moveFarRight, &QAction::triggered, parent, [this, parent, widgetIndex] {
         m_layoutHistory->push(
@@ -443,25 +503,63 @@ void EditableLayoutPrivate::setupUnsplitAction(QMenu* menu, WidgetContainer* par
         return;
     }
 
-    auto* unsplit = new QAction(EditableLayout::tr("Unsplit"), menu);
+    auto* unsplit = new QAction(EditableLayout::tr("Remove spli&t"), menu);
     QObject::connect(unsplit, &QAction::triggered, current, [this, grandParent, parent] {
         m_layoutHistory->push(new CollapseContainerCommand(m_self, m_widgetProvider, grandParent, parent->id()));
     });
     menu->addAction(unsplit);
 }
 
-void EditableLayoutPrivate::setupPasteAction(QMenu* menu, FyWidget* prev, FyWidget* current)
+void EditableLayoutPrivate::setupPasteMenu(QMenu* menu, WidgetContainer* parent, FyWidget* prev, FyWidget* current,
+                                           bool isDummy)
 {
+    if(m_widgetClipboard.isEmpty() || !m_widgetProvider->canCreateWidget(m_widgetClipboard.constBegin().key())) {
+        return;
+    }
+
+    auto* pasteMenu = new QMenu(EditableLayout::tr("&Paste"), menu);
+
+    if(parent) {
+        auto* replace = new QAction(EditableLayout::tr("Rep&lace"), pasteMenu);
+        QObject::connect(replace, &QAction::triggered, current, [this, parent, current] {
+            m_layoutHistory->push(
+                new ReplaceWidgetCommand(m_self, m_widgetProvider, parent, m_widgetClipboard, current->id()));
+        });
+        pasteMenu->addAction(replace);
+    }
+
+    if(current == prev && parent && !isDummy && parent->canAddWidget()) {
+        const int currentIndex = parent->widgetIndex(current->id());
+
+        auto* before = new QAction(EditableLayout::tr("&Before"), pasteMenu);
+        QObject::connect(before, &QAction::triggered, parent, [this, parent, currentIndex] {
+            m_layoutHistory->push(
+                new AddWidgetCommand(m_self, m_widgetProvider, parent, m_widgetClipboard, currentIndex));
+        });
+        pasteMenu->addAction(before);
+
+        auto* after = new QAction(EditableLayout::tr("&After"), pasteMenu);
+        QObject::connect(after, &QAction::triggered, parent, [this, parent, currentIndex] {
+            m_layoutHistory->push(
+                new AddWidgetCommand(m_self, m_widgetProvider, parent, m_widgetClipboard, currentIndex + 1));
+        });
+        pasteMenu->addAction(after);
+    }
+
     if(auto* container = qobject_cast<WidgetContainer*>(current)) {
         if(container->canAddWidget()) {
-            auto* pasteInsert     = new QAction(EditableLayout::tr("Paste (Insert)"), menu);
             const int insertIndex = current == prev ? container->widgetCount() : container->widgetIndex(prev->id()) + 1;
-            QObject::connect(pasteInsert, &QAction::triggered, container, [this, container, insertIndex] {
+            auto* inside          = new QAction(EditableLayout::tr("&Inside"), pasteMenu);
+            QObject::connect(inside, &QAction::triggered, container, [this, container, insertIndex] {
                 m_layoutHistory->push(
                     new AddWidgetCommand(m_self, m_widgetProvider, container, m_widgetClipboard, insertIndex));
             });
-            menu->addAction(pasteInsert);
+            pasteMenu->addAction(inside);
         }
+    }
+
+    if(!pasteMenu->isEmpty()) {
+        menu->addMenu(pasteMenu);
     }
 }
 
@@ -478,16 +576,23 @@ void EditableLayoutPrivate::setupContextMenu(FyWidget* widget, QMenu* menu)
     while(level > 0 && currentWidget && currentWidget != m_root) {
         const bool isDummy = qobject_cast<Dummy*>(currentWidget);
 
-        menu->addAction(new MenuHeaderAction(isDummy ? u"Widget"_s : currentWidget->name(), menu));
+        const QString header = currentWidget == widget ? (isDummy ? u"Widget"_s : currentWidget->name())
+                                                       : EditableLayout::tr("Parent: %1").arg(currentWidget->name());
+        menu->addAction(new MenuHeaderAction(header, menu));
+        const qsizetype sectionStart = menu->actions().size();
+        auto addSectionSeparator     = [menu, sectionStart]() {
+            if(menu->actions().size() > sectionStart) {
+                addMenuSeparator(menu);
+            }
+        };
 
         currentWidget->layoutEditingMenu(menu);
+        addSectionSeparator();
 
         auto* parent = qobject_cast<WidgetContainer*>(currentWidget->findParent());
 
-        setupAddWidgetMenu(menu, parent, prevWidget, currentWidget);
-
         if(!isDummy) {
-            auto* changeMenu = new QMenu(EditableLayout::tr("&Replace"), menu);
+            auto* changeMenu = new QMenu(EditableLayout::tr("R&eplace"), menu);
             m_widgetProvider->setupReplaceWidgetMenu(m_self, changeMenu, parent, currentWidget->id());
             menu->addMenu(changeMenu);
 
@@ -497,7 +602,10 @@ void EditableLayoutPrivate::setupContextMenu(FyWidget* widget, QMenu* menu)
                 menu->addMenu(splitMenu);
             }
 
-            auto* copy = new QAction(EditableLayout::tr("Copy"), menu);
+            setupUnsplitAction(menu, parent, currentWidget);
+            addSectionSeparator();
+
+            auto* copy = new QAction(EditableLayout::tr("&Copy"), menu);
             copy->setEnabled(m_widgetProvider->canCreateWidget(currentWidget->layoutName()));
             QObject::connect(copy, &QAction::triggered, currentWidget, [this, currentWidget] {
                 m_widgetClipboard = EditableLayout::saveBaseWidget(currentWidget);
@@ -505,29 +613,21 @@ void EditableLayoutPrivate::setupContextMenu(FyWidget* widget, QMenu* menu)
             menu->addAction(copy);
         }
 
-        if(!m_widgetClipboard.isEmpty() && m_widgetProvider->canCreateWidget(m_widgetClipboard.constBegin().key())) {
-            if(parent && !isDummy) {
-                setupPasteAction(menu, prevWidget, currentWidget);
-            }
-
-            auto* paste = new QAction(EditableLayout::tr("Paste (Replace)"), menu);
-            QObject::connect(paste, &QAction::triggered, currentWidget, [this, parent, currentWidget] {
-                m_layoutHistory->push(
-                    new ReplaceWidgetCommand(m_self, m_widgetProvider, parent, m_widgetClipboard, currentWidget->id()));
-            });
-            menu->addAction(paste);
-        }
+        setupPasteMenu(menu, parent, prevWidget, currentWidget, isDummy);
+        addSectionSeparator();
+        setupAddWidgetMenu(menu, parent, prevWidget, currentWidget);
 
         if(parent && parent != m_root) {
             auto* moveMenu = new QMenu(EditableLayout::tr("&Move"), menu);
-            moveMenu->setEnabled(setupMoveWidgetMenu(moveMenu, parent, currentWidget));
-            menu->addMenu(moveMenu);
+            if(setupMoveWidgetMenu(moveMenu, parent, currentWidget)) {
+                menu->addMenu(moveMenu);
+            }
         }
 
-        setupUnsplitAction(menu, parent, currentWidget);
+        addSectionSeparator();
 
         if(!isDummy || parent->widgetCount() > 1) {
-            auto* remove = new QAction(EditableLayout::tr("Remove"), menu);
+            auto* remove = new QAction(EditableLayout::tr("&Remove"), menu);
             QObject::connect(remove, &QAction::triggered, currentWidget, [this, parent, currentWidget] {
                 m_layoutHistory->push(new RemoveWidgetCommand(m_self, m_widgetProvider, parent, currentWidget->id()));
             });
