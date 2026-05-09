@@ -19,6 +19,8 @@
 
 #include "layoutcommands.h"
 
+#include "widgets/dummy.h"
+
 #include <gui/editablelayout.h>
 #include <gui/widgetcontainer.h>
 #include <gui/widgetprovider.h>
@@ -268,6 +270,77 @@ void RemoveWidgetCommand::redo()
         m_containerState = m_container->saveState();
 
         m_container->removeWidget(m_index);
+    }
+}
+
+CollapseContainerCommand::CollapseContainerCommand(EditableLayout* layout, WidgetProvider* provider,
+                                                   WidgetContainer* container, const Id& containerId)
+    : LayoutChangeCommand{layout, provider, container}
+    , m_index{-1}
+{
+    auto* containerToCollapse = qobject_cast<WidgetContainer*>(container->widgetAtId(containerId));
+    if(!containerToCollapse) {
+        return;
+    }
+
+    m_index              = container->widgetIndex(containerId);
+    m_collapsedContainer = EditableLayout::saveWidget(containerToCollapse);
+
+    for(auto* widget : containerToCollapse->widgets()) {
+        if(!qobject_cast<Dummy*>(widget)) {
+            if(m_promotedWidget.empty()) {
+                m_promotedWidget = EditableLayout::saveWidget(widget);
+            }
+            else {
+                m_promotedWidget = {};
+                return;
+            }
+        }
+    }
+}
+
+void CollapseContainerCommand::undo()
+{
+    if(!checkContainer()) {
+        return;
+    }
+
+    if(m_index >= 0 && !m_collapsedContainer.empty()) {
+        m_container->removeWidget(m_index);
+
+        QMetaObject::invokeMethod(
+            m_container,
+            [this]() {
+                if(auto* container = EditableLayout::loadWidget(m_provider, m_collapsedContainer)) {
+                    m_container->insertWidget(m_index, container);
+                    container->finalise();
+                    m_container->restoreState(m_containerState);
+                }
+            },
+            Qt::QueuedConnection);
+    }
+}
+
+void CollapseContainerCommand::redo()
+{
+    if(!checkContainer()) {
+        return;
+    }
+
+    if(m_index >= 0 && !m_promotedWidget.empty()) {
+        m_containerState = m_container->saveState();
+        m_container->removeWidget(m_index);
+
+        QMetaObject::invokeMethod(
+            m_container,
+            [this]() {
+                if(auto* widget = EditableLayout::loadWidget(m_provider, m_promotedWidget)) {
+                    m_container->insertWidget(m_index, widget);
+                    widget->finalise();
+                    m_container->restoreState(m_containerState);
+                }
+            },
+            Qt::QueuedConnection);
     }
 }
 

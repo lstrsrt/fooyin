@@ -228,12 +228,13 @@ SingleTabbedWidget::~SingleTabbedWidget() = default;
 
 void SingleTabbedWidget::setWidget(QWidget* widget)
 {
-    if(p->m_widget) {
+    if(p->m_widget && p->m_widget != widget) {
         p->m_widget->deleteLater();
     }
 
-    if(widget) {
-        p->m_widget = widget;
+    p->m_widget = widget;
+
+    if(p->m_widget) {
         p->m_widget->setParent(this);
         p->m_widget->setAttribute(Qt::WA_LaidOut);
         if(isVisible()) {

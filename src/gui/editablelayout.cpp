@@ -67,6 +67,34 @@ Fooyin::FyWidget* findSplitterChild(QWidget* widget)
     }
     return qobject_cast<Fooyin::FyWidget*>(child);
 }
+
+void preserveWidgetIds(QJsonObject& widgetObject, Fooyin::FyWidget* widget)
+{
+    if(!widget || widgetObject.empty() || !widgetObject.constBegin()->isObject()) {
+        return;
+    }
+
+    const QString widgetName = widgetObject.constBegin().key();
+    QJsonObject widgetData   = widgetObject.value(widgetName).toObject();
+    widgetData["ID"_L1]      = widget->id().name();
+
+    if(auto* container = qobject_cast<Fooyin::WidgetContainer*>(widget)) {
+        QJsonArray children = widgetData.value("Widgets"_L1).toArray();
+        const auto widgets  = container->widgets();
+
+        for(qsizetype i{0}; i < children.size() && std::cmp_less(i, widgets.size()); ++i) {
+            if(children.at(i).isObject()) {
+                QJsonObject childObject = children.at(i).toObject();
+                preserveWidgetIds(childObject, widgets.at(i));
+                children[i] = childObject;
+            }
+        }
+
+        widgetData["Widgets"_L1] = children;
+    }
+
+    widgetObject[widgetName] = widgetData;
+}
 } // namespace
 
 namespace Fooyin {
@@ -199,6 +227,7 @@ public:
 
     void setupAddWidgetMenu(QMenu* menu, WidgetContainer* parent, FyWidget* prev, FyWidget* current) const;
     bool setupMoveWidgetMenu(QMenu* menu, WidgetContainer* parent, FyWidget* current) const;
+    void setupUnsplitAction(QMenu* menu, WidgetContainer* parent, FyWidget* current) const;
     void setupPasteAction(QMenu* menu, FyWidget* prev, FyWidget* current);
     void setupContextMenu(FyWidget* widget, QMenu* menu);
 
@@ -403,6 +432,24 @@ bool EditableLayoutPrivate::setupMoveWidgetMenu(QMenu* menu, WidgetContainer* pa
     return moveLeft->isEnabled() || moveRight->isEnabled() || moveFarLeft->isEnabled() || moveFarRight->isEnabled();
 }
 
+void EditableLayoutPrivate::setupUnsplitAction(QMenu* menu, WidgetContainer* parent, FyWidget* current) const
+{
+    if(!parent || parent == m_root || !current || qobject_cast<Dummy*>(current) || parent->widgetCount() != 1) {
+        return;
+    }
+
+    auto* grandParent = qobject_cast<WidgetContainer*>(parent->findParent());
+    if(!grandParent) {
+        return;
+    }
+
+    auto* unsplit = new QAction(EditableLayout::tr("Unsplit"), menu);
+    QObject::connect(unsplit, &QAction::triggered, current, [this, grandParent, parent] {
+        m_layoutHistory->push(new CollapseContainerCommand(m_self, m_widgetProvider, grandParent, parent->id()));
+    });
+    menu->addAction(unsplit);
+}
+
 void EditableLayoutPrivate::setupPasteAction(QMenu* menu, FyWidget* prev, FyWidget* current)
 {
     if(auto* container = qobject_cast<WidgetContainer*>(current)) {
@@ -476,6 +523,8 @@ void EditableLayoutPrivate::setupContextMenu(FyWidget* widget, QMenu* menu)
             moveMenu->setEnabled(setupMoveWidgetMenu(moveMenu, parent, currentWidget));
             menu->addMenu(moveMenu);
         }
+
+        setupUnsplitAction(menu, parent, currentWidget);
 
         if(!isDummy || parent->widgetCount() > 1) {
             auto* remove = new QAction(EditableLayout::tr("Remove"), menu);
@@ -753,7 +802,9 @@ QJsonObject EditableLayout::saveWidget(FyWidget* widget)
     widget->saveLayout(array);
 
     if(!array.empty() && array.constBegin()->isObject()) {
-        return array.constBegin()->toObject();
+        QJsonObject widgetObject = array.constBegin()->toObject();
+        preserveWidgetIds(widgetObject, widget);
+        return widgetObject;
     }
 
     return {};

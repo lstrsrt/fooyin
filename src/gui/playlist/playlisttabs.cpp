@@ -257,7 +257,8 @@ void PlaylistTabs::insertWidget(int index, FyWidget* widget)
 void PlaylistTabs::removeWidget(int index)
 {
     if(index == 0 && m_tabsWidget) {
-        m_tabsWidget->deleteLater();
+        m_tabs->setWidget(nullptr);
+        m_tabsWidget = nullptr;
     }
 }
 
@@ -267,7 +268,6 @@ void PlaylistTabs::replaceWidget(int index, FyWidget* newWidget)
         return;
     }
 
-    removeWidget(index);
     m_tabsWidget = newWidget;
     m_tabs->setWidget(m_tabsWidget);
 }

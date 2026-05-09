@@ -109,6 +109,21 @@ private:
     QJsonObject m_widget;
 };
 
+class CollapseContainerCommand : public LayoutChangeCommand
+{
+public:
+    CollapseContainerCommand(EditableLayout* layout, WidgetProvider* provider, WidgetContainer* container,
+                             const Id& containerId);
+
+    void undo() override;
+    void redo() override;
+
+private:
+    int m_index;
+    QJsonObject m_collapsedContainer;
+    QJsonObject m_promotedWidget;
+};
+
 class MoveWidgetCommand : public LayoutChangeCommand
 {
 public:
