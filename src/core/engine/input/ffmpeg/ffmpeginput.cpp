@@ -304,14 +304,28 @@ TagType getTagType(QIODevice* device)
 
 void parseTag(Fooyin::Track& track, TagType tagType, const AVDictionaryEntry* tag, TagScope scope, int chapterCount)
 {
+    using enum TagType;
+
+    const auto splitArtists = [tagType](const QString& artist) {
+        if(tagType == ID3v1_1 || tagType == ID3v1_2 || tagType == ID3v2_2 || tagType == ID3v2_3) {
+            if(artist.contains("/"_L1) && (artist != "AC/DC"_L1 || artist != "AC / DC"_L1)) {
+                return splitMetadata(artist, u'/');
+            }
+            return splitMetadata(artist, u';');
+        }
+        return splitMetadata(artist, u';');
+    };
+
     if(strcasecmp(tag->key, "album") == 0) {
         track.setAlbum(convertString(tag->value));
     }
     else if(strcasecmp(tag->key, "artist") == 0) {
-        track.setArtists({convertString(tag->value)});
+        const QString artist = convertString(tag->value);
+        track.setArtists(splitArtists(artist));
     }
     else if(strcasecmp(tag->key, "album_artist") == 0 || strcasecmp(tag->key, "album artist") == 0) {
-        track.setAlbumArtists({convertString(tag->value)});
+        const QString albumArtist = convertString(tag->value);
+        track.setAlbumArtists(splitArtists(albumArtist));
     }
     else if(strcasecmp(tag->key, "title") == 0) {
         if(scope == TagScope::Global && chapterCount > 1 && track.album().isEmpty()) {
@@ -322,7 +336,8 @@ void parseTag(Fooyin::Track& track, TagType tagType, const AVDictionaryEntry* ta
         }
     }
     else if(strcasecmp(tag->key, "genre") == 0) {
-        track.setGenres({convertString(tag->value)});
+        const QString genre = convertString(tag->value);
+        track.setGenres(splitMetadata(genre, u';'));
     }
     else if(strcasecmp(tag->key, "part_number") == 0 || strcasecmp(tag->key, "track") == 0) {
         readTrackTotalPair(convertString(tag->value), track);
@@ -344,10 +359,12 @@ void parseTag(Fooyin::Track& track, TagType tagType, const AVDictionaryEntry* ta
         track.setYear(convertString(tag->value).toInt());
     }
     else if(strcasecmp(tag->key, "composer") == 0) {
-        track.setComposers({convertString(tag->value)});
+        const QString composer = convertString(tag->value);
+        track.setComposers(splitArtists(composer));
     }
     else if(strcasecmp(tag->key, "performer") == 0) {
-        track.setPerformers({convertString(tag->value)});
+        const QString performer = convertString(tag->value);
+        track.setPerformers(splitArtists(performer));
     }
     else if(strcasecmp(tag->key, "comment") == 0) {
         track.setComment(convertString(tag->value));
