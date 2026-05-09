@@ -113,16 +113,16 @@ QString mod(const QStringList& vec)
 QString rand(const QStringList& vec)
 {
     if(vec.size() < 2) {
-        return QString::number(getRandomU32(0, std::numeric_limits<uint32_t>::max() - 1));
+        return QString::number(getRandomU32(0, std::numeric_limits<uint32_t>::max()));
     }
 
     bool ok{false};
-    const int min = vec.at(0).toUInt(&ok);
+    const auto min = vec.at(0).toUInt(&ok);
     if(!ok) {
         return {};
     }
 
-    const int max = vec.at(1).toUInt(&ok);
+    const auto max = vec.at(1).toUInt(&ok);
     if(!ok) {
         return {};
     }
