@@ -1099,7 +1099,7 @@ void GuiApplicationPrivate::showNeedReloadMessage() const
 void GuiApplicationPrivate::showScriptEditor()
 {
     auto* scriptEditor
-        = new ScriptEditor(m_core->libraryManager(), m_selectionController.selectedTrack(), m_mainWindow.get());
+        = new ScriptEditor(m_core->libraryManager(), &m_selectionController, m_playerController, m_mainWindow.get());
     scriptEditor->setAttribute(Qt::WA_DeleteOnClose);
     scriptEditor->show();
 }

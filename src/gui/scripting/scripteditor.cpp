@@ -25,11 +25,13 @@
 
 #include <core/coresettings.h>
 #include <core/library/librarymanager.h>
+#include <core/player/playercontroller.h>
 #include <core/scripting/scriptenvironmenthelpers.h>
 #include <core/scripting/scriptparser.h>
 #include <core/track.h>
 #include <gui/scripting/richtextutils.h>
 #include <gui/scripting/scriptformatter.h>
+#include <gui/trackselectioncontroller.h>
 #include <utils/utils.h>
 
 #include <QApplication>
@@ -420,7 +422,9 @@ class ScriptEditorPrivate : public QObject
     Q_OBJECT
 
 public:
-    ScriptEditorPrivate(ScriptEditor* self, LibraryManager* libraryManager, const Track& track);
+    ScriptEditorPrivate(ScriptEditor* self, LibraryManager* libraryManager, const Track& track,
+                        TrackSelectionController* selectionController = nullptr,
+                        PlayerController* playerController            = nullptr);
     ~ScriptEditorPrivate() override;
 
     void setupConnections();
@@ -430,6 +434,7 @@ public:
     void updateResults();
     void updateResults(const Expression& expression);
 
+    void trackContextChanged();
     void selectionChanged();
     void textChanged();
     void referenceSearchChanged(const QString& text);
@@ -443,6 +448,8 @@ public:
 
     ScriptEditor* m_self;
     LibraryManager* m_libraryManager;
+    TrackSelectionController* m_selectionController;
+    PlayerController* m_playerController;
     FySettings m_settings;
     Track m_track;
     Track m_placeholderTrack;
@@ -482,9 +489,13 @@ public:
     ParsedScript m_currentScript;
 };
 
-ScriptEditorPrivate::ScriptEditorPrivate(ScriptEditor* self, LibraryManager* libraryManager, const Track& track)
+ScriptEditorPrivate::ScriptEditorPrivate(ScriptEditor* self, LibraryManager* libraryManager, const Track& track,
+                                         TrackSelectionController* selectionController,
+                                         PlayerController* playerController)
     : m_self{self}
     , m_libraryManager{libraryManager}
+    , m_selectionController{selectionController}
+    , m_playerController{playerController}
     , m_track{track}
     , m_mainSplitter{new QSplitter(Qt::Horizontal, m_self)}
     , m_documentSplitter{new QSplitter(Qt::Vertical, m_self)}
@@ -589,6 +600,19 @@ void ScriptEditorPrivate::setupConnections()
             QDesktopServices::openUrl(resolvedUrl);
         }
     });
+
+    if(m_selectionController) {
+        QObject::connect(m_selectionController, &TrackSelectionController::selectionChanged, this,
+                         &ScriptEditorPrivate::trackContextChanged);
+    }
+    if(m_playerController) {
+        QObject::connect(m_playerController, &PlayerController::playStateChanged, this,
+                         &ScriptEditorPrivate::trackContextChanged);
+        QObject::connect(m_playerController, &PlayerController::currentTrackChanged, this,
+                         &ScriptEditorPrivate::trackContextChanged);
+        QObject::connect(m_playerController, &PlayerController::currentTrackUpdated, this,
+                         &ScriptEditorPrivate::trackContextChanged);
+    }
 }
 
 void ScriptEditorPrivate::setupPlaceholder()
@@ -719,6 +743,14 @@ void ScriptEditorPrivate::setupReference()
 
 void ScriptEditorPrivate::updateResults()
 {
+    const auto indexes = m_expressionTree->selectionModel()->selectedIndexes();
+    if(!indexes.empty()) {
+        if(const auto* item = static_cast<ExpressionTreeItem*>(indexes.front().internalPointer())) {
+            updateResults(item->expression());
+        }
+        return;
+    }
+
     if(m_model->rowCount({}) > 0) {
         if(const auto* item = static_cast<ExpressionTreeItem*>(m_model->index(0, 0, {}).internalPointer())) {
             updateResults(item->expression());
@@ -740,6 +772,15 @@ void ScriptEditorPrivate::updateResults(const Expression& expression)
     const QString html     = u"<html><body style=\"margin:0;\">%1</body></html>"_s.arg(htmlBody);
 
     m_results->setHtml(html);
+}
+
+void ScriptEditorPrivate::trackContextChanged()
+{
+    m_track = m_selectionController ? m_selectionController->selectedTrack() : Track{};
+    if(!m_track.isValid() && m_playerController) {
+        m_track = m_playerController->currentTrack();
+    }
+    updateResults();
 }
 
 void ScriptEditorPrivate::selectionChanged()
@@ -867,8 +908,21 @@ ScriptEditor::ScriptEditor(LibraryManager* libraryManager, const Track& track, Q
     setWindowTitle(tr("Script Editor"));
 }
 
+ScriptEditor::ScriptEditor(LibraryManager* libraryManager, TrackSelectionController* selectionController,
+                           PlayerController* playerController, QWidget* parent)
+    : QDialog{parent}
+    , p{std::make_unique<ScriptEditorPrivate>(this, libraryManager,
+                                              selectionController && selectionController->selectedTrack().isValid()
+                                                  ? selectionController->selectedTrack()
+                                              : playerController ? playerController->currentTrack()
+                                                                 : Track{},
+                                              selectionController, playerController)}
+{
+    setWindowTitle(tr("Script Editor"));
+}
+
 ScriptEditor::ScriptEditor(LibraryManager* libraryManager, QWidget* parent)
-    : ScriptEditor{libraryManager, {}, parent}
+    : ScriptEditor{libraryManager, Track{}, parent}
 { }
 
 ScriptEditor::ScriptEditor(const QString& script, const Track& track, QWidget* parent)

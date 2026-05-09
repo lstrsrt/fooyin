@@ -27,6 +27,7 @@
 
 namespace Fooyin {
 class LibraryManager;
+class PlayerController;
 class TrackSelectionController;
 class ScriptEditorPrivate;
 
@@ -36,6 +37,8 @@ class FYGUI_EXPORT ScriptEditor : public QDialog
 
 public:
     ScriptEditor(LibraryManager* libraryManager, const Track& track, QWidget* parent = nullptr);
+    ScriptEditor(LibraryManager* libraryManager, TrackSelectionController* selectionController,
+                 PlayerController* playerController, QWidget* parent = nullptr);
     explicit ScriptEditor(LibraryManager* libraryManager, QWidget* parent = nullptr);
     ScriptEditor(const QString& script, const Track& track, QWidget* parent = nullptr);
     explicit ScriptEditor(QWidget* parent = nullptr);
