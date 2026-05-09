@@ -6,37 +6,37 @@
     <message>
         <location filename="../../src/plugins/filters/filtercontextmenu.h" line="43"/>
         <source>Add to current playlist</source>
-        <translation type="unfinished">Добавить в текущий плейлист</translation>
+        <translation>Добавить в текущий плейлист</translation>
     </message>
     <message>
         <location filename="../../src/plugins/filters/filtercontextmenu.h" line="46"/>
         <source>Add to active playlist</source>
-        <translation type="unfinished">Добавить в активный плейлист</translation>
+        <translation>Добавить в активный плейлист</translation>
     </message>
     <message>
         <location filename="../../src/plugins/filters/filtercontextmenu.h" line="49"/>
         <source>Replace current playlist</source>
-        <translation type="unfinished">Заменить текущий плейлист</translation>
+        <translation>Заменить текущий плейлист</translation>
     </message>
     <message>
         <location filename="../../src/plugins/filters/filtercontextmenu.h" line="52"/>
         <source>Create new playlist</source>
-        <translation type="unfinished">Создать новый плейлист</translation>
+        <translation>Создать новый плейлист</translation>
     </message>
     <message>
         <location filename="../../src/plugins/filters/filtercontextmenu.h" line="56"/>
         <source>Add to playback queue</source>
-        <translation type="unfinished">Добавить в очередь воспроизведения</translation>
+        <translation>Добавить в очередь воспроизведения</translation>
     </message>
     <message>
         <location filename="../../src/plugins/filters/filtercontextmenu.h" line="59"/>
         <source>Queue to play next</source>
-        <translation type="unfinished">Поставить следующим в очереди</translation>
+        <translation>Поставить следующим в очереди</translation>
     </message>
     <message>
         <location filename="../../src/plugins/filters/filtercontextmenu.h" line="63"/>
         <source>Remove from playback queue</source>
-        <translation type="unfinished">Удалить из очереди воспроизведения</translation>
+        <translation>Убрать из очереди воспроизведения</translation>
     </message>
     <message>
         <location filename="../../src/plugins/filters/filtercontextmenu.h" line="67"/>
@@ -51,7 +51,7 @@
     <message>
         <location filename="../../src/plugins/filters/filtercontextmenu.h" line="74"/>
         <source>Track menu</source>
-        <translation type="unfinished"></translation>
+        <translation>Меню дорожки</translation>
     </message>
     <message>
         <location filename="../../src/plugins/filters/filtersplugin.cpp" line="54"/>
@@ -1870,7 +1870,7 @@ When disabled, existing track order is preserved and only newly added matching t
     <message>
         <location filename="../../src/gui/dialog/configdialog.cpp" line="42"/>
         <source>Restore defaults</source>
-        <translation>Восстановить значения по умолчанию</translation>
+        <translation>Вернуть значения по умолчанию</translation>
     </message>
     <message>
         <location filename="../../src/gui/dialog/configdialog.cpp" line="44"/>
@@ -2169,7 +2169,7 @@ When disabled, existing track order is preserved and only newly added matching t
     <message>
         <location filename="../../src/gui/settings/playback/decoderpage.cpp" line="185"/>
         <source>Set to &apos;0&apos; to disable VBR updates.</source>
-        <translation>Установите «0», чтобы отключить обновления VBR.</translation>
+        <translation>Укажите «0», чтобы отключить уточнение битрейта (VBR).</translation>
     </message>
     <message>
         <location filename="../../src/gui/settings/playback/decoderpage.cpp" line="191"/>
@@ -3245,27 +3245,27 @@ Effects here process the final combined output.</source>
     <message>
         <location filename="../../src/gui/settings/playback/fadingpage.cpp" line="143"/>
         <source>Linear</source>
-        <translation>Линейное</translation>
+        <translation>Линейно</translation>
     </message>
     <message>
         <location filename="../../src/gui/settings/playback/fadingpage.cpp" line="144"/>
         <source>Ease Out (Sine)</source>
-        <translation>Затухание (синусоидальное)</translation>
+        <translation>Затухание (синусоидально)</translation>
     </message>
     <message>
         <location filename="../../src/gui/settings/playback/fadingpage.cpp" line="145"/>
         <source>Ease In (Cosine)</source>
-        <translation>Нарастание (косинусоидальное)</translation>
+        <translation>Нарастание (косинусоидально)</translation>
     </message>
     <message>
         <location filename="../../src/gui/settings/playback/fadingpage.cpp" line="146"/>
         <source>Ease Out (Exponential)</source>
-        <translation>Затухание (экспоненциальное)</translation>
+        <translation>Затухание (экспоненциально)</translation>
     </message>
     <message>
         <location filename="../../src/gui/settings/playback/fadingpage.cpp" line="147"/>
         <source>Ease In (Exponential)</source>
-        <translation>Нарастание (экспоненциальное)</translation>
+        <translation>Нарастание (экспоненциально)</translation>
     </message>
     <message>
         <location filename="../../src/gui/settings/playback/fadingpage.cpp" line="148"/>
@@ -3280,7 +3280,7 @@ Effects here process the final combined output.</source>
     <message>
         <location filename="../../src/gui/settings/playback/fadingpage.cpp" line="234"/>
         <source>Overlapping fades for seek and track changes. Auto track change uses overlap; use Between tracks above for non-overlapping fades.</source>
-        <translation>Затухания с наложением при перемотке и смене треков. Автоматическая смена треков использует наложение; используйте опцию «Между дорожками» выше для затуханий без наложения.</translation>
+        <translation>Затухания с наложением при перемотке и смене треков. Автоматическая смена треков использует наложение; включите параметр «Между дорожками» выше для затуханий без наложения.</translation>
     </message>
     <message>
         <location filename="../../src/gui/settings/playback/fadingpage.cpp" line="188"/>
@@ -4800,7 +4800,7 @@ Effects here process the final combined output.</source>
     <message>
         <location filename="../../src/gui/settings/guidisplaypage.cpp" line="101"/>
         <source>Image allocation limit</source>
-        <translation>Предел размещения для изображений</translation>
+        <translation>Предел места для изображений</translation>
     </message>
     <message>
         <location filename="../../src/gui/settings/guidisplaypage.cpp" line="103"/>
@@ -4836,7 +4836,7 @@ Effects here process the final combined output.</source>
     <message>
         <location filename="../../src/gui/settings/guigeneralpage.cpp" line="84"/>
         <source>Show menu bar</source>
-        <translation>Показать панель меню</translation>
+        <translation>Показывать панель меню</translation>
     </message>
     <message>
         <location filename="../../src/gui/settings/guigeneralpage.cpp" line="88"/>
@@ -4856,7 +4856,7 @@ Effects here process the final combined output.</source>
     <message>
         <location filename="../../src/gui/settings/guigeneralpage.cpp" line="92"/>
         <source>Stretch</source>
-        <translation>Добавить отступы</translation>
+        <translation>Растянуть</translation>
     </message>
     <message>
         <location filename="../../src/gui/settings/guigeneralpage.cpp" line="94"/>
@@ -5134,7 +5134,7 @@ If the default half-star does not render correctly with your system font, choose
     <message>
         <location filename="../../src/gui/selectioninfo/infowidget.cpp" line="474"/>
         <source>ReplayGain</source>
-        <translation>Нормализация ReplayGain</translation>
+        <translation>Громкость ReplayGain</translation>
     </message>
     <message>
         <location filename="../../src/gui/selectioninfo/infowidget.cpp" line="482"/>
@@ -5172,7 +5172,7 @@ If the default half-star does not render correctly with your system font, choose
     <message>
         <location filename="../../src/gui/selectioninfo/infopopulator.cpp" line="145"/>
         <source>ReplayGain</source>
-        <translation>Нормализация ReplayGain</translation>
+        <translation>Громкость ReplayGain</translation>
     </message>
     <message>
         <location filename="../../src/gui/selectioninfo/infopopulator.cpp" line="148"/>
@@ -5501,7 +5501,7 @@ If the default half-star does not render correctly with your system font, choose
     <message>
         <location filename="../../src/gui/settings/library/librarygeneralpage.cpp" line="140"/>
         <source>Auto refresh on startup</source>
-        <translation>Автоматически обновлять при запуске</translation>
+        <translation>Автообновлять при запуске</translation>
     </message>
     <message>
         <location filename="../../src/gui/settings/library/librarygeneralpage.cpp" line="141"/>
@@ -5511,12 +5511,12 @@ If the default half-star does not render correctly with your system font, choose
     <message>
         <location filename="../../src/gui/settings/library/librarygeneralpage.cpp" line="142"/>
         <source>Mark unavailable tracks on playback</source>
-        <translation>Отмечать недоступные треки при проигрывании</translation>
+        <translation>Метить недоступные треки при проигрывании</translation>
     </message>
     <message>
         <location filename="../../src/gui/settings/library/librarygeneralpage.cpp" line="143"/>
         <source>Mark unavailable tracks on startup</source>
-        <translation>Отмечать недоступные треки при запуске</translation>
+        <translation>Метить недоступные треки при запуске</translation>
     </message>
     <message>
         <location filename="../../src/gui/settings/library/librarygeneralpage.cpp" line="144"/>
@@ -5531,17 +5531,17 @@ If the default half-star does not render correctly with your system font, choose
     <message>
         <location filename="../../src/gui/settings/library/librarygeneralpage.cpp" line="146"/>
         <source>Save playcounts to file tags when possible</source>
-        <translation>Сохранять количество воспроизведений в теги файлов по возможности</translation>
+        <translation>Сохранять число прослушиваний в теги файлов по возможности</translation>
     </message>
     <message>
         <location filename="../../src/gui/settings/library/librarygeneralpage.cpp" line="147"/>
         <source>Overwrite rating in database when songs are re-read</source>
-        <translation>Перезаписывать оценку в базе данных при повторном чтении песен</translation>
+        <translation>Перезаписывать оценку в БД при повторном чтении песен</translation>
     </message>
     <message>
         <location filename="../../src/gui/settings/library/librarygeneralpage.cpp" line="148"/>
         <source>Overwrite playcount in database when files are re-read</source>
-        <translation>Перезаписывать число воспроизведений в БД при повторном чтении файлов</translation>
+        <translation>Перезаписывать число прослушиваний в БД при повторном чтении файлов</translation>
     </message>
     <message>
         <location filename="../../src/gui/settings/library/librarygeneralpage.cpp" line="159"/>
@@ -5593,7 +5593,7 @@ If the default half-star does not render correctly with your system font, choose
         <source>When enabled, a rating found in file tags replaces the database rating.
 When disabled, the database rating is kept and file tags are only used when the database rating is empty.</source>
         <translation>При включении оценка, найденная в тегах файла, заменяет оценку в базе данных.
-При отключении сохраняется оценка из базы данных, а теги файлов используются, только когда оценка в базе данных пуста.</translation>
+При отключении сохраняется оценка из БД, а теги файлов используются, только когда оценка в БД пуста.</translation>
     </message>
     <message>
         <location filename="../../src/gui/settings/library/librarygeneralpage.cpp" line="200"/>
@@ -5601,10 +5601,10 @@ When disabled, the database rating is kept and file tags are only used when the 
 Missing values still fall back to the database.
 When disabled, playcount uses the higher value, first played uses the earlier non-empty value,
 and last played uses the later value.</source>
-        <translation>При включении количество воспроизведений и временные метки из тегов файлов заменяют значения в базе данных.
+        <translation>При включении число прослушиваний и временные метки из тегов файлов заменяют значения в БД.
 Отсутствующие значения по-прежнему берутся из базы данных.
-При отключении для количества воспроизведений используется большее значение, для первого воспроизведения — более раннее непустое значение,
-а для последнего воспроизведения — более позднее значение.</translation>
+При отключении для числа прослушиваний используется большее значение, для первого
+прослушивания — более раннее непустое значение, а для последнего — более позднее значение.</translation>
     </message>
     <message>
         <location filename="../../src/gui/settings/library/librarygeneralpage.cpp" line="292"/>
@@ -5872,7 +5872,7 @@ and last played uses the later value.</source>
         <location filename="../../src/gui/librarytree/librarytreescriptenvironment.cpp" line="94"/>
         <source>All Music (%trackcount%)</source>
         <extracomment>Default Library Tree summary node title. Keep %trackcount% unchanged; it is a script variable.</extracomment>
-        <translation type="unfinished"></translation>
+        <translation>Вся музыка (%trackcount%)</translation>
     </message>
 </context>
 <context>
@@ -5910,7 +5910,7 @@ and last played uses the later value.</source>
     <message>
         <location filename="../../src/gui/librarytree/librarytreeconfigwidget.cpp" line="52"/>
         <source>Show summary node</source>
-        <translation type="unfinished"></translation>
+        <translation>Показать узел сводки</translation>
     </message>
     <message>
         <location filename="../../src/gui/librarytree/librarytreeconfigwidget.cpp" line="54"/>
@@ -5950,7 +5950,7 @@ and last played uses the later value.</source>
     <message>
         <location filename="../../src/gui/librarytree/librarytreeconfigwidget.cpp" line="68"/>
         <source>Supports &lt;right&gt; for right-aligned text, %trackcount% for tracks, and %childcount% for child nodes.</source>
-        <translation type="unfinished"></translation>
+        <translation>Поддерживает &lt;right&gt; для текста, выровненного по правому краю, %trackcount% для дорожек и %childcount% для дочерних узлов.</translation>
     </message>
     <message>
         <location filename="../../src/gui/librarytree/librarytreeconfigwidget.cpp" line="78"/>
@@ -5997,7 +5997,7 @@ and last played uses the later value.</source>
     <message>
         <location filename="../../src/gui/librarytree/librarytreeconfigwidget.cpp" line="108"/>
         <source>Summary title</source>
-        <translation type="unfinished"></translation>
+        <translation>Краткое название</translation>
     </message>
     <message>
         <location filename="../../src/gui/librarytree/librarytreeconfigwidget.cpp" line="116"/>
@@ -6109,12 +6109,12 @@ and last played uses the later value.</source>
     <message>
         <location filename="../../src/gui/librarytree/librarytreegroupeditordialog.cpp" line="86"/>
         <source>Use &lt;code&gt;||&lt;/code&gt; to split tree levels. &lt;b&gt;Sort Grouping&lt;/b&gt; must use the same &lt;code&gt;||&lt;/code&gt; level structure as &lt;b&gt;Display Grouping&lt;/b&gt;; each sort level applies to the matching display level, and a sort level may be empty (for example &lt;code&gt;||%year%||&lt;/code&gt;).</source>
-        <translation type="unfinished"></translation>
+        <translation>Используйте &lt;code&gt;||&lt;/code&gt; для разделения уровней дерева. &lt;b&gt;Группировка сортировки&lt;/b&gt; должна использовать ту же структуру уровней &lt;code&gt;||&lt;/code&gt;, что и &lt;b&gt;Группировка отображения&lt;/b&gt;; каждый уровень сортировки применяется к соответствующему уровню отображения, и уровень сортировки может быть пустым (напр., &lt;code&gt;||%year%||&lt;/code&gt;).</translation>
     </message>
     <message>
         <location filename="../../src/gui/librarytree/librarytreegroupeditordialog.cpp" line="103"/>
         <source>Use &lt;code&gt;&amp;lt;right&amp;gt;&lt;/code&gt; in a display level to show text right-aligned. Use &lt;code&gt;%trackcount%&lt;/code&gt; for tracks and &lt;code&gt;%childcount%&lt;/code&gt; for child nodes.</source>
-        <translation type="unfinished"></translation>
+        <translation>Используйте &lt;code&gt;&amp;lt;right&amp;gt;&lt;/code&gt; на уровне отображения, чтобы текст был выровнен по правому краю. Используйте &lt;code&gt;%trackcount%&lt;/code&gt; для дорожек и &lt;code&gt;%childcount%&lt;/code&gt; для дочерних узлов.</translation>
     </message>
     <message>
         <location filename="../../src/gui/librarytree/librarytreegroupeditordialog.cpp" line="95"/>
@@ -9200,7 +9200,7 @@ Remove original: deletes the previous file or tag after saving.</source>
     <message>
         <location filename="../../src/gui/playlist/editableplaylistsession.cpp" line="127"/>
         <source>Playlist empty</source>
-        <translation>Пустой плейлист</translation>
+        <translation>Плейлист пуст</translation>
     </message>
     <message>
         <location filename="../../src/gui/playlist/editableplaylistsession.cpp" line="132"/>
@@ -9774,7 +9774,7 @@ Remove original: deletes the previous file or tag after saving.</source>
     <message>
         <location filename="../../src/plugins/rgscanner/rgscannerpage.cpp" line="145"/>
         <source>ReplayGain</source>
-        <translation>Нормализация ReplayGain</translation>
+        <translation>Громкость ReplayGain</translation>
     </message>
 </context>
 <context>
@@ -9836,7 +9836,7 @@ Remove original: deletes the previous file or tag after saving.</source>
     <message>
         <location filename="../../src/plugins/rgscanner/rgscannerplugin.cpp" line="118"/>
         <source>ReplayGain</source>
-        <translation>Нормализация ReplayGain</translation>
+        <translation>Громкость ReplayGain</translation>
     </message>
     <message>
         <location filename="../../src/plugins/rgscanner/rgscannerplugin.cpp" line="122"/>
@@ -9947,7 +9947,7 @@ Remove original: deletes the previous file or tag after saving.</source>
     <message>
         <location filename="../../src/gui/settings/playback/replaygainpage.cpp" line="250"/>
         <source>ReplayGain</source>
-        <translation>Нормализация ReplayGain</translation>
+        <translation>Громкость ReplayGain</translation>
     </message>
 </context>
 <context>
@@ -10844,7 +10844,7 @@ Remove original: deletes the previous file or tag after saving.</source>
     <message>
         <location filename="../../src/gui/settings/searchpage.cpp" line="77"/>
         <source>Error foreground</source>
-        <translation>Ошибка переднего плана</translation>
+        <translation>Передний план ошибки</translation>
     </message>
     <message>
         <location filename="../../src/gui/settings/searchpage.cpp" line="80"/>
@@ -12850,7 +12850,7 @@ Higher supersampling values work best with higher sample counts.</source>
     <message>
         <location filename="../../src/gui/widgets.cpp" line="363"/>
         <source>ReplayGain</source>
-        <translation>Нормализация ReplayGain</translation>
+        <translation>Громкость ReplayGain</translation>
     </message>
     <message>
         <location filename="../../src/gui/widgets.cpp" line="369"/>
@@ -12888,37 +12888,37 @@ Higher supersampling values work best with higher sample counts.</source>
     <message>
         <location filename="../../src/gui/contextmenuids.h" line="115"/>
         <source>Add to current playlist</source>
-        <translation type="unfinished">Добавить в текущий плейлист</translation>
+        <translation>Добавить в текущий плейлист</translation>
     </message>
     <message>
         <location filename="../../src/gui/contextmenuids.h" line="119"/>
         <source>Add to active playlist</source>
-        <translation type="unfinished">Добавить в активный плейлист</translation>
+        <translation>Добавить в активный плейлист</translation>
     </message>
     <message>
         <location filename="../../src/gui/contextmenuids.h" line="123"/>
         <source>Replace current playlist</source>
-        <translation type="unfinished">Заменить текущий плейлист</translation>
+        <translation>Заменить текущий плейлист</translation>
     </message>
     <message>
         <location filename="../../src/gui/contextmenuids.h" line="127"/>
         <source>Create new playlist</source>
-        <translation type="unfinished">Создать новый плейлист</translation>
+        <translation>Создать новый плейлист</translation>
     </message>
     <message>
         <location filename="../../src/gui/contextmenuids.h" line="132"/>
         <source>Add to playback queue</source>
-        <translation type="unfinished">Добавить в очередь воспроизведения</translation>
+        <translation>Добавить в очередь воспроизведения</translation>
     </message>
     <message>
         <location filename="../../src/gui/contextmenuids.h" line="136"/>
         <source>Queue to play next</source>
-        <translation type="unfinished">Поставить следующим в очереди</translation>
+        <translation>Поставить следующим в очереди</translation>
     </message>
     <message>
         <location filename="../../src/gui/contextmenuids.h" line="140"/>
         <source>Remove from playback queue</source>
-        <translation type="unfinished">Удалить из очереди воспроизведения</translation>
+        <translation>Убрать из очереди воспроизведения</translation>
     </message>
     <message>
         <location filename="../../src/gui/contextmenuids.h" line="144"/>
@@ -12938,7 +12938,7 @@ Higher supersampling values work best with higher sample counts.</source>
     <message>
         <location filename="../../src/gui/contextmenuids.h" line="154"/>
         <source>Track menu</source>
-        <translation type="unfinished"></translation>
+        <translation>Меню дорожки</translation>
     </message>
     <message>
         <location filename="../../src/gui/widgets.cpp" line="309"/>
@@ -12991,22 +12991,22 @@ Higher supersampling values work best with higher sample counts.</source>
     <message>
         <location filename="../../src/gui/contextmenuids.h" line="79"/>
         <source>Add to playback queue</source>
-        <translation type="unfinished">Добавить в очередь воспроизведения</translation>
+        <translation>Добавить в очередь воспроизведения</translation>
     </message>
     <message>
         <location filename="../../src/gui/contextmenuids.h" line="82"/>
         <source>Queue to play next</source>
-        <translation type="unfinished">Поставить следующим в очереди</translation>
+        <translation>Поставить следующим в очереди</translation>
     </message>
     <message>
         <location filename="../../src/gui/contextmenuids.h" line="86"/>
         <source>Remove from playback queue</source>
-        <translation type="unfinished">Удалить из очереди воспроизведения</translation>
+        <translation>Убрать из очереди воспроизведения</translation>
     </message>
     <message>
         <location filename="../../src/gui/contextmenuids.h" line="89"/>
         <source>Track menu</source>
-        <translation type="unfinished"></translation>
+        <translation>Меню дорожки</translation>
     </message>
     <message>
         <location filename="../../src/gui/widgets.cpp" line="320"/>
