@@ -1,6 +1,6 @@
 /*
  * Fooyin
- * Copyright © 2023, Luke Taylor <LukeT1@proton.me>
+ * Copyright © 2026, Luke Taylor <luket@pm.me>
  *
  * Fooyin is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,11 +24,12 @@
 namespace Fooyin {
 class SettingsManager;
 
-class PlaylistGeneralPage : public SettingsPage
+class PlaylistSavingPage : public SettingsPage
 {
     Q_OBJECT
 
 public:
-    explicit PlaylistGeneralPage(SettingsManager* settings, QObject* parent = nullptr);
+    explicit PlaylistSavingPage(const QStringList& playlistExtensions, SettingsManager* settings,
+                                QObject* parent = nullptr);
 };
 } // namespace Fooyin

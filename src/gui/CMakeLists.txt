@@ -403,8 +403,14 @@ set(SOURCES
     settings/playlist/playlistcolumnpage.h
     settings/playlist/playlistgeneralpage.cpp
     settings/playlist/playlistgeneralpage.h
+    settings/playlist/playlistguipage.cpp
+    settings/playlist/playlistguipage.h
     settings/playlist/playlistpresetspage.cpp
     settings/playlist/playlistpresetspage.h
+    settings/playlist/playlistsavingpage.cpp
+    settings/playlist/playlistsavingpage.h
+    settings/playlist/playlisttabspage.cpp
+    settings/playlist/playlisttabspage.h
     settings/plugins/pluginaboutdialog.cpp
     settings/plugins/pluginaboutdialog.h
     settings/plugins/pluginsmodel.cpp

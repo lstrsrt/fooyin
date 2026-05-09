@@ -77,7 +77,10 @@
 #include "settings/playback/replaygainpage.h"
 #include "settings/playlist/playlistcolumnpage.h"
 #include "settings/playlist/playlistgeneralpage.h"
+#include "settings/playlist/playlistguipage.h"
 #include "settings/playlist/playlistpresetspage.h"
+#include "settings/playlist/playlistsavingpage.h"
+#include "settings/playlist/playlisttabspage.h"
 #include "settings/plugins/pluginspage.h"
 #include "settings/searchpage.h"
 #include "settings/shellintegrationpage.h"
@@ -348,7 +351,10 @@ void Widgets::registerPages()
     new PlaybackPage(m_settings, this);
     new DspManagerPage(m_core->dspChainStore(), m_dspPresetRegistry, m_dspSettingsRegistry.get(), m_settings, this);
     new FadingPage(m_settings, this);
-    new PlaylistGeneralPage(m_core->playlistLoader()->supportedSaveExtensions(), m_settings, this);
+    new PlaylistGeneralPage(m_settings, this);
+    new PlaylistGuiPage(m_settings, this);
+    new PlaylistTabsPage(m_settings, this);
+    new PlaylistSavingPage(m_core->playlistLoader()->supportedSaveExtensions(), m_settings, this);
     new PlaylistColumnPage(m_playlistController->columnRegistry(), m_settings, this);
     new PlaylistPresetsPage(m_playlistController->presetRegistry(), m_settings, this);
     new PluginPage(m_core->pluginManager(), m_pluginSettingsRegistry.get(), m_settings, this);
