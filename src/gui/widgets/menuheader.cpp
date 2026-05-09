@@ -21,8 +21,18 @@
 
 #include <QApplication>
 #include <QPainter>
+#include <QStyleOptionMenuItem>
 
 using namespace Qt::StringLiterals;
+
+namespace {
+QColor headerOverlayColour(const QPalette& palette)
+{
+    QColor colour = palette.text().color();
+    colour.setAlpha(18);
+    return colour;
+}
+} // namespace
 
 namespace Fooyin {
 MenuHeader::MenuHeader(QString text, QWidget* parent)
@@ -55,12 +65,16 @@ void MenuHeader::paintEvent(QPaintEvent* /*event*/)
 {
     QPainter painter{this};
 
-    const QColor headerBackground = palette().alternateBase().color();
-    const QColor headerText       = palette().text().color();
+    QStyleOptionMenuItem option;
+    option.initFrom(this);
 
-    painter.setBrush(headerBackground);
-    painter.setPen(Qt::NoPen);
-    painter.drawRect(0, 0, width(), m_textHeight + m_margin);
+    const QRect headerRect{0, 0, width(), m_textHeight + m_margin};
+    const QColor headerBackground = option.palette.window().color();
+    const QColor headerOverlay    = headerOverlayColour(option.palette);
+    const QColor headerText       = option.palette.text().color();
+
+    painter.fillRect(headerRect, headerBackground);
+    painter.fillRect(headerRect, headerOverlay);
 
     QFont font{painter.font()};
     font.setBold(true);
