@@ -58,6 +58,8 @@ struct FYCORE_EXPORT PlaylistTrack
     bool operator==(const PlaylistTrack& other) const = default;
     bool operator<(const PlaylistTrack& other) const;
 
+    [[nodiscard]] bool sameIdentityAs(const PlaylistTrack& other) const;
+
     operator QVariant() const
     {
         return QVariant::fromValue(*this);

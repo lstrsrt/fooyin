@@ -47,11 +47,13 @@ public:
 
     [[nodiscard]] PlaylistIndexes playlistIndexes() const;
     [[nodiscard]] PlaylistTrackIndexes indexesForPlaylist(const UId& id) const;
-    std::vector<int> indexesForTrack(const UId& playlistId, int playlistTrackIndex) const;
+    [[nodiscard]] std::vector<int> indexesForTrack(const UId& playlistId, int playlistTrackIndex) const;
 
     [[nodiscard]] PlaylistTrack nextTrack() const;
     PlaylistTrack nextTrackChange();
 
+    [[nodiscard]] int getTrackIndex(const PlaylistTrack& track) const;
+    [[nodiscard]] bool containsTrack(const PlaylistTrack& track) const;
     void addTracks(const QueueTracks& tracks, int index = -1);
     void replaceTracks(const QueueTracks& tracks);
     std::optional<PlaylistTrack> removeFirstMatchingTrack(const PlaylistTrack& track);

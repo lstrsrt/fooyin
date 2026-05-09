@@ -218,9 +218,10 @@ std::optional<PlaybackOrderNavigator::RequestedTrack> PlaybackOrderNavigator::se
 {
     if(delta <= 0) {
         if(m_playlistHandler) {
+            auto track = advancePlaybackRelativeTrack(delta);
             return RequestedTrack{
-                .track        = advancePlaybackRelativeTrack(delta),
-                .isQueueTrack = false,
+                .track        = track,
+                .isQueueTrack = m_queue->containsTrack(track),
             };
         }
         return {};

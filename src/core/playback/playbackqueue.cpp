@@ -112,6 +112,23 @@ PlaylistTrack PlaybackQueue::nextTrackChange()
     return track;
 }
 
+int PlaybackQueue::getTrackIndex(const PlaylistTrack& track) const
+{
+    const auto it
+        = std::ranges::find_if(m_tracks, [&track](const PlaylistTrack& other) { return track.sameIdentityAs(other); });
+
+    if(it == m_tracks.cend()) {
+        return -1;
+    }
+
+    return static_cast<int>(std::distance(m_tracks.cbegin(), it));
+}
+
+bool PlaybackQueue::containsTrack(const PlaylistTrack& track) const
+{
+    return getTrackIndex(track) >= 0;
+}
+
 void PlaybackQueue::addTracks(const QueueTracks& tracks, int index)
 {
     if(index >= 0) {
@@ -129,13 +146,13 @@ void PlaybackQueue::replaceTracks(const QueueTracks& tracks)
 
 std::optional<PlaylistTrack> PlaybackQueue::removeFirstMatchingTrack(const PlaylistTrack& track)
 {
-    const auto it = std::ranges::find(m_tracks, track);
-    if(it == m_tracks.end()) {
+    const auto index = getTrackIndex(track);
+    if(index == -1) {
         return {};
     }
 
-    PlaylistTrack removedTrack{*it};
-    m_tracks.erase(it);
+    PlaylistTrack removedTrack{m_tracks.at(index)};
+    m_tracks.erase(m_tracks.begin() + index);
     return removedTrack;
 }
 
@@ -146,7 +163,9 @@ QueueTracks PlaybackQueue::removeTracks(const QueueTracks& tracks)
     std::set<PlaylistTrack> tracksToRemove{tracks.cbegin(), tracks.cend()};
 
     auto matchingTrack = [&tracksToRemove](const PlaylistTrack& track) {
-        return tracksToRemove.contains(track);
+        return std::ranges::find_if(tracksToRemove,
+                                    [&track](const PlaylistTrack& other) { return track.sameIdentityAs(other); })
+            != tracksToRemove.cend();
     };
 
     std::ranges::copy_if(m_tracks, std::back_inserter(removedTracks), matchingTrack);

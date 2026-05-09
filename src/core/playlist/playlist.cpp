@@ -114,6 +114,11 @@ bool PlaylistTrack::operator<(const PlaylistTrack& other) const
          < std::tie(other.track, other.playlistId, other.entryId, other.indexInPlaylist);
 }
 
+bool PlaylistTrack::sameIdentityAs(const PlaylistTrack& other) const
+{
+    return track.sameIdentityAs(other.track);
+}
+
 struct Playlist::PrivateKey
 {
     PrivateKey() { }
