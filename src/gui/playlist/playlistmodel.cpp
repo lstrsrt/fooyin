@@ -2229,6 +2229,19 @@ QVariant PlaylistModel::trackData(PlaylistItem* item, const QModelIndex& index, 
             return trackItem.right();
         case PlaylistItem::Role::ItemData:
             return trackItem.track();
+        case PlaylistItem::Role::EditableWriteField: {
+            if(singleColumnMode || column < 0 || std::cmp_greater_equal(column, m_columns.size())) {
+                return {};
+            }
+
+            const PlaylistColumn& playlistColumn = m_columns.at(column);
+            if(!isEditablePlaylistColumn(playlistColumn)) {
+                return {};
+            }
+
+            const QString writeField = normaliseWriteField(playlistColumn.writeField);
+            return isRatingWriteField(writeField) ? QVariant{} : writeField;
+        }
         case PlaylistItem::Role::UniformHeightKey:
             return uniformHeightKey(PlaylistItem::Track, trackItem.size().height(), trackItem.rowHeight() <= 0);
         case PlaylistItem::Role::UsesStyleBaseHeight:

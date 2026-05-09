@@ -1,6 +1,6 @@
 /*
  * Fooyin
- * Copyright © 2022, Luke Taylor <LukeT1@proton.me>
+ * Copyright © 2026, Luke Taylor <luket@pm.me>
  *
  * Fooyin is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,20 +19,23 @@
 
 #pragma once
 
-#include <QStyledItemDelegate>
+#include "fygui_export.h"
+
+#include <core/stringpool.h>
+
+#include <QStringList>
+
+#include <memory>
+#include <optional>
+
+class QLineEdit;
 
 namespace Fooyin {
-class PlaylistDelegate : public QStyledItemDelegate
-{
-    Q_OBJECT
+class TrackMetadataStore;
 
-public:
-    using QStyledItemDelegate::QStyledItemDelegate;
-
-    [[nodiscard]] QWidget* createEditor(QWidget* parent, const QStyleOptionViewItem& option,
-                                        const QModelIndex& index) const override;
-    void paint(QPainter* painter, const QStyleOptionViewItem& option, const QModelIndex& index) const override;
-    [[nodiscard]] QSize sizeHint(const QStyleOptionViewItem& option, const QModelIndex& index) const override;
-    void setEditorData(QWidget* editor, const QModelIndex& index) const override;
-};
+namespace Gui {
+[[nodiscard]] FYGUI_EXPORT std::optional<StringPool::Domain> metadataCompletionDomain(const QString& field);
+FYGUI_EXPORT void setMetadataCompleter(QLineEdit* editor, const QStringList& values, bool multivalue);
+FYGUI_EXPORT bool setMetadataCompleter(QLineEdit* editor, const QString& field, const TrackMetadataStore& store);
+} // namespace Gui
 } // namespace Fooyin

@@ -23,6 +23,7 @@
 
 #include <gui/scripting/richtextutils.h>
 #include <gui/widgets/expandedtreeview.h>
+#include <gui/widgets/metadatacompleter.h>
 #include <utils/utils.h>
 
 #include <QApplication>
@@ -33,6 +34,27 @@
 constexpr auto EditorInitialisedProperty = "fy_editor_initialised";
 
 namespace Fooyin {
+QWidget* PlaylistDelegate::createEditor(QWidget* parent, const QStyleOptionViewItem& option,
+                                        const QModelIndex& index) const
+{
+    auto* editor = qobject_cast<QLineEdit*>(QStyledItemDelegate::createEditor(parent, option, index));
+    if(!editor) {
+        editor = new QLineEdit(parent);
+    }
+
+    const QString writeField = index.data(PlaylistItem::Role::EditableWriteField).toString();
+    if(writeField.isEmpty()) {
+        return editor;
+    }
+
+    const auto playlistTrack = index.data(PlaylistItem::Role::ItemData).value<PlaylistTrack>();
+    if(playlistTrack.track.metadataStore()) {
+        Gui::setMetadataCompleter(editor, writeField, *playlistTrack.track.metadataStore());
+    }
+
+    return editor;
+}
+
 struct DrawTextResult
 {
     QRect bound;

@@ -61,7 +61,8 @@ public:
         DecorationPosition,
         InsetSubheadersToImageColumns,
         UniformHeightKey,
-        UsesStyleBaseHeight
+        UsesStyleBaseHeight,
+        EditableWriteField
     };
 
     enum class State

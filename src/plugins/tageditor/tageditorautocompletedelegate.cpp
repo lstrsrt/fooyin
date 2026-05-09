@@ -21,100 +21,16 @@
 
 #include "tageditoritem.h"
 
-#include <core/constants.h>
 #include <core/trackmetadatastore.h>
+#include <gui/widgets/metadatacompleter.h>
 
-#include <QCompleter>
 #include <QLineEdit>
 #include <QStringListModel>
 
 #include <set>
 
-using namespace Qt::StringLiterals;
-
 namespace {
-class TokenCompleter : public QCompleter
-{
-public:
-    using QCompleter::QCompleter;
-
-    void setMultiValue(bool multivalue)
-    {
-        m_multivalue = multivalue;
-    }
-
-protected:
-    [[nodiscard]] QString pathFromIndex(const QModelIndex& index) const override
-    {
-        QString completion = QCompleter::pathFromIndex(index);
-
-        if(!m_multivalue) {
-            return completion;
-        }
-
-        const auto* lineEdit = qobject_cast<const QLineEdit*>(widget());
-        if(!lineEdit) {
-            return completion;
-        }
-
-        const QString text       = lineEdit->text();
-        const qsizetype splitPos = text.lastIndexOf(u';');
-        if(splitPos < 0) {
-            return completion;
-        }
-
-        QString prefix = text.first(splitPos + 1);
-        if(!prefix.endsWith(u' ')) {
-            prefix += u' ';
-        }
-
-        return prefix + completion;
-    }
-
-    [[nodiscard]] QStringList splitPath(const QString& path) const override
-    {
-        if(!m_multivalue) {
-            return QCompleter::splitPath(path);
-        }
-
-        const qsizetype splitPos = path.lastIndexOf(u';');
-        return {path.sliced(splitPos >= 0 ? splitPos + 1 : 0).trimmed()};
-    }
-
-private:
-    bool m_multivalue{false};
-};
-
 using Domain = Fooyin::StringPool::Domain;
-
-std::optional<Domain> valueDomainForField(const QString& field)
-{
-    if(field == QLatin1String{Fooyin::Constants::MetaData::Artist}) {
-        return Domain::Artist;
-    }
-    if(field == QLatin1String{Fooyin::Constants::MetaData::AlbumArtist}) {
-        return Domain::AlbumArtist;
-    }
-    if(field == QLatin1String{Fooyin::Constants::MetaData::Album}) {
-        return Domain::Album;
-    }
-    if(field == QLatin1String{Fooyin::Constants::MetaData::Genre}) {
-        return Domain::Genre;
-    }
-    if(field == QLatin1String{Fooyin::Constants::MetaData::Composer}) {
-        return Domain::Composer;
-    }
-    if(field == QLatin1String{Fooyin::Constants::MetaData::Performer}) {
-        return Domain::Performer;
-    }
-    if(field == QLatin1String{Fooyin::Constants::MetaData::Codec}) {
-        return Domain::Codec;
-    }
-    if(field == QLatin1String{Fooyin::Constants::MetaData::Encoding}) {
-        return Domain::Encoding;
-    }
-    return {};
-}
 
 size_t domainIndex(Domain domain)
 {
@@ -178,13 +94,7 @@ QWidget* TagEditorAutocompleteDelegate::createEditor(QWidget* parent, const QSty
         return editor;
     }
 
-    auto* completer = new TokenCompleter(modelForDomain(config.domain), editor);
-    completer->setCaseSensitivity(Qt::CaseInsensitive);
-    completer->setCompletionMode(QCompleter::PopupCompletion);
-    completer->setFilterMode(Qt::MatchContains);
-    completer->setMultiValue(config.multivalue);
-
-    editor->setCompleter(completer);
+    Gui::setMetadataCompleter(editor, modelForDomain(config.domain)->stringList(), config.multivalue);
 
     return editor;
 }
@@ -215,7 +125,7 @@ TagEditorAutocompleteDelegate::completionConfig(const QModelIndex& index)
 
     const QString field = index.siblingAtColumn(0).data(TagEditorItem::ScriptField).toString().toUpper();
 
-    if(const auto domain = valueDomainForField(field); domain.has_value()) {
+    if(const auto domain = Gui::metadataCompletionDomain(field); domain.has_value()) {
         return {.enabled = true, .multivalue = Track::isMultiValueTag(field), .domain = *domain};
     }
 
