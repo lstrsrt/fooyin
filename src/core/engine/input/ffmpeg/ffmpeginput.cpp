@@ -538,7 +538,7 @@ public:
     AudioBuffer m_buffer;
     Frame m_frame;
     int m_bufferPos{0};
-    int64_t m_seekPos{0};
+    int64_t m_seekPos{-1};
     uint64_t m_currentPos{0};
     int m_bitrate{0};
     int m_skipBytes{0};
@@ -555,6 +555,7 @@ void FFmpegInputPrivate::reset()
     m_bitrate                 = 0;
     m_bufferPos               = 0;
     m_currentPos              = 0;
+    m_seekPos                 = -1;
     m_skipBytes               = 0;
     m_consecutiveDecodeErrors = 0;
     m_lastErrorRecoverable    = false;
@@ -749,19 +750,18 @@ int FFmpegInputPrivate::receiveAVFrames()
             m_buffer = {m_frame.avFrame()->data[0], static_cast<size_t>(sampleCount), m_audioFormat, startTime};
         }
 
-        if(!(m_options & AudioDecoder::NoSeeking)) {
-            // Handle seeking of APE files
-            if(m_skipBytes > 0) {
-                const auto len = std::min(sampleCount, m_skipBytes);
-                m_skipBytes -= len;
+        if(m_skipBytes > 0) {
+            const auto len = std::min(sampleCount, m_skipBytes);
+            m_skipBytes -= len;
 
-                if(sampleCount - len == 0) {
-                    m_buffer.clear();
-                }
-                else {
-                    std::memmove(m_buffer.data(), m_buffer.data() + len, sampleCount - len);
-                    m_buffer.resize(sampleCount - len);
-                }
+            if(sampleCount - len == 0) {
+                m_buffer.clear();
+            }
+            else {
+                std::memmove(m_buffer.data(), m_buffer.data() + len, sampleCount - len);
+                m_buffer.resize(sampleCount - len);
+                m_buffer.setStartTime(m_buffer.startTime()
+                                      + m_audioFormat.durationForBytes(static_cast<uint64_t>(len)));
             }
         }
 
@@ -815,9 +815,11 @@ void FFmpegInputPrivate::readNext()
         }
     }
 
-    if(m_seekPos > 0 && m_codec.context()->codec_id == AV_CODEC_ID_APE) {
+    if(m_seekPos > 0 && packet->pts != AV_NOPTS_VALUE) {
         const auto packetPts = av_rescale_q_rnd(packet->pts, m_timeBase, TimeBaseMs, AVRounding::AV_ROUND_DOWN);
-        m_skipBytes          = m_audioFormat.bytesForDuration(std::abs(m_seekPos - packetPts));
+        if(packetPts < m_seekPos) {
+            m_skipBytes = m_audioFormat.bytesForDuration(static_cast<uint64_t>(m_seekPos - packetPts));
+        }
     }
     m_seekPos = -1;
 
