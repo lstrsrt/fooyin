@@ -47,7 +47,7 @@ public:
 
     [[nodiscard]] PlaylistIndexes playlistIndexes() const;
     [[nodiscard]] PlaylistTrackIndexes indexesForPlaylist(const UId& id) const;
-    std::vector<int> indexesForTrack(const UId& playlistId, int playlistTrackIndex) const;
+    [[nodiscard]] std::vector<int> indexesForTrack(const UId& playlistId, int playlistTrackIndex) const;
 
     [[nodiscard]] PlaylistTrack nextTrack() const;
     PlaylistTrack nextTrackChange();

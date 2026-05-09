@@ -114,9 +114,9 @@ PlaylistTrack PlaybackQueue::nextTrackChange()
 
 int PlaybackQueue::getTrackIndex(const PlaylistTrack& track) const
 {
-    auto it = std::ranges::find_if(
-        m_tracks.cbegin(), m_tracks.cend(),
-        [hash = track.track.hash()](const PlaylistTrack& track) { return hash == track.track.hash(); });
+    const auto it = std::ranges::find_if(m_tracks, [&track](const PlaylistTrack& other) {
+        return track.playlistId == other.playlistId && track.sameIdentityAs(other);
+    });
 
     if(it == m_tracks.cend()) {
         return -1;
@@ -161,13 +161,14 @@ QueueTracks PlaybackQueue::removeTracks(const QueueTracks& tracks)
 {
     QueueTracks removedTracks;
 
-    std::set<QString> tracksToRemove;
-    for(const auto& track : tracks) {
-        tracksToRemove.insert(track.track.hash());
-    }
+    std::set<PlaylistTrack> tracksToRemove{tracks.cbegin(), tracks.cend()};
 
     auto matchingTrack = [&tracksToRemove](const PlaylistTrack& track) {
-        return tracksToRemove.contains(track.track.hash());
+        return std::ranges::find_if(tracksToRemove,
+                                    [&track](const PlaylistTrack& other) {
+                                        return other.playlistId == track.playlistId && track.sameIdentityAs(other);
+                                    })
+            != tracksToRemove.cend();
     };
 
     std::ranges::copy_if(m_tracks, std::back_inserter(removedTracks), matchingTrack);
