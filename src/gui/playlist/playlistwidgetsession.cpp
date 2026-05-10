@@ -561,7 +561,9 @@ std::vector<int> PlaylistWidgetSession::selectedPlaylistIndexes(const PlaylistWi
 
     const auto selected = filterSelectedIndexes(host.playlistView());
     for(const QModelIndex& index : selected) {
-        indexes.emplace_back(index.data(PlaylistItem::Index).toInt());
+        if(index.data(PlaylistItem::Type).toInt() == PlaylistItem::Track) {
+            indexes.emplace_back(index.data(PlaylistItem::Index).toInt());
+        }
     }
 
     return indexes;
