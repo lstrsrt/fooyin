@@ -28,4 +28,4 @@ QString month(const QStringList& vec);
 QString dayOfMonth(const QStringList& vec);
 QString date(const QStringList& vec);
 QString time(const QStringList& vec);
-}
+} // namespace Fooyin::Scripting
