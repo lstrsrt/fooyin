@@ -339,6 +339,17 @@ void Widgets::registerPages()
                  "DirBrowser", "Unchecked items will be hidden from the directory browser context menu.")},
             ContextMenuIds::DirBrowser::DefaultItems, m_settings),
         this);
+    new StaticContextMenuPage(
+        m_settings,
+        makeStaticContextMenuDescriptor<Settings::Gui::Internal::ContextMenuLayoutEditingDisabledSections,
+                                        Settings::Gui::Internal::ContextMenuLayoutEditingLayout>(
+            Constants::Page::InterfaceContextMenuLayoutEditing,
+            {.context = "EditableLayout", .sourceText = QT_TRANSLATE_NOOP("EditableLayout", "Layout Editing")},
+            {.context    = "EditableLayout",
+             .sourceText = QT_TRANSLATE_NOOP("EditableLayout",
+                                             "Unchecked items will be hidden from the layout editing context menu.")},
+            ContextMenuIds::LayoutEditing::DefaultItems, m_settings),
+        this);
 
     new ArtworkGeneralPage(m_settings, this);
     new ArtworkSearchingPage(m_settings, this);

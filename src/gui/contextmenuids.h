@@ -34,6 +34,56 @@ constexpr auto ArtworkSearchSeparator = "Fooyin.Menu.Artwork.SearchSeparator";
 constexpr auto ArtworkAttachSeparator = "Fooyin.Menu.Artwork.AttachSeparator";
 } // namespace TrackSelection
 
+namespace LayoutEditing {
+constexpr auto WidgetActions   = "Fooyin.Context.LayoutEditing.WidgetActions";
+constexpr auto WidgetSeparator = "Fooyin.Context.LayoutEditing.Widget.Separator";
+constexpr auto Replace         = "Fooyin.Context.LayoutEditing.Replace";
+constexpr auto Split           = "Fooyin.Context.LayoutEditing.Split";
+constexpr auto RemoveSplit     = "Fooyin.Context.LayoutEditing.RemoveSplit";
+constexpr auto EditSeparator   = "Fooyin.Context.LayoutEditing.Edit.Separator";
+constexpr auto Copy            = "Fooyin.Context.LayoutEditing.Copy";
+constexpr auto Paste           = "Fooyin.Context.LayoutEditing.Paste";
+constexpr auto InsertSeparator = "Fooyin.Context.LayoutEditing.Insert.Separator";
+constexpr auto Insert          = "Fooyin.Context.LayoutEditing.Insert";
+constexpr auto Move            = "Fooyin.Context.LayoutEditing.Move";
+constexpr auto RemoveSeparator = "Fooyin.Context.LayoutEditing.Remove.Separator";
+constexpr auto Remove          = "Fooyin.Context.LayoutEditing.Remove";
+
+constexpr auto DefaultItems = std::to_array<Item>({
+    {.id          = WidgetActions,
+     .title       = {.context = "EditableLayout", .sourceText = QT_TRANSLATE_NOOP("EditableLayout", "Widget actions")},
+     .isSeparator = false},
+    {.id = WidgetSeparator, .title = {}, .isSeparator = true},
+    {.id          = Replace,
+     .title       = {.context = "EditableLayout", .sourceText = QT_TRANSLATE_NOOP("EditableLayout", "Replace")},
+     .isSeparator = false},
+    {.id          = Split,
+     .title       = {.context = "EditableLayout", .sourceText = QT_TRANSLATE_NOOP("EditableLayout", "Split")},
+     .isSeparator = false},
+    {.id          = RemoveSplit,
+     .title       = {.context = "EditableLayout", .sourceText = QT_TRANSLATE_NOOP("EditableLayout", "Remove split")},
+     .isSeparator = false},
+    {.id = EditSeparator, .title = {}, .isSeparator = true},
+    {.id          = Copy,
+     .title       = {.context = "EditableLayout", .sourceText = QT_TRANSLATE_NOOP("EditableLayout", "Copy")},
+     .isSeparator = false},
+    {.id          = Paste,
+     .title       = {.context = "EditableLayout", .sourceText = QT_TRANSLATE_NOOP("EditableLayout", "Paste")},
+     .isSeparator = false},
+    {.id = InsertSeparator, .title = {}, .isSeparator = true},
+    {.id          = Insert,
+     .title       = {.context = "EditableLayout", .sourceText = QT_TRANSLATE_NOOP("EditableLayout", "Insert")},
+     .isSeparator = false},
+    {.id          = Move,
+     .title       = {.context = "EditableLayout", .sourceText = QT_TRANSLATE_NOOP("EditableLayout", "Move")},
+     .isSeparator = false},
+    {.id = RemoveSeparator, .title = {}, .isSeparator = true},
+    {.id          = Remove,
+     .title       = {.context = "EditableLayout", .sourceText = QT_TRANSLATE_NOOP("EditableLayout", "Remove")},
+     .isSeparator = false},
+});
+} // namespace LayoutEditing
+
 namespace Playlist {
 constexpr auto Play               = "Fooyin.Context.Playlist.Play";
 constexpr auto StopAfterThis      = "Fooyin.Context.Playlist.StopAfterThis";

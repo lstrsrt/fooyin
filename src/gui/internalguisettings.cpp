@@ -181,6 +181,10 @@ GuiSettings::GuiSettings(SettingsManager* settingsManager)
         QStringList{}, u"Interface/ContextMenuDirBrowserDisabledSections"_s);
     m_settings->createSetting<Internal::ContextMenuDirBrowserLayout>(QStringList{},
                                                                      u"Interface/ContextMenuDirBrowserLayout"_s);
+    m_settings->createSetting<Internal::ContextMenuLayoutEditingDisabledSections>(
+        QStringList{}, u"Interface/ContextMenuLayoutEditingDisabledSections"_s);
+    m_settings->createSetting<Internal::ContextMenuLayoutEditingLayout>(QStringList{},
+                                                                        u"Interface/ContextMenuLayoutEditingLayout"_s);
     m_settings->createSetting<Internal::PropertiesSidebarTrackScript>(u"[%track%. ]%title%"_s,
                                                                       u"Interface/PropertiesSidebarTrackScript "_s);
 }
