@@ -255,6 +255,44 @@ public:
     }
 
     /*!
+     * Returns the persistent settings key associated with a registered enum setting.
+     */
+    template <auto key>
+        requires IsEnumType<key>
+    QString settingKey() const
+    {
+        const auto mapKey = getMapKey(key);
+
+        const std::shared_lock lock{m_lock};
+
+        if(!m_settings.contains(mapKey)) {
+            return {};
+        }
+
+        const SettingsEntry* setting = m_settings.at(mapKey);
+        return setting ? setting->key() : QString{};
+    }
+
+    /*!
+     * Returns the default value associated with a registered enum setting.
+     */
+    template <auto key>
+        requires IsEnumType<key>
+    QVariant defaultValue() const
+    {
+        const auto mapKey = getMapKey(key);
+
+        const std::shared_lock lock{m_lock};
+
+        if(!m_settings.contains(mapKey)) {
+            return {};
+        }
+
+        const SettingsEntry* setting = m_settings.at(mapKey);
+        return setting ? setting->defaultValue() : QVariant{};
+    }
+
+    /*!
      * Sets the value of the setting at the given key.
      * @tparam key an enum value representing a setting key.
      * @tparam Value the value to set.
