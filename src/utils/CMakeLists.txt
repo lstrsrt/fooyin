@@ -26,6 +26,7 @@ set(SOURCES
     ${CMAKE_SOURCE_DIR}/include/utils/itemregistry.h
     ${CMAKE_SOURCE_DIR}/include/utils/lockfreeringbuffer.h
     ${CMAKE_SOURCE_DIR}/include/utils/logging/messagehandler.h
+    ${CMAKE_SOURCE_DIR}/include/utils/settings/advancedsettingsregistry.h
     ${CMAKE_SOURCE_DIR}/include/utils/settings/settingsdialogcontroller.h
     ${CMAKE_SOURCE_DIR}/include/utils/settings/settingsentry.h
     ${CMAKE_SOURCE_DIR}/include/utils/settings/settingsmanager.h
@@ -74,6 +75,7 @@ set(SOURCES
     logging/messagehandler.cpp
     modelutils.cpp
     modelutils.h
+    settings/advancedsettingsregistry.cpp
     settings/settingscategory.h
     settings/settingsdialog.cpp
     settings/settingsdialog.h
