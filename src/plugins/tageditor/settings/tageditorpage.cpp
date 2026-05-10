@@ -22,6 +22,7 @@
 #include "settings/tageditorfieldregistry.h"
 #include "settings/tageditorfieldsmodel.h"
 #include "tageditorconstants.h"
+#include "tageditorsettings.h"
 
 #include <gui/widgets/checkboxdelegate.h>
 #include <gui/widgets/extendabletableview.h>
@@ -40,7 +41,7 @@ class TagEditorFieldsPageWidget : public SettingsPageWidget
     Q_OBJECT
 
 public:
-    explicit TagEditorFieldsPageWidget(TagEditorFieldRegistry* registry);
+    explicit TagEditorFieldsPageWidget(TagEditorFieldRegistry* registry, SettingsManager* settings);
 
     void load() override;
     void apply() override;
@@ -48,16 +49,21 @@ public:
 
 private:
     void updateButtonState();
+    void updateHint();
 
     TagEditorFieldRegistry* m_registry;
+    SettingsManager* m_settings;
     ExtendableTableView* m_fieldList;
     TagEditorFieldsModel* m_model;
+    QLabel* m_hintLabel;
 };
 
-TagEditorFieldsPageWidget::TagEditorFieldsPageWidget(TagEditorFieldRegistry* registry)
+TagEditorFieldsPageWidget::TagEditorFieldsPageWidget(TagEditorFieldRegistry* registry, SettingsManager* settings)
     : m_registry{registry}
+    , m_settings{settings}
     , m_fieldList{new ExtendableTableView(this)}
     , m_model{new TagEditorFieldsModel(m_registry, this)}
+    , m_hintLabel{new QLabel(this)}
 {
     m_fieldList->setExtendableModel(m_model);
     m_fieldList->setTools(ExtendableTableView::Move);
@@ -76,11 +82,9 @@ TagEditorFieldsPageWidget::TagEditorFieldsPageWidget(TagEditorFieldRegistry* reg
     m_fieldList->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
     m_fieldList->horizontalHeader()->setSectionResizeMode(2, QHeaderView::Stretch);
 
-    auto* hintLabel = new QLabel(u"🛈 "_s + tr("Use \";\" in the editor to enter multiple values."), this);
-
     auto* mainLayout = new QGridLayout(this);
     mainLayout->addWidget(m_fieldList, 0, 0, 1, 2);
-    mainLayout->addWidget(hintLabel, 1, 0, 1, 2);
+    mainLayout->addWidget(m_hintLabel, 1, 0, 1, 2);
     mainLayout->setColumnStretch(1, 1);
 
     QObject::connect(m_fieldList->selectionModel(), &QItemSelectionModel::selectionChanged, this,
@@ -91,6 +95,7 @@ TagEditorFieldsPageWidget::TagEditorFieldsPageWidget(TagEditorFieldRegistry* reg
 void TagEditorFieldsPageWidget::load()
 {
     m_model->populate();
+    updateHint();
     updateButtonState();
 }
 
@@ -103,6 +108,7 @@ void TagEditorFieldsPageWidget::reset()
 {
     m_registry->reset();
     m_registry->loadDefaultFields();
+    updateHint();
 }
 
 void TagEditorFieldsPageWidget::updateButtonState()
@@ -123,13 +129,20 @@ void TagEditorFieldsPageWidget::updateButtonState()
     m_fieldList->moveDownAction()->setEnabled(!isEmpty && canMoveDown);
 }
 
+void TagEditorFieldsPageWidget::updateHint()
+{
+    const QStringList separators = multiValueSeparators(*m_settings);
+    m_hintLabel->setText(u"🛈 "_s
+                         + tr("Use any of \"%1\" in the editor to enter multiple values.").arg(separators.join(u' ')));
+}
+
 TagEditorFieldsPage::TagEditorFieldsPage(TagEditorFieldRegistry* registry, SettingsManager* settings, QObject* parent)
     : SettingsPage{settings->settingsDialog(), parent}
 {
     setId(Constants::Page::TagEditorFields);
     setName(tr("Fields"));
     setCategory({tr("Plugins"), tr("Tag Editor")});
-    setWidgetCreator([registry] { return new TagEditorFieldsPageWidget(registry); });
+    setWidgetCreator([registry, settings] { return new TagEditorFieldsPageWidget(registry, settings); });
 }
 } // namespace Fooyin::TagEditor
 

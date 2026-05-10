@@ -26,7 +26,11 @@
 class QDialog;
 class QWidget;
 
+namespace Fooyin {
+class SettingsManager;
+}
+
 namespace Fooyin::TagEditor {
-QDialog* openFillDialog(const TrackList& tracks, QWidget* parent = nullptr,
+QDialog* openFillDialog(const TrackList& tracks, SettingsManager* settings, QWidget* parent = nullptr,
                         std::function<void(const FillValuesResult&)> onAccepted = {});
 } // namespace Fooyin::TagEditor

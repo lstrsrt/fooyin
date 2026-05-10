@@ -9,6 +9,8 @@ create_fooyin_plugin_internal(
             settings/tageditorpage.cpp
             settings/tageditorpage.h
             tageditorconstants.h
+            tageditorsettings.cpp
+            tageditorsettings.h
             tageditorautocompletedelegate.cpp
             tageditorautocompletedelegate.h
             tageditoritem.cpp

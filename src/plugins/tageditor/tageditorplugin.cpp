@@ -23,6 +23,7 @@
 #include "settings/tageditorpage.h"
 #include "tageditorpanel.h"
 #include "tageditorpropertiestab.h"
+#include "tageditorsettings.h"
 #include "tagfilldialog.h"
 
 #include <core/engine/audioloader.h>
@@ -34,6 +35,7 @@
 #include <gui/widgetprovider.h>
 #include <utils/actions/actioncontainer.h>
 #include <utils/actions/actionmanager.h>
+#include <utils/settings/advancedsettingsregistry.h>
 #include <utils/settings/settingsmanager.h>
 #include <utils/utils.h>
 
@@ -59,6 +61,11 @@ void TagEditorPlugin::initialise(const CorePluginContext& context)
     m_library     = context.library;
     m_audioLoader = context.audioLoader;
 
+    m_settings->createSetting(QString::fromLatin1(SettingsKeys::MultiValueSeparators),
+                              QString::fromLatin1(SettingsKeys::DefaultMultiValueSeparators));
+    m_settings->createSetting(QString::fromLatin1(SettingsKeys::AutoFillMultiValueSeparators),
+                              QString::fromLatin1(SettingsKeys::DefaultMultiValueSeparators));
+
     m_registry = new TagEditorFieldRegistry(m_settings, this);
 }
 
@@ -68,6 +75,34 @@ void TagEditorPlugin::initialise(const GuiPluginContext& context)
     m_trackSelection   = context.trackSelection;
     m_propertiesDialog = context.propertiesDialog;
     m_widgetProvider   = context.widgetProvider;
+
+    context.advancedSettingsRegistry->add(
+        {.id           = QString::fromLatin1(SettingsKeys::MultiValueSeparators),
+         .category     = {tr("Tag Editor"), tr("Editing")},
+         .label        = tr("Split manually edited multivalue tags on"),
+         .description  = tr("Whitespace-separated list of separators used when editing multivalue tag fields."),
+         .defaultValue = QString::fromLatin1(SettingsKeys::DefaultMultiValueSeparators),
+         .editor       = AdvancedSettingLineEdit{},
+         .read         = [this] { return m_settings->value(SettingsKeys::MultiValueSeparators); },
+         .write
+         = [this](
+               const QVariant& value) { return m_settings->set(SettingsKeys::MultiValueSeparators, value.toString()); },
+         .normalise = [](const QVariant& value) { return normaliseMultiValueSeparators(value.toString()).join(u' '); },
+         .validate  = {}});
+    context.advancedSettingsRegistry->add(
+        {.id           = QString::fromLatin1(SettingsKeys::AutoFillMultiValueSeparators),
+         .category     = {tr("Tag Editor"), tr("Auto Fill")},
+         .label        = tr("Split auto-filled multivalue tags on"),
+         .description  = tr("Whitespace-separated list of separators used when auto-filling multivalue tag fields."),
+         .defaultValue = QString::fromLatin1(SettingsKeys::DefaultMultiValueSeparators),
+         .editor       = AdvancedSettingLineEdit{},
+         .read         = [this] { return m_settings->value(SettingsKeys::AutoFillMultiValueSeparators); },
+         .write =
+             [this](const QVariant& value) {
+                 return m_settings->set(SettingsKeys::AutoFillMultiValueSeparators, value.toString());
+             },
+         .normalise = [](const QVariant& value) { return normaliseMultiValueSeparators(value.toString()).join(u' '); },
+         .validate  = {}});
 
     m_fieldsPage = new TagEditorFieldsPage(m_registry, m_settings, this);
 
@@ -82,7 +117,7 @@ void TagEditorPlugin::initialise(const GuiPluginContext& context)
             return;
         }
 
-        openFillDialog(selection->tracks, Utils::getMainWindow(), [this](const FillValuesResult& result) {
+        openFillDialog(selection->tracks, m_settings, Utils::getMainWindow(), [this](const FillValuesResult& result) {
             if(!result.tracks.empty()) {
                 m_library->writeTrackMetadata(result.tracks);
             }

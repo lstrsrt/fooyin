@@ -19,6 +19,8 @@
 
 #include "tagfillpattern.h"
 
+#include "tageditorsettings.h"
+
 #include <core/constants.h>
 #include <core/scripting/scriptbinder.h>
 #include <core/track.h>
@@ -260,14 +262,12 @@ bool isMultiValueFillField(const QString& field)
     return Track::isMultiValueTag(tag) || resolveBuiltInVariableKind(tag) == VariableKind::Genres;
 }
 
-ScriptFieldValue fillFieldValue(const QString& field, const QString& value)
+ScriptFieldValue fillFieldValue(const QString& field, const QString& value, const QStringList& multiValueSeparators)
 {
     QString trimmedValue = value.trimmed();
 
     if(isMultiValueFillField(field)) {
-        QStringList values = trimmedValue.split(';'_L1, Qt::SkipEmptyParts);
-        std::ranges::transform(values, values.begin(), [](const QString& current) { return current.trimmed(); });
-        return values;
+        return splitMultiValueText(trimmedValue, multiValueSeparators);
     }
 
     return trimmedValue;

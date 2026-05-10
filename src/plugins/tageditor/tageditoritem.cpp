@@ -19,6 +19,8 @@
 
 #include "tageditoritem.h"
 
+#include "tageditorsettings.h"
+
 #include <utils/stringcollator.h>
 
 #include <numeric>
@@ -108,7 +110,7 @@ QString TagEditorItem::displayValue() const
     if(m_value.isEmpty()) {
         QStringList nonEmptyValues{m_values};
         nonEmptyValues.removeAll(QString{});
-        m_value = nonEmptyValues.join("; "_L1);
+        m_value = joinMultiValueText(nonEmptyValues, m_multiValueSeparators);
     }
 
     if(m_trackCount > 1 && m_multipleValues) {
@@ -123,7 +125,7 @@ QString TagEditorItem::value() const
     if(m_value.isEmpty()) {
         QStringList nonEmptyValues{m_values};
         nonEmptyValues.removeAll(QString{});
-        m_value = nonEmptyValues.join("; "_L1);
+        m_value = joinMultiValueText(nonEmptyValues, m_multiValueSeparators);
     }
 
     return m_value;
@@ -143,7 +145,7 @@ QString TagEditorItem::changedValue() const
     if(m_changedValue.isEmpty()) {
         QStringList nonEmptyValues{m_changedValues};
         nonEmptyValues.removeAll(QString{});
-        m_changedValue = nonEmptyValues.join("; "_L1);
+        m_changedValue = joinMultiValueText(nonEmptyValues, m_multiValueSeparators);
     }
 
     return m_changedValue;
@@ -230,18 +232,21 @@ bool TagEditorItem::setValue(int newValue)
     return setValue(QString::number(newValue));
 }
 
-bool TagEditorItem::setValue(const QString& newValue)
+bool TagEditorItem::setValue(const QString& newValue, const QStringList& separators)
 {
+    if(!separators.empty()) {
+        setMultiValueSeparators(separators);
+    }
+
     const bool isMultiValueEdit = m_field.multivalue || m_splitTrackValues;
 
     QStringList values;
 
     if(isMultiValueEdit) {
-        values = newValue.split(u";"_s, Qt::SkipEmptyParts);
-        std::ranges::transform(values, values.begin(), [](const auto& val) { return val.trimmed(); });
+        values = splitMultiValueText(newValue, m_multiValueSeparators, true);
     }
     else {
-        values = {newValue};
+        values.append(newValue);
     }
 
     const QString currentValue = value();
@@ -263,7 +268,7 @@ bool TagEditorItem::setValue(const QString& newValue)
         }
     }
 
-    m_changedValue.clear();
+    m_changedValue   = isMultiValueEdit ? newValue : QString{};
     m_changedValues  = values;
     m_valueChanged   = true;
     m_multipleValues = false;
@@ -312,6 +317,13 @@ void TagEditorItem::setMultipleValues(bool multiple)
 void TagEditorItem::setSplitTrackValues(bool enabled)
 {
     m_splitTrackValues = enabled;
+}
+
+void TagEditorItem::setMultiValueSeparators(const QStringList& separators)
+{
+    m_multiValueSeparators = separators.empty() ? normaliseMultiValueSeparators(QString{}) : separators;
+    m_value.clear();
+    m_changedValue.clear();
 }
 
 void TagEditorItem::sortCustomTags()

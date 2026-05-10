@@ -190,8 +190,8 @@ void TagEditorPropertiesTab::autoFillValues()
         return;
     }
 
-    m_fillDialog
-        = openFillDialog(tracks, this, [this](const FillValuesResult& result) { handleFillDialogAccepted(result); });
+    m_fillDialog = openFillDialog(tracks, m_settings, this,
+                                  [this](const FillValuesResult& result) { handleFillDialogAccepted(result); });
 }
 
 void TagEditorPropertiesTab::handleFillDialogAccepted(const FillValuesResult& result)

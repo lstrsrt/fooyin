@@ -79,7 +79,8 @@ FillValuesResult calculateFillValues(const TrackList& tracks, const FillValuesOp
                         continue;
                     }
 
-                    setTrackScriptValue(field, fillFieldValue(field, transformedValue), updatedTrack);
+                    setTrackScriptValue(field, fillFieldValue(field, transformedValue, options.multiValueSeparators),
+                                        updatedTrack);
                 }
 
                 if(!updatedTrack.sameDataAs(track)) {

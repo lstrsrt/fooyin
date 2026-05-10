@@ -72,7 +72,9 @@ target_link_libraries(test_filtercontroller PRIVATE Fooyin::FiltersInternal)
 fooyin_add_test(test_filterpipeline plugins/filters/filterpipelinetest.cpp)
 target_link_libraries(test_filterpipeline PRIVATE Fooyin::FiltersInternal)
 
-fooyin_add_test(test_tagfillpattern plugins/tageditor/tagfillpatterntest.cpp ${CMAKE_SOURCE_DIR}/src/plugins/tageditor/tagfillpattern.cpp)
+fooyin_add_test(test_tagfillpattern plugins/tageditor/tagfillpatterntest.cpp
+                ${CMAKE_SOURCE_DIR}/src/plugins/tageditor/tagfillpattern.cpp
+                ${CMAKE_SOURCE_DIR}/src/plugins/tageditor/tageditorsettings.cpp)
 
 fooyin_add_test(test_lyricsparser plugins/lyrics/lyricsparsertest.cpp ${CMAKE_SOURCE_DIR}/src/plugins/lyrics/lyricsparser.cpp)
 target_include_directories(test_lyricsparser PRIVATE ${CMAKE_SOURCE_DIR}/src/plugins/lyrics)

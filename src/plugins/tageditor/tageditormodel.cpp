@@ -20,6 +20,7 @@
 #include "tageditormodel.h"
 
 #include "tageditoritem.h"
+#include "tageditorsettings.h"
 
 #include <core/constants.h>
 #include <core/library/libraryutils.h>
@@ -39,16 +40,14 @@ namespace Fooyin::TagEditor {
 using TagFieldMap = std::unordered_map<QString, TagEditorItem>;
 
 namespace {
-QStringList splitEditorValues(const QString& value)
+QStringList splitEditorValues(const QString& value, const QStringList& separators)
 {
-    QStringList values = value.split(u';', Qt::KeepEmptyParts);
-    std::ranges::transform(values, values.begin(), [](const QString& currentValue) { return currentValue.trimmed(); });
-    return values;
+    return splitMultiValueText(value, separators, true);
 }
 
-QString joinEditorValues(const QStringList& values)
+QString joinEditorValues(const QStringList& values, const QStringList& separators)
 {
-    return values.join("; "_L1);
+    return joinMultiValueText(values, separators);
 }
 
 QStringList capitaliseValues(QStringList values)
@@ -68,7 +67,7 @@ bool hasDistinctValues(const QStringList& values)
                                [&firstValue](const QString& value) { return value != firstValue; });
 }
 
-QStringList capitalisedTrackValues(const TrackList& tracks, const TagEditorField& field)
+QStringList capitalisedTrackValues(const TrackList& tracks, const TagEditorField& field, const QStringList& separators)
 {
     QStringList values;
     values.reserve(static_cast<qsizetype>(tracks.size()));
@@ -78,7 +77,8 @@ QStringList capitalisedTrackValues(const TrackList& tracks, const TagEditorField
 
         if(field.multivalue) {
             values.append(joinEditorValues(
-                capitaliseValues(trackValue.split(QLatin1String{Constants::UnitSeparator}, Qt::KeepEmptyParts))));
+                capitaliseValues(trackValue.split(QLatin1String{Constants::UnitSeparator}, Qt::KeepEmptyParts)),
+                separators));
         }
         else {
             values.append(Utils::capitalise(trackValue));
@@ -88,14 +88,14 @@ QStringList capitalisedTrackValues(const TrackList& tracks, const TagEditorField
     return values;
 }
 
-bool updateItemTrackValues(TagEditorItem& item, const QStringList& values)
+bool updateItemTrackValues(TagEditorItem& item, const QStringList& values, const QStringList& separators)
 {
     if(values.empty()) {
         return false;
     }
 
     if(hasDistinctValues(values)) {
-        if(item.setValue(joinEditorValues(values))) {
+        if(item.setValue(joinEditorValues(values, separators), separators)) {
             item.setMultipleValues(true);
             item.setSplitTrackValues(true);
             return true;
@@ -103,7 +103,7 @@ bool updateItemTrackValues(TagEditorItem& item, const QStringList& values)
         return false;
     }
 
-    if(item.setValue(values.front())) {
+    if(item.setValue(values.front(), separators)) {
         item.setMultipleValues(false);
         item.setSplitTrackValues(false);
         return true;
@@ -129,6 +129,7 @@ public:
 
     void updateFields();
     bool updateTrackMetadata(const TagEditorField& field, const QVariant& value, bool split = false);
+    [[nodiscard]] QStringList multiValueSeparators() const;
 
     TagEditorModel* m_self;
 
@@ -167,6 +168,11 @@ bool TagEditorModelPrivate::isDefaultField(const QString& name) const
     return std::ranges::any_of(std::as_const(m_fields), [name](const auto& field) { return field.name == name; });
 }
 
+QStringList TagEditorModelPrivate::multiValueSeparators() const
+{
+    return TagEditor::multiValueSeparators(*m_settings);
+}
+
 void TagEditorModelPrivate::reset()
 {
     m_root = {};
@@ -188,6 +194,7 @@ void TagEditorModelPrivate::updateFields()
                 editorField.isDefault   = isDefault;
                 editorField.multivalue  = Track::isMultiValueTag(field) || value.size() > 1;
                 auto* item              = &m_tags.emplace(field, TagEditorItem{editorField, &m_root}).first->second;
+                item->setMultiValueSeparators(multiValueSeparators());
                 m_root.appendChild(item);
             }
 
@@ -227,8 +234,7 @@ bool TagEditorModelPrivate::updateTrackMetadata(const TagEditorField& field, con
     float floatValue{-1};
 
     if(isList) {
-        listValue = value.toString().split(u";"_s, Qt::SkipEmptyParts);
-        std::ranges::transform(listValue, listValue.begin(), [](const QString& val) { return val.trimmed(); });
+        listValue = splitMultiValueText(value.toString(), multiValueSeparators(), true);
     }
     else if(isRating) {
         bool validFloat{false};
@@ -288,6 +294,7 @@ void TagEditorModel::reset(const TrackList& tracks, const std::vector<TagEditorF
 
     for(const auto& field : fields) {
         auto* item = &p->m_tags.emplace(field.scriptField.toUpper(), TagEditorItem{field, &p->m_root}).first->second;
+        item->setMultiValueSeparators(p->multiValueSeparators());
         p->m_root.appendChild(item);
     }
 
@@ -335,33 +342,45 @@ void TagEditorModel::capitaliseRows(const QModelIndexList& rows)
 
         if(item->valueChanged()) {
             if(item->splitTrackValues()) {
-                changed |= updateItemTrackValues(*item, capitaliseValues(splitEditorValues(item->changedValue())));
+                changed |= updateItemTrackValues(
+                    *item, capitaliseValues(splitEditorValues(item->changedValue(), p->multiValueSeparators())),
+                    p->multiValueSeparators());
                 continue;
             }
 
             if(item->field().multivalue) {
-                changed |= item->setValue(joinEditorValues(capitaliseValues(splitEditorValues(item->changedValue()))));
+                changed |= item->setValue(joinEditorValues(capitaliseValues(splitEditorValues(
+                                                               item->changedValue(), p->multiValueSeparators())),
+                                                           p->multiValueSeparators()),
+                                          p->multiValueSeparators());
                 continue;
             }
 
-            changed |= item->setValue(Utils::capitalise(item->changedValue()));
+            changed |= item->setValue(Utils::capitalise(item->changedValue()), p->multiValueSeparators());
             continue;
         }
 
         if(item->field().multivalue) {
             if(item->trackCount() > 1 && item->multipleValues()) {
-                const QStringList trackValues = capitalisedTrackValues(p->m_tracks, item->field());
+                const QStringList trackValues
+                    = capitalisedTrackValues(p->m_tracks, item->field(), p->multiValueSeparators());
                 if(!trackValues.empty() && !hasDistinctValues(trackValues)) {
-                    changed |= updateItemTrackValues(*item, QStringList{trackValues.front()});
+                    changed
+                        |= updateItemTrackValues(*item, QStringList{trackValues.front()}, p->multiValueSeparators());
                 }
                 continue;
             }
 
-            changed |= item->setValue(joinEditorValues(capitaliseValues(splitEditorValues(item->value()))));
+            changed |= item->setValue(
+                joinEditorValues(capitaliseValues(splitEditorValues(item->value(), p->multiValueSeparators())),
+                                 p->multiValueSeparators()),
+                p->multiValueSeparators());
             continue;
         }
 
-        changed |= updateItemTrackValues(*item, capitalisedTrackValues(p->m_tracks, item->field()));
+        changed |= updateItemTrackValues(*item,
+                                         capitalisedTrackValues(p->m_tracks, item->field(), p->multiValueSeparators()),
+                                         p->multiValueSeparators());
     }
 
     if(changed) {
@@ -396,7 +415,7 @@ void TagEditorModel::autoNumberTracks()
     addMissingTag(trackTotalTag);
 
     auto& track = p->m_tags.at(trackTag);
-    if(track.setValue(trackNums.join("; "_L1))) {
+    if(track.setValue(joinEditorValues(trackNums, p->multiValueSeparators()), p->multiValueSeparators())) {
         track.setMultipleValues(total > 1);
         track.setSplitTrackValues(true);
         invalidateData();
@@ -411,21 +430,23 @@ void TagEditorModel::autoNumberTracks()
 void TagEditorModel::updateValues(const std::map<QString, QString>& fieldValues, bool match)
 {
     auto splitValues = [this](const QString& value) {
-        QStringList values = value.split(u"; "_s);
+        QStringList values = splitMultiValueText(value, p->multiValueSeparators());
         values.resize(static_cast<qsizetype>(p->m_tracks.size()));
-        return values.join("; "_L1).remove(QLatin1String{MultipleValuesPrefix}).trimmed();
+        return joinEditorValues(values, p->multiValueSeparators())
+            .remove(QLatin1String{MultipleValuesPrefix})
+            .trimmed();
     };
 
     auto updateItem = [&](TagEditorItem& item, const QString& value) {
         if(item.value() != value) {
             if(value.contains(QLatin1String{MultipleValuesPrefix})) {
                 const QString splitValue = splitValues(value);
-                item.setValue(splitValue);
+                item.setValue(splitValue, p->multiValueSeparators());
                 item.setMultipleValues(p->m_tracks.size() > 1);
                 item.setSplitTrackValues(true);
             }
             else {
-                item.setValue(value);
+                item.setValue(value, p->multiValueSeparators());
             }
         }
     };
@@ -441,6 +462,7 @@ void TagEditorModel::updateValues(const std::map<QString, QString>& fieldValues,
             beginInsertRows({}, row, row);
 
             auto* item = &p->m_tags.emplace(tag, TagEditorItem{{}, &p->m_root}).first->second;
+            item->setMultiValueSeparators(p->multiValueSeparators());
             item->setTitle(tag);
             item->addTrack(static_cast<int>(p->m_tracks.size()));
             updateItem(*item, value);
@@ -693,7 +715,7 @@ bool TagEditorModel::setData(const QModelIndex& index, const QVariant& value, in
                 setValue          = rating.rating() == 0 ? QString{} : QString::number(rating.rating());
             }
 
-            if(!item->setValue(setValue)) {
+            if(!item->setValue(setValue, p->multiValueSeparators())) {
                 return false;
             }
             break;

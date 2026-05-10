@@ -21,6 +21,8 @@
 
 #include <core/scripting/scripttypes.h>
 
+#include <QStringList>
+
 #include <optional>
 #include <vector>
 
@@ -69,5 +71,6 @@ private:
 
 [[nodiscard]] bool isWritableFillField(const QString& field);
 [[nodiscard]] bool isMultiValueFillField(const QString& field);
-[[nodiscard]] ScriptFieldValue fillFieldValue(const QString& field, const QString& value);
+[[nodiscard]] ScriptFieldValue fillFieldValue(const QString& field, const QString& value,
+                                              const QStringList& multiValueSeparators = {});
 } // namespace Fooyin::TagEditor

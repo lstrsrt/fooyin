@@ -18,6 +18,7 @@
  */
 
 #include "tagfilldialog.h"
+#include "tageditorsettings.h"
 #include "tagfillpreviewmodel.h"
 
 #include <core/constants.h>
@@ -99,7 +100,7 @@ QStringList patternHistoryForValue(const QString& value, const QStringList& exis
 class FillValuesDialog : public QDialog
 {
 public:
-    explicit FillValuesDialog(TrackList tracks, QWidget* parent = nullptr);
+    explicit FillValuesDialog(TrackList tracks, SettingsManager* settings, QWidget* parent = nullptr);
 
     [[nodiscard]] FillValuesResult fillResult() const;
 
@@ -121,6 +122,7 @@ private:
     [[nodiscard]] static QStringList comboItems(const QComboBox* combo);
 
     TrackList m_tracks;
+    SettingsManager* m_settings;
     QComboBox* m_sourceMode;
     ScriptComboBox* m_sourceScript;
     QComboBox* m_pattern;
@@ -131,9 +133,10 @@ private:
     QPushButton* m_autoCapitaliseButton;
 };
 
-FillValuesDialog::FillValuesDialog(TrackList tracks, QWidget* parent)
+FillValuesDialog::FillValuesDialog(TrackList tracks, SettingsManager* settings, QWidget* parent)
     : QDialog(parent)
     , m_tracks{std::move(tracks)}
+    , m_settings{settings}
     , m_sourceMode{new QComboBox(this)}
     , m_sourceScript{new ScriptComboBox(DefaultSourceScript, m_tracks.front(), this)}
     , m_pattern{new QComboBox(this)}
@@ -251,10 +254,11 @@ bool FillValuesDialog::autoCapitalise() const
 
 FillValuesOptions FillValuesDialog::options() const
 {
-    return {.sourceMode     = sourceMode(),
-            .sourceScript   = sourceScript(),
-            .pattern        = m_pattern->currentText(),
-            .autoCapitalise = autoCapitalise()};
+    return {.sourceMode           = sourceMode(),
+            .sourceScript         = sourceScript(),
+            .pattern              = m_pattern->currentText(),
+            .multiValueSeparators = autoFillMultiValueSeparators(*m_settings),
+            .autoCapitalise       = autoCapitalise()};
 }
 
 void FillValuesDialog::loadHistory()
@@ -376,14 +380,14 @@ QStringList FillValuesDialog::comboItems(const QComboBox* combo)
 }
 } // namespace
 
-QDialog* openFillDialog(const TrackList& tracks, QWidget* parent,
+QDialog* openFillDialog(const TrackList& tracks, SettingsManager* settings, QWidget* parent,
                         std::function<void(const FillValuesResult&)> onAccepted)
 {
     if(tracks.empty()) {
         return nullptr;
     }
 
-    auto* dialog = new FillValuesDialog(tracks, parent);
+    auto* dialog = new FillValuesDialog(tracks, settings, parent);
     dialog->setAttribute(Qt::WA_DeleteOnClose);
 
     QObject::connect(dialog, &QDialog::accepted, dialog, [dialog, onAccepted = std::move(onAccepted)]() {

@@ -18,6 +18,7 @@
  */
 
 #include "plugins/tageditor/tagfillpattern.h"
+#include "plugins/tageditor/tageditorsettings.h"
 
 #include <core/constants.h>
 
@@ -86,6 +87,30 @@ TEST(FillPatternTest, ConvertsKnownListFieldsToStringLists)
     const auto* values = std::get_if<QStringList>(&fieldValue);
     ASSERT_NE(values, nullptr);
     EXPECT_EQ(*values, (QStringList{u"A"_s, u"B"_s, u"C"_s}));
+}
+
+TEST(FillPatternTest, ConvertsKnownListFieldsUsingConfiguredSeparators)
+{
+    const auto fieldValue = TagEditor::fillFieldValue(QString::fromLatin1(Constants::MetaData::Artist), u"A / B & C"_s,
+                                                      QStringList{u"/"_s, u"&"_s});
+
+    const auto* values = std::get_if<QStringList>(&fieldValue);
+    ASSERT_NE(values, nullptr);
+    EXPECT_EQ(*values, (QStringList{u"A"_s, u"B"_s, u"C"_s}));
+}
+
+TEST(FillPatternTest, SplitsMultiValueTextTrimmingByDefault)
+{
+    const QStringList values = TagEditor::splitMultiValueText(u"A ; B"_s, QStringList{u";"_s});
+
+    EXPECT_EQ(values, (QStringList{u"A"_s, u"B"_s}));
+}
+
+TEST(FillPatternTest, SplitsMultiValueTextPreservingWhitespaceWhenRequested)
+{
+    const QStringList values = TagEditor::splitMultiValueText(u"A ; B"_s, QStringList{u";"_s}, true);
+
+    EXPECT_EQ(values, (QStringList{u"A "_s, u" B"_s}));
 }
 
 TEST(FillPatternTest, LeavesExtraTagsAsStrings)

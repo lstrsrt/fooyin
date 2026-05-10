@@ -62,12 +62,13 @@ public:
     void addTrackValue(const QStringList& values);
 
     bool setValue(int newValue);
-    bool setValue(const QString& newValue);
+    bool setValue(const QString& newValue, const QStringList& separators = {});
 
     bool setTitle(const QString& title);
     void setFieldMultiValue(bool multivalue);
     void setMultipleValues(bool multiple);
     void setSplitTrackValues(bool enabled);
+    void setMultiValueSeparators(const QStringList& separators);
 
     void sortCustomTags();
     void applyChanges(const TagEditorField& field);
@@ -79,6 +80,7 @@ private:
     bool m_titleChanged;
     QStringList m_values;
     QStringList m_changedValues;
+    QStringList m_multiValueSeparators;
     mutable QString m_value;
     mutable QString m_changedValue;
     bool m_valueChanged;

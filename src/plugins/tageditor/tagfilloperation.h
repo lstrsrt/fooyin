@@ -22,6 +22,7 @@
 #include <core/track.h>
 
 #include <QString>
+#include <QStringList>
 
 #include <cstdint>
 #include <vector>
@@ -38,6 +39,7 @@ struct FillValuesOptions
     FillSourceMode sourceMode{FillSourceMode::Filename};
     QString sourceScript;
     QString pattern;
+    QStringList multiValueSeparators;
     bool autoCapitalise{false};
 };
 
