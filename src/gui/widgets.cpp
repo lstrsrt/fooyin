@@ -53,6 +53,7 @@
 #include "scriptdisplay/scriptdisplay.h"
 #include "search/searchwidget.h"
 #include "selectioninfo/infowidget.h"
+#include "settings/advanced/advancedpage.h"
 #include "settings/artwork/artworkdownloadpage.h"
 #include "settings/artwork/artworkgeneralpage.h"
 #include "settings/artwork/artworksearchingpage.h"
@@ -379,6 +380,7 @@ void Widgets::registerPages()
     new NetworkPage(m_settings, this);
     new SearchPage(m_settings, this);
     new StatusWidgetPage(m_settings, this);
+    new AdvancedPage(m_gui->advancedSettingsRegistry(), m_settings->settingsDialog(), this);
 }
 
 void Widgets::registerDspSettings()

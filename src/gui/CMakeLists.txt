@@ -326,6 +326,12 @@ set(SOURCES
     selectioninfo/infoview.h
     selectioninfo/infowidget.cpp
     selectioninfo/infowidget.h
+    settings/advanced/advanceditemdelegate.cpp
+    settings/advanced/advanceditemdelegate.h
+    settings/advanced/advancedpage.cpp
+    settings/advanced/advancedpage.h
+    settings/advanced/advancedsettingsmodel.cpp
+    settings/advanced/advancedsettingsmodel.h
     settings/artwork/artworkdownloadpage.cpp
     settings/artwork/artworkdownloadpage.h
     settings/artwork/artworkgeneralpage.cpp

@@ -23,6 +23,7 @@
 
 namespace Fooyin {
 class ActionManager;
+class AdvancedSettingsRegistry;
 class EditableLayout;
 class LayoutProvider;
 class PropertiesDialog;
@@ -42,7 +43,8 @@ struct FYGUI_EXPORT GuiPluginContext
                      TrackSelectionController* trackSelection_, SearchController* searchController_,
                      PropertiesDialog* propertiesDialog_, ScriptCommandHandler* scriptCommandHandler_,
                      WidgetProvider* widgetProvider_, EditableLayout* editableLayout_,
-                     WindowController* windowController_, ThemeRegistry* themeRegistry_)
+                     WindowController* windowController_, ThemeRegistry* themeRegistry_,
+                     AdvancedSettingsRegistry* advancedSettingsRegistry_)
         : actionManager{actionManager_}
         , layoutProvider{layoutProvider_}
         , trackSelection{trackSelection_}
@@ -53,6 +55,7 @@ struct FYGUI_EXPORT GuiPluginContext
         , editableLayout{editableLayout_}
         , windowController{windowController_}
         , themeRegistry{themeRegistry_}
+        , advancedSettingsRegistry{advancedSettingsRegistry_}
     { }
 
     ActionManager* actionManager;
@@ -65,5 +68,6 @@ struct FYGUI_EXPORT GuiPluginContext
     EditableLayout* editableLayout;
     WindowController* windowController;
     ThemeRegistry* themeRegistry;
+    AdvancedSettingsRegistry* advancedSettingsRegistry;
 };
 } // namespace Fooyin

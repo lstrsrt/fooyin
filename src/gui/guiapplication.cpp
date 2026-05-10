@@ -86,6 +86,7 @@
 #include <utils/actions/command.h>
 #include <utils/audioutils.h>
 #include <utils/logging/logwidget.h>
+#include <utils/settings/advancedsettingsregistry.h>
 #include <utils/settings/settingsdialogcontroller.h>
 #include <utils/settings/settingsmanager.h>
 #include <utils/utils.h>
@@ -261,6 +262,7 @@ public:
     std::unique_ptr<ScriptCommandHandler> m_scriptCommandHandler;
     WindowController* m_windowController;
     ThemeRegistry* m_themeRegistry;
+    std::unique_ptr<AdvancedSettingsRegistry> m_advancedSettingsRegistry;
 
     GuiPluginContext m_guiPluginContext;
 
@@ -312,10 +314,11 @@ GuiApplicationPrivate::GuiApplicationPrivate(GuiApplication* self_, Application*
                                                                     m_propertiesDialog)}
     , m_windowController{new WindowController(m_mainWindow.get())}
     , m_themeRegistry{new ThemeRegistry(m_settings, m_self)}
+    , m_advancedSettingsRegistry{std::make_unique<AdvancedSettingsRegistry>()}
     , m_guiPluginContext{m_actionManager,    &m_layoutProvider,      &m_selectionController,
                          m_searchController, m_propertiesDialog,     m_scriptCommandHandler.get(),
                          &m_widgetProvider,  m_editableLayout.get(), m_windowController,
-                         m_themeRegistry}
+                         m_themeRegistry,    m_advancedSettingsRegistry.get()}
     , m_logWidget{std::make_unique<LogWidget>(m_settings)}
     , m_widgets{new Widgets(m_core, m_mainWindow.get(), m_self, &m_playlistInteractor, m_scriptCommandHandler.get(),
                             m_self)}
@@ -1705,6 +1708,11 @@ WidgetProvider* GuiApplication::widgetProvider() const
 ThemeRegistry* GuiApplication::themeRegistry() const
 {
     return p->m_themeRegistry;
+}
+
+AdvancedSettingsRegistry* GuiApplication::advancedSettingsRegistry() const
+{
+    return p->m_advancedSettingsRegistry.get();
 }
 } // namespace Fooyin
 

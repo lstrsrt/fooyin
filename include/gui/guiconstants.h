@@ -265,5 +265,6 @@ constexpr auto ShellIntegration                   = "Fooyin.Page.ShellIntegratio
 constexpr auto Shortcuts                          = "Fooyin.Page.Shortcuts";
 constexpr auto DirBrowser                         = "Fooyin.Page.Widgets.DirBrowser";
 constexpr auto Network                            = "Fooyin.Page.Network";
+constexpr auto Advanced                           = "Fooyin.Page.Advanced";
 } // namespace Page
 } // namespace Fooyin::Constants
