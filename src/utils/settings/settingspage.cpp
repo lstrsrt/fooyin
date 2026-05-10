@@ -55,6 +55,9 @@ QWidget* SettingsPage::widget()
 {
     if(!m_widget && m_widgetCreator) {
         m_widget = m_widgetCreator();
+        if(auto* pageWidget = qobject_cast<SettingsPageWidget*>(m_widget); pageWidget && !m_state.isEmpty()) {
+            pageWidget->restoreState(m_state);
+        }
     }
 
     return m_widget;
@@ -83,6 +86,7 @@ void SettingsPage::finish()
     if(m_widget) {
         if(auto* pageWidget = qobject_cast<SettingsPageWidget*>(m_widget)) {
             pageWidget->finish();
+            m_state = pageWidget->saveState();
         }
         delete m_widget;
         m_widget = nullptr;
@@ -94,6 +98,21 @@ void SettingsPage::reset()
     if(widget()) {
         if(auto* pageWidget = qobject_cast<SettingsPageWidget*>(m_widget)) {
             pageWidget->reset();
+        }
+    }
+}
+
+QByteArray SettingsPage::state() const
+{
+    return m_state;
+}
+
+void SettingsPage::setState(const QByteArray& state)
+{
+    m_state = state;
+    if(m_widget) {
+        if(auto* pageWidget = qobject_cast<SettingsPageWidget*>(m_widget)) {
+            pageWidget->restoreState(m_state);
         }
     }
 }

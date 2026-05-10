@@ -23,6 +23,7 @@
 
 #include "utils/id.h"
 
+#include <QByteArray>
 #include <QIcon>
 #include <QWidget>
 
@@ -38,6 +39,12 @@ public:
     virtual void apply() = 0;
     virtual void finish() { }
     virtual void reset() = 0;
+
+    [[nodiscard]] virtual QByteArray saveState() const
+    {
+        return {};
+    }
+    virtual void restoreState(const QByteArray& /*state*/) { }
 
     [[nodiscard]] virtual QString validationError() const
     {
@@ -65,6 +72,9 @@ public:
     void finish();
     void reset();
 
+    [[nodiscard]] QByteArray state() const;
+    void setState(const QByteArray& state);
+
     [[nodiscard]] QString validationError() const;
 
 protected:
@@ -82,5 +92,6 @@ private:
     QIcon m_categoryIcon;
     WidgetCreator m_widgetCreator;
     QWidget* m_widget;
+    QByteArray m_state;
 };
 } // namespace Fooyin

@@ -252,8 +252,7 @@ QByteArray SettingsDialog::saveState() const
     QDataStream stream{&stateData, QIODeviceBase::WriteOnly};
     stream.setVersion(QDataStream::Qt_6_0);
 
-    const QStringList expandedCategories
-        = Utils::saveExpansionState(m_categoryTree, [this](const QModelIndex& index) { return categoryKey(index); });
+    const QStringList expandedCategories = Utils::saveExpansionState(m_categoryTree, categoryKey);
     stream << expandedCategories;
 
     return qCompress(stateData, 9);
@@ -272,8 +271,7 @@ void SettingsDialog::restoreState(const QByteArray& state)
     QStringList expandedCategories;
     stream >> expandedCategories;
 
-    Utils::restoreExpansionState(m_categoryTree, {expandedCategories.cbegin(), expandedCategories.cend()},
-                                 [this](const QModelIndex& index) { return categoryKey(index); });
+    Utils::restoreExpansionState(m_categoryTree, expandedCategories, categoryKey);
 }
 
 void SettingsDialog::done(int value)

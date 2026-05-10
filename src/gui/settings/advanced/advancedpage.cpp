@@ -26,8 +26,10 @@
 #include <utils/modelutils.h>
 #include <utils/settings/advancedsettingsregistry.h>
 
+#include <QDataStream>
 #include <QGridLayout>
 #include <QHeaderView>
+#include <QIODevice>
 #include <QLineEdit>
 #include <QSortFilterProxyModel>
 #include <QTreeView>
@@ -44,17 +46,24 @@ public:
 
     void load() override;
     void apply() override;
+    void finish() override;
     void reset() override;
+
+    [[nodiscard]] QByteArray saveState() const override;
+    void restoreState(const QByteArray& state) override;
+
     [[nodiscard]] QString validationError() const override;
 
 private:
     void applyFilter(const QString& filter);
+    [[nodiscard]] QString sourceIndexPath(const QModelIndex& index) const;
 
     QLineEdit* m_filter;
     AdvancedSettingsModel* m_model;
     QSortFilterProxyModel* m_proxyModel;
     QTreeView* m_tree;
     QStringList m_expandedState;
+    bool m_hasExpandedState{false};
 };
 
 AdvancedPageWidget::AdvancedPageWidget(AdvancedSettingsRegistry* registry)
@@ -88,9 +97,19 @@ AdvancedPageWidget::AdvancedPageWidget(AdvancedSettingsRegistry* registry)
 void AdvancedPageWidget::load()
 {
     m_model->load();
-    m_tree->expandAll();
-    m_expandedState = Utils::saveExpansionState(
-        m_tree, [this](const QModelIndex& index) { return Utils::modelIndexPath(m_proxyModel->mapToSource(index)); });
+
+    const auto keyForIndex = [this](const QModelIndex& index) {
+        return sourceIndexPath(index);
+    };
+
+    if(!m_hasExpandedState) {
+        m_tree->expandAll();
+        m_expandedState    = Utils::saveExpansionState(m_tree, keyForIndex);
+        m_hasExpandedState = true;
+    }
+    else {
+        Utils::restoreExpansionState(m_tree, m_expandedState, keyForIndex);
+    }
 }
 
 void AdvancedPageWidget::apply()
@@ -98,9 +117,47 @@ void AdvancedPageWidget::apply()
     m_model->apply();
 }
 
+void AdvancedPageWidget::finish()
+{
+    m_expandedState = Utils::updateExpansionState(m_tree, m_expandedState,
+                                                  [this](const QModelIndex& index) { return sourceIndexPath(index); });
+    m_hasExpandedState = true;
+}
+
 void AdvancedPageWidget::reset()
 {
     m_model->reset();
+}
+
+QByteArray AdvancedPageWidget::saveState() const
+{
+    QByteArray stateData;
+    QDataStream stream{&stateData, QIODeviceBase::WriteOnly};
+    stream.setVersion(QDataStream::Qt_6_0);
+
+    stream << m_hasExpandedState;
+    stream << m_expandedState;
+
+    return qCompress(stateData, 9);
+}
+
+void AdvancedPageWidget::restoreState(const QByteArray& state)
+{
+    if(state.isEmpty()) {
+        return;
+    }
+
+    QByteArray stateData = qUncompress(state);
+    QDataStream stream{&stateData, QIODeviceBase::ReadOnly};
+    stream.setVersion(QDataStream::Qt_6_0);
+
+    stream >> m_hasExpandedState;
+    stream >> m_expandedState;
+
+    if(m_hasExpandedState && m_model->rowCount({}) > 0) {
+        Utils::restoreExpansionState(m_tree, m_expandedState,
+                                     [this](const QModelIndex& index) { return sourceIndexPath(index); });
+    }
 }
 
 QString AdvancedPageWidget::validationError() const
@@ -110,13 +167,19 @@ QString AdvancedPageWidget::validationError() const
 
 void AdvancedPageWidget::applyFilter(const QString& filter)
 {
-    const auto sourceIndexPath = [this](const QModelIndex& index) {
-        return Utils::modelIndexPath(m_proxyModel->mapToSource(index));
+    const auto keyForIndex = [this](const QModelIndex& index) {
+        return sourceIndexPath(index);
     };
 
-    m_expandedState = Utils::updateExpansionState(m_tree, m_expandedState, sourceIndexPath);
+    m_expandedState    = Utils::updateExpansionState(m_tree, m_expandedState, keyForIndex);
+    m_hasExpandedState = true;
     m_proxyModel->setFilterFixedString(filter);
-    Utils::restoreExpansionState(m_tree, m_expandedState, sourceIndexPath);
+    Utils::restoreExpansionState(m_tree, m_expandedState, keyForIndex);
+}
+
+QString AdvancedPageWidget::sourceIndexPath(const QModelIndex& index) const
+{
+    return Utils::modelIndexPath(m_proxyModel->mapToSource(index));
 }
 
 AdvancedPage::AdvancedPage(AdvancedSettingsRegistry* registry, SettingsDialogController* controller, QObject* parent)

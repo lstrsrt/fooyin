@@ -44,8 +44,8 @@ void saveTreeViewExpansionState(const QTreeView* view, const ModelIndexKey& keyF
             if(!key.isEmpty()) {
                 expandedIndexes->append(key);
             }
-            saveTreeViewExpansionState(view, keyForIndex, expandedIndexes, index);
         }
+        saveTreeViewExpansionState(view, keyForIndex, expandedIndexes, index);
     }
 }
 
@@ -61,15 +61,13 @@ void updateTreeViewExpansionState(const QTreeView* view, const ModelIndexKey& ke
     for(int row{0}; row < rows; ++row) {
         const QModelIndex index = model->index(row, 0, parent);
         const QString key       = keyForIndex(index);
-        if(key.isEmpty()) {
-            continue;
+        if(!key.isEmpty()) {
+            expandedIndexes->removeOne(key);
+            if(view->isExpanded(index)) {
+                expandedIndexes->append(key);
+            }
         }
-
-        expandedIndexes->removeOne(key);
-        if(view->isExpanded(index)) {
-            expandedIndexes->append(key);
-            updateTreeViewExpansionState(view, keyForIndex, expandedIndexes, index);
-        }
+        updateTreeViewExpansionState(view, keyForIndex, expandedIndexes, index);
     }
 }
 
@@ -86,8 +84,8 @@ void restoreTreeViewExpansionState(QTreeView* view, const QStringList& expandedI
         const QModelIndex index = model->index(row, 0, parent);
         if(expandedIndexes.contains(keyForIndex(index))) {
             view->setExpanded(index, true);
-            restoreTreeViewExpansionState(view, expandedIndexes, keyForIndex, index);
         }
+        restoreTreeViewExpansionState(view, expandedIndexes, keyForIndex, index);
     }
 }
 } // namespace
