@@ -115,6 +115,56 @@ QString trackMeta(const Fooyin::ScriptFunctionCallContext& call)
     return values.at(index);
 }
 
+QString trackMetaSep(const Fooyin::ScriptFunctionCallContext& call)
+{
+    if(call.args.size() < 2 || call.args.size() > 3 || !call.subject.track) {
+        return {};
+    }
+
+    const QStringList values = call.subject.track->metaValues(call.args.front().value);
+    if(values.size() < 2) {
+        return values.value(0);
+    }
+
+    const QString sep = call.args[1].value;
+    if(call.args.size() == 2) {
+        return values.join(sep);
+    }
+
+    QString result;
+    for(qsizetype i{0}; i < values.size(); ++i) {
+        if(i > 0) {
+            result.append(i + 1 == values.size() ? call.args[2].value : sep);
+        }
+        result.append(values.at(i));
+    }
+    return result;
+}
+
+Fooyin::ScriptResult trackMetaTest(const Fooyin::ScriptFunctionCallContext& call)
+{
+    if(call.args.empty() || !call.subject.track) {
+        return {};
+    }
+
+    for(const auto& arg : call.args) {
+        if(call.subject.track->metaValues(arg.value).empty()) {
+            return {};
+        }
+    }
+
+    return {.value = u"1"_s, .cond = true};
+}
+
+QString trackMetaNum(const Fooyin::ScriptFunctionCallContext& call)
+{
+    if(call.args.size() != 1 || !call.subject.track) {
+        return {};
+    }
+
+    return QString::number(call.subject.track->metaValues(call.args.front().value).size());
+}
+
 QString trackInfo(const Fooyin::Track& track, const QStringList& args)
 {
     if(args.empty()) {
@@ -899,6 +949,9 @@ ScriptRegistry::ScriptRegistry()
     addDefaultFunctions();
     registerFunction(u"info"_s, makeScriptFunctionInvoker<trackInfo>());
     registerFunction(u"meta"_s, makeScriptFunctionInvoker<trackMeta>());
+    registerFunction(u"meta_sep"_s, makeScriptFunctionInvoker<trackMetaSep>());
+    registerFunction(u"meta_test"_s, makeScriptFunctionInvoker<trackMetaTest>());
+    registerFunction(u"meta_num"_s, makeScriptFunctionInvoker<trackMetaNum>());
 }
 
 ScriptRegistry::~ScriptRegistry() = default;

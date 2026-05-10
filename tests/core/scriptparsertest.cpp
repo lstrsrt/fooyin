@@ -601,6 +601,7 @@ TEST_F(ScriptParserTest, EmptyTrackListStillEvaluatesGenericFunctions)
 TEST_F(ScriptParserTest, MetaTest)
 {
     Track track;
+    track.setTitle(u"Song"_s);
     track.setArtists({u"The Verve"_s});
     track.setRating(0.7F);
     track.setRawRatingTag(u"RATING"_s, u"7"_s);
@@ -612,14 +613,22 @@ TEST_F(ScriptParserTest, MetaTest)
     EXPECT_EQ(u"0.7", m_parser.evaluate(u"%rating_normalized%"_s, track));
     EXPECT_EQ(u"7", m_parser.evaluate(u"$meta(RATING)"_s, track));
 
-    track.setArtists({u"He"_s, u"She"_s, u"They"_s});
+    track.setArtists({u"He"_s, u"She"_s, u"Me"_s});
     track.addExtraTag(u"MOOD"_s, QStringList{u"Calm"_s, u"Bright"_s});
 
-    EXPECT_EQ(u"He, She, They", m_parser.evaluate(u"$meta(artist)"_s, track));
+    EXPECT_EQ(u"He, She, Me", m_parser.evaluate(u"$meta(artist)"_s, track));
     EXPECT_EQ(u"She", m_parser.evaluate(u"$meta(artist,1)"_s, track));
     EXPECT_EQ(u"", m_parser.evaluate(u"$meta(artist,3)"_s, track));
+    EXPECT_EQ(u"He + She + Me", m_parser.evaluate(u"$meta_sep(artist,\" + \")"_s, track));
+    EXPECT_EQ(u"He, She, and Me", m_parser.evaluate(u"$meta_sep(artist,\", \",\", and \")"_s, track));
+    EXPECT_EQ(u"3", m_parser.evaluate(u"$meta_num(artist)"_s, track));
+    EXPECT_EQ(u"1", m_parser.evaluate(u"$meta_test(artist,title)"_s, track));
+    EXPECT_EQ(u"", m_parser.evaluate(u"$meta_test(artist,missing)"_s, track));
     EXPECT_EQ(u"Calm, Bright", m_parser.evaluate(u"$meta(mood)"_s, track));
     EXPECT_EQ(u"Bright", m_parser.evaluate(u"$meta(mood,1)"_s, track));
+    EXPECT_EQ(u"Calm / Bright", m_parser.evaluate(u"$meta_sep(mood,\" / \")"_s, track));
+    EXPECT_EQ(u"2", m_parser.evaluate(u"$meta_num(mood)"_s, track));
+    EXPECT_EQ(u"0", m_parser.evaluate(u"$meta_num(missing)"_s, track));
 }
 
 TEST_F(ScriptParserTest, InfoTest)

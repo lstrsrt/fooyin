@@ -430,6 +430,22 @@ const std::vector<ScriptReferenceEntry>& scriptReferenceEntries()
             "meta", u"$meta(field,index)"_s,
             QT_TRANSLATE_NOOP("Fooyin", "Looks up a raw tag field by name and returns the zero-based indexed value."),
             QT_TRANSLATE_NOOP("Fooyin", "Lookup")),
+        functionEntry(
+            "meta_sep", u"$meta_sep(field,sep)"_s,
+            QT_TRANSLATE_NOOP("Fooyin", "Looks up a raw tag field by name. Multiple values are joined with sep."),
+            QT_TRANSLATE_NOOP("Fooyin", "Lookup")),
+        functionEntry(
+            "meta_sep", u"$meta_sep(field,sep,lastsep)"_s,
+            QT_TRANSLATE_NOOP("Fooyin",
+                              "Looks up a raw tag field by name. Multiple values are joined with sep, using lastsep "
+                              "between the final two values."),
+            QT_TRANSLATE_NOOP("Fooyin", "Lookup")),
+        functionEntry("meta_test", u"$meta_test(field,…)"_s,
+                      QT_TRANSLATE_NOOP("Fooyin", "Returns 1 when all named tag fields exist."),
+                      QT_TRANSLATE_NOOP("Fooyin", "Lookup")),
+        functionEntry("meta_num", u"$meta_num(field)"_s,
+                      QT_TRANSLATE_NOOP("Fooyin", "Returns the number of values in a raw tag field."),
+                      QT_TRANSLATE_NOOP("Fooyin", "Lookup")),
         functionEntry("info", u"$info(field)"_s, QT_TRANSLATE_NOOP("Fooyin", "Looks up technical track information"),
                       QT_TRANSLATE_NOOP("Fooyin", "Lookup")),
     };
