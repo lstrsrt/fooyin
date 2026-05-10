@@ -23,4 +23,9 @@
 
 namespace Fooyin::Scripting {
 QString msToString(const QStringList& vec);
+QString year(const QStringList& vec);
+QString month(const QStringList& vec);
+QString dayOfMonth(const QStringList& vec);
+QString date(const QStringList& vec);
+QString time(const QStringList& vec);
 }

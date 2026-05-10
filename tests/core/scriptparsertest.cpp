@@ -436,6 +436,18 @@ TEST_F(ScriptParserTest, MathTest)
     EXPECT_EQ(100, m_parser.evaluate(u"$max(3,2,3,9,23,100,4)"_s).toInt());
 }
 
+TEST_F(ScriptParserTest, TimeDateFunctionTest)
+{
+    EXPECT_EQ(u"2024", m_parser.evaluate(u"$year(\"2024-03-09 08:07:06\")"_s));
+    EXPECT_EQ(u"03", m_parser.evaluate(u"$month(\"2024-03-09 08:07:06\")"_s));
+    EXPECT_EQ(u"09", m_parser.evaluate(u"$day_of_month(\"2024-03-09 08:07:06\")"_s));
+    EXPECT_EQ(u"2024-03-09", m_parser.evaluate(u"$date(\"2024-03-09 08:07:06\")"_s));
+    EXPECT_EQ(u"08:07:06", m_parser.evaluate(u"$time(\"2024-03-09 08:07:06\")"_s));
+    EXPECT_EQ(u"08:07", m_parser.evaluate(u"$time(\"2024-03-09 08:07\")"_s));
+    EXPECT_EQ(u"", m_parser.evaluate(u"$time(\"2024-03-09\")"_s));
+    EXPECT_EQ(u"", m_parser.evaluate(u"$year(not-a-date)"_s));
+}
+
 TEST_F(ScriptParserTest, ConditionalTest)
 {
     EXPECT_EQ(u"", m_parser.evaluate(u"$and(1,1)"_s));

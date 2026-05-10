@@ -679,6 +679,11 @@ void ScriptRegistry::addDefaultFunctions()
     registerFunction(u"urlencode"_s, makeScriptFunctionInvoker<Scripting::urlencode>());
 
     registerFunction(u"timems"_s, makeScriptFunctionInvoker<Scripting::msToString>());
+    registerFunction(u"year"_s, makeScriptFunctionInvoker<Scripting::year>());
+    registerFunction(u"month"_s, makeScriptFunctionInvoker<Scripting::month>());
+    registerFunction(u"day_of_month"_s, makeScriptFunctionInvoker<Scripting::dayOfMonth>());
+    registerFunction(u"date"_s, makeScriptFunctionInvoker<Scripting::date>());
+    registerFunction(u"time"_s, makeScriptFunctionInvoker<Scripting::time>());
 
     registerFunction(u"and"_s, makeScriptFunctionInvoker<Scripting::boolAnd>());
     registerFunction(u"not"_s, makeScriptFunctionInvoker<Scripting::boolNot>());

@@ -20,8 +20,33 @@
 #include "timefuncs.h"
 
 #include <utils/stringutils.h>
+#include <utils/utils.h>
 
+#include <QDateTime>
 #include <QStringList>
+
+using namespace Qt::StringLiterals;
+
+namespace {
+QDateTime dateTimeArg(const QStringList& vec)
+{
+    if(vec.size() != 1 || vec.at(0).isEmpty()) {
+        return {};
+    }
+    return Fooyin::Utils::dateStringToDate(vec.at(0));
+}
+
+bool hasSecondsPrecision(const QString& value)
+{
+    return QDateTime::fromString(value, "yyyy-MM-dd hh:mm:ss"_L1).isValid();
+}
+
+bool hasTimePrecision(const QString& value)
+{
+    return hasSecondsPrecision(value) || QDateTime::fromString(value, "yyyy-MM-dd hh:mm"_L1).isValid()
+        || QDateTime::fromString(value, "yyyy-MM-dd hh"_L1).isValid();
+}
+} // namespace
 
 namespace Fooyin::Scripting {
 QString msToString(const QStringList& vec)
@@ -30,5 +55,39 @@ QString msToString(const QStringList& vec)
         return {};
     }
     return Utils::msToString(vec.at(0).toULongLong());
+}
+
+QString year(const QStringList& vec)
+{
+    const QDateTime dateTime = dateTimeArg(vec);
+    return dateTime.isValid() ? dateTime.toString("yyyy"_L1) : QString{};
+}
+
+QString month(const QStringList& vec)
+{
+    const QDateTime dateTime = dateTimeArg(vec);
+    return dateTime.isValid() ? dateTime.toString("MM"_L1) : QString{};
+}
+
+QString dayOfMonth(const QStringList& vec)
+{
+    const QDateTime dateTime = dateTimeArg(vec);
+    return dateTime.isValid() ? dateTime.toString("dd"_L1) : QString{};
+}
+
+QString date(const QStringList& vec)
+{
+    const QDateTime dateTime = dateTimeArg(vec);
+    return dateTime.isValid() ? dateTime.toString("yyyy-MM-dd"_L1) : QString{};
+}
+
+QString time(const QStringList& vec)
+{
+    const QDateTime dateTime = dateTimeArg(vec);
+    if(!dateTime.isValid() || !hasTimePrecision(vec.front())) {
+        return {};
+    }
+
+    return dateTime.toString(hasSecondsPrecision(vec.front()) ? "hh:mm:ss"_L1 : "hh:mm"_L1);
 }
 } // namespace Fooyin::Scripting
