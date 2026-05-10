@@ -110,6 +110,15 @@ public:
             }
         }
     }
+
+    void updatePageStates()
+    {
+        for(const auto* page : pages) {
+            if(const QByteArray state = page->state(); !state.isEmpty()) {
+                pageStates.insert_or_assign(page->id().name(), state);
+            }
+        }
+    }
 };
 
 SettingsDialogController::SettingsDialogController(SettingsManager* settings, QMainWindow* mainWindow)
@@ -135,6 +144,7 @@ void SettingsDialogController::openAtPage(const Id& page)
     auto* settingsDialog = new SettingsDialog{p->pages, p->mainWindow};
 
     QObject::connect(settingsDialog, &QDialog::finished, this, [this, settingsDialog]() {
+        p->updatePageStates();
         p->geometry           = settingsDialog->saveGeometry();
         p->size               = settingsDialog->size();
         p->expandedCategories = settingsDialog->saveState();
@@ -171,19 +181,11 @@ void SettingsDialogController::addPage(SettingsPage* page)
 
 void SettingsDialogController::saveState(QSettings& settings) const
 {
-    std::unordered_map pageStates{p->pageStates};
-
-    for(const auto* page : p->pages) {
-        if(const QByteArray state = page->state(); !state.isEmpty()) {
-            pageStates.emplace(page->id().name(), state);
-        }
-    }
-
     settings.setValue(DialogGeometry, p->geometry);
     settings.setValue(DialogSize, p->size);
     settings.setValue(ExpandedCategories, p->expandedCategories);
     settings.setValue(LastOpenPage, p->lastOpenPage.name());
-    settings.setValue(PageStates, savePageStates(pageStates));
+    settings.setValue(PageStates, savePageStates(p->pageStates));
 }
 
 void SettingsDialogController::restoreState(const QSettings& settings)
