@@ -408,24 +408,24 @@ void Widgets::registerAdvancedSettings()
     auto* advancedSettingsRegistry = m_gui->advancedSettingsRegistry();
 
     advancedSettingsRegistry->add<Settings::Gui::Internal::ImageAllocationLimit>(
-        {.category    = {GuiApplication::tr("Interface"), GuiApplication::tr("Display")},
-         .label       = GuiApplication::tr("Image allocation limit"),
-         .description = GuiApplication::tr("Maximum image allocation size in MB. Set to 0 to disable the limit."),
+        {.category    = {tr("Interface"), GuiApplication::tr("Display")},
+         .label       = tr("Image allocation limit"),
+         .description = tr("Maximum image allocation size in MB. Set to 0 to disable the limit."),
          .editor      = AdvancedSettingSpinBox{.minimum = 0, .maximum = 1024, .singleStep = 1, .suffix = u" MB"_s},
          .normalise   = {},
          .validate    = {}});
     advancedSettingsRegistry->add<Settings::Core::Internal::VBRUpdateInterval>(
-        {.category    = {GuiApplication::tr("Playback"), GuiApplication::tr("Decoding")},
-         .label       = GuiApplication::tr("VBR update interval"),
-         .description = GuiApplication::tr("Interval used to refresh VBR playback information. Set to 0 to disable."),
+        {.category    = {tr("Playback"), tr("Decoding")},
+         .label       = tr("VBR update interval"),
+         .description = tr("Interval used to refresh VBR playback information. Set to 0 to disable."),
          .editor      = AdvancedSettingSpinBox{.minimum = 0, .maximum = 300000, .singleStep = 100, .suffix = u" ms"_s},
          .normalise   = {},
          .validate    = {}});
     advancedSettingsRegistry->add(
         {.id           = QString::fromLatin1(Settings::Core::Internal::FFmpegAllExtensions),
-         .category     = {GuiApplication::tr("Playback"), GuiApplication::tr("Decoding"), u"FFmpeg"_s},
-         .label        = GuiApplication::tr("Enable all supported extensions"),
-         .description  = GuiApplication::tr("Enabled all extensions supported by the FFmpeg input."),
+         .category     = {tr("Playback"), tr("Decoding"), u"FFmpeg"_s},
+         .label        = tr("Enable all supported extensions"),
+         .description  = tr("Enabled all extensions supported by the FFmpeg input."),
          .defaultValue = false,
          .editor       = AdvancedSettingCheckBox{},
          .read = [this] { return m_settings->fileValue(Settings::Core::Internal::FFmpegAllExtensions).toBool(); },
@@ -441,9 +441,9 @@ void Widgets::registerAdvancedSettings()
          .validate  = {}});
     advancedSettingsRegistry->add(
         {.id           = QString::fromLatin1(Settings::Core::Internal::FFmpegPriorityExtensions),
-         .category     = {GuiApplication::tr("Playback"), GuiApplication::tr("Decoding"), u"FFmpeg"_s},
-         .label        = GuiApplication::tr("Prefer FFmpeg for extensions"),
-         .description  = GuiApplication::tr("Semicolon-separated extensions where FFmpeg is tried first."),
+         .category     = {tr("Playback"), tr("Decoding"), u"FFmpeg"_s},
+         .label        = tr("Prefer FFmpeg for extensions"),
+         .description  = tr("Semicolon-separated extensions where FFmpeg is tried first."),
          .defaultValue = extensionTextFromList(Settings::Core::Internal::defaultFFmpegPriorityExtensions()),
          .editor       = AdvancedSettingLineEdit{},
          .read =
@@ -463,15 +463,15 @@ void Widgets::registerAdvancedSettings()
          = [](const QVariant& value) { return extensionTextFromList(extensionListFromText(value.toString())); },
          .validate = {}});
     advancedSettingsRegistry->add<Settings::Core::Internal::OpusHeaderWriteMode>(
-        {.category    = {GuiApplication::tr("Playback"), GuiApplication::tr("ReplayGain")},
-         .label       = GuiApplication::tr("Opus header gain"),
-         .description = GuiApplication::tr("ReplayGain value written to the Opus header when updating metadata."),
+        {.category    = {tr("Playback"), tr("ReplayGain")},
+         .label       = tr("Opus header gain"),
+         .description = tr("ReplayGain value written to the Opus header when updating metadata."),
          .editor      = AdvancedSettingRadioButtons{.options = {{.value = static_cast<int>(OpusRGWriteMode::Track),
-                                                                 .label = GuiApplication::tr("Use Track Gain")},
+                                                                 .label = tr("Use Track Gain")},
                                                                 {.value = static_cast<int>(OpusRGWriteMode::Album),
-                                                                 .label = GuiApplication::tr("Use Album Gain")},
+                                                                 .label = tr("Use Album Gain")},
                                                                 {.value = static_cast<int>(OpusRGWriteMode::LeaveNull),
-                                                                 .label = GuiApplication::tr("Leave null")}}},
+                                                                 .label = tr("Leave null")}}},
          .normalise   = {},
          .validate    = {}});
 }
