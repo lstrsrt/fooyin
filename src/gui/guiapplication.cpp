@@ -314,11 +314,18 @@ GuiApplicationPrivate::GuiApplicationPrivate(GuiApplication* self_, Application*
                                                                     m_propertiesDialog)}
     , m_windowController{new WindowController(m_mainWindow.get())}
     , m_themeRegistry{new ThemeRegistry(m_settings, m_self)}
-    , m_advancedSettingsRegistry{std::make_unique<AdvancedSettingsRegistry>()}
-    , m_guiPluginContext{m_actionManager,    &m_layoutProvider,      &m_selectionController,
-                         m_searchController, m_propertiesDialog,     m_scriptCommandHandler.get(),
-                         &m_widgetProvider,  m_editableLayout.get(), m_windowController,
-                         m_themeRegistry,    m_advancedSettingsRegistry.get()}
+    , m_advancedSettingsRegistry{std::make_unique<AdvancedSettingsRegistry>(m_settings)}
+    , m_guiPluginContext{m_actionManager,
+                         &m_layoutProvider,
+                         &m_selectionController,
+                         m_searchController,
+                         m_propertiesDialog,
+                         m_scriptCommandHandler.get(),
+                         &m_widgetProvider,
+                         m_editableLayout.get(),
+                         m_windowController,
+                         m_themeRegistry,
+                         m_advancedSettingsRegistry.get()}
     , m_logWidget{std::make_unique<LogWidget>(m_settings)}
     , m_widgets{new Widgets(m_core, m_mainWindow.get(), m_self, &m_playlistInteractor, m_scriptCommandHandler.get(),
                             m_self)}

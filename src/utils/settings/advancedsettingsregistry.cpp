@@ -22,6 +22,10 @@
 #include <algorithm>
 
 namespace Fooyin {
+AdvancedSettingsRegistry::AdvancedSettingsRegistry(SettingsManager* settings)
+    : m_settings{settings}
+{ }
+
 void AdvancedSettingsRegistry::add(AdvancedSettingDescriptor descriptor)
 {
     if(descriptor.id.isEmpty()) {

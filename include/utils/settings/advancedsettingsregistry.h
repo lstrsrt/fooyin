@@ -21,6 +21,8 @@
 
 #include "fyutils_export.h"
 
+#include <utils/settings/settingsmanager.h>
+
 #include <QVariant>
 
 #include <functional>
@@ -104,6 +106,27 @@ struct AdvancedSettingDescriptor
 };
 
 /*!
+ * Descriptor input for enum-registered settings.
+ *
+ * The registry fills the setting id, default value, read callback, and write callback from SettingsManager.
+ */
+struct AdvancedRegisteredSettingDescriptor
+{
+    //! Category path displayed in the Advanced settings tree.
+    QStringList category;
+    //! User-visible setting name.
+    QString label;
+    //! Optional tooltip text.
+    QString description;
+    //! Editor type and editor-specific metadata.
+    AdvancedSettingEditor editor{AdvancedSettingLineEdit{}};
+    //! Optional value normalisation applied before display, validation, and writing.
+    std::function<QVariant(const QVariant&)> normalise;
+    //! Optional validation hook. Return an empty string when the value is valid.
+    std::function<QString(const QVariant&)> validate;
+};
+
+/*!
  * Registry of advanced settings.
  *
  * The registry does not own the backing settings. Callers provide read/write callbacks, and the Advanced page consumes
@@ -112,13 +135,64 @@ struct AdvancedSettingDescriptor
 class FYUTILS_EXPORT AdvancedSettingsRegistry
 {
 public:
+    explicit AdvancedSettingsRegistry(SettingsManager* settings);
+
     //! Add or replace a descriptor with the same id.
     void add(AdvancedSettingDescriptor descriptor);
+
+    /*!
+     * Add or replace a descriptor backed by a registered enum setting.
+     *
+     * The descriptor id, default value, read callback, and write callback are inferred from the registered setting.
+     */
+    template <auto key>
+        requires IsEnumType<key>
+    void add(AdvancedRegisteredSettingDescriptor descriptor)
+    {
+        add({.id           = m_settings->settingKey<key>(),
+             .category     = std::move(descriptor.category),
+             .label        = std::move(descriptor.label),
+             .description  = std::move(descriptor.description),
+             .defaultValue = m_settings->defaultValue<key>(),
+             .editor       = std::move(descriptor.editor),
+             .read         = [this] { return QVariant::fromValue(m_settings->value<key>()); },
+             .write =
+                 [this](const QVariant& value) {
+                     constexpr auto type = findType<key>();
+                     if constexpr(type == Settings::Bool) {
+                         return m_settings->set<key>(value.toBool());
+                     }
+                     else if constexpr(type == Settings::Float) {
+                         return m_settings->set<key>(value.toFloat());
+                     }
+                     else if constexpr(type == Settings::Double) {
+                         return m_settings->set<key>(value.toDouble());
+                     }
+                     else if constexpr(type == Settings::Int) {
+                         return m_settings->set<key>(value.toInt());
+                     }
+                     else if constexpr(type == Settings::String) {
+                         return m_settings->set<key>(value.toString());
+                     }
+                     else if constexpr(type == Settings::StringList) {
+                         return m_settings->set<key>(value.toStringList());
+                     }
+                     else if constexpr(type == Settings::ByteArray) {
+                         return m_settings->set<key>(value.toByteArray());
+                     }
+                     else {
+                         return m_settings->set<key>(value);
+                     }
+                 },
+             .normalise = std::move(descriptor.normalise),
+             .validate  = std::move(descriptor.validate)});
+    }
 
     //! Return a snapshot of all registered descriptors.
     [[nodiscard]] std::vector<AdvancedSettingDescriptor> descriptors() const;
 
 private:
+    SettingsManager* m_settings;
     std::vector<AdvancedSettingDescriptor> m_descriptors;
 };
 } // namespace Fooyin
