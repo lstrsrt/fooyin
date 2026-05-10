@@ -22,6 +22,7 @@
 #include "advancedsettingsmodel.h"
 
 #include <QApplication>
+#include <QMouseEvent>
 #include <QSpinBox>
 
 namespace Fooyin {
