@@ -22,6 +22,12 @@
 #include "fyutils_export.h"
 
 #include <QModelIndexList>
+#include <QString>
+#include <QStringList>
+
+#include <functional>
+
+class QTreeView;
 
 namespace Fooyin::Utils {
 using IndexRangeList = std::vector<QModelIndexList>;
@@ -31,4 +37,13 @@ FYUTILS_EXPORT bool sortModelIndexes(const QModelIndex& index1, const QModelInde
 
 FYUTILS_EXPORT void recursiveDataChanged(QAbstractItemModel* model, const QModelIndex& parent,
                                          const QList<int>& roles = {});
+
+using ModelIndexKey = std::function<QString(const QModelIndex&)>;
+
+FYUTILS_EXPORT QString modelIndexPath(const QModelIndex& index);
+FYUTILS_EXPORT QStringList saveExpansionState(const QTreeView* view);
+FYUTILS_EXPORT QStringList saveExpansionState(const QTreeView* view, const ModelIndexKey& keyForIndex);
+FYUTILS_EXPORT void restoreExpansionState(QTreeView* view, const QStringList& expandedIndexes);
+FYUTILS_EXPORT void restoreExpansionState(QTreeView* view, const QStringList& expandedIndexes,
+                                          const ModelIndexKey& keyForIndex);
 } // namespace Fooyin::Utils

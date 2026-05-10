@@ -21,12 +21,15 @@
 
 #include "settingsmodel.h"
 
+#include <modelutils.h>
 #include <utils/settings/settingsmanager.h>
 #include <utils/settings/settingspage.h>
 #include <utils/utils.h>
 
+#include <QDataStream>
 #include <QDialogButtonBox>
 #include <QEvent>
+#include <QIODevice>
 #include <QMessageBox>
 #include <QPushButton>
 #include <QResizeEvent>
@@ -42,11 +45,13 @@ class ScrollArea : public QScrollArea
 public:
     explicit ScrollArea(QWidget* parent);
 
-private:
-    void resizeEvent(QResizeEvent* event) override;
     [[nodiscard]] QSize minimumSizeHint() const override;
+
+protected:
+    void resizeEvent(QResizeEvent* event) override;
     bool event(QEvent* event) override;
 
+private:
     [[nodiscard]] int scrollBarWidth() const;
 };
 
@@ -59,41 +64,46 @@ ScrollArea::ScrollArea(QWidget* parent)
     setAutoFillBackground(true);
 }
 
+QSize ScrollArea::minimumSizeHint() const
+{
+    const QWidget* child = widget();
+    if(!child) {
+        return {0, 0};
+    }
+
+    const int width = frameWidth() * 2;
+    QSize minSize   = child->minimumSizeHint();
+
+    minSize += QSize{width, width};
+    minSize += QSize{scrollBarWidth(), 0};
+
+    minSize.setWidth(std::min(minSize.width(), 250));
+    minSize.setHeight(std::min(minSize.height(), 250));
+
+    return minSize;
+}
+
 void ScrollArea::resizeEvent(QResizeEvent* event)
 {
     QWidget* child = widget();
-    if(child) {
-        const QSize chilSizeHint = child->minimumSizeHint();
-        const int width          = frameWidth() * 2;
-        QSize innerSize          = event->size() - QSize{width, width};
-
-        if(chilSizeHint.height() > innerSize.height()) {
-            // Child widget is bigger
-            innerSize.setWidth(innerSize.width() - scrollBarWidth());
-            innerSize.setHeight(chilSizeHint.height());
-        }
-        // Resize to fit scroll area
-        child->resize(innerSize);
+    if(!child) {
+        QScrollArea::resizeEvent(event);
+        return;
     }
+
+    const QSize chilSizeHint = child->minimumSizeHint();
+    const int width          = frameWidth() * 2;
+    QSize innerSize          = event->size() - QSize{width, width};
+
+    if(chilSizeHint.height() > innerSize.height()) {
+        // Child widget is bigger
+        innerSize.setWidth(innerSize.width() - scrollBarWidth());
+        innerSize.setHeight(chilSizeHint.height());
+    }
+
+    // Resize to fit scroll area
+    child->resize(innerSize);
     QScrollArea::resizeEvent(event);
-}
-
-QSize ScrollArea::minimumSizeHint() const
-{
-    QWidget* child = widget();
-    if(child) {
-        const int width = frameWidth() * 2;
-        QSize minSize   = child->minimumSizeHint();
-
-        minSize += QSize{width, width};
-        minSize += QSize{scrollBarWidth(), 0};
-
-        minSize.setWidth(std::min(minSize.width(), 250));
-        minSize.setHeight(std::min(minSize.height(), 250));
-
-        return minSize;
-    }
-    return {0, 0};
 }
 
 bool ScrollArea::event(QEvent* event)
@@ -234,6 +244,36 @@ void SettingsDialog::openPage(const Id& id)
 Id SettingsDialog::currentPage() const
 {
     return m_currentPage;
+}
+
+QByteArray SettingsDialog::saveState() const
+{
+    QByteArray stateData;
+    QDataStream stream{&stateData, QIODeviceBase::WriteOnly};
+    stream.setVersion(QDataStream::Qt_6_0);
+
+    const QStringList expandedCategories
+        = Utils::saveExpansionState(m_categoryTree, [this](const QModelIndex& index) { return categoryKey(index); });
+    stream << expandedCategories;
+
+    return qCompress(stateData, 9);
+}
+
+void SettingsDialog::restoreState(const QByteArray& state)
+{
+    if(state.isEmpty()) {
+        return;
+    }
+
+    QByteArray stateData = qUncompress(state);
+    QDataStream stream{&stateData, QIODeviceBase::ReadOnly};
+    stream.setVersion(QDataStream::Qt_6_0);
+
+    QStringList expandedCategories;
+    stream >> expandedCategories;
+
+    Utils::restoreExpansionState(m_categoryTree, {expandedCategories.cbegin(), expandedCategories.cend()},
+                                 [this](const QModelIndex& index) { return categoryKey(index); });
 }
 
 void SettingsDialog::done(int value)
@@ -396,6 +436,17 @@ SettingsPage* SettingsDialog::findPage(const Id& id)
     }
     return nullptr;
 }
+
+QString SettingsDialog::categoryKey(const QModelIndex& index)
+{
+    if(!index.isValid()) {
+        return {};
+    }
+
+    auto* category = index.data(SettingsItem::Data).value<SettingsCategory*>();
+    return category ? category->id.name() : QString{};
+}
+
 } // namespace Fooyin
 
 #include "moc_settingsdialog.cpp"

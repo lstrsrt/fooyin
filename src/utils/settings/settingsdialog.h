@@ -23,10 +23,15 @@
 
 #include <utils/id.h>
 
+#include <QByteArray>
 #include <QDialog>
+#include <QString>
+
+#include <set>
 
 class QDialogButtonBox;
 class QStackedLayout;
+class QModelIndex;
 
 namespace Fooyin {
 class SettingsModel;
@@ -43,6 +48,8 @@ public:
     void openPage(const Id& id);
 
     [[nodiscard]] Id currentPage() const;
+    [[nodiscard]] QByteArray saveState() const;
+    void restoreState(const QByteArray& state);
 
     void done(int value) override;
     void accept() override;
@@ -62,6 +69,7 @@ private:
     void currentChanged(const QModelIndex& current);
     void currentTabChanged(int index);
     SettingsPage* findPage(const Id& id);
+    static QString categoryKey(const QModelIndex& index);
 
     SettingsModel* m_model;
     SimpleTreeView* m_categoryTree;

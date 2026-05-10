@@ -19,9 +19,56 @@
 
 #include "modelutils.h"
 
+#include <QAbstractItemModel>
 #include <QModelIndex>
+#include <QTreeView>
+
+using namespace Qt::StringLiterals;
 
 namespace Fooyin::Utils {
+namespace {
+void saveTreeViewExpansionState(const QTreeView* view, const ModelIndexKey& keyForIndex, QStringList* expandedIndexes,
+                                const QModelIndex& parent = {})
+{
+    const auto* model = view->model();
+    if(!model) {
+        return;
+    }
+
+    const int rows = model->rowCount(parent);
+    for(int row{0}; row < rows; ++row) {
+        const QModelIndex index = model->index(row, 0, parent);
+        if(view->isExpanded(index)) {
+            const QString key = keyForIndex(index);
+            if(!key.isEmpty()) {
+                expandedIndexes->append(key);
+            }
+            saveTreeViewExpansionState(view, keyForIndex, expandedIndexes, index);
+        }
+    }
+
+    expandedIndexes->removeDuplicates();
+}
+
+void restoreTreeViewExpansionState(QTreeView* view, const QStringList& expandedIndexes,
+                                   const ModelIndexKey& keyForIndex, const QModelIndex& parent = {})
+{
+    const auto* model = view->model();
+    if(!model) {
+        return;
+    }
+
+    const int rows = model->rowCount(parent);
+    for(int row{0}; row < rows; ++row) {
+        const QModelIndex index = model->index(row, 0, parent);
+        if(expandedIndexes.contains(keyForIndex(index))) {
+            view->setExpanded(index, true);
+            restoreTreeViewExpansionState(view, expandedIndexes, keyForIndex, index);
+        }
+    }
+}
+} // namespace
+
 IndexRangeList getIndexRanges(const QModelIndexList& indexes)
 {
     IndexRangeList indexGroups;
@@ -89,5 +136,53 @@ void recursiveDataChanged(QAbstractItemModel* model, const QModelIndex& parent, 
             recursiveDataChanged(model, index, roles);
         }
     }
+}
+
+QString modelIndexPath(const QModelIndex& index)
+{
+    if(!index.isValid()) {
+        return {};
+    }
+
+    QStringList pathParts;
+    for(QModelIndex current = index; current.isValid(); current = current.parent()) {
+        pathParts.prepend(QString::number(current.row()));
+    }
+
+    return pathParts.join('/'_L1);
+}
+
+QStringList saveExpansionState(const QTreeView* view)
+{
+    return saveExpansionState(view, modelIndexPath);
+}
+
+QStringList saveExpansionState(const QTreeView* view, const ModelIndexKey& keyForIndex)
+{
+    if(!view) {
+        return {};
+    }
+
+    QStringList expandedIndexes;
+    saveTreeViewExpansionState(view, keyForIndex, &expandedIndexes);
+    return expandedIndexes;
+}
+
+void restoreExpansionState(QTreeView* view, const QStringList& expandedIndexes)
+{
+    restoreTreeViewExpansionState(view, expandedIndexes, modelIndexPath);
+}
+
+void restoreExpansionState(QTreeView* view, const QStringList& expandedIndexes, const ModelIndexKey& keyForIndex)
+{
+    if(!view) {
+        return;
+    }
+
+    const bool updatesEnabled = view->updatesEnabled();
+    view->setUpdatesEnabled(false);
+    view->collapseAll();
+    restoreTreeViewExpansionState(view, expandedIndexes, keyForIndex);
+    view->setUpdatesEnabled(updatesEnabled);
 }
 } // namespace Fooyin::Utils

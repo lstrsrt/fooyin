@@ -29,9 +29,10 @@
 #include <QMainWindow>
 #include <QSettings>
 
-constexpr auto DialogGeometry = "SettingsDialog/Geometry";
-constexpr auto DialogSize     = "SettingsDialog/Size";
-constexpr auto LastOpenPage   = "SettingsDialog/LastPage";
+constexpr auto DialogGeometry     = "SettingsDialog/Geometry";
+constexpr auto DialogSize         = "SettingsDialog/Size";
+constexpr auto LastOpenPage       = "SettingsDialog/LastPage";
+constexpr auto ExpandedCategories = "SettingsDialog/ExpandedCategories";
 
 namespace Fooyin {
 class SettingsDialogControllerPrivate
@@ -47,6 +48,7 @@ public:
 
     QByteArray geometry;
     QSize size;
+    QByteArray expandedCategories;
     PageList pages;
     Id lastOpenPage;
     bool isOpen{false};
@@ -73,10 +75,11 @@ void SettingsDialogController::openAtPage(const Id& page)
     auto* settingsDialog = new SettingsDialog{p->pages, p->mainWindow};
 
     QObject::connect(settingsDialog, &QDialog::finished, this, [this, settingsDialog]() {
-        p->geometry     = settingsDialog->saveGeometry();
-        p->size         = settingsDialog->size();
-        p->lastOpenPage = settingsDialog->currentPage();
-        p->isOpen       = false;
+        p->geometry           = settingsDialog->saveGeometry();
+        p->size               = settingsDialog->size();
+        p->expandedCategories = settingsDialog->saveState();
+        p->lastOpenPage       = settingsDialog->currentPage();
+        p->isOpen             = false;
         Q_EMIT closing();
         settingsDialog->deleteLater();
     });
@@ -89,6 +92,7 @@ void SettingsDialogController::openAtPage(const Id& page)
     if(p->size.isValid()) {
         settingsDialog->resize(p->size);
     }
+    settingsDialog->restoreState(p->expandedCategories);
 
     p->isOpen = true;
     Q_EMIT opening();
@@ -109,6 +113,7 @@ void SettingsDialogController::saveState(QSettings& settings) const
 {
     settings.setValue(DialogGeometry, p->geometry);
     settings.setValue(DialogSize, p->size);
+    settings.setValue(ExpandedCategories, p->expandedCategories);
     settings.setValue(LastOpenPage, p->lastOpenPage.name());
 }
 
@@ -120,12 +125,14 @@ void SettingsDialogController::restoreState(const QSettings& settings)
             p->geometry = geometry;
         }
     }
-
     if(settings.contains(DialogSize)) {
         const auto size = settings.value(DialogSize).toSize();
         if(size.isValid()) {
             p->size = size;
         }
+    }
+    if(settings.contains(ExpandedCategories)) {
+        p->expandedCategories = settings.value(ExpandedCategories).toByteArray();
     }
 
     if(settings.contains(LastOpenPage)) {
