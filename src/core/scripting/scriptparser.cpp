@@ -152,38 +152,38 @@ bool isQueryExpression(Fooyin::Expr::Type type)
 {
     using Type = Fooyin::Expr::Type;
     switch(type) {
-        case(Type::Not):
-        case(Type::Group):
-        case(Type::And):
-        case(Type::Or):
-        case(Type::XOr):
-        case(Type::Equals):
-        case(Type::Contains):
-        case(Type::Greater):
-        case(Type::GreaterEqual):
-        case(Type::Less):
-        case(Type::LessEqual):
-        case(Type::SortAscending):
-        case(Type::SortDescending):
-        case(Type::All):
-        case(Type::Missing):
-        case(Type::Present):
-        case(Type::Before):
-        case(Type::After):
-        case(Type::Since):
-        case(Type::During):
-        case(Type::Date):
-        case(Type::Limit):
+        case Type::Not:
+        case Type::Group:
+        case Type::And:
+        case Type::Or:
+        case Type::XOr:
+        case Type::Equals:
+        case Type::Contains:
+        case Type::Greater:
+        case Type::GreaterEqual:
+        case Type::Less:
+        case Type::LessEqual:
+        case Type::SortAscending:
+        case Type::SortDescending:
+        case Type::All:
+        case Type::Missing:
+        case Type::Present:
+        case Type::Before:
+        case Type::After:
+        case Type::Since:
+        case Type::During:
+        case Type::Date:
+        case Type::Limit:
             return true;
-        case(Type::Null):
-        case(Type::Literal):
-        case(Type::Variable):
-        case(Type::VariableList):
-        case(Type::VariableRaw):
-        case(Type::Function):
-        case(Type::FunctionArg):
-        case(Type::Conditional):
-        case(Type::QuotedLiteral):
+        case Type::Null:
+        case Type::Literal:
+        case Type::Variable:
+        case Type::VariableList:
+        case Type::VariableRaw:
+        case Type::Function:
+        case Type::FunctionArg:
+        case Type::Conditional:
+        case Type::QuotedLiteral:
             break;
     }
 
@@ -387,59 +387,59 @@ Expression ScriptParserPrivate::expression()
     advance();
 
     switch(m_previous.type) {
-        case(TokenType::TokVar):
+        case TokenType::TokVar:
             return variable();
-        case(TokenType::TokFunc):
+        case TokenType::TokFunc:
             return function();
-        case(TokenType::TokQuote):
+        case TokenType::TokQuote:
             return quote();
-        case(TokenType::TokLeftSquare):
+        case TokenType::TokLeftSquare:
             return conditional();
-        case(TokenType::TokEscape):
+        case TokenType::TokEscape:
             advance();
             return literal();
-        case(TokenType::TokLeftParen):
+        case TokenType::TokLeftParen:
             return m_isQuery ? group() : literal();
-        case(TokenType::TokNot):
+        case TokenType::TokNot:
             return m_isQuery ? notKeyword({}) : literal();
-        case(TokenType::TokAll):
+        case TokenType::TokAll:
             return m_isQuery ? Expression{Expr::All} : literal();
-        case(TokenType::TokSort):
+        case TokenType::TokSort:
             return m_isQuery ? sort() : literal();
-        case(TokenType::TokLimit):
+        case TokenType::TokLimit:
             return limit();
-        case(TokenType::TokAnd):
-        case(TokenType::TokOr):
-        case(TokenType::TokXOr):
-        case(TokenType::TokMissing):
-        case(TokenType::TokPresent):
-        case(TokenType::TokColon):
-        case(TokenType::TokEquals):
-        case(TokenType::TokLeftAngle):
-        case(TokenType::TokRightAngle):
-        case(TokenType::TokRightParen):
-        case(TokenType::TokComma):
-        case(TokenType::TokBy):
-        case(TokenType::TokBefore):
-        case(TokenType::TokAfter):
-        case(TokenType::TokSince):
-        case(TokenType::TokDuring):
-        case(TokenType::TokLast):
-        case(TokenType::TokSecond):
-        case(TokenType::TokMinute):
-        case(TokenType::TokHour):
-        case(TokenType::TokDay):
-        case(TokenType::TokWeek):
-        case(TokenType::TokRightSquare):
-        case(TokenType::TokAscending):
-        case(TokenType::TokDescending):
-        case(TokenType::TokSlash):
-        case(TokenType::TokLiteral):
-        case(TokenType::TokPlus):
-        case(TokenType::TokMinus):
+        case TokenType::TokAnd:
+        case TokenType::TokOr:
+        case TokenType::TokXOr:
+        case TokenType::TokMissing:
+        case TokenType::TokPresent:
+        case TokenType::TokColon:
+        case TokenType::TokEquals:
+        case TokenType::TokLeftAngle:
+        case TokenType::TokRightAngle:
+        case TokenType::TokRightParen:
+        case TokenType::TokComma:
+        case TokenType::TokBy:
+        case TokenType::TokBefore:
+        case TokenType::TokAfter:
+        case TokenType::TokSince:
+        case TokenType::TokDuring:
+        case TokenType::TokLast:
+        case TokenType::TokSecond:
+        case TokenType::TokMinute:
+        case TokenType::TokHour:
+        case TokenType::TokDay:
+        case TokenType::TokWeek:
+        case TokenType::TokRightSquare:
+        case TokenType::TokAscending:
+        case TokenType::TokDescending:
+        case TokenType::TokSlash:
+        case TokenType::TokLiteral:
+        case TokenType::TokPlus:
+        case TokenType::TokMinus:
             return literal();
-        case(TokenType::TokEos):
-        case(TokenType::TokError):
+        case TokenType::TokEos:
+        case TokenType::TokError:
             break;
     }
 
@@ -708,20 +708,9 @@ Expression ScriptParserPrivate::notKeyword(const Expression& key)
 
     if(currentToken(TokenType::TokNot)) {
         advance();
-        if(currentToken(TokenType::TokEquals)) {
-            advance();
-
-            Expression equals{Expr::Equals};
-            ExpressionList equalsArgs;
-            equalsArgs.emplace_back(normaliseQueryField(key));
-
-            const Expression argExpr = expression();
-            if(argExpr.type != Expr::Null) {
-                equalsArgs.emplace_back(argExpr);
-            }
-
-            equals.value = equalsArgs;
-            args.emplace_back(equals);
+        const Expression argExpr = checkOperator(key);
+        if(argExpr.type != Expr::Null && argExpr.type != key.type) {
+            args.emplace_back(argExpr);
         }
     }
     else {
@@ -952,63 +941,63 @@ Expression ScriptParserPrivate::limit()
 ScriptResult ScriptParserPrivate::evalExpression(const BoundExpression& exp, const auto& tracks)
 {
     switch(exp.type) {
-        case(Expr::Literal):
-        case(Expr::QuotedLiteral):
+        case Expr::Literal:
+        case Expr::QuotedLiteral:
             return evalLiteral(exp);
-        case(Expr::Variable):
+        case Expr::Variable:
             return evalVariable(exp, tracks);
-        case(Expr::VariableList):
+        case Expr::VariableList:
             return evalVariableList(exp, tracks);
-        case(Expr::VariableRaw):
+        case Expr::VariableRaw:
             return evalVariableRaw(exp, tracks);
-        case(Expr::Function):
+        case Expr::Function:
             return evalFunction(exp, tracks);
-        case(Expr::FunctionArg):
+        case Expr::FunctionArg:
             return evalFunctionArg(exp, tracks);
-        case(Expr::Conditional):
+        case Expr::Conditional:
             return evalConditional(exp, tracks);
-        case(Expr::Not):
+        case Expr::Not:
             return evalNot(exp, tracks);
-        case(Expr::Group):
+        case Expr::Group:
             return evalGroup(exp, tracks);
-        case(Expr::And):
+        case Expr::And:
             return evalAnd(exp, tracks);
-        case(Expr::Or):
+        case Expr::Or:
             return evalOr(exp, tracks);
-        case(Expr::XOr):
+        case Expr::XOr:
             return evalXOr(exp, tracks);
-        case(Expr::Missing):
+        case Expr::Missing:
             return evalMissing(exp, tracks);
-        case(Expr::Present):
+        case Expr::Present:
             return evalPresent(exp, tracks);
-        case(Expr::Equals):
+        case Expr::Equals:
             return evalEquals(exp, tracks);
-        case(Expr::Contains):
+        case Expr::Contains:
             return evalContains(exp, tracks);
-        case(Expr::Greater):
+        case Expr::Greater:
             return compareValues(exp, tracks, std::greater<>());
-        case(Expr::GreaterEqual):
+        case Expr::GreaterEqual:
             return compareValues(exp, tracks, std::greater_equal<>());
-        case(Expr::Less):
+        case Expr::Less:
             return compareValues(exp, tracks, std::less<>());
-        case(Expr::LessEqual):
+        case Expr::LessEqual:
             return compareValues(exp, tracks, std::less_equal<>());
-        case(Expr::Before):
+        case Expr::Before:
             return compareDates(exp, tracks, std::less<>());
-        case(Expr::After):
+        case Expr::After:
             return compareDates(exp, tracks, std::greater<>());
-        case(Expr::Since):
+        case Expr::Since:
             return compareDates(exp, tracks, std::greater_equal<>());
-        case(Expr::During):
+        case Expr::During:
             return compareDateRange(exp, tracks);
-        case(Expr::Limit):
+        case Expr::Limit:
             return evalLimit(exp);
-        case(Expr::SortAscending):
-        case(Expr::SortDescending):
+        case Expr::SortAscending:
+        case Expr::SortDescending:
             return evalSort(exp);
-        case(Expr::All):
+        case Expr::All:
             return ScriptResult{.value = {}, .cond = true};
-        case(Expr::Null):
+        case Expr::Null:
         default:
             return {};
     }
@@ -1077,7 +1066,7 @@ ScriptResult ScriptParserPrivate::evalFunction(const BoundExpression& exp, const
     };
 
     switch(func.kind) {
-        case(FunctionKind::Get): {
+        case FunctionKind::Get: {
             if(func.args.size() != 1) {
                 return {};
             }
@@ -1093,8 +1082,8 @@ ScriptResult ScriptParserPrivate::evalFunction(const BoundExpression& exp, const
 
             return {};
         }
-        case(FunctionKind::Put):
-        case(FunctionKind::Puts): {
+        case FunctionKind::Put:
+        case FunctionKind::Puts: {
             if(func.args.size() != 2) {
                 return {};
             }
@@ -1113,7 +1102,7 @@ ScriptResult ScriptParserPrivate::evalFunction(const BoundExpression& exp, const
 
             return {.value = QString{}, .cond = false};
         }
-        case(FunctionKind::If): {
+        case FunctionKind::If: {
             const auto size = func.args.size();
             if(size < 2 || size > 3) {
                 return {};
@@ -1128,13 +1117,13 @@ ScriptResult ScriptParserPrivate::evalFunction(const BoundExpression& exp, const
             }
             return {};
         }
-        case(FunctionKind::If2): {
+        case FunctionKind::If2: {
             const auto size = func.args.size();
             if(size < 1 || size > 2) {
                 return {};
             }
 
-            const ScriptResult first = evalExpression(func.args.at(0), tracks);
+            ScriptResult first = evalExpression(func.args.at(0), tracks);
             if(first.cond) {
                 return first;
             }
@@ -1143,7 +1132,7 @@ ScriptResult ScriptParserPrivate::evalFunction(const BoundExpression& exp, const
             }
             return {};
         }
-        case(FunctionKind::If3): {
+        case FunctionKind::If3: {
             const auto size = func.args.size();
             if(size < 2) {
                 return {};
@@ -1158,7 +1147,7 @@ ScriptResult ScriptParserPrivate::evalFunction(const BoundExpression& exp, const
 
             return evalExpression(func.args.back(), tracks);
         }
-        case(FunctionKind::IfEqual): {
+        case FunctionKind::IfEqual: {
             if(func.args.size() != 4) {
                 return {};
             }
@@ -1170,7 +1159,7 @@ ScriptResult ScriptParserPrivate::evalFunction(const BoundExpression& exp, const
             }
             return evalExpression(func.args.at(3), tracks);
         }
-        case(FunctionKind::IfGreater): {
+        case FunctionKind::IfGreater: {
             const auto size = func.args.size();
             if(size < 3 || size > 4) {
                 return {};
@@ -1186,7 +1175,7 @@ ScriptResult ScriptParserPrivate::evalFunction(const BoundExpression& exp, const
             }
             return {};
         }
-        case(FunctionKind::IfLonger): {
+        case FunctionKind::IfLonger: {
             if(func.args.size() != 4) {
                 return {};
             }
@@ -1205,10 +1194,10 @@ ScriptResult ScriptParserPrivate::evalFunction(const BoundExpression& exp, const
             }
             return evalExpression(func.args.at(3), tracks);
         }
-        case(FunctionKind::Add):
-        case(FunctionKind::Sub):
-        case(FunctionKind::Mul):
-        case(FunctionKind::Div): {
+        case FunctionKind::Add:
+        case FunctionKind::Sub:
+        case FunctionKind::Mul:
+        case FunctionKind::Div: {
             const auto size = static_cast<qsizetype>(func.args.size());
             if(size < 2) {
                 return {};
@@ -1242,8 +1231,8 @@ ScriptResult ScriptParserPrivate::evalFunction(const BoundExpression& exp, const
 
             return toResult(QString::number(total));
         }
-        case(FunctionKind::Mod): {
-            const qsizetype size = static_cast<qsizetype>(func.args.size());
+        case FunctionKind::Mod: {
+            const auto size = static_cast<qsizetype>(func.args.size());
             if(size < 2) {
                 return {};
             }
@@ -1254,7 +1243,7 @@ ScriptResult ScriptParserPrivate::evalFunction(const BoundExpression& exp, const
             }
             return toResult(QString::number(total));
         }
-        case(FunctionKind::Num): {
+        case FunctionKind::Num: {
             const auto size = func.args.size();
             if(size < 1 || size > 2) {
                 return {};
@@ -1278,8 +1267,8 @@ ScriptResult ScriptParserPrivate::evalFunction(const BoundExpression& exp, const
 
             return toResult(Utils::addLeadingZero(number, prefix));
         }
-        case(FunctionKind::Pad):
-        case(FunctionKind::PadRight): {
+        case FunctionKind::Pad:
+        case FunctionKind::PadRight: {
             const auto size = func.args.size();
             if(size < 2 || size > 3) {
                 return {};
@@ -1303,7 +1292,7 @@ ScriptResult ScriptParserPrivate::evalFunction(const BoundExpression& exp, const
             return toResult(func.kind == FunctionKind::Pad ? str.leftJustified(len, padChar)
                                                            : str.rightJustified(len, padChar));
         }
-        case(FunctionKind::Generic):
+        case FunctionKind::Generic:
             break;
     }
 
@@ -1979,33 +1968,33 @@ Expression ScriptParserPrivate::checkOperator(const Expression& expr)
     }
 
     switch(m_current.type) {
-        case(TokenType::TokColon):
+        case TokenType::TokColon:
             return relationalOperator(expr, Expr::Contains);
-        case(TokenType::TokEquals):
+        case TokenType::TokEquals:
             return relationalOperator(expr, Expr::Equals);
-        case(TokenType::TokNot):
+        case TokenType::TokNot:
             return notKeyword(expr);
-        case(TokenType::TokAnd):
+        case TokenType::TokAnd:
             return logicalOperator(expr, Expr::And);
-        case(TokenType::TokOr):
+        case TokenType::TokOr:
             return logicalOperator(expr, Expr::Or);
-        case(TokenType::TokXOr):
+        case TokenType::TokXOr:
             return logicalOperator(expr, Expr::XOr);
-        case(TokenType::TokMissing):
+        case TokenType::TokMissing:
             return metadataKeyword(expr, Expr::Missing);
-        case(TokenType::TokPresent):
+        case TokenType::TokPresent:
             return metadataKeyword(expr, Expr::Present);
-        case(TokenType::TokLeftAngle):
+        case TokenType::TokLeftAngle:
             return relationalOperator(expr, Expr::Less, Expr::LessEqual);
-        case(TokenType::TokRightAngle):
+        case TokenType::TokRightAngle:
             return relationalOperator(expr, Expr::Greater, Expr::GreaterEqual);
-        case(TokenType::TokBefore):
+        case TokenType::TokBefore:
             return timeKeyword(expr, Expr::Before);
-        case(TokenType::TokAfter):
+        case TokenType::TokAfter:
             return timeKeyword(expr, Expr::After);
-        case(TokenType::TokSince):
+        case TokenType::TokSince:
             return timeKeyword(expr, Expr::Since);
-        case(TokenType::TokDuring):
+        case TokenType::TokDuring:
             return duringKeyword(expr);
         default:
             break;

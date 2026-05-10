@@ -974,10 +974,21 @@ TEST_F(ScriptParserTest, QueryTest)
     // Negation test
     EXPECT_EQ(1, m_parser.filter(u"!playcount=1"_s, tracks).size());
     EXPECT_EQ(0, m_parser.filter(u"NOT playcount>=1"_s, tracks).size());
+    EXPECT_EQ(1, m_parser.filter(u"NOT (playcount=1 OR bitrate=1000)"_s, tracks).size());
+    EXPECT_EQ(1, m_parser.filter(u"NOT (playcount=8 AND bitrate=950)"_s, tracks).size());
+    EXPECT_EQ(1, m_parser.filter(u"playcount NOT = 1"_s, tracks).size());
+    EXPECT_EQ(1, m_parser.filter(u"playcount NOT GREATER 1"_s, tracks).size());
+    EXPECT_EQ(1, m_parser.filter(u"playcount NOT LESS 8"_s, tracks).size());
+    EXPECT_EQ(1, m_parser.filter(u"playcount NOT >= 8"_s, tracks).size());
+    EXPECT_EQ(1, m_parser.filter(u"bitrate NOT < 1000"_s, tracks).size());
+    EXPECT_EQ(1, m_parser.filter(u"title NOT : Celestial"_s, tracks).size());
+    EXPECT_EQ(1, m_parser.filter(u"title NOT = Wandering Horizon"_s, tracks).size());
 
     // PRESENT/MISSING keyword tests
     EXPECT_EQ(1, m_parser.filter(u"performer PRESENT"_s, tracks).size());
     EXPECT_EQ(1, m_parser.filter(u"performer MISSING"_s, tracks).size());
+    EXPECT_EQ(1, m_parser.filter(u"performer NOT PRESENT"_s, tracks).size());
+    EXPECT_EQ(1, m_parser.filter(u"performer NOT MISSING"_s, tracks).size());
     EXPECT_EQ(0, m_parser.filter(u"rating_stars PRESENT"_s, tracks).size());
     EXPECT_EQ(2, m_parser.filter(u"rating_stars MISSING"_s, tracks).size());
 
@@ -1001,6 +1012,11 @@ TEST_F(ScriptParserTest, QueryTest)
     EXPECT_EQ(1, m_parser.filter(u"firstplayed SINCE 2022"_s, tracks).size());
     EXPECT_EQ(2, m_parser.filter(u"lastplayed DURING LAST WEEK"_s, tracks).size());
     EXPECT_EQ(0, m_parser.filter(u"lastplayed DURING 2"_s, tracks).size());
+    EXPECT_EQ(1, m_parser.filter(u"date NOT BEFORE 2000"_s, tracks).size());
+    EXPECT_EQ(1, m_parser.filter(u"date NOT AFTER 2000"_s, tracks).size());
+    EXPECT_EQ(1, m_parser.filter(u"firstplayed NOT SINCE 2022"_s, tracks).size());
+    EXPECT_EQ(0, m_parser.filter(u"lastplayed NOT DURING LAST WEEK"_s, tracks).size());
+    EXPECT_EQ(2, m_parser.filter(u"%lastplayed% NOT DURING LAST 1 DAYS"_s, tracks).size());
 
     // Grouping and complex queries
     EXPECT_EQ(2, m_parser.filter(u"(playcount>=1 AND bitrate>500) OR title:Celestial"_s, tracks).size());
