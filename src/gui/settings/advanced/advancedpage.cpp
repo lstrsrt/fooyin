@@ -23,6 +23,7 @@
 #include "advancedsettingsmodel.h"
 
 #include <gui/guiconstants.h>
+#include <utils/modelutils.h>
 #include <utils/settings/advancedsettingsregistry.h>
 
 #include <QGridLayout>
@@ -47,10 +48,13 @@ public:
     [[nodiscard]] QString validationError() const override;
 
 private:
+    void applyFilter(const QString& filter);
+
     QLineEdit* m_filter;
     AdvancedSettingsModel* m_model;
     QSortFilterProxyModel* m_proxyModel;
     QTreeView* m_tree;
+    QStringList m_expandedState;
 };
 
 AdvancedPageWidget::AdvancedPageWidget(AdvancedSettingsRegistry* registry)
@@ -78,13 +82,15 @@ AdvancedPageWidget::AdvancedPageWidget(AdvancedSettingsRegistry* registry)
     layout->addWidget(m_filter, 0, 0);
     layout->addWidget(m_tree, 1, 0);
 
-    QObject::connect(m_filter, &QLineEdit::textChanged, m_proxyModel, &QSortFilterProxyModel::setFilterFixedString);
+    QObject::connect(m_filter, &QLineEdit::textChanged, this, &AdvancedPageWidget::applyFilter);
 }
 
 void AdvancedPageWidget::load()
 {
     m_model->load();
     m_tree->expandAll();
+    m_expandedState = Utils::saveExpansionState(
+        m_tree, [this](const QModelIndex& index) { return Utils::modelIndexPath(m_proxyModel->mapToSource(index)); });
 }
 
 void AdvancedPageWidget::apply()
@@ -100,6 +106,17 @@ void AdvancedPageWidget::reset()
 QString AdvancedPageWidget::validationError() const
 {
     return m_model->validationError();
+}
+
+void AdvancedPageWidget::applyFilter(const QString& filter)
+{
+    const auto sourceIndexPath = [this](const QModelIndex& index) {
+        return Utils::modelIndexPath(m_proxyModel->mapToSource(index));
+    };
+
+    m_expandedState = Utils::updateExpansionState(m_tree, m_expandedState, sourceIndexPath);
+    m_proxyModel->setFilterFixedString(filter);
+    Utils::restoreExpansionState(m_tree, m_expandedState, sourceIndexPath);
 }
 
 AdvancedPage::AdvancedPage(AdvancedSettingsRegistry* registry, SettingsDialogController* controller, QObject* parent)

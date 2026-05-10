@@ -21,6 +21,7 @@
 
 #include <QAbstractItemModel>
 #include <QModelIndex>
+#include <QSet>
 #include <QTreeView>
 
 using namespace Qt::StringLiterals;
@@ -46,8 +47,30 @@ void saveTreeViewExpansionState(const QTreeView* view, const ModelIndexKey& keyF
             saveTreeViewExpansionState(view, keyForIndex, expandedIndexes, index);
         }
     }
+}
 
-    expandedIndexes->removeDuplicates();
+void updateTreeViewExpansionState(const QTreeView* view, const ModelIndexKey& keyForIndex, QStringList* expandedIndexes,
+                                  const QModelIndex& parent = {})
+{
+    const auto* model = view->model();
+    if(!model) {
+        return;
+    }
+
+    const int rows = model->rowCount(parent);
+    for(int row{0}; row < rows; ++row) {
+        const QModelIndex index = model->index(row, 0, parent);
+        const QString key       = keyForIndex(index);
+        if(key.isEmpty()) {
+            continue;
+        }
+
+        expandedIndexes->removeOne(key);
+        if(view->isExpanded(index)) {
+            expandedIndexes->append(key);
+            updateTreeViewExpansionState(view, keyForIndex, expandedIndexes, index);
+        }
+    }
 }
 
 void restoreTreeViewExpansionState(QTreeView* view, const QStringList& expandedIndexes,
@@ -165,7 +188,26 @@ QStringList saveExpansionState(const QTreeView* view, const ModelIndexKey& keyFo
 
     QStringList expandedIndexes;
     saveTreeViewExpansionState(view, keyForIndex, &expandedIndexes);
+    expandedIndexes.removeDuplicates();
     return expandedIndexes;
+}
+
+QStringList updateExpansionState(const QTreeView* view, const QStringList& currentState)
+{
+    return updateExpansionState(view, currentState, modelIndexPath);
+}
+
+QStringList updateExpansionState(const QTreeView* view, const QStringList& currentState,
+                                 const ModelIndexKey& keyForIndex)
+{
+    if(!view) {
+        return currentState;
+    }
+
+    QStringList updatedState{currentState};
+    updateTreeViewExpansionState(view, keyForIndex, &updatedState);
+    updatedState.sort();
+    return updatedState;
 }
 
 void restoreExpansionState(QTreeView* view, const QStringList& expandedIndexes)
