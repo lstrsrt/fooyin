@@ -130,7 +130,7 @@ DiscordPage::DiscordPage(SettingsManager* settings, QObject* parent)
 {
     setId("Fooyin.Page.Network.Discord");
     setName(tr("General"));
-    setCategory({tr("Discord")});
+    setCategory({tr("Plugins"), tr("Discord")});
     setWidgetCreator([settings] { return new DiscordPageWidget(settings); });
 }
 } // namespace Fooyin::Discord

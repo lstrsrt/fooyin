@@ -134,7 +134,7 @@ LyricsSearchingPage::LyricsSearchingPage(SettingsManager* settings, QObject* par
 {
     setId(Constants::Page::LyricsSearching);
     setName(tr("Searching"));
-    setCategory({tr("Lyrics")});
+    setCategory({tr("Plugins"), tr("Lyrics")});
     setWidgetCreator([settings] { return new LyricsSearchingPageWidget(settings); });
 }
 } // namespace Fooyin::Lyrics

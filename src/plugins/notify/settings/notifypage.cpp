@@ -205,7 +205,7 @@ NotifyPage::NotifyPage(SettingsManager* settings, NotifyPlugin* plugin, QObject*
 {
     setId("Fooyin.Page.Notify");
     setName(tr("General"));
-    setCategory({tr("Notifications")});
+    setCategory({tr("Plugins"), tr("Notifications")});
     setWidgetCreator([settings, plugin] { return new NotifyPageWidget(settings, plugin); });
 }
 } // namespace Fooyin::Notify

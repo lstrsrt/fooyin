@@ -138,7 +138,7 @@ LyricsSourcesPage::LyricsSourcesPage(LyricsFinder* lyricsFinder, SettingsManager
 {
     setId(Constants::Page::LyricsSources);
     setName(tr("Sources"));
-    setCategory({tr("Lyrics")});
+    setCategory({tr("Plugins"), tr("Lyrics")});
     setWidgetCreator([lyricsFinder, settings] { return new LyricsSourcesPageWidget(lyricsFinder, settings); });
 }
 } // namespace Fooyin::Lyrics
