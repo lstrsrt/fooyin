@@ -31,7 +31,6 @@
 #include <QGroupBox>
 #include <QLabel>
 #include <QRadioButton>
-#include <QSpinBox>
 #include <QStyleFactory>
 
 using namespace Qt::StringLiterals;
@@ -60,7 +59,6 @@ private:
     QRadioButton* m_lightTheme;
     QRadioButton* m_darkTheme;
     QRadioButton* m_systemTheme;
-    QSpinBox* m_allocationSize;
 };
 
 GuiDisplayPageWidget::GuiDisplayPageWidget(SettingsManager* settings)
@@ -70,7 +68,6 @@ GuiDisplayPageWidget::GuiDisplayPageWidget(SettingsManager* settings)
     , m_lightTheme{new QRadioButton(tr("Light"), this)}
     , m_darkTheme{new QRadioButton(tr("Dark"), this)}
     , m_systemTheme{new QRadioButton(tr("Use system icons"), this)}
-    , m_allocationSize{new QSpinBox(this)}
 {
     auto* themeGroup       = new QGroupBox(tr("Theme"), this);
     auto* themeGroupLayout = new QGridLayout(themeGroup);
@@ -91,23 +88,10 @@ GuiDisplayPageWidget::GuiDisplayPageWidget(SettingsManager* settings)
     themeGroupLayout->addWidget(iconThemeBox, row++, 0, 1, 2);
     themeGroupLayout->setColumnStretch(1, 1);
 
-    auto* imagesGroupBox       = new QGroupBox(tr("Images"), this);
-    auto* imagesGroupBoxLayout = new QGridLayout(imagesGroupBox);
-
-    m_allocationSize->setRange(0, 1024);
-    m_allocationSize->setSuffix(u" MB"_s);
-
-    row = 0;
-    imagesGroupBoxLayout->addWidget(new QLabel(tr("Image allocation limit") + u":"_s, this), row, 0);
-    imagesGroupBoxLayout->addWidget(m_allocationSize, row++, 1);
-    imagesGroupBoxLayout->addWidget(new QLabel(tr("Set to '0' to disable the limit."), this), row++, 0, 1, 2);
-    imagesGroupBoxLayout->setColumnStretch(2, 1);
-
     auto* mainLayout = new QGridLayout(this);
 
     row = 0;
     mainLayout->addWidget(themeGroup, row++, 0, 1, 2);
-    mainLayout->addWidget(imagesGroupBox, row++, 0, 1, 2);
     mainLayout->setColumnStretch(1, 1);
     mainLayout->setRowStretch(mainLayout->rowCount(), 1);
 }
@@ -145,8 +129,6 @@ void GuiDisplayPageWidget::load()
             m_darkTheme->setChecked(true);
             break;
     }
-
-    m_allocationSize->setValue(m_settings->value<ImageAllocationLimit>());
 }
 
 void GuiDisplayPageWidget::apply()
@@ -167,14 +149,12 @@ void GuiDisplayPageWidget::apply()
         iconThemeOption = IconThemeOption::System;
     }
     m_settings->set<IconTheme>(static_cast<int>(iconThemeOption));
-    m_settings->set<ImageAllocationLimit>(m_allocationSize->value());
 }
 
 void GuiDisplayPageWidget::reset()
 {
     m_settings->reset<Style>();
     m_settings->reset<IconTheme>();
-    m_settings->reset<ImageAllocationLimit>();
 }
 
 GuiDisplayPage::GuiDisplayPage(SettingsManager* settings, QObject* parent)

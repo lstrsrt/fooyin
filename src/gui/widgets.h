@@ -56,6 +56,7 @@ public:
 
     void registerWidgets();
     void registerPages();
+    void registerAdvancedSettings();
     void registerDspSettings();
     void registerPropertiesTabs();
     void registerFontEntries() const;

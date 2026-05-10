@@ -351,6 +351,7 @@ void GuiApplicationPrivate::initialise()
 
     m_widgets->registerWidgets();
     m_widgets->registerPages();
+    m_widgets->registerAdvancedSettings();
     m_widgets->registerDspSettings();
     m_widgets->registerPropertiesTabs();
     m_widgets->registerFontEntries();

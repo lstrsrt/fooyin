@@ -59,9 +59,6 @@ private:
     QRadioButton* m_trackGain;
     QRadioButton* m_albumGain;
     QRadioButton* m_orderGain;
-    QRadioButton* m_leaveHeaderNull;
-    QRadioButton* m_useTrackHeader;
-    QRadioButton* m_useAlbumHeader;
     DoubleSliderEditor* m_rgPreAmp;
     DoubleSliderEditor* m_preAmp;
 };
@@ -75,9 +72,6 @@ ReplayGainPageWidget::ReplayGainPageWidget(SettingsManager* settings)
     , m_trackGain{new QRadioButton(tr("Use track-based gain"), this)}
     , m_albumGain{new QRadioButton(tr("Use album-based gain"), this)}
     , m_orderGain{new QRadioButton(tr("Use gain based on playback order"), this)}
-    , m_leaveHeaderNull{new QRadioButton(tr("Leave null"), this)}
-    , m_useTrackHeader{new QRadioButton(tr("Use Track Gain"), this)}
-    , m_useAlbumHeader{new QRadioButton(tr("Use Album Gain"), this)}
     , m_rgPreAmp{new DoubleSliderEditor(this)}
     , m_preAmp{new DoubleSliderEditor(this)}
 {
@@ -113,25 +107,6 @@ ReplayGainPageWidget::ReplayGainPageWidget(SettingsManager* settings)
     typeBoxLayout->addWidget(m_albumGain);
     typeBoxLayout->addWidget(m_orderGain);
 
-    auto* opusGroupBox    = new QGroupBox(tr("Opus Header Gain"), this);
-    auto* opusButtonGroup = new QButtonGroup(this);
-    auto* opusBoxLayout   = new QVBoxLayout(opusGroupBox);
-
-    opusButtonGroup->addButton(m_leaveHeaderNull);
-    opusButtonGroup->addButton(m_useTrackHeader);
-    opusButtonGroup->addButton(m_useAlbumHeader);
-
-    m_useTrackHeader->setToolTip(
-        tr("Write track gain to the Opus header and keep album gain in the R128 comment field"));
-    m_useAlbumHeader->setToolTip(
-        tr("Write album gain to the Opus header and keep track gain in the R128 comment field"));
-    m_leaveHeaderNull->setToolTip(
-        tr("Do not write ReplayGain values to the Opus header unless changed explicitly elsewhere"));
-
-    opusBoxLayout->addWidget(m_useTrackHeader);
-    opusBoxLayout->addWidget(m_useAlbumHeader);
-    opusBoxLayout->addWidget(m_leaveHeaderNull);
-
     auto* preAmpGroup  = new QGroupBox(tr("Pre-amplification"), this);
     auto* preAmpLayout = new QGridLayout(preAmpGroup);
 
@@ -164,7 +139,6 @@ ReplayGainPageWidget::ReplayGainPageWidget(SettingsManager* settings)
     layout->addWidget(modeGroupBox, row++, 0);
     layout->addWidget(typeGroupBox, row++, 0);
     layout->addWidget(preAmpGroup, row++, 0);
-    layout->addWidget(opusGroupBox, row++, 0);
 
     layout->setRowStretch(layout->rowCount(), 1);
 }
@@ -182,12 +156,6 @@ void ReplayGainPageWidget::load()
     m_trackGain->setChecked(gainType == ReplayGainType::Track);
     m_albumGain->setChecked(gainType == ReplayGainType::Album);
     m_orderGain->setChecked(gainType == ReplayGainType::PlaybackOrder);
-
-    const auto opusMode
-        = static_cast<OpusRGWriteMode>(m_settings->value<Settings::Core::Internal::OpusHeaderWriteMode>());
-    m_useTrackHeader->setChecked(opusMode == OpusRGWriteMode::Track);
-    m_useAlbumHeader->setChecked(opusMode == OpusRGWriteMode::Album);
-    m_leaveHeaderNull->setChecked(opusMode == OpusRGWriteMode::LeaveNull);
 
     const auto rgPreAmp = static_cast<double>(m_settings->value<Settings::Core::RGPreAmp>());
     m_rgPreAmp->setValue(rgPreAmp);
@@ -224,11 +192,6 @@ void ReplayGainPageWidget::apply()
         m_settings->set<Settings::Core::RGType>(static_cast<int>(ReplayGainType::PlaybackOrder));
     }
 
-    const auto opusMode = m_useTrackHeader->isChecked() ? OpusRGWriteMode::Track
-                        : m_useAlbumHeader->isChecked() ? OpusRGWriteMode::Album
-                                                        : OpusRGWriteMode::LeaveNull;
-    m_settings->set<Settings::Core::Internal::OpusHeaderWriteMode>(static_cast<int>(opusMode));
-
     m_settings->set<Settings::Core::RGPreAmp>(static_cast<float>(m_rgPreAmp->value()));
     m_settings->set<Settings::Core::NonRGPreAmp>(static_cast<float>(m_preAmp->value()));
 }
@@ -237,7 +200,6 @@ void ReplayGainPageWidget::reset()
 {
     m_settings->reset<Settings::Core::RGMode>();
     m_settings->reset<Settings::Core::RGType>();
-    m_settings->reset<Settings::Core::Internal::OpusHeaderWriteMode>();
     m_settings->reset<Settings::Core::RGPreAmp>();
     m_settings->reset<Settings::Core::NonRGPreAmp>();
 }

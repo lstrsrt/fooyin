@@ -30,15 +30,11 @@
 #include <core/plugins/pluginmanager.h>
 #include <gui/guiconstants.h>
 #include <gui/plugins/pluginsettingsprovider.h>
-#include <gui/widgets/specialvaluespinbox.h>
 #include <pluginsettingsregistry.h>
 #include <utils/settings/settingsmanager.h>
 
-#include <QCheckBox>
 #include <QGridLayout>
-#include <QGroupBox>
 #include <QLabel>
-#include <QLineEdit>
 #include <QListView>
 #include <QMenu>
 
@@ -101,16 +97,6 @@ readerSettingsHandlers(const std::vector<Fooyin::AudioLoader::LoaderEntry<Fooyin
     return handlers;
 }
 
-QStringList extensionListFromText(const QString& text)
-{
-    QStringList extensions = text.split(';'_L1, Qt::SkipEmptyParts);
-    for(QString& extension : extensions) {
-        extension = extension.trimmed().toLower();
-    }
-    extensions.removeAll(QString{});
-    extensions.removeDuplicates();
-    return extensions;
-}
 } // namespace
 
 namespace Fooyin {
@@ -140,10 +126,6 @@ private:
     QListView* m_readerList;
     DecoderModel* m_readerModel;
     DecoderDelegate* m_readerDelegate;
-
-    QCheckBox* m_ffmpegAllExts;
-    QLineEdit* m_ffmpegPriorityExts;
-    SpecialValueSpinBox* m_vbrInterval;
 };
 
 DecoderPageWidget::DecoderPageWidget(AudioLoader* audioLoader, PluginManager* pluginManager,
@@ -158,9 +140,6 @@ DecoderPageWidget::DecoderPageWidget(AudioLoader* audioLoader, PluginManager* pl
     , m_readerList{new QListView(this)}
     , m_readerModel{new DecoderModel(this)}
     , m_readerDelegate{new DecoderDelegate(m_readerList, this)}
-    , m_ffmpegAllExts{new QCheckBox(tr("Enable all supported extensions"), this)}
-    , m_ffmpegPriorityExts{new QLineEdit(this)}
-    , m_vbrInterval{new SpecialValueSpinBox(this)}
 {
     auto setupModel = [](QAbstractItemView* view) {
         view->setDragDropMode(QAbstractItemView::InternalMove);
@@ -182,31 +161,7 @@ DecoderPageWidget::DecoderPageWidget(AudioLoader* audioLoader, PluginManager* pl
     m_decoderList->setContextMenuPolicy(Qt::CustomContextMenu);
     m_readerList->setContextMenuPolicy(Qt::CustomContextMenu);
 
-    auto* ffmpegGroup       = new QGroupBox(u"FFmpeg"_s, this);
-    auto* ffmpegGroupLayout = new QGridLayout(ffmpegGroup);
-    auto* generalGroup      = new QGroupBox(tr("General"), this);
-    auto* generalLayout     = new QGridLayout(generalGroup);
-
-    m_ffmpegPriorityExts->setToolTip(
-        tr("Semicolon-separated extensions where FFmpeg is tried before other decoders and tag readers."));
-
     int row{0};
-    ffmpegGroupLayout->addWidget(m_ffmpegAllExts, row++, 0, 1, 2);
-    ffmpegGroupLayout->addWidget(new QLabel(tr("Prefer FFmpeg for extensions") + u":"_s, this), row, 0);
-    ffmpegGroupLayout->addWidget(m_ffmpegPriorityExts, row++, 1);
-    ffmpegGroupLayout->addWidget(new QLabel(u"🛈 "_s + tr("e.g. \"%1\"").arg("m4a;m4b;mp4"_L1), this), row++, 1);
-    ffmpegGroupLayout->setColumnStretch(1, 1);
-
-    m_vbrInterval->setRange(0, 300000);
-    m_vbrInterval->setSingleStep(100);
-    m_vbrInterval->setSpecialSuffix(u" ms"_s);
-    m_vbrInterval->addSpecialValue(0, tr("Disabled"));
-
-    generalLayout->addWidget(new QLabel(tr("VBR update interval") + u":"_s, this), 0, 0);
-    generalLayout->addWidget(m_vbrInterval, 0, 1);
-    generalLayout->addWidget(new QLabel(u"🛈 "_s + tr("Set to '0' to disable VBR updates."), this), 1, 0, 1, 2);
-    generalLayout->setColumnStretch(2, 1);
-
     auto* layout = new QGridLayout(this);
 
     row = 0;
@@ -215,8 +170,6 @@ DecoderPageWidget::DecoderPageWidget(AudioLoader* audioLoader, PluginManager* pl
     layout->addWidget(m_decoderList, row, 0);
     layout->addWidget(m_readerList, row, 1);
     layout->setRowStretch(row++, 1);
-    layout->addWidget(generalGroup, row++, 0, 1, 2);
-    layout->addWidget(ffmpegGroup, row++, 0, 1, 2);
 
     layout->setColumnStretch(0, 1);
     layout->setColumnStretch(1, 1);
@@ -238,13 +191,6 @@ void DecoderPageWidget::load()
 
     m_decoderModel->setup(decoders, decoderHandlers);
     m_readerModel->setup(m_audioLoader->readers(), readerSettingsHandlers(decoders, decoderHandlers));
-    m_ffmpegAllExts->setChecked(m_settings->fileValue(Settings::Core::Internal::FFmpegAllExtensions).toBool());
-    m_ffmpegPriorityExts->setText(m_settings
-                                      ->fileValue(Settings::Core::Internal::FFmpegPriorityExtensions,
-                                                  Settings::Core::Internal::defaultFFmpegPriorityExtensions())
-                                      .toStringList()
-                                      .join(';'_L1));
-    m_vbrInterval->setValue(m_settings->value<Settings::Core::Internal::VBRUpdateInterval>());
 }
 
 void DecoderPageWidget::apply()
@@ -259,23 +205,12 @@ void DecoderPageWidget::apply()
         [this](const QString& name, int index) { m_audioLoader->changeReaderIndex(name, index); },
         [this](const QString& name, bool enabled) { m_audioLoader->setReaderEnabled(name, enabled); });
 
-    if(m_settings->fileSet(Settings::Core::Internal::FFmpegAllExtensions, m_ffmpegAllExts->isChecked())) {
-        m_audioLoader->reloadDecoderExtensions(u"FFmpeg"_s);
-        m_audioLoader->reloadReaderExtensions(u"FFmpeg"_s);
-    }
-    m_settings->fileSet(Settings::Core::Internal::FFmpegPriorityExtensions,
-                        extensionListFromText(m_ffmpegPriorityExts->text()));
-    m_settings->set<Settings::Core::Internal::VBRUpdateInterval>(m_vbrInterval->value());
-
     load();
 }
 
 void DecoderPageWidget::reset()
 {
     m_audioLoader->reset();
-    m_settings->fileRemove(Settings::Core::Internal::FFmpegAllExtensions);
-    m_settings->fileRemove(Settings::Core::Internal::FFmpegPriorityExtensions);
-    m_settings->reset<Settings::Core::Internal::VBRUpdateInterval>();
 }
 
 void DecoderPageWidget::showConfigureMenu(QListView* view, DecoderModel* model, const QPoint& pos)

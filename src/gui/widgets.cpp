@@ -95,6 +95,7 @@
 #include "widgets/statuswidget.h"
 
 #include <core/application.h>
+#include <core/internalcoresettings.h>
 #include <core/library/musiclibrary.h>
 #include <core/player/playercontroller.h>
 #include <core/playlist/playlisthandler.h>
@@ -103,8 +104,27 @@
 #include <gui/settings/context/staticcontextmenupage.h>
 #include <gui/theme/themeregistry.h>
 #include <gui/widgetprovider.h>
+#include <utils/settings/advancedsettingsregistry.h>
 
 using namespace Qt::StringLiterals;
+
+namespace {
+QStringList extensionListFromText(const QString& text)
+{
+    QStringList extensions = text.split(';'_L1, Qt::SkipEmptyParts);
+    for(QString& extension : extensions) {
+        extension = extension.trimmed().toLower();
+    }
+    extensions.removeAll(QString{});
+    extensions.removeDuplicates();
+    return extensions;
+}
+
+QString extensionTextFromList(const QStringList& extensions)
+{
+    return extensions.join(';'_L1);
+}
+} // namespace
 
 namespace Fooyin {
 Widgets::Widgets(Application* core, MainWindow* window, GuiApplication* gui, PlaylistInteractor* playlistInteractor,
@@ -381,6 +401,79 @@ void Widgets::registerPages()
     new SearchPage(m_settings, this);
     new StatusWidgetPage(m_settings, this);
     new AdvancedPage(m_gui->advancedSettingsRegistry(), m_settings->settingsDialog(), this);
+}
+
+void Widgets::registerAdvancedSettings()
+{
+    auto* advancedSettingsRegistry = m_gui->advancedSettingsRegistry();
+
+    advancedSettingsRegistry->add<Settings::Gui::Internal::ImageAllocationLimit>(
+        {.category    = {GuiApplication::tr("Interface"), GuiApplication::tr("Display")},
+         .label       = GuiApplication::tr("Image allocation limit"),
+         .description = GuiApplication::tr("Maximum image allocation size in MB. Set to 0 to disable the limit."),
+         .editor      = AdvancedSettingSpinBox{.minimum = 0, .maximum = 1024, .singleStep = 1, .suffix = u" MB"_s},
+         .normalise   = {},
+         .validate    = {}});
+    advancedSettingsRegistry->add<Settings::Core::Internal::VBRUpdateInterval>(
+        {.category    = {GuiApplication::tr("Playback"), GuiApplication::tr("Decoding")},
+         .label       = GuiApplication::tr("VBR update interval"),
+         .description = GuiApplication::tr("Interval used to refresh VBR playback information. Set to 0 to disable."),
+         .editor      = AdvancedSettingSpinBox{.minimum = 0, .maximum = 300000, .singleStep = 100, .suffix = u" ms"_s},
+         .normalise   = {},
+         .validate    = {}});
+    advancedSettingsRegistry->add(
+        {.id           = QString::fromLatin1(Settings::Core::Internal::FFmpegAllExtensions),
+         .category     = {GuiApplication::tr("Playback"), GuiApplication::tr("Decoding"), u"FFmpeg"_s},
+         .label        = GuiApplication::tr("Enable all supported extensions"),
+         .description  = GuiApplication::tr("Enabled all extensions supported by the FFmpeg input."),
+         .defaultValue = false,
+         .editor       = AdvancedSettingCheckBox{},
+         .read = [this] { return m_settings->fileValue(Settings::Core::Internal::FFmpegAllExtensions).toBool(); },
+         .write =
+             [this](const QVariant& value) {
+                 if(m_settings->fileSet(Settings::Core::Internal::FFmpegAllExtensions, value.toBool())) {
+                     m_core->audioLoader()->reloadDecoderExtensions(u"FFmpeg"_s);
+                     m_core->audioLoader()->reloadReaderExtensions(u"FFmpeg"_s);
+                 }
+                 return true;
+             },
+         .normalise = {},
+         .validate  = {}});
+    advancedSettingsRegistry->add(
+        {.id           = QString::fromLatin1(Settings::Core::Internal::FFmpegPriorityExtensions),
+         .category     = {GuiApplication::tr("Playback"), GuiApplication::tr("Decoding"), u"FFmpeg"_s},
+         .label        = GuiApplication::tr("Prefer FFmpeg for extensions"),
+         .description  = GuiApplication::tr("Semicolon-separated extensions where FFmpeg is tried first."),
+         .defaultValue = extensionTextFromList(Settings::Core::Internal::defaultFFmpegPriorityExtensions()),
+         .editor       = AdvancedSettingLineEdit{},
+         .read =
+             [this] {
+                 return extensionTextFromList(
+                     m_settings
+                         ->fileValue(Settings::Core::Internal::FFmpegPriorityExtensions,
+                                     Settings::Core::Internal::defaultFFmpegPriorityExtensions())
+                         .toStringList());
+             },
+         .write =
+             [this](const QVariant& value) {
+                 return m_settings->fileSet(Settings::Core::Internal::FFmpegPriorityExtensions,
+                                            extensionListFromText(value.toString()));
+             },
+         .normalise
+         = [](const QVariant& value) { return extensionTextFromList(extensionListFromText(value.toString())); },
+         .validate = {}});
+    advancedSettingsRegistry->add<Settings::Core::Internal::OpusHeaderWriteMode>(
+        {.category    = {GuiApplication::tr("Playback"), GuiApplication::tr("ReplayGain")},
+         .label       = GuiApplication::tr("Opus header gain"),
+         .description = GuiApplication::tr("ReplayGain value written to the Opus header when updating metadata."),
+         .editor      = AdvancedSettingRadioButtons{.options = {{.value = static_cast<int>(OpusRGWriteMode::Track),
+                                                                 .label = GuiApplication::tr("Use Track Gain")},
+                                                                {.value = static_cast<int>(OpusRGWriteMode::Album),
+                                                                 .label = GuiApplication::tr("Use Album Gain")},
+                                                                {.value = static_cast<int>(OpusRGWriteMode::LeaveNull),
+                                                                 .label = GuiApplication::tr("Leave null")}}},
+         .normalise   = {},
+         .validate    = {}});
 }
 
 void Widgets::registerDspSettings()
