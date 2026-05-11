@@ -24,6 +24,8 @@
   - Add support for multi-chapter files ([#694](https://github.com/fooyin/fooyin/issues/694), [#945](https://github.com/fooyin/fooyin/pull/945))
 * Lyrics
   - Support finding local lyrics with directory wildcards
+* Playlist
+  - Add setting to load directory when opening a single file ([#841](https://github.com/fooyin/fooyin/pull/841))
 * Scripting
   - Add date and time functions: `$year`, `$month`, `$day_of_month`, `$date`, and `$time`
   - Add `$meta(field,index)`, `$meta_sep`, `$meta_test`, and `$meta_num`
@@ -38,18 +40,23 @@
   - Handle seek trimming for all formats in the FFmpeg decoder
   - Fix several playback queue issues after session restore ([#1130](https://github.com/fooyin/fooyin/pull/1130))
   - Fix potential incorrect shuffle order ([#1127](https://github.com/fooyin/fooyin/issues/1127))
+* Discord
+  - Support sandboxed IPC socket locations ([#1115](https://github.com/fooyin/fooyin/issues/1115))
 * Interface
   - Update the Script Editor track when the selection changes ([#1122](https://github.com/fooyin/fooyin/issues/1122))
   - Fix playlist header selection deleting tracks
   - Fall back to the default or first playlist when restoring the active playlist fails
   - Fix Library Tree sorting and searching when strings contain scripting syntax ([#1117](https://github.com/fooyin/fooyin/issues/1117), [#1125](https://github.com/fooyin/fooyin/issues/1125))
   - Fix Library Tree row height with multiline titles
+  - Fix the cursor moving to the first row when adding new rows in extendable tables
 * Library/Metadata
   - Fix swapped Encoding and TagType values
   - Fix FFmpeg tag decoding issues, including semicolon/slash-separated artists and encoder tool info ([#1137](https://github.com/fooyin/fooyin/pull/1137))
   - Fix missing ReplayGain values evaluating as true in scripts ([#1112](https://github.com/fooyin/fooyin/issues/1112))
 * Lyrics
   - Fix LRC offset calculation ([#1121](https://github.com/fooyin/fooyin/issues/1121))
+* Playlist
+  - Fix 'Cursor follows playback' when restoring state on startup
 * Scripting
   - Fix `NOT` parsing for date range queries ([#1143](https://github.com/fooyin/fooyin/issues/1143))
   - Fall back to literal search when query syntax is invalid ([#1125](https://github.com/fooyin/fooyin/issues/1125))
