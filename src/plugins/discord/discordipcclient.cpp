@@ -26,6 +26,7 @@
 #include <QApplication>
 #include <QDataStream>
 #include <QDir>
+#include <QFileInfo>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QLoggingCategory>
@@ -39,7 +40,7 @@ Q_LOGGING_CATEGORY(DISCORD, "fy.discord")
 using namespace Qt::StringLiterals;
 
 namespace {
-constexpr auto MaxPipeIndex   = 10;
+constexpr auto MaxPipeCount   = 10;
 constexpr auto ConnectTimeout = 500;
 constexpr auto ReplyTimeout   = 5000;
 
@@ -90,19 +91,81 @@ QString socketErrorToString(QLocalSocket::LocalSocketError error)
     }
 }
 
-QString pipeLocation(int index)
+void addUniquePath(QStringList& paths, const QString& path)
 {
-#ifdef Q_OS_WIN
-    return uR"(\\.\pipe\discord-ipc-%1)"_s.arg(index);
-#elifdef Q_OS_MAC
-    return QDir::homePath() + u"/Library/Application Support/discord-ipc-%1"_s.arg(index);
-#else
-    QString runDir = qEnvironmentVariable("XDG_RUNTIME_DIR");
-    if(runDir.isEmpty()) {
-        runDir = u"/tmp"_s;
+    if(path.isEmpty()) {
+        return;
     }
-    return u"%1/discord-ipc-%2"_s.arg(runDir).arg(index);
+
+    const QString cleanPath = QDir::cleanPath(path);
+    if(!paths.contains(cleanPath)) {
+        paths.emplace_back(cleanPath);
+    }
+}
+
+void addExistingSubDir(QStringList& paths, const QString& basePath, const QString& subDir)
+{
+    if(basePath.isEmpty()) {
+        return;
+    }
+
+    const QString path = QDir{basePath}.filePath(subDir);
+    if(QFileInfo::exists(path)) {
+        addUniquePath(paths, path);
+    }
+}
+
+QStringList unixPipeDirs()
+{
+    QStringList dirs;
+    const QString runDir = qEnvironmentVariable("XDG_RUNTIME_DIR");
+
+    for(const char* name : {"XDG_RUNTIME_DIR", "TMPDIR", "TMP", "TEMP"}) {
+        addUniquePath(dirs, qEnvironmentVariable(name));
+    }
+    addUniquePath(dirs, u"/tmp"_s);
+
+    const QStringList baseDirs{dirs};
+    for(const QString& dir : baseDirs) {
+        addExistingSubDir(dirs, dir, u"app/com.discordapp.Discord"_s);
+        addExistingSubDir(dirs, dir, u"snap.discord"_s);
+    }
+
+    if(!runDir.isEmpty()) {
+        const QDir flatpakDir{QDir{runDir}.filePath(u".flatpak"_s)};
+        const QFileInfoList appDirs
+            = flatpakDir.entryInfoList(QDir::Dirs | QDir::NoDotAndDotDot | QDir::Readable, QDir::Name);
+
+        for(const QFileInfo& appDir : appDirs) {
+            addExistingSubDir(dirs, appDir.absoluteFilePath(), u"xdg-run"_s);
+        }
+    }
+
+    return dirs;
+}
+
+QStringList pipeLocations()
+{
+    QStringList locations;
+
+#ifdef Q_OS_WIN
+    for(int index{0}; index < MaxPipeCount; ++index) {
+        locations.emplace_back(uR"(\\.\pipe\discord-ipc-%1)"_s.arg(index));
+    }
+#elifdef Q_OS_MAC
+    for(int index{0}; index < MaxPipeCount; ++index) {
+        locations.emplace_back(QDir::homePath() + u"/Library/Application Support/discord-ipc-%1"_s.arg(index));
+    }
+#else
+    const auto pipeDirs = unixPipeDirs();
+    for(const QString& dir : pipeDirs) {
+        for(int index{0}; index < MaxPipeCount; ++index) {
+            locations.emplace_back(QDir{dir}.filePath(u"discord-ipc-%1"_s.arg(index)));
+        }
+    }
 #endif
+
+    return locations;
 }
 
 QJsonObject buildActivityPayload(const Fooyin::Discord::PresenceData& data)
@@ -208,14 +271,13 @@ QCoro::Task<bool> DiscordIPCClient::connectToDiscord()
     m_loggedServerNotFound = false;
 
     const quint64 connectGeneration{m_connectGeneration};
+    const auto pipeLocs = pipeLocations();
 
-    for(int index{0}; index <= MaxPipeIndex; ++index) {
+    for(const QString& pipeName : pipeLocs) {
         if(connectGeneration != m_connectGeneration) {
             m_connectInProgress = false;
             co_return false;
         }
-
-        const QString pipeName = pipeLocation(index);
 
         co_await qCoro(m_socket).connectToServer(pipeName, QIODevice::ReadWrite,
                                                  std::chrono::milliseconds{ConnectTimeout});
