@@ -85,6 +85,7 @@
 #include <utils/actions/actionmanager.h>
 #include <utils/actions/command.h>
 #include <utils/audioutils.h>
+#include <utils/fileutils.h>
 #include <utils/logging/logwidget.h>
 #include <utils/settings/advancedsettingsregistry.h>
 #include <utils/settings/settingsdialogcontroller.h>
@@ -1330,12 +1331,34 @@ void GuiApplicationPrivate::addFolders()
 
 void GuiApplicationPrivate::openFiles(const QList<QUrl>& urls)
 {
+    QList<QUrl> files{urls};
+    QUrl fileToPlay;
+
+    if(m_settings->value<Settings::Core::OpenFileAddDirectory>() && urls.size() == 1 && urls.front().isLocalFile()) {
+        const QFileInfo fileInfo{urls.front().toLocalFile()};
+        if(fileInfo.isFile()) {
+            QStringList supportedExtensions
+                = Utils::extensionsToWildcards(m_core->audioLoader()->supportedFileExtensions());
+            supportedExtensions.append(u"*.cue"_s);
+
+            const QList<QUrl> dirFiles = Utils::File::getUrlsInDir(QDir{fileInfo.absolutePath()}, supportedExtensions);
+            if(!dirFiles.empty()) {
+                files      = dirFiles;
+                fileToPlay = urls.front();
+            }
+        }
+    }
+
     const QString playlistName = m_settings->value<Settings::Core::OpenFilesPlaylist>();
-    if(m_settings->value<Settings::Core::OpenFilesSendTo>()) {
-        m_playlistInteractor.filesToNewPlaylistReplace(playlistName, urls, true);
+    const bool replacePlaylist = m_settings->value<Settings::Core::OpenFilesSendTo>();
+    if(!fileToPlay.isEmpty()) {
+        m_playlistInteractor.filesToNewPlaylist(playlistName, files, fileToPlay, replacePlaylist, true);
+    }
+    else if(replacePlaylist) {
+        m_playlistInteractor.filesToNewPlaylistReplace(playlistName, files, true);
     }
     else {
-        m_playlistInteractor.filesToNewPlaylist(playlistName, urls, true);
+        m_playlistInteractor.filesToNewPlaylist(playlistName, files, true);
     }
 }
 
