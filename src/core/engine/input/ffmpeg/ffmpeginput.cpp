@@ -308,7 +308,7 @@ void parseTag(Fooyin::Track& track, TagType tagType, const AVDictionaryEntry* ta
 
     const auto splitArtists = [tagType](const QString& artist) {
         if(tagType == ID3v1_1 || tagType == ID3v1_2 || tagType == ID3v2_2 || tagType == ID3v2_3) {
-            if(artist.contains("/"_L1) && (artist != "AC/DC"_L1 || artist != "AC / DC"_L1)) {
+            if(artist.contains("/"_L1) && artist != "AC/DC"_L1 && artist != "AC / DC"_L1) {
                 return splitMetadata(artist, u'/');
             }
             return splitMetadata(artist, u';');
