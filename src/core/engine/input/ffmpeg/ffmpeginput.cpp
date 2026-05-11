@@ -57,6 +57,17 @@ constexpr auto MaxConsecutiveDecodeErrors = 8;
 using namespace std::chrono_literals;
 
 namespace {
+enum class TagType : uint8_t
+{
+    Unknown,
+    APE,
+    ID3v1_1,
+    ID3v1_2,
+    ID3v2_2,
+    ID3v2_3,
+    ID3v2_4,
+};
+
 bool isRecoverableDecodeError(int error)
 {
     return error == AVERROR_INVALIDDATA;
@@ -222,16 +233,99 @@ enum class TagScope : uint8_t
     Track
 };
 
-void parseTag(Fooyin::Track& track, const AVDictionaryEntry* tag, TagScope scope, int chapterCount)
+QStringList splitMetadata(const QString& string, QChar separator)
 {
+    QStringList list = string.split(separator, Qt::SkipEmptyParts);
+    std::ranges::transform(list, list.begin(), [](QString& entry) { return entry.trimmed(); });
+    return list;
+}
+
+TagType getTagType(QIODevice* device)
+{
+    TagType tagType = TagType::Unknown;
+
+    //
+    // ID3 1.x
+    //
+
+    auto apeOffset = device->size();
+
+    if(device->size() >= 128 && device->seek(device->size() - 128)) {
+        auto footer = device->read(8);
+        if(footer.startsWith("TAG")) {
+            if(device->size() >= 256 && device->seek(device->size() - 256)) {
+                auto extFooter = device->read(8);
+                // We may have both v1 and v2. Don't return here to let v2 take precedence.
+                if(extFooter.startsWith("EXT")) {
+                    tagType   = TagType::ID3v1_2;
+                    apeOffset = device->size() - 256;
+                }
+                else {
+                    tagType   = TagType::ID3v1_1;
+                    apeOffset = device->size() - 128;
+                }
+            }
+        }
+    }
+
+    //
+    // APE
+    //
+
+    if(device->size() >= apeOffset && device->seek(apeOffset - 32)) {
+        auto footer = device->read(32);
+        if(footer.startsWith("APETAGEX")) {
+            return TagType::APE;
+        }
+    }
+
+    //
+    // ID3 2.x
+    //
+
+    if(device->seek(0)) {
+        auto header = device->read(8);
+        if(header.startsWith("ID3")) {
+            auto major = static_cast<int>(static_cast<unsigned char>(header.at(3)));
+            if(major == 2) {
+                return TagType::ID3v2_2;
+            }
+            if(major == 3) {
+                return TagType::ID3v2_3;
+            }
+            if(major == 4) {
+                return TagType::ID3v2_4;
+            }
+        }
+    }
+
+    return tagType;
+}
+
+void parseTag(Fooyin::Track& track, TagType tagType, const AVDictionaryEntry* tag, TagScope scope, int chapterCount)
+{
+    using enum TagType;
+
+    const auto splitArtists = [tagType](const QString& artist) {
+        if(tagType == ID3v1_1 || tagType == ID3v1_2 || tagType == ID3v2_2 || tagType == ID3v2_3) {
+            if(artist.contains("/"_L1) && (artist != "AC/DC"_L1 || artist != "AC / DC"_L1)) {
+                return splitMetadata(artist, u'/');
+            }
+            return splitMetadata(artist, u';');
+        }
+        return splitMetadata(artist, u';');
+    };
+
     if(strcasecmp(tag->key, "album") == 0) {
         track.setAlbum(convertString(tag->value));
     }
     else if(strcasecmp(tag->key, "artist") == 0) {
-        track.setArtists({convertString(tag->value)});
+        const QString artist = convertString(tag->value);
+        track.setArtists(splitArtists(artist));
     }
     else if(strcasecmp(tag->key, "album_artist") == 0 || strcasecmp(tag->key, "album artist") == 0) {
-        track.setAlbumArtists({convertString(tag->value)});
+        const QString albumArtist = convertString(tag->value);
+        track.setAlbumArtists(splitArtists(albumArtist));
     }
     else if(strcasecmp(tag->key, "title") == 0) {
         if(scope == TagScope::Global && chapterCount > 1 && track.album().isEmpty()) {
@@ -242,7 +336,8 @@ void parseTag(Fooyin::Track& track, const AVDictionaryEntry* tag, TagScope scope
         }
     }
     else if(strcasecmp(tag->key, "genre") == 0) {
-        track.setGenres({convertString(tag->value)});
+        const QString genre = convertString(tag->value);
+        track.setGenres(splitMetadata(genre, u';'));
     }
     else if(strcasecmp(tag->key, "part_number") == 0 || strcasecmp(tag->key, "track") == 0) {
         readTrackTotalPair(convertString(tag->value), track);
@@ -264,10 +359,12 @@ void parseTag(Fooyin::Track& track, const AVDictionaryEntry* tag, TagScope scope
         track.setYear(convertString(tag->value).toInt());
     }
     else if(strcasecmp(tag->key, "composer") == 0) {
-        track.setComposers({convertString(tag->value)});
+        const QString composer = convertString(tag->value);
+        track.setComposers(splitArtists(composer));
     }
     else if(strcasecmp(tag->key, "performer") == 0) {
-        track.setPerformers({convertString(tag->value)});
+        const QString performer = convertString(tag->value);
+        track.setPerformers(splitArtists(performer));
     }
     else if(strcasecmp(tag->key, "comment") == 0) {
         track.setComment(convertString(tag->value));
@@ -470,11 +567,9 @@ QByteArray findCover(AVFormatContext* context, Fooyin::Track::Cover type)
         if(avStream->disposition & AV_DISPOSITION_ATTACHED_PIC) {
             AVDictionaryEntry* tag{nullptr};
             QString coverType;
-            while((tag = av_dict_get(avStream->metadata, "", tag, AV_DICT_IGNORE_SUFFIX))) {
-                if(convertString(tag->key) == "comment"_L1) {
-                    coverType = convertString(tag->value).toLower();
-                    break;
-                }
+            tag = av_dict_get(avStream->metadata, "comment", tag, AV_DICT_IGNORE_SUFFIX);
+            if(tag) {
+                coverType = convertString(tag->value).toLower();
             }
 
             if((type == Cover::Front && (coverType.isEmpty() || coverType.contains("front"_L1)))
@@ -1062,7 +1157,7 @@ bool FFmpegReader::init(const AudioSource& source)
     return p->setup(source);
 }
 
-bool FFmpegReader::readTrack(const AudioSource& /*source*/, Track& track)
+bool FFmpegReader::readTrack(const AudioSource& source, Track& track)
 {
     if(!p->m_context || !p->m_stream.isValid()) {
         return false;
@@ -1124,14 +1219,16 @@ bool FFmpegReader::readTrack(const AudioSource& /*source*/, Track& track)
         track.setBitrate(bitrate);
     }
 
+    const auto tagType = getTagType(source.device);
+
     const AVDictionaryEntry* tag{nullptr};
     while((tag = av_dict_get(p->m_context->metadata, "", tag, AV_DICT_IGNORE_SUFFIX))) {
-        parseTag(track, tag, TagScope::Global, p->m_chapterCount);
+        parseTag(track, tagType, tag, TagScope::Global, p->m_chapterCount);
     }
 
     const AVDictionaryEntry* streamTag{nullptr};
     while((streamTag = av_dict_get(avStream->metadata, "", streamTag, AV_DICT_IGNORE_SUFFIX))) {
-        parseTag(track, streamTag, TagScope::Track, p->m_chapterCount);
+        parseTag(track, tagType, streamTag, TagScope::Track, p->m_chapterCount);
     }
 
     const int subsong = track.subsong();
@@ -1149,7 +1246,7 @@ bool FFmpegReader::readTrack(const AudioSource& /*source*/, Track& track)
         // Read chapter-level metadata (overrides container tags where defined)
         const AVDictionaryEntry* chapterTag{nullptr};
         while((chapterTag = av_dict_get(chapter->metadata, "", chapterTag, AV_DICT_IGNORE_SUFFIX))) {
-            parseTag(track, chapterTag, TagScope::Track, p->m_chapterCount);
+            parseTag(track, tagType, chapterTag, TagScope::Track, p->m_chapterCount);
         }
 
         // Ensure chapter timing and totals are authoritative
