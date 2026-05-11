@@ -20,6 +20,7 @@
 #include "playlistinteractor.h"
 
 #include "playlistcontroller.h"
+#include "playlistuicontroller.h"
 
 #include <core/library/musiclibrary.h>
 #include <core/player/playercontroller.h>
@@ -210,6 +211,7 @@ void PlaylistInteractor::activatePlaylist(Playlist* playlist, const bool play) c
     m_controller->changeCurrentPlaylist(playlist);
     if(play) {
         playerController()->startPlayback(playlist);
+        m_controller->uiController()->showNowPlaying();
     }
 }
 

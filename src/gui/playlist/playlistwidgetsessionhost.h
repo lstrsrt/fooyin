@@ -60,7 +60,7 @@ public:
     virtual void resetModel()                                            = 0;
     virtual void resetModelThrottled() const                             = 0;
     virtual void resetSort(bool force)                                   = 0;
-    virtual void followCurrentTrack()                                    = 0;
+    virtual bool followCurrentTrack()                                    = 0;
     virtual void sessionHandleRestoredState()                            = 0;
     virtual void clearDelayedStateLoad()                                 = 0;
     virtual void setDelayedStateLoad(QMetaObject::Connection connection) = 0;

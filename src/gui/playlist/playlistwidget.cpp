@@ -191,9 +191,9 @@ public:
     {
         m_widget->resetSort(force);
     }
-    void followCurrentTrack() override
+    bool followCurrentTrack() override
     {
-        m_widget->followCurrentTrack();
+        return m_widget->followCurrentTrack();
     }
     void sessionHandleRestoredState() override
     {
@@ -267,7 +267,7 @@ PlaylistWidget::PlaylistWidget(ActionManager* actionManager, PlaylistInteractor*
 
     applyInitialViewSettings();
 
-    m_model->playingTrackChanged(m_playlistController->currentTrack());
+    m_model->playingTrackChanged(m_playerController->currentPlaylistTrack());
     m_model->playStateChanged(m_playlistController->playState());
     QObject::connect(m_playlistView, &PlaylistView::displayChanged, this, &PlaylistWidget::refreshViewStyle);
     applySessionTexts();
@@ -610,7 +610,10 @@ void PlaylistWidget::setupConnections()
     QObject::connect(m_model, &QAbstractItemModel::modelAboutToBeReset, this, [this]() { m_session->handleAboutToBeReset(sessionHost()); });
     QObject::connect(m_model, &PlaylistModel::loadingStateChanged, m_playlistView->viewport(), qOverload<>(&QWidget::update));
     QObject::connect(m_model, &PlaylistModel::loadingStateChanged, m_header->viewport(), qOverload<>(&QWidget::update));
-    QObject::connect(m_model, &PlaylistModel::playlistLoaded, m_playlistView->viewport(), qOverload<>(&QWidget::update));
+    QObject::connect(m_model, &PlaylistModel::playlistLoaded, m_playlistView->viewport(), [this]() {
+        m_playlistView->viewport()->update();
+        m_session->handleDeferredFollowTrack(sessionHost());
+    });
     QObject::connect(m_model, &PlaylistModel::metadataWriteRequested, this, &PlaylistWidget::handleMetadataWriteRequested);
     QObject::connect(m_playlistView, &PlaylistView::bulkWriteRequested, this, &PlaylistWidget::handleBulkWriteRequested);
     QObject::connect(m_playlistController, &PlaylistController::currentPlaylistTracksUpdated, m_model, [this](const std::vector<int>& indexes) { m_model->refreshTracks(indexes); });
@@ -1206,12 +1209,12 @@ void PlaylistWidget::selectAll()
     QMetaObject::invokeMethod(m_playlistView, [view = m_playlistView]() { view->selectAll(); }, Qt::QueuedConnection);
 }
 
-void PlaylistWidget::followCurrentTrack()
+bool PlaylistWidget::followCurrentTrack()
 {
     const PlaylistTrack playingTrack = m_model->playingTrack();
 
     if(!playingTrack.track.isValid() || playingTrack.playlistId != m_playlistController->currentPlaylistId()) {
-        return;
+        return false;
     }
 
     QModelIndex modelIndex = m_model->indexAtPlaylistIndex(playingTrack.indexInPlaylist, true);
@@ -1219,13 +1222,13 @@ void PlaylistWidget::followCurrentTrack()
         modelIndex = modelIndex.siblingAtColumn(modelIndex.column() + 1);
     }
 
-    if(modelIndex.data(PlaylistItem::ItemData).value<PlaylistTrack>().track.id()
-       != m_playerController->currentTrackId()) {
-        return;
+    if(!modelIndex.isValid()) {
+        return false;
     }
 
-    if(!modelIndex.isValid()) {
-        return;
+    if(modelIndex.data(PlaylistItem::ItemData).value<PlaylistTrack>().track.id()
+       != m_playerController->currentTrackId()) {
+        return false;
     }
 
     const QRect indexRect    = m_playlistView->visualRect(modelIndex);
@@ -1236,6 +1239,7 @@ void PlaylistWidget::followCurrentTrack()
     }
 
     m_playlistView->setCurrentIndex(modelIndex);
+    return true;
 }
 
 void PlaylistWidget::sessionHandleRestoredState()

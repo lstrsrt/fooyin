@@ -57,6 +57,8 @@ public:
     void resetTree(PlaylistWidgetSessionHost& host) override;
     void deferFollowCurrentTrack(PlaylistWidgetSessionHost& host) override;
     void handleRestoredState(PlaylistWidgetSessionHost& host) override;
+    void handleDeferredFollowTrack(PlaylistWidgetSessionHost& host) override;
+    void followCurrentTrack(PlaylistWidgetSessionHost& host) override;
     void handleTracksChanged(PlaylistWidgetSessionHost& host, const std::vector<int>& indexes, bool allNew) override;
     void applyReadOnlyState(PlaylistWidgetSessionHost& host, bool readOnly) override;
     void updateContextMenuState(PlaylistWidgetSessionHost& host, const QModelIndexList& selected,

@@ -174,7 +174,7 @@ public:
 
     void handlePresetChanged(const PlaylistPreset& preset);
     void setMiddleClickAction(TrackAction action);
-    void followCurrentTrack();
+    bool followCurrentTrack();
     void sessionHandleRestoredState();
     [[nodiscard]] bool hasDelayedStateLoad() const;
     void clearDelayedStateLoad();

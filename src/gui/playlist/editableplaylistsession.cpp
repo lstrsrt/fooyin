@@ -290,7 +290,7 @@ void EditablePlaylistSession::setupConnections(PlaylistWidgetSessionHost& sessio
                          auto& editableSession = editableHost(widget);
                          handlePlayingTrackChanged(widget, track);
                          if(editableSession.settingsManager()->value<Settings::Gui::CursorFollowsPlayback>()) {
-                             editableSession.followCurrentTrack();
+                             followCurrentTrack(editableHost(widget));
                          }
                      });
     QObject::connect(widget->playerController(), &PlayerController::trackChangeRequested, widget,
@@ -320,14 +320,7 @@ void EditablePlaylistSession::setupConnections(PlaylistWidgetSessionHost& sessio
     QObject::connect(widget->playlistController()->uiController(), &PlaylistUiController::requestPlaylistFocus,
                      widget->playlistModel(), [widget, this]() { requestPlaylistFocus(widgetSessionHost(widget)); });
     QObject::connect(widget->playlistController()->uiController(), &PlaylistUiController::showCurrentTrack, widget,
-                     [widget, this]() {
-                         if(widget->playlistController()->currentIsActive()) {
-                             widget->followCurrentTrack();
-                         }
-                         else {
-                             deferFollowCurrentTrack(widgetSessionHost(widget));
-                         }
-                     });
+                     [widget, this]() { followCurrentTrack(editableHost(widget)); });
     host.settingsManager()->subscribe<Settings::Gui::Internal::PlaylistMiddleClick>(
         widget, [widget](int action) { editableHost(widget).setMiddleClickAction(static_cast<TrackAction>(action)); });
     host.settingsManager()->subscribe<Settings::Gui::Internal::PlaylistHeader>(
@@ -700,11 +693,26 @@ void EditablePlaylistSession::deferFollowCurrentTrack(PlaylistWidgetSessionHost&
 
 void EditablePlaylistSession::handleRestoredState(PlaylistWidgetSessionHost& sessionHost)
 {
+    handleDeferredFollowTrack(sessionHost);
+}
+
+void EditablePlaylistSession::handleDeferredFollowTrack(PlaylistWidgetSessionHost& sessionHost)
+{
     auto& host = editableHost(sessionHost.sessionWidget());
-    if(m_showPlaying) {
-        host.followCurrentTrack();
+    if(m_showPlaying && host.followCurrentTrack()) {
         m_showPlaying = false;
     }
+}
+
+void EditablePlaylistSession::followCurrentTrack(PlaylistWidgetSessionHost& sessionHost)
+{
+    auto* widget = sessionHost.sessionWidget();
+    if(widget->playlistController()->currentIsActive() && widget->playlistModel()->playlistIsLoaded()
+       && widget->followCurrentTrack()) {
+        return;
+    }
+
+    deferFollowCurrentTrack(widgetSessionHost(widget));
 }
 
 void EditablePlaylistSession::handleTracksChanged(PlaylistWidgetSessionHost& sessionHost,

@@ -95,6 +95,8 @@ public:
     virtual void applyReadOnlyState(PlaylistWidgetSessionHost& host, bool readOnly);
     virtual void deferFollowCurrentTrack(PlaylistWidgetSessionHost& host);
     virtual void handleRestoredState(PlaylistWidgetSessionHost& host);
+    virtual void handleDeferredFollowTrack(PlaylistWidgetSessionHost& host);
+    virtual void followCurrentTrack(PlaylistWidgetSessionHost& host);
     virtual void updateContextMenuState(PlaylistWidgetSessionHost& host, const QModelIndexList& selected,
                                         PlaylistWidget::ContextMenuState& state);
     virtual void updateSelectionState(PlaylistWidgetSessionHost& host, const std::set<int>& trackIndexes,

@@ -215,6 +215,10 @@ void PlaylistWidgetSession::deferFollowCurrentTrack(PlaylistWidgetSessionHost& /
 
 void PlaylistWidgetSession::handleRestoredState(PlaylistWidgetSessionHost& /*host*/) { }
 
+void PlaylistWidgetSession::handleDeferredFollowTrack(PlaylistWidgetSessionHost& /*host*/) { }
+
+void PlaylistWidgetSession::followCurrentTrack(PlaylistWidgetSessionHost& /*host*/) { }
+
 void PlaylistWidgetSession::updateContextMenuState(PlaylistWidgetSessionHost& /*host*/,
                                                    const QModelIndexList& /*selected*/,
                                                    PlaylistWidget::ContextMenuState& /*state*/)
