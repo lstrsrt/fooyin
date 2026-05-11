@@ -11,6 +11,10 @@
   - Add filter for searching shortcuts and improve the shortcut editor
   - Add support for selecting built-in theme icons in Command Button widgets
   - Add an unsplit/remove split action for single-child layout widget containers ([#1132](https://github.com/fooyin/fooyin/issues/1132))
+  - Add an Advanced settings page and move technical settings there
+  - Move plugin settings pages under the Plugins category
+  - Make the layout editing context menu configurable
+  - Save and restore settings dialog page state and expanded categories
   - Improve layout editing context menus and menu header appearance
   - Split playlist settings into focused pages
   - Add a separate action for clearing the current playlist
@@ -21,24 +25,33 @@
 * Lyrics
   - Support finding local lyrics with directory wildcards
 * Scripting
-  - Add support for retrieving multiple and single meta tag values
+  - Add date and time functions: `$year`, `$month`, `$day_of_month`, `$date`, and `$time`
+  - Add `$meta(field,index)`, `$meta_sep`, `$meta_test`, and `$meta_num`
   - Fall back to literal search when query syntax is invalid ([#1125](https://github.com/fooyin/fooyin/issues/1125))
+* Tag Editor
+  - Add support for configuring multivalue separators ([#1141](https://github.com/fooyin/fooyin/issues/1141))
 
 ### Fixes
 
 * Audio/Playback
   - Respect current track seekability in playback controls and WaveBar
+  - Handle seek trimming for all formats in the FFmpeg decoder
   - Fix several playback queue issues after session restore ([#1130](https://github.com/fooyin/fooyin/pull/1130))
   - Fix potential incorrect shuffle order ([#1127](https://github.com/fooyin/fooyin/issues/1127))
 * Interface
+  - Update the Script Editor track when the selection changes ([#1122](https://github.com/fooyin/fooyin/issues/1122))
+  - Fix playlist header selection deleting tracks
   - Fall back to the default or first playlist when restoring the active playlist fails
   - Fix Library Tree sorting and searching when strings contain scripting syntax ([#1117](https://github.com/fooyin/fooyin/issues/1117), [#1125](https://github.com/fooyin/fooyin/issues/1125))
   - Fix Library Tree row height with multiline titles
 * Library/Metadata
+  - Fix swapped Encoding and TagType values
+  - Fix FFmpeg tag decoding issues, including semicolon/slash-separated artists and encoder tool info ([#1137](https://github.com/fooyin/fooyin/pull/1137))
   - Fix missing ReplayGain values evaluating as true in scripts ([#1112](https://github.com/fooyin/fooyin/issues/1112))
 * Lyrics
   - Fix LRC offset calculation ([#1121](https://github.com/fooyin/fooyin/issues/1121))
 * Scripting
+  - Fix `NOT` parsing for date range queries ([#1143](https://github.com/fooyin/fooyin/issues/1143))
   - Fall back to literal search when query syntax is invalid ([#1125](https://github.com/fooyin/fooyin/issues/1125))
   - Fix `$rand` bounds ([#1133](https://github.com/fooyin/fooyin/pull/1133))
 
