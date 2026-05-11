@@ -2,8 +2,16 @@ name: Build
 
 on:
   push:
+    branches-ignore:
+      - update-translations
+    paths-ignore:
+      - '*.md'
+      - 'data/translations/**'
   pull_request:
     types: [opened, synchronize, reopened]
+    paths-ignore:
+      - '*.md'
+      - 'data/translations/**'
   release:
     types: [published]
 
