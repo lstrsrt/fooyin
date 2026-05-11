@@ -740,36 +740,35 @@ void EditablePlaylistSession::handleTracksChanged(PlaylistWidgetSessionHost& ses
     clearSearch();
     Q_EMIT widget->changeSearch({});
 
-    auto restoreViewState = [&host, currentPlaylist, viewState, allNew](int currentIndex,
-                                                                        const std::vector<int>& selectedIndexes) {
-        if(host.playlistView()->hasActiveInlineEditor() || !currentPlaylist) {
-            return;
-        }
+    auto restoreViewState
+        = [&host, currentPlaylist, viewState, allNew](int currentIndex, const std::vector<int>& selectedIndexes) {
+              if(host.playlistView()->hasActiveInlineEditor() || !currentPlaylist) {
+                  return;
+              }
 
-        if(allNew) {
-            host.playlistView()->playlistReset();
-            host.playlistView()->scrollToTop();
-            return;
-        }
-        else {
-            if(currentPlaylist->trackCount() > 0 && viewState.topIndex >= 0) {
-                const QModelIndex topIndex = host.playlistModel()->indexAtPlaylistIndex(viewState.topIndex, false);
-                if(topIndex.isValid()) {
-                    host.playlistView()->scrollTo(topIndex, PlaylistView::PositionAtTop);
-                    host.playlistView()->verticalScrollBar()->setValue(viewState.scrollPos);
-                }
-            }
-            host.playlistView()->playlistReset();
-        }
+              if(allNew) {
+                  host.playlistView()->playlistReset();
+                  host.playlistView()->scrollToTop();
+                  return;
+              }
 
-        restoreSelectedPlaylistIndexes(host, selectedIndexes);
-        if(currentIndex >= 0) {
-            const QModelIndex index = host.playlistModel()->indexAtPlaylistIndex(currentIndex, true);
-            if(index.isValid()) {
-                host.playlistView()->selectionModel()->setCurrentIndex(index, QItemSelectionModel::NoUpdate);
-            }
-        }
-    };
+              if(currentPlaylist->trackCount() > 0 && viewState.topIndex >= 0) {
+                  const QModelIndex topIndex = host.playlistModel()->indexAtPlaylistIndex(viewState.topIndex, false);
+                  if(topIndex.isValid()) {
+                      host.playlistView()->scrollTo(topIndex, PlaylistView::PositionAtTop);
+                      host.playlistView()->verticalScrollBar()->setValue(viewState.scrollPos);
+                  }
+              }
+              host.playlistView()->playlistReset();
+
+              restoreSelectedPlaylistIndexes(host, selectedIndexes);
+              if(currentIndex >= 0) {
+                  const QModelIndex index = host.playlistModel()->indexAtPlaylistIndex(currentIndex, true);
+                  if(index.isValid()) {
+                      host.playlistView()->selectionModel()->setCurrentIndex(index, QItemSelectionModel::NoUpdate);
+                  }
+              }
+          };
 
     int currentIndex{-1};
     if(host.playlistView()->currentIndex().isValid()) {

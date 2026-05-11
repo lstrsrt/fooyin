@@ -613,7 +613,7 @@ void PlaylistWidget::setupConnections()
     QObject::connect(m_model, &PlaylistModel::playlistLoaded, m_playlistView->viewport(), [this]() {
         m_playlistView->viewport()->update();
         m_session->handleDeferredFollowTrack(sessionHost());
-    });
+    }, Qt::QueuedConnection);
     QObject::connect(m_model, &PlaylistModel::metadataWriteRequested, this, &PlaylistWidget::handleMetadataWriteRequested);
     QObject::connect(m_playlistView, &PlaylistView::bulkWriteRequested, this, &PlaylistWidget::handleBulkWriteRequested);
     QObject::connect(m_playlistController, &PlaylistController::currentPlaylistTracksUpdated, m_model, [this](const std::vector<int>& indexes) { m_model->refreshTracks(indexes); });
@@ -636,7 +636,7 @@ void PlaylistWidget::setupConnections()
     m_settings->subscribe<Settings::Core::UseVariousForCompilations>(
         this, [this]() { m_session->changePlaylist(sessionHost(), m_playlistController->currentPlaylist(), nullptr); });
     m_settings->subscribe<PlaylistInlineTagEditing>(this, [this]() {
-        Playlist* currentPlaylist = m_playlistController->currentPlaylist();
+        const Playlist* currentPlaylist = m_playlistController->currentPlaylist();
 
         const bool forceSortedAutoPlaylist
             = currentPlaylist && currentPlaylist->isAutoPlaylist() && currentPlaylist->forceSorted();
