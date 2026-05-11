@@ -225,6 +225,7 @@ void ExtendableTableViewPrivate::handleNewRow()
             const QModelIndex index = m_model->index(first, m_column, parent);
             if(index.isValid()) {
                 m_self->scrollTo(index, QAbstractItemView::EnsureVisible);
+                m_self->setCurrentIndex(index);
                 m_self->edit(index);
             }
         },
