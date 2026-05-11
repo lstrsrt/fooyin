@@ -369,6 +369,9 @@ void parseTag(Fooyin::Track& track, TagType tagType, const AVDictionaryEntry* ta
     else if(strcasecmp(tag->key, "comment") == 0) {
         track.setComment(convertString(tag->value));
     }
+    else if(strcasecmp(tag->key, "encoder") == 0) {
+        track.setTool(convertString(tag->value));
+    }
     else if(strcasecmp(tag->key, "FMPS_Rating") == 0) {
         track.setRating(convertString(tag->value).toFloat());
     }
