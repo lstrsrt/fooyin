@@ -40,6 +40,8 @@ struct PlaylistSummary
 
 class PlaylistManagerModel : public QAbstractTableModel
 {
+    Q_OBJECT
+
 public:
     enum Role
     {

@@ -99,6 +99,8 @@ QStringList patternHistoryForValue(const QString& value, const QStringList& exis
 
 class FillValuesDialog : public QDialog
 {
+    Q_OBJECT
+
 public:
     explicit FillValuesDialog(TrackList tracks, SettingsManager* settings, QWidget* parent = nullptr);
 
@@ -407,3 +409,5 @@ QDialog* openFillDialog(const TrackList& tracks, SettingsManager* settings, QWid
     return dialog;
 }
 } // namespace Fooyin::TagEditor
+
+#include "tagfilldialog.moc"
