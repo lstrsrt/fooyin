@@ -188,6 +188,7 @@ AdvancedPage::AdvancedPage(AdvancedSettingsRegistry* registry, SettingsDialogCon
     setId(Constants::Page::Advanced);
     setName(tr("Advanced"));
     setCategory({tr("Advanced")});
+    setPosition(SettingsPagePosition::Last);
     setWidgetCreator([registry] { return new AdvancedPageWidget(registry); });
 }
 } // namespace Fooyin
