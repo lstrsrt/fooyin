@@ -130,11 +130,11 @@ void QuickTaggerPlugin::registerQuickTaggerActions()
                 }
             }
             else {
-                //: %1 is a tag field name, %2 is the new tag value.
-                action = new QAction(tr("Set %1 to %2").arg(quickTagDisplayName(tag), value.value), this);
+                action = new QAction(value.value, this);
                 QObject::connect(action, &QAction::triggered, this, [this, id] { runQuickTagAction(id); });
                 Command* command = m_actionManager->registerAction(action, id);
-                command->setDescription(action->text());
+                //: %1 is a tag field name, %2 is the new tag value.
+                command->setDescription(tr("Set %1 to %2").arg(quickTagDisplayName(tag), value.value));
                 command->setCategories(actionCategories(tag, this));
                 m_quickTaggerActions[id] = action;
             }
