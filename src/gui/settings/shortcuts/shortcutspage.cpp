@@ -141,6 +141,7 @@ private:
     void shortcutChanged();
     void resetCurrentShortcut();
     void reassignConflicts();
+    void repopulateShortcuts();
 
     ActionManager* m_actionManager;
 
@@ -229,14 +230,27 @@ ShortcutsPageWidget::ShortcutsPageWidget(ActionManager* actionManager)
         m_shortcutTable->expandAll();
         selectionChanged();
     });
+    QObject::connect(m_actionManager, &ActionManager::commandsChanged, this, &ShortcutsPageWidget::repopulateShortcuts);
 
     m_shortcutBox->setDisabled(true);
 }
 
 void ShortcutsPageWidget::load()
 {
+    repopulateShortcuts();
+}
+
+void ShortcutsPageWidget::repopulateShortcuts()
+{
     m_model->populate(m_actionManager);
     updateConflictState();
+    selectionChanged();
+
+    const auto commands = m_actionManager->commands();
+    for(Command* command : commands) {
+        QObject::disconnect(command, &Command::activeStateChanged, this, &ShortcutsPageWidget::repopulateShortcuts);
+        QObject::connect(command, &Command::activeStateChanged, this, &ShortcutsPageWidget::repopulateShortcuts);
+    }
 }
 
 void ShortcutsPageWidget::apply()
