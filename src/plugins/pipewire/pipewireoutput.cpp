@@ -846,11 +846,8 @@ void PipeWireOutput::handleParamChanged(void* userdata, uint32_t id, const spa_p
     std::optional<float> volume;
     if(const spa_pod_prop* channelsProp = spa_pod_find_prop(param, nullptr, SPA_PROP_channelVolumes)) {
         uint32_t nValues{0};
-        uint32_t valSize{0};
-        uint32_t valType{0};
-        const auto* values
-            = static_cast<const float*>(spa_pod_get_array_full(&channelsProp->value, &nValues, &valSize, &valType));
-        if(values && nValues > 0 && valSize == sizeof(float) && valType == SPA_TYPE_Float) {
+        const auto* values = static_cast<const float*>(spa_pod_get_array(&channelsProp->value, &nValues));
+        if(values && nValues > 0) {
             const auto [first, last] = std::ranges::minmax_element(values, values + nValues);
             if(first != values + nValues && last != values + nValues && qFuzzyCompare(*first + 1.0F, *last + 1.0F)) {
                 volume = std::clamp(*first, 0.0F, 1.0F);
