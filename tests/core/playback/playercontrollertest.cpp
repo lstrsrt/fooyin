@@ -971,6 +971,151 @@ TEST(PlayerControllerTest, FollowPlaybackQueueContinuesFromQueuedTrackPlaylist)
     const auto followedRequest = requestSpy.at(1).at(0).value<Player::TrackChangeRequest>();
     EXPECT_EQ(followedRequest.track, *followedTrack);
     EXPECT_FALSE(followedRequest.isQueueTrack);
+    EXPECT_EQ(harness.handler.activePlaylist(), secondPlaylist);
+    EXPECT_EQ(secondPlaylist->currentTrackIndex(), 2);
+}
+
+TEST(PlayerControllerTest, FollowPlaybackQueuePreviousUsesQueuedTrackPlaylist)
+{
+    ensureCoreApplication();
+    SettingsManager settings{QDir::tempPath() + u"/fooyin_playercontroller_follow_queue_previous_test.ini"_s};
+    registerControllerSettings(settings);
+    settings.set<Settings::Core::FollowPlaybackQueue>(true);
+
+    PlaylistHandlerHarness harness{settings};
+    ASSERT_TRUE(harness.dbInitialised);
+
+    auto* firstPlaylist
+        = harness.handler.createPlaylist(u"FirstPrev"_s, {makeTrack(u"/tmp/first-prev-a.flac"_s, 81, 1000),
+                                                          makeTrack(u"/tmp/first-prev-b.flac"_s, 82, 1000),
+                                                          makeTrack(u"/tmp/first-prev-c.flac"_s, 83, 1000)});
+    auto* secondPlaylist
+        = harness.handler.createPlaylist(u"SecondPrev"_s, {makeTrack(u"/tmp/second-prev-a.flac"_s, 91, 1000),
+                                                           makeTrack(u"/tmp/second-prev-b.flac"_s, 92, 1000),
+                                                           makeTrack(u"/tmp/second-prev-c.flac"_s, 93, 1000)});
+    ASSERT_NE(firstPlaylist, nullptr);
+    ASSERT_NE(secondPlaylist, nullptr);
+
+    harness.handler.changeActivePlaylist(firstPlaylist);
+    firstPlaylist->changeCurrentIndex(1);
+    secondPlaylist->changeCurrentIndex(0);
+
+    PlayerController controller{&settings, &harness.handler};
+
+    const auto firstTrack       = firstPlaylist->playlistTrack(1);
+    const auto queuedTrack      = secondPlaylist->playlistTrack(1);
+    const auto previousToQueued = secondPlaylist->playlistTrack(0);
+    ASSERT_TRUE(firstTrack.has_value());
+    ASSERT_TRUE(queuedTrack.has_value());
+    ASSERT_TRUE(previousToQueued.has_value());
+
+    QSignalSpy requestSpy{&controller, &PlayerController::trackChangeRequested};
+
+    controller.commitCurrentTrack(Player::TrackChangeRequest{
+        .track        = *firstTrack,
+        .context      = {.reason = Player::AdvanceReason::ManualSelection, .userInitiated = true},
+        .isQueueTrack = false,
+        .itemId       = 301,
+    });
+    controller.queueTrack(*queuedTrack);
+
+    controller.advance(Player::AdvanceReason::NaturalEnd);
+
+    ASSERT_EQ(requestSpy.count(), 1);
+    const auto queuedRequest = requestSpy.takeFirst().front().value<Player::TrackChangeRequest>();
+    EXPECT_EQ(queuedRequest.track, *queuedTrack);
+    EXPECT_TRUE(queuedRequest.isQueueTrack);
+
+    controller.commitCurrentTrack(queuedRequest);
+
+    EXPECT_TRUE(controller.currentIsQueueTrack());
+    EXPECT_TRUE(controller.hasPreviousTrack());
+
+    controller.previous();
+
+    ASSERT_EQ(requestSpy.count(), 1);
+    const auto previousRequest = requestSpy.takeFirst().front().value<Player::TrackChangeRequest>();
+    EXPECT_EQ(previousRequest.track, *previousToQueued);
+    EXPECT_FALSE(previousRequest.isQueueTrack);
+    EXPECT_EQ(previousRequest.context.reason, Player::AdvanceReason::ManualPrevious);
+    EXPECT_TRUE(previousRequest.context.userInitiated);
+    EXPECT_EQ(harness.handler.activePlaylist(), secondPlaylist);
+    EXPECT_EQ(secondPlaylist->currentTrackIndex(), 0);
+}
+
+TEST(PlayerControllerTest, FollowPlaybackQueueDoesNotFallBackAtQueuedTrackBoundaries)
+{
+    ensureCoreApplication();
+    SettingsManager settings{QDir::tempPath() + u"/fooyin_playercontroller_follow_queue_boundary_test.ini"_s};
+    registerControllerSettings(settings);
+    settings.set<Settings::Core::FollowPlaybackQueue>(true);
+
+    PlaylistHandlerHarness harness{settings};
+    ASSERT_TRUE(harness.dbInitialised);
+
+    auto* firstPlaylist
+        = harness.handler.createPlaylist(u"FirstBoundary"_s, {makeTrack(u"/tmp/first-boundary-a.flac"_s, 101, 1000),
+                                                              makeTrack(u"/tmp/first-boundary-b.flac"_s, 102, 1000),
+                                                              makeTrack(u"/tmp/first-boundary-c.flac"_s, 103, 1000)});
+    auto* secondPlaylist
+        = harness.handler.createPlaylist(u"SecondBoundary"_s, {makeTrack(u"/tmp/second-boundary-a.flac"_s, 111, 1000),
+                                                               makeTrack(u"/tmp/second-boundary-b.flac"_s, 112, 1000),
+                                                               makeTrack(u"/tmp/second-boundary-c.flac"_s, 113, 1000)});
+    ASSERT_NE(firstPlaylist, nullptr);
+    ASSERT_NE(secondPlaylist, nullptr);
+
+    harness.handler.changeActivePlaylist(firstPlaylist);
+    firstPlaylist->changeCurrentIndex(1);
+    secondPlaylist->changeCurrentIndex(1);
+
+    PlayerController controller{&settings, &harness.handler};
+
+    const auto activeTrack     = firstPlaylist->playlistTrack(1);
+    const auto firstQueueTrack = secondPlaylist->playlistTrack(0);
+    const auto lastQueueTrack  = secondPlaylist->playlistTrack(2);
+    ASSERT_TRUE(activeTrack.has_value());
+    ASSERT_TRUE(firstQueueTrack.has_value());
+    ASSERT_TRUE(lastQueueTrack.has_value());
+
+    QSignalSpy requestSpy{&controller, &PlayerController::trackChangeRequested};
+
+    controller.commitCurrentTrack(Player::TrackChangeRequest{
+        .track        = *activeTrack,
+        .context      = {.reason = Player::AdvanceReason::ManualSelection, .userInitiated = true},
+        .isQueueTrack = false,
+        .itemId       = 401,
+    });
+    controller.queueTrack(*firstQueueTrack);
+    controller.advance(Player::AdvanceReason::NaturalEnd);
+
+    ASSERT_EQ(requestSpy.count(), 1);
+    controller.commitCurrentTrack(requestSpy.takeFirst().front().value<Player::TrackChangeRequest>());
+
+    EXPECT_FALSE(controller.hasPreviousTrack());
+
+    controller.previous();
+
+    EXPECT_EQ(requestSpy.count(), 0);
+    EXPECT_EQ(firstPlaylist->currentTrackIndex(), 1);
+
+    controller.commitCurrentTrack(Player::TrackChangeRequest{
+        .track        = *activeTrack,
+        .context      = {.reason = Player::AdvanceReason::ManualSelection, .userInitiated = true},
+        .isQueueTrack = false,
+        .itemId       = 402,
+    });
+    controller.queueTrack(*lastQueueTrack);
+    controller.advance(Player::AdvanceReason::NaturalEnd);
+
+    ASSERT_EQ(requestSpy.count(), 1);
+    controller.commitCurrentTrack(requestSpy.takeFirst().front().value<Player::TrackChangeRequest>());
+
+    EXPECT_FALSE(controller.hasNextTrack());
+
+    controller.next();
+
+    EXPECT_EQ(requestSpy.count(), 0);
+    EXPECT_EQ(firstPlaylist->currentTrackIndex(), 1);
 }
 
 TEST(PlayerControllerTest, LibraryTrackUpdatesPreserveShuffleHistory)

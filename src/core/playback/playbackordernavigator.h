@@ -69,7 +69,7 @@ private:
     PlaylistTrack restartPlaylistFromEnd();
 
     void activatePlaylistTrack(const PlaylistTrack& track);
-    PlaylistTrack followQueuedTrackIndex(int delta);
+    [[nodiscard]] std::optional<PlaylistTrack> followQueuedTrackIndex(int delta) const;
 
     SettingsManager* m_settings;
     PlaylistHandler* m_playlistHandler;
