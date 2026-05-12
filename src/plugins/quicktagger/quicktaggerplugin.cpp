@@ -98,6 +98,11 @@ void QuickTaggerPlugin::initialise(const GuiPluginContext& context)
 
     m_page = new QuickTaggerPage(m_settings, this);
 
+    m_trackSelection->registerTrackContextSubmenu(this, TrackContextMenuArea::Track,
+                                                  Fooyin::Constants::Menus::Context::TrackSelection,
+                                                  Fooyin::Constants::Menus::Context::Tagging, tr("Tagging"),
+                                                  Fooyin::Constants::Menus::Context::TrackFinalSeparator);
+
     m_trackSelection->registerTrackContextDynamicSubmenu(
         this, TrackContextMenuArea::Track, Fooyin::Constants::Menus::Context::Tagging, Constants::Menus::QuickTagger,
         tr("Quick Tagger"),
@@ -118,12 +123,14 @@ void QuickTaggerPlugin::registerQuickTaggerActions()
             activeIds.emplace(id);
 
             if(QAction* action = registeredAction(id)) {
+                //: %1 is a tag field name, %2 is the new tag value.
                 syncRegisteredAction(id, tr("Set %1 to %2").arg(quickTagDisplayName(tag), value.value), true);
                 if(Command* command = m_actionManager->command(id)) {
                     command->setCategories(actionCategories(tag, this));
                 }
             }
             else {
+                //: %1 is a tag field name, %2 is the new tag value.
                 action = new QAction(tr("Set %1 to %2").arg(quickTagDisplayName(tag), value.value), this);
                 QObject::connect(action, &QAction::triggered, this, [this, id] { runQuickTagAction(id); });
                 Command* command = m_actionManager->registerAction(action, id);
@@ -137,12 +144,14 @@ void QuickTaggerPlugin::registerQuickTaggerActions()
         activeIds.emplace(id);
 
         if(QAction* action = registeredAction(id)) {
+            //: %1 is a tag field name.
             syncRegisteredAction(id, tr("Remove %1").arg(quickTagDisplayName(tag)), true);
             if(Command* command = m_actionManager->command(id)) {
                 command->setCategories(actionCategories(tag, this));
             }
         }
         else {
+            //: %1 is a tag field name.
             action = new QAction(tr("Remove %1").arg(quickTagDisplayName(tag)), this);
             QObject::connect(action, &QAction::triggered, this, [this, id] { runRemoveQuickTagAction(id); });
             Command* command = m_actionManager->registerAction(action, id);
@@ -163,36 +172,37 @@ void QuickTaggerPlugin::registerQuickTaggerActions()
 
 void QuickTaggerPlugin::renderQuickTaggerMenu(QMenu* menu, const TrackList& tracks)
 {
-    if(!canWriteTracks(tracks, m_audioLoader)) {
+    if(tracks.empty()) {
         return;
     }
 
     registerQuickTaggerActions();
 
-    const auto tags = quickTags(*m_settings);
+    const auto tags     = quickTags(*m_settings);
+    const bool writable = canWriteTracks(tracks, m_audioLoader);
 
     for(const QuickTag& tag : tags) {
-        auto* fieldMenu = new QMenu(quickTagDisplayName(tag), menu);
+        const QString tagName = quickTagDisplayName(tag);
+        //: %1 represents the name or field e.g. Set Rating to
+        auto* setMenu = new QMenu(tr("Set %1 to").arg(tagName), menu);
 
         for(const auto& value : tag.values) {
-            auto* action = new QAction(value.value, fieldMenu);
-            QObject::connect(action, &QAction::triggered, fieldMenu,
-                             [this, tag, value, tracks] { runQuickTag(tag, value.value, tracks); });
-            fieldMenu->addAction(action);
+            if(const auto* command = m_actionManager->command(actionId(tag, value.id))) {
+                auto* action = command->action();
+                action->setEnabled(writable);
+                setMenu->addAction(action);
+            }
         }
 
-        fieldMenu->addSeparator();
+        setMenu->addSeparator();
 
-        auto* removeAction = new QAction(tr("Remove %1").arg(quickTagDisplayName(tag)), fieldMenu);
-        QObject::connect(removeAction, &QAction::triggered, fieldMenu, [this, tag, tracks] {
-            if(confirmQuickTag(quickTagDisplayName(tag), static_cast<int>(tracks.size()),
-                               quickTaggerConfirmationThreshold(*m_settings))) {
-                removeQuickTag(tag, tracks);
-            }
-        });
-        fieldMenu->addAction(removeAction);
+        if(const auto* command = m_actionManager->command(removeActionId(tag))) {
+            auto* removeAction = command->action();
+            removeAction->setEnabled(writable);
+            setMenu->addAction(removeAction);
+        }
 
-        menu->addMenu(fieldMenu);
+        menu->addMenu(setMenu);
     }
 }
 
