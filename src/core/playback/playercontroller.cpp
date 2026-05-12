@@ -81,6 +81,7 @@ public:
             None = 0,
             Stop,
             ResetAndStop,
+            AdvancePlaybackPositionAndStop,
             StopAtBoundary,
             KeepCurrentTrack,
             RequestSelection,
@@ -685,6 +686,11 @@ bool PlayerControllerPrivate::applyTransportAction(const TransportAction& action
             m_self->reset();
             m_self->stop();
             return false;
+        case TransportAction::Type::AdvancePlaybackPositionAndStop:
+            m_navigator.selectPlaybackOrderTrack(1);
+            m_self->reset();
+            m_self->stop();
+            return false;
         case TransportAction::Type::StopAtBoundary:
             return stopAtBoundary(action.boundary);
         case TransportAction::Type::KeepCurrentTrack:
@@ -772,6 +778,24 @@ PlayerControllerPrivate::TransportAction PlayerControllerPrivate::selectAdvanceA
 {
     if(!m_stopCurrentSkip && m_stopAfterCurrentArmed) {
         queueStopAfterCurrentReset();
+
+        if(reason == Player::AdvanceReason::NaturalEnd && m_queue.empty() && !m_session.scheduledTrack().isValid()
+           && !m_session.isQueueTrack()) {
+            if(m_navigator.previewPlaybackRelativeTrack(1).isValid()) {
+                return {
+                    .type      = TransportAction::Type::AdvancePlaybackPositionAndStop,
+                    .selection = std::nullopt,
+                };
+            }
+
+            m_session.pendingChangeContext() = {};
+            return {
+                .type      = TransportAction::Type::StopAtBoundary,
+                .boundary  = PlaybackCursor::BoundaryStop::End,
+                .selection = std::nullopt,
+            };
+        }
+
         return {
             .type      = TransportAction::Type::ResetAndStop,
             .selection = std::nullopt,

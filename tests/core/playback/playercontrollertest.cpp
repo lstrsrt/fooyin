@@ -701,6 +701,48 @@ TEST(PlayerControllerTest, StopAfterCurrentResetWaitsForEngineStoppedState)
     EXPECT_TRUE(controller.trackEndAutoTransitionsEnabled());
 }
 
+TEST(PlayerControllerTest, StopAfterCurrentNaturalEndAdvancesPlaylistPositionBeforeStopping)
+{
+    ensureCoreApplication();
+    SettingsManager settings{QDir::tempPath() + u"/fooyin_playercontroller_stop_current_advances_test.ini"_s};
+    registerControllerSettings(settings);
+    PlaylistHandlerHarness harness{settings};
+    ASSERT_TRUE(harness.dbInitialised);
+
+    auto* playlist = harness.handler.createPlaylist(u"StopAfterCurrent"_s,
+                                                    {makeTrack(u"/tmp/stop-after-current-a.flac"_s, 71, 1000),
+                                                     makeTrack(u"/tmp/stop-after-current-b.flac"_s, 72, 1000)});
+    ASSERT_NE(playlist, nullptr);
+
+    harness.handler.changeActivePlaylist(playlist);
+    playlist->changeCurrentIndex(0);
+
+    PlayerController controller{&settings, &harness.handler};
+    const auto committedTrack = playlist->playlistTrack(0);
+    ASSERT_TRUE(committedTrack.has_value());
+    controller.commitCurrentTrack(*committedTrack);
+
+    settings.set<Settings::Core::StopAfterCurrent>(true);
+    settings.set<Settings::Core::ResetStopAfterCurrent>(true);
+
+    controller.play();
+    controller.advance(Player::AdvanceReason::NaturalEnd);
+    controller.syncPlayStateFromEngine(Player::PlayState::Stopped);
+
+    EXPECT_EQ(playlist->currentTrackIndex(), 1);
+    EXPECT_FALSE(settings.value<Settings::Core::StopAfterCurrent>());
+    EXPECT_FALSE(controller.currentPlaylistTrack().track.isValid());
+
+    QSignalSpy requestSpy{&controller, &PlayerController::trackChangeRequested};
+
+    controller.play();
+
+    ASSERT_EQ(requestSpy.count(), 1);
+    const auto request = requestSpy.takeFirst().front().value<Player::TrackChangeRequest>();
+    EXPECT_EQ(request.track.indexInPlaylist, 1);
+    EXPECT_EQ(request.track.track.id(), 72);
+}
+
 TEST(PlayerControllerTest, CommitingPlaylistTrackSyncsActivePlaylistIndex)
 {
     ensureCoreApplication();

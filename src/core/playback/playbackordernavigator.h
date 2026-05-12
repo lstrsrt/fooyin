@@ -57,16 +57,16 @@ public:
 
     [[nodiscard]] Playlist* playbackPlaylist() const;
     [[nodiscard]] PlaylistTrack previewPlaybackRelativeTrack(int delta) const;
-    [[nodiscard]] std::optional<RequestedTrack> selectScheduledTrack();
-    [[nodiscard]] std::optional<RequestedTrack> selectPlaybackOrderTrack(int delta);
-    [[nodiscard]] std::optional<RequestedTrack> selectPlayFromIdleState();
-    [[nodiscard]] PlaylistTrack restartPlaylist(RestartTarget target);
+    std::optional<RequestedTrack> selectScheduledTrack();
+    std::optional<RequestedTrack> selectPlaybackOrderTrack(int delta);
+    std::optional<RequestedTrack> selectPlayFromIdleState();
+    PlaylistTrack restartPlaylist(RestartTarget target);
 
 private:
-    [[nodiscard]] PlaylistTrack advancePlaybackRelativeTrack(int delta);
+    PlaylistTrack advancePlaybackRelativeTrack(int delta);
     [[nodiscard]] Playlist* playlistForTrack(const PlaylistTrack& track) const;
-    [[nodiscard]] PlaylistTrack restartPlaylistFromBeginning();
-    [[nodiscard]] PlaylistTrack restartPlaylistFromEnd();
+    PlaylistTrack restartPlaylistFromBeginning();
+    PlaylistTrack restartPlaylistFromEnd();
 
     void activatePlaylistTrack(const PlaylistTrack& track);
     PlaylistTrack followQueuedTrackIndex(int delta);
