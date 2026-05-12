@@ -23,7 +23,84 @@
 #include <utils/settings/settingspage.h>
 #include <utils/stringcollator.h>
 
+#include <ranges>
+
 namespace Fooyin {
+namespace {
+[[nodiscard]] int positionIndex(SettingsPagePosition position)
+{
+    switch(position) {
+        case SettingsPagePosition::First:
+            return 0;
+        case SettingsPagePosition::Default:
+            return 1;
+        case SettingsPagePosition::Last:
+            return 2;
+    }
+    return 1;
+}
+
+[[nodiscard]] SettingsPagePosition combinePosition(SettingsPagePosition current, SettingsPagePosition next)
+{
+    if(current == SettingsPagePosition::Last || next == SettingsPagePosition::Last) {
+        return SettingsPagePosition::Last;
+    }
+    if(current == SettingsPagePosition::First || next == SettingsPagePosition::First) {
+        return SettingsPagePosition::First;
+    }
+    return SettingsPagePosition::Default;
+}
+
+[[nodiscard]] bool hasRelativePosition(const SettingsPage* page)
+{
+    return page->positionPage().isValid()
+        && (page->relativePosition() == SettingsPageRelativePosition::Before
+            || page->relativePosition() == SettingsPageRelativePosition::After);
+}
+
+void movePage(PageList& pages, PageList::iterator page, PageList::iterator anchor,
+              SettingsPageRelativePosition position)
+{
+    auto* movedPage{*page};
+    const auto pageIndex  = static_cast<size_t>(std::distance(pages.begin(), page));
+    auto anchorIndex      = static_cast<size_t>(std::distance(pages.begin(), anchor));
+    const bool placeAfter = (position == SettingsPageRelativePosition::After);
+
+    pages.erase(page);
+
+    if(pageIndex < anchorIndex) {
+        --anchorIndex;
+    }
+    if(placeAfter) {
+        ++anchorIndex;
+    }
+
+    pages.insert(pages.begin() + static_cast<std::ptrdiff_t>(anchorIndex), movedPage);
+}
+
+void sortPages(PageList& pages)
+{
+    std::ranges::stable_sort(pages, [](const SettingsPage* lhs, const SettingsPage* rhs) {
+        return positionIndex(lhs->position()) < positionIndex(rhs->position());
+    });
+
+    for(auto it = pages.begin(); it != pages.end(); ++it) {
+        auto* page{*it};
+        if(!hasRelativePosition(page)) {
+            continue;
+        }
+
+        auto anchor = std::ranges::find(pages, page->positionPage(), &SettingsPage::id);
+        if(anchor == pages.end() || anchor == it) {
+            continue;
+        }
+
+        movePage(pages, it, anchor, page->relativePosition());
+        it = std::ranges::find(pages, page);
+    }
+}
+} // namespace
+
 SettingsItem::SettingsItem()
     : SettingsItem{nullptr, nullptr}
 { }
@@ -50,13 +127,15 @@ void SettingsItem::sort()
         child->resetRow();
     }
 
-    if(!m_parent) {
-        return;
-    }
-
     StringCollator collator;
 
     std::ranges::sort(m_children, [&collator](const SettingsItem* lhs, const SettingsItem* rhs) {
+        const int lhsPosition = positionIndex(lhs->m_data->position);
+        const int rhsPosition = positionIndex(rhs->m_data->position);
+        if(lhsPosition != rhsPosition) {
+            return lhsPosition < rhsPosition;
+        }
+
         const auto cmp = collator.compare(lhs->m_data->name, rhs->m_data->name);
         if(cmp == 0) {
             return false;
@@ -120,14 +199,19 @@ void SettingsModel::setPages(const PageList& pages)
                 parent->appendChild(item);
             }
 
-            category   = &m_categories.at(categoryId);
-            auto* item = &m_items.at(categoryId);
-            parent     = item;
+            category           = &m_categories.at(categoryId);
+            category->position = combinePosition(category->position, page->position());
+            auto* item         = &m_items.at(categoryId);
+            parent             = item;
         }
 
         if(category) {
             category->pages.emplace_back(page);
         }
+    }
+
+    for(auto& category : m_categories | std::views::values) {
+        sortPages(category.pages);
     }
 
     rootItem()->sort();

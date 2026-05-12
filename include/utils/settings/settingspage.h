@@ -30,6 +30,20 @@
 namespace Fooyin {
 class SettingsDialogController;
 
+enum class SettingsPagePosition : uint8_t
+{
+    Default = 0,
+    First,
+    Last,
+};
+
+enum class SettingsPageRelativePosition : uint8_t
+{
+    None = 0,
+    Before,
+    After,
+};
+
 class FYUTILS_EXPORT SettingsPageWidget : public QWidget
 {
     Q_OBJECT
@@ -64,6 +78,9 @@ public:
     [[nodiscard]] Id id() const;
     [[nodiscard]] QString name() const;
     [[nodiscard]] QStringList category() const;
+    [[nodiscard]] SettingsPagePosition position() const;
+    [[nodiscard]] SettingsPageRelativePosition relativePosition() const;
+    [[nodiscard]] Id positionPage() const;
 
     QWidget* widget();
 
@@ -81,6 +98,8 @@ protected:
     void setId(const Id& id);
     void setName(const QString& name);
     void setCategory(const QStringList& category);
+    void setPosition(SettingsPagePosition position);
+    void setRelativePosition(SettingsPageRelativePosition position, const Id& page);
 
     using WidgetCreator = std::function<SettingsPageWidget*()>;
     void setWidgetCreator(const WidgetCreator& widgetCreator);
@@ -89,6 +108,9 @@ private:
     Id m_id;
     QStringList m_category;
     QString m_name;
+    SettingsPagePosition m_position;
+    SettingsPageRelativePosition m_relativePosition;
+    Id m_positionPage;
     QIcon m_categoryIcon;
     WidgetCreator m_widgetCreator;
     QWidget* m_widget;

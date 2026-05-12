@@ -24,6 +24,8 @@
 namespace Fooyin {
 SettingsPage::SettingsPage(SettingsDialogController* controller, QObject* parent)
     : QObject{parent}
+    , m_position{SettingsPagePosition::Default}
+    , m_relativePosition{SettingsPageRelativePosition::None}
     , m_widget{nullptr}
 {
     if(controller) {
@@ -44,6 +46,21 @@ QString SettingsPage::name() const
 QStringList SettingsPage::category() const
 {
     return m_category;
+}
+
+SettingsPagePosition SettingsPage::position() const
+{
+    return m_position;
+}
+
+SettingsPageRelativePosition SettingsPage::relativePosition() const
+{
+    return m_relativePosition;
+}
+
+Id SettingsPage::positionPage() const
+{
+    return m_positionPage;
 }
 
 void SettingsPage::setWidgetCreator(const WidgetCreator& widgetCreator)
@@ -140,6 +157,25 @@ void SettingsPage::setName(const QString& name)
 void SettingsPage::setCategory(const QStringList& category)
 {
     m_category = category;
+}
+
+void SettingsPage::setPosition(SettingsPagePosition position)
+{
+    m_position         = position;
+    m_relativePosition = SettingsPageRelativePosition::None;
+    m_positionPage     = {};
+}
+
+void SettingsPage::setRelativePosition(SettingsPageRelativePosition position, const Id& page)
+{
+    if(position == SettingsPageRelativePosition::None || !page.isValid()) {
+        setPosition(SettingsPagePosition::Default);
+        return;
+    }
+
+    m_position         = SettingsPagePosition::Default;
+    m_relativePosition = position;
+    m_positionPage     = page;
 }
 } // namespace Fooyin
 
