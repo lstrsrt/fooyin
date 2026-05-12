@@ -48,6 +48,9 @@ void addRatingTagItems(QComboBox* combo, bool includeAutomatic)
     combo->addItem(u"FMPS_RATING"_s, u"FMPS_RATING"_s);
     combo->addItem(u"RATING"_s, u"RATING"_s);
     combo->setEditable(true);
+
+    QObject::connect(combo->lineEdit(), &QLineEdit::textEdited, combo,
+                     [combo](const QString& text) { combo->lineEdit()->setText(text.toUpper()); });
 }
 
 void addRatingScaleItems(QComboBox* combo, RatingScaleUsage usage)
@@ -90,8 +93,15 @@ void addPopmMappingItems(QComboBox* combo)
 
 QString comboSettingValue(const QComboBox* combo)
 {
+    if(combo->isEditable()) {
+        const QString text = combo->currentText().trimmed();
+        if(combo->currentIndex() < 0 || text != combo->itemText(combo->currentIndex())) {
+            return text.toUpper();
+        }
+    }
+
     const QVariant data = combo->currentData();
-    return data.isValid() ? data.toString() : combo->currentText().trimmed();
+    return data.isValid() ? data.toString() : combo->currentText().trimmed().toUpper();
 }
 
 void setComboSettingValue(QComboBox* combo, const QString& value)
@@ -101,7 +111,7 @@ void setComboSettingValue(QComboBox* combo, const QString& value)
         combo->setCurrentIndex(index);
         return;
     }
-    combo->setCurrentText(value);
+    combo->setCurrentText(combo->isEditable() ? value.toUpper() : value);
 }
 } // namespace
 
