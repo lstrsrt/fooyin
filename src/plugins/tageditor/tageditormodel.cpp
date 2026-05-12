@@ -223,12 +223,14 @@ bool TagEditorModelPrivate::updateTrackMetadata(const TagEditorField& field, con
     }
 
     QString tag{field.scriptField};
-    if(tag.compare(QLatin1String{Constants::MetaData::RatingEditor}, Qt::CaseInsensitive) == 0) {
-        tag = QLatin1String{Constants::MetaData::Rating};
-    }
+
+    const auto checkTag = [&tag](const char* metadataField) {
+        return tag.compare(QLatin1String{metadataField}, Qt::CaseInsensitive) == 0;
+    };
 
     const bool isList   = split || field.multivalue;
-    const bool isRating = (tag.compare(QLatin1String{Constants::MetaData::Rating}, Qt::CaseInsensitive) == 0);
+    const bool isRating = checkTag(Constants::MetaData::Rating) || checkTag(Constants::MetaData::RatingEditor)
+                       || checkTag(Constants::MetaData::RatingNormalized) || checkTag(Constants::MetaData::Stars);
 
     QStringList listValue;
     float floatValue{-1};
