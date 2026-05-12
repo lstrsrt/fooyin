@@ -69,13 +69,14 @@ TagEditorFieldsPageWidget::TagEditorFieldsPageWidget(TagEditorFieldRegistry* reg
     m_fieldList->setTools(ExtendableTableView::Move);
 
     auto* checkDelegate = new CheckBoxDelegate(this);
-    m_fieldList->setItemDelegateForColumn(3, checkDelegate);
+    m_fieldList->setItemDelegateForColumn(1, checkDelegate);
     m_fieldList->setItemDelegateForColumn(4, checkDelegate);
+    m_fieldList->setItemDelegateForColumn(5, checkDelegate);
 
     // Hide index column
     m_fieldList->hideColumn(0);
 
-    m_fieldList->setExtendableColumn(1);
+    m_fieldList->setExtendableColumn(2);
     m_fieldList->setSelectionMode(QAbstractItemView::ExtendedSelection);
     m_fieldList->verticalHeader()->hide();
     m_fieldList->horizontalHeader()->setStretchLastSection(false);

@@ -25,6 +25,9 @@
 namespace Fooyin::TagEditor {
 struct TagEditorField
 {
+    static constexpr qint32 Magic   = -0x54454644;
+    static constexpr qint32 Version = 2;
+
     int id{-1};
     int index{-1};
     bool isDefault{false};
@@ -32,12 +35,9 @@ struct TagEditorField
     QString scriptField;
     bool multiline{false};
     bool multivalue{false};
+    bool enabled{true};
 
-    bool operator==(const TagEditorField& other) const
-    {
-        return std::tie(id, index, name, scriptField, multiline, multivalue)
-            == std::tie(other.id, other.index, other.name, other.scriptField, other.multiline, other.multivalue);
-    }
+    bool operator==(const TagEditorField& other) const = default;
 
     [[nodiscard]] bool isValid() const
     {
@@ -46,23 +46,48 @@ struct TagEditorField
 
     friend QDataStream& operator<<(QDataStream& stream, const TagEditorField& field)
     {
+        stream << Magic;
+        stream << Version;
+
         stream << field.id;
         stream << field.index;
         stream << field.name;
         stream << field.scriptField;
         stream << field.multiline;
         stream << field.multivalue;
+        stream << field.enabled;
+
         return stream;
     }
 
     friend QDataStream& operator>>(QDataStream& stream, TagEditorField& field)
     {
-        stream >> field.id;
-        stream >> field.index;
-        stream >> field.name;
-        stream >> field.scriptField;
-        stream >> field.multiline;
-        stream >> field.multivalue;
+        qint32 magicOrId{-1};
+        stream >> magicOrId;
+
+        if(magicOrId == Magic) {
+            qint32 version{0};
+            stream >> version;
+
+            stream >> field.id;
+            stream >> field.index;
+            stream >> field.name;
+            stream >> field.scriptField;
+            stream >> field.multiline;
+            stream >> field.multivalue;
+            if(version >= 2) {
+                stream >> field.enabled;
+            }
+        }
+        else {
+            field.id = magicOrId;
+            stream >> field.index;
+            stream >> field.name;
+            stream >> field.scriptField;
+            stream >> field.multiline;
+            stream >> field.multivalue;
+        }
+
         return stream;
     }
 };

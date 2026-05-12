@@ -30,6 +30,21 @@ Q_LOGGING_CATEGORY(TAGEDITOR_MODEL, "fy.tageditor")
 using namespace Qt::StringLiterals;
 
 namespace Fooyin::TagEditor {
+namespace {
+bool canFieldBeMultiValue(const TagEditorField& field)
+{
+    return !field.scriptField.isEmpty()
+        && (Track::isMultiValueTag(field.scriptField) || Track::isExtraTag(field.scriptField));
+}
+
+void normaliseMultiValueField(TagEditorField& field)
+{
+    if(!canFieldBeMultiValue(field)) {
+        field.multivalue = false;
+    }
+}
+} // namespace
+
 TagEditorFieldItem::TagEditorFieldItem()
     : TagEditorFieldItem{{}, nullptr}
 { }
@@ -82,12 +97,12 @@ void TagEditorFieldsModel::processQueue()
         TagEditorField field = node->field();
 
         switch(status) {
-            case(TagEditorFieldItem::Added): {
+            case TagEditorFieldItem::Added: {
                 if(field.scriptField.isEmpty() || hasField(field.scriptField, field.id)) {
                     break;
                 }
 
-                field.multivalue = Track::isMultiValueTag(field.scriptField);
+                normaliseMultiValueField(field);
 
                 const TagEditorField addedField = m_fieldRegistry->addItem(field);
                 if(addedField.isValid()) {
@@ -99,7 +114,7 @@ void TagEditorFieldsModel::processQueue()
                 }
                 break;
             }
-            case(TagEditorFieldItem::Removed): {
+            case TagEditorFieldItem::Removed: {
                 if(m_fieldRegistry->removeById(field.id)) {
                     beginRemoveRows({}, node->row(), node->row());
                     m_root.removeChild(node->row());
@@ -111,7 +126,7 @@ void TagEditorFieldsModel::processQueue()
                 }
                 break;
             }
-            case(TagEditorFieldItem::Changed): {
+            case TagEditorFieldItem::Changed: {
                 if(const auto existingItem = m_fieldRegistry->itemById(field.id)) {
                     if(field == existingItem.value()) {
                         node->setStatus(TagEditorFieldItem::None);
@@ -122,7 +137,7 @@ void TagEditorFieldsModel::processQueue()
                     }
                 }
 
-                field.multivalue = Track::isMultiValueTag(field.scriptField);
+                normaliseMultiValueField(field);
 
                 if(m_fieldRegistry->changeItem(field)) {
                     if(const auto item = m_fieldRegistry->itemById(field.id)) {
@@ -135,7 +150,7 @@ void TagEditorFieldsModel::processQueue()
                 }
                 break;
             }
-            case(TagEditorFieldItem::None):
+            case TagEditorFieldItem::None:
                 break;
         }
     }
@@ -153,10 +168,20 @@ Qt::ItemFlags TagEditorFieldsModel::flags(const QModelIndex& index) const
         return Qt::NoItemFlags;
     }
 
-    auto flags = ExtendableTableModel::flags(index) |= Qt::ItemIsEditable;
+    auto flags = ExtendableTableModel::flags(index);
+    flags |= Qt::ItemIsEditable;
 
-    if(index.column() >= 3) {
+    if(index.column() == 1 || index.column() == 4) {
         flags |= Qt::ItemIsUserCheckable;
+    }
+    else if(index.column() == 5) {
+        auto* item = static_cast<TagEditorFieldItem*>(index.internalPointer());
+        if(item && canFieldBeMultiValue(item->field())) {
+            flags |= Qt::ItemIsUserCheckable;
+        }
+        else {
+            flags &= ~(Qt::ItemIsEditable | Qt::ItemIsEnabled);
+        }
     }
 
     return flags;
@@ -173,14 +198,18 @@ QVariant TagEditorFieldsModel::headerData(int section, Qt::Orientation orientati
     }
 
     switch(section) {
-        case(0):
+        case 0:
             return tr("Index");
-        case(1):
+        case 1:
+            return tr("Enabled");
+        case 2:
             return tr("Name");
-        case(2):
+        case 3:
             return tr("Field");
-        case(3):
-            return tr("Multiline");
+        case 4:
+            return tr("Multi-line");
+        case 5:
+            return tr("Multi-value");
         default:
             break;
     }
@@ -199,12 +228,14 @@ QVariant TagEditorFieldsModel::data(const QModelIndex& index, int role) const
 
     if(role == Qt::TextAlignmentRole) {
         switch(column) {
-            case(0):
-            case(1):
-            case(2):
+            case 0:
+            case 1:
+                return Qt::AlignCenter;
+            case 2:
+            case 3:
                 return (Qt::AlignVCenter | Qt::AlignLeft).toInt();
-            case(3):
-            case(4):
+            case 4:
+            case 5:
                 return Qt::AlignCenter;
             default:
                 return {};
@@ -220,14 +251,20 @@ QVariant TagEditorFieldsModel::data(const QModelIndex& index, int role) const
     }
 
     if(role == Qt::CheckStateRole) {
-        if(column == 3) {
-            if(item->field().multiline) {
+        if(column == 1) {
+            if(item->field().enabled) {
                 return Qt::Checked;
             }
             return Qt::Unchecked;
         }
         if(column == 4) {
-            if(item->field().multivalue) {
+            if(item->field().multiline) {
+                return Qt::Checked;
+            }
+            return Qt::Unchecked;
+        }
+        if(column == 5) {
+            if(canFieldBeMultiValue(item->field()) && item->field().multivalue) {
                 return Qt::Checked;
             }
             return Qt::Unchecked;
@@ -236,13 +273,13 @@ QVariant TagEditorFieldsModel::data(const QModelIndex& index, int role) const
 
     if(role == Qt::DisplayRole || role == Qt::EditRole) {
         switch(column) {
-            case(0):
+            case 0:
                 return item->field().index;
-            case(1): {
+            case 2: {
                 const QString& name = item->field().name;
                 return !name.isEmpty() ? name : u"<enter name here>"_s;
             }
-            case(2): {
+            case 3: {
                 const QString& field = item->field().scriptField;
                 return !field.isEmpty() ? field : u"<enter field here>"_s;
             }
@@ -266,13 +303,22 @@ bool TagEditorFieldsModel::setData(const QModelIndex& index, const QVariant& val
 
     if(role == Qt::CheckStateRole) {
         const bool checked = value.value<Qt::CheckState>() == Qt::Checked;
-        if(column == 3) {
+        if(column == 1) {
+            field.enabled = checked;
+        }
+        if(column == 4) {
             field.multiline = checked;
+        }
+        else if(column == 5) {
+            if(!canFieldBeMultiValue(field)) {
+                return false;
+            }
+            field.multivalue = checked;
         }
     }
 
     switch(index.column()) {
-        case(1): {
+        case 2: {
             if(value.toString() == u"<enter name here>"_s || field.name == value.toString()) {
                 if(item->status() == TagEditorFieldItem::Added) {
                     Q_EMIT pendingRowCancelled();
@@ -282,7 +328,7 @@ bool TagEditorFieldsModel::setData(const QModelIndex& index, const QVariant& val
             field.name = value.toString();
             break;
         }
-        case(2): {
+        case 3: {
             QString setValue = value.toString().trimmed();
             setValue.remove(u'%');
 
@@ -302,7 +348,7 @@ bool TagEditorFieldsModel::setData(const QModelIndex& index, const QVariant& val
     }
 
     item->changeField(field);
-    Q_EMIT dataChanged(index, index.siblingAtColumn(columnCount({}) - 1),
+    Q_EMIT dataChanged(index.siblingAtColumn(0), index.siblingAtColumn(columnCount({}) - 1),
                        {Qt::FontRole, Qt::DisplayRole, Qt::CheckStateRole});
 
     return true;
@@ -314,7 +360,7 @@ QModelIndex TagEditorFieldsModel::index(int row, int column, const QModelIndex& 
         return {};
     }
 
-    TagEditorFieldItem* item = m_root.child(row);
+    const TagEditorFieldItem* item = m_root.child(row);
 
     return createIndex(row, column, item);
 }
@@ -326,7 +372,7 @@ int TagEditorFieldsModel::rowCount(const QModelIndex& /*parent*/) const
 
 int TagEditorFieldsModel::columnCount(const QModelIndex& /*parent*/) const
 {
-    return 4;
+    return 6;
 }
 
 bool TagEditorFieldsModel::removeRows(int row, int count, const QModelIndex& /*parent*/)

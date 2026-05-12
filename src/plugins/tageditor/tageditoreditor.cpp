@@ -154,6 +154,10 @@ void TagEditorEditor::configureDelegates(const std::vector<TagEditorField>& item
     m_model->setRatingRow(-1);
 
     for(int row{0}; const auto& item : items) {
+        if(!item.enabled) {
+            continue;
+        }
+
         if(item.scriptField.compare(QLatin1String{Fooyin::Constants::MetaData::RatingEditor}, Qt::CaseInsensitive)
            == 0) {
             if(!m_starDelegate) {
@@ -171,6 +175,7 @@ void TagEditorEditor::configureDelegates(const std::vector<TagEditorField>& item
             m_view->setItemDelegateForRow(row, m_multilineDelegate);
             m_delegateRows.emplace(row);
         }
+
         ++row;
     }
 }

@@ -111,6 +111,11 @@ bool updateItemTrackValues(TagEditorItem& item, const QStringList& values, const
 
     return false;
 }
+
+bool shouldTreatAsMultiValue(const TagEditorField& field)
+{
+    return (Track::isMultiValueTag(field.scriptField) || Track::isExtraTag(field.scriptField)) && field.multivalue;
+}
 } // namespace
 
 class TagEditorModelPrivate
@@ -295,9 +300,12 @@ void TagEditorModel::reset(const TrackList& tracks, const std::vector<TagEditorF
     p->m_fields = fields;
 
     for(const auto& field : fields) {
-        auto* item = &p->m_tags.emplace(field.scriptField.toUpper(), TagEditorItem{field, &p->m_root}).first->second;
-        item->setMultiValueSeparators(p->multiValueSeparators());
-        p->m_root.appendChild(item);
+        if(field.enabled) {
+            auto* item
+                = &p->m_tags.emplace(field.scriptField.toUpper(), TagEditorItem{field, &p->m_root}).first->second;
+            item->setMultiValueSeparators(p->multiValueSeparators());
+            p->m_root.appendChild(item);
+        }
     }
 
     p->updateFields();
@@ -521,7 +529,7 @@ void TagEditorModel::applyChanges()
         if(field.scriptField.isEmpty()) {
             field.scriptField = node.titleChanged() ? node.changedTitle() : node.title();
         }
-        field.multivalue = Track::isMultiValueTag(field.scriptField);
+        field.multivalue = shouldTreatAsMultiValue(field);
         field.isDefault  = !Track::isExtraTag(field.scriptField);
 
         switch(status) {
