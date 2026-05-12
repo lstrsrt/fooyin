@@ -25,12 +25,27 @@
 #include <core/playlist/playlist.h>
 
 #include <QDir>
+#include <QFile>
 #include <QFileInfo>
+#include <QSettings>
 #include <QStandardPaths>
+#include <QTemporaryDir>
 
 #include <gtest/gtest.h>
 
 namespace Fooyin::Testing {
+namespace {
+QString ratingSettingsPath()
+{
+    static const QTemporaryDir configDir{QDir::tempPath() + QStringLiteral("/fooyin-rating-test-XXXXXX")};
+    EXPECT_TRUE(configDir.isValid());
+
+    QStandardPaths::setTestModeEnabled(false);
+    qputenv("XDG_CONFIG_HOME", configDir.path().toUtf8());
+    return Core::settingsPath();
+}
+} // namespace
+
 QString testFilePath(const QString& relativePath)
 {
     const QFileInfo thisFile{QString::fromUtf8(__FILE__)};
@@ -38,15 +53,14 @@ QString testFilePath(const QString& relativePath)
     return testsDir.absoluteFilePath(relativePath);
 }
 
-void resetRatingSettings(const QByteArray& configHome)
+void resetRatingSettings()
 {
-    QStandardPaths::setTestModeEnabled(false);
-    qputenv("XDG_CONFIG_HOME", configHome);
-    if(const QFileInfo info{Core::settingsPath()}; info.isDir()) {
-        QDir{Core::settingsPath()}.removeRecursively();
+    const QString settingsPath = ratingSettingsPath();
+    if(QFileInfo::exists(settingsPath)) {
+        ASSERT_TRUE(QFile::remove(settingsPath));
     }
-    ASSERT_TRUE(QDir{}.mkpath(QFileInfo{Core::settingsPath()}.absolutePath()));
-    FySettings settings;
+    ASSERT_TRUE(QDir{}.mkpath(QFileInfo{settingsPath}.absolutePath()));
+    QSettings settings{settingsPath, QSettings::IniFormat};
     settings.remove(RatingSettings::ReadTag);
     settings.remove(RatingSettings::ReadScale);
     settings.remove(RatingSettings::WriteTag);

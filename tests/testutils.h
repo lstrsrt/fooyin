@@ -32,7 +32,7 @@ class SettingsManager;
 
 namespace Fooyin::Testing {
 [[nodiscard]] QString testFilePath(const QString& relativePath);
-void resetRatingSettings(const QByteArray& configHome);
+void resetRatingSettings();
 
 class TempResource : public QTemporaryFile
 {

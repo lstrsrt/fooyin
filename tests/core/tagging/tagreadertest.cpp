@@ -93,7 +93,7 @@ void setRatingReadPolicy(const QString& tag, const QString& scale)
 
 void resetTagReaderRatingSettings()
 {
-    resetRatingSettings("/tmp/fooyin-tagreader-test-config");
+    resetRatingSettings();
 }
 } // namespace
 

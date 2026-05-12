@@ -103,7 +103,7 @@ QString xiphStringItem(const TagLib::Ogg::FieldListMap& fields, const char* key)
 
 void resetTagWriterRatingSettings()
 {
-    resetRatingSettings("/tmp/fooyin-tagwriter-test-config");
+    resetRatingSettings();
 }
 
 TagLib::ID3v2::PopularimeterFrame* popmFrameByOwner(TagLib::ID3v2::Tag* tag, const QString& owner)
