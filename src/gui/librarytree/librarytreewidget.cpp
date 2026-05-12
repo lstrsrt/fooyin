@@ -885,7 +885,9 @@ void LibraryTreeWidget::selectionChanged(const QItemSelection& selected, const Q
         return index.isValid() && index.data(LibraryTreeItem::Level).toInt() == -1;
     });
     if(summaryNodeIt != filteredIndexes.cend()) {
-        applySelectedTracks(m_library->libraryTracks());
+        const bool usingFilteredTracks
+            = !m_currentSearch.isEmpty() || m_currentEmptySearchMode == EmptySearchMode::ShowAll;
+        applySelectedTracks(usingFilteredTracks ? m_filteredTracks : m_library->libraryTracks());
         return;
     }
 

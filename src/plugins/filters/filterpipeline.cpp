@@ -37,7 +37,27 @@ FilterSelectionResolution resolveFilterSelection(const FilterRowList& rows, cons
 
     for(const RowKey& key : resolution.selectedKeys) {
         if(key.isEmpty()) {
-            resolution.selectedTracks = inputTracks;
+            if(rows.empty()) {
+                resolution.selectedTracks = inputTracks;
+                return resolution;
+            }
+
+            std::unordered_set<int> selectedTrackIds;
+            selectedTrackIds.reserve(inputTracks.size());
+
+            for(const FilterRow& row : rows) {
+                for(const int trackId : row.trackIds) {
+                    selectedTrackIds.emplace(trackId);
+                }
+            }
+
+            resolution.selectedTracks.reserve(selectedTrackIds.size());
+            for(const Track& track : inputTracks) {
+                if(selectedTrackIds.contains(track.id())) {
+                    resolution.selectedTracks.push_back(track);
+                }
+            }
+
             return resolution;
         }
     }

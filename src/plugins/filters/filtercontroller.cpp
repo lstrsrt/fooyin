@@ -95,6 +95,11 @@ bool isUngroupedGroupId(const Id& groupId)
 {
     return groupId.name().startsWith(QStringLiteral("Fooyin.Filters.Ungrouped."));
 }
+
+bool containsSummaryKey(const std::vector<RowKey>& keys)
+{
+    return std::ranges::any_of(keys, [](const RowKey& key) { return key.isEmpty(); });
+}
 } // namespace
 
 class FilterControllerPrivate
@@ -153,6 +158,7 @@ public:
     void updateFilterPlaylistActions(FilterWidget* filterWidget) const;
     void updateAllPlaylistActions();
     void updateWidgetSelection(FilterStageState& stage) const;
+    static const FilterRowList& rowsForSelection(const FilterStageState& stage);
     void handleSelectionChanged(FilterWidget* filter, const std::vector<RowKey>& keys);
     void handleSearchChanged(FilterWidget* filter, const QString& search);
 
@@ -430,6 +436,11 @@ void FilterControllerPrivate::updateWidgetSelection(FilterStageState& stage) con
     m_trackSelection->changeSelectedTracks(stage.widget->widgetContext(), selection);
 }
 
+const FilterRowList& FilterControllerPrivate::rowsForSelection(const FilterStageState& stage)
+{
+    return stage.searchedRows ? *stage.searchedRows : stage.rows;
+}
+
 void FilterControllerPrivate::handleSelectionChanged(FilterWidget* filter, const std::vector<RowKey>& keys)
 {
     const auto location = widgetLocation(filter);
@@ -439,10 +450,11 @@ void FilterControllerPrivate::handleSelectionChanged(FilterWidget* filter, const
         return;
     }
 
-    const FilterSelectionResolution selection = resolveFilterSelection(stage->rows, stage->inputTracks, keys);
-    stage->selectedKeys                       = selection.selectedKeys;
-    stage->selectedTracks                     = selection.selectedTracks;
-    stage->isActive                           = selection.isActive;
+    const FilterSelectionResolution selection
+        = resolveFilterSelection(rowsForSelection(*stage), stage->inputTracks, keys);
+    stage->selectedKeys   = selection.selectedKeys;
+    stage->selectedTracks = selection.selectedTracks;
+    stage->isActive       = selection.isActive;
     updateWidgetSelection(*stage);
 
     if(filter->playlistEnabled() && m_trackSelection) {
@@ -778,6 +790,22 @@ void FilterControllerPrivate::refreshStageSearch(const Id& groupId, int stageInd
         }
 
         currentStage.searchedRows = searchedRows;
+
+        if(containsSummaryKey(currentStage.selectedKeys)) {
+            const FilterSelectionResolution selection = resolveFilterSelection(
+                *currentStage.searchedRows, currentStage.inputTracks, currentStage.selectedKeys);
+            currentStage.selectedKeys   = selection.selectedKeys;
+            currentStage.selectedTracks = selection.selectedTracks;
+            currentStage.isActive       = selection.isActive;
+
+            const bool hasPriorActive
+                = std::ranges::any_of(currentGroup.stages | std::views::take(stageIndex), &FilterStageState::isActive);
+            const TrackList nextTracks = currentStage.isActive ? currentStage.selectedTracks : currentStage.inputTracks;
+            const bool nextConstrained = hasPriorActive || currentStage.isActive;
+
+            recomputeStage(groupId, stageIndex + 1, revision, nextTracks, nextConstrained);
+        }
+
         publishStage(groupId, stageIndex);
     });
 }

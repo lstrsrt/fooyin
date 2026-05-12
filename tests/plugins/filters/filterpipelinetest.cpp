@@ -74,7 +74,29 @@ TEST(FilterPipelineTest, ResolveFilterSelectionPrunesMissingKeysAndKeepsMatching
     EXPECT_EQ(3, selection.selectedTracks.at(2).id());
 }
 
-TEST(FilterPipelineTest, ResolveFilterSelectionUsesAllInputTracksForSummaryRow)
+TEST(FilterPipelineTest, ResolveFilterSelectionUsesVisibleRowsForSummaryRow)
+{
+    const TrackList inputTracks{
+        makeTrack(10, u"/music/all-a.flac"_s),
+        makeTrack(20, u"/music/all-b.flac"_s),
+        makeTrack(30, u"/music/hidden.flac"_s),
+    };
+    const Filters::FilterRowList rows{
+        makeRow(keyFor(u"visible"_s), {20, 10}),
+    };
+
+    const Filters::FilterSelectionResolution selection
+        = Filters::resolveFilterSelection(rows, inputTracks, {Filters::RowKey{}});
+
+    EXPECT_TRUE(selection.isActive);
+    ASSERT_EQ(2, selection.selectedTracks.size());
+    EXPECT_EQ(10, selection.selectedTracks.at(0).id());
+    EXPECT_EQ(20, selection.selectedTracks.at(1).id());
+    ASSERT_EQ(1, selection.selectedKeys.size());
+    EXPECT_TRUE(selection.selectedKeys.front().isEmpty());
+}
+
+TEST(FilterPipelineTest, ResolveFilterSelectionFallsBackToInputTracksForEmptySummaryRows)
 {
     const TrackList inputTracks{
         makeTrack(10, u"/music/all-a.flac"_s),
