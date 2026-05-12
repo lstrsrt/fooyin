@@ -165,6 +165,7 @@ public Q_SLOTS:
     void seek(uint64_t positionMs);
     void seekWithRequest(uint64_t positionMs, uint64_t requestId);
     void setVolume(double volume);
+    void handleOutputVolumeChange(double volume);
     void updateCurrentTrackMetadata(const Fooyin::Track& track);
 
     void setAudioOutput(const Fooyin::OutputCreator& output, const QString& device);
@@ -185,6 +186,7 @@ Q_SIGNALS:
 
     void seekPositionApplied(uint64_t positionMs, uint64_t requestId);
     void bitrateChanged(int bitrate);
+    void volumeChanged(double volume);
 
     void levelReady(const Fooyin::LevelFrame& frame);
     void pcmReady(const Fooyin::PcmFrame& frame);

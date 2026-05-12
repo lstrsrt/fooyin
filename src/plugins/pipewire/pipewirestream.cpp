@@ -25,12 +25,18 @@
 
 #include <pipewire/keys.h>
 #include <pipewire/version.h>
+#include <spa/param/param.h>
 #include <spa/param/props.h>
+#include <spa/pod/builder.h>
+#include <spa/pod/vararg.h>
 
 #include <QDebug>
 
+#include <array>
+
 #ifdef __clang__
 #pragma clang diagnostic ignored "-Wgnu-statement-expression-from-macro-expansion"
+#pragma clang diagnostic ignored "-Wc99-extensions"
 #endif
 
 namespace {
@@ -45,6 +51,7 @@ int pw_stream_get_time_n(struct pw_stream* stream, struct pw_time* time, size_t 
 namespace Fooyin::Pipewire {
 PipewireStream::PipewireStream(PipewireCore* core, const AudioFormat& format, const int targetBufferFrames,
                                const QString& device)
+    : m_channelCount{static_cast<uint32_t>(std::max(1, format.channelCount()))}
 {
     struct pw_properties* props = pw_properties_new(PW_KEY_MEDIA_TYPE, "Audio", PW_KEY_MEDIA_CATEGORY, "Playback",
                                                     PW_KEY_MEDIA_ROLE, "Music", PW_KEY_APP_ID, "fooyin",
@@ -113,9 +120,24 @@ void PipewireStream::setActive(bool active)
 
 void PipewireStream::setVolume(float volume)
 {
-    if(pw_stream_set_control(m_stream.get(), SPA_PROP_volume, 1, &volume, 0) < 0) {
-        qCWarning(PIPEWIRE) << "Failed to set volume";
+    std::vector channelVolumes(m_channelCount, volume);
+    if(pw_stream_set_control(m_stream.get(), SPA_PROP_channelVolumes, m_channelCount, channelVolumes.data(), 0) < 0) {
+        qCWarning(PIPEWIRE) << "Failed to set channel volumes";
+
+        if(pw_stream_set_control(m_stream.get(), SPA_PROP_volume, 1, &volume, 0) < 0) {
+            qCWarning(PIPEWIRE) << "Failed to set volume";
+        }
     }
+
+#if PW_CHECK_VERSION(0, 3, 70)
+    std::array<uint8_t, 128> paramBuffer;
+    auto builder      = SPA_POD_BUILDER_INIT(paramBuffer.data(), paramBuffer.size());
+    const auto* param = static_cast<const spa_pod*>(spa_pod_builder_add_object(
+        &builder, SPA_TYPE_OBJECT_Props, SPA_PARAM_Props, SPA_PROP_mute, SPA_POD_Bool(volume <= 0.0F)));
+    if(pw_stream_set_param(m_stream.get(), SPA_PARAM_Props, param) < 0) {
+        qCWarning(PIPEWIRE) << "Failed to set mute state";
+    }
+#endif
 }
 
 pw_buffer* PipewireStream::dequeueBuffer()

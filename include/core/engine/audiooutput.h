@@ -171,6 +171,8 @@ public:
 Q_SIGNALS:
     //! Backend runtime state transition (`Error`, `Disconnected`, ...).
     void stateChanged(Fooyin::AudioOutput::State state);
+    //! Backend master volume changed outside the engine.
+    void volumeChanged(double volume);
 };
 using OutputCreator = std::function<std::unique_ptr<AudioOutput>()>;
 } // namespace Fooyin

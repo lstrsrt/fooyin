@@ -135,6 +135,12 @@ EngineHandler::EngineHandler(std::shared_ptr<AudioLoader> audioLoader, PlayerCon
 
     updateAnalysisRelays();
 
+    QObject::connect(m_engine, &AudioEngine::volumeChanged, this, [this](double volume) {
+        if(!qFuzzyCompare(m_settings->value<Settings::Core::OutputVolume>() + 1.0, volume + 1.0)) {
+            m_settings->set<Settings::Core::OutputVolume>(volume);
+        }
+    });
+
     dispatchCommand(&AudioEngine::setTrackEndAutoTransitionEnabled,
                     m_playerController->trackEndAutoTransitionsEnabled());
 

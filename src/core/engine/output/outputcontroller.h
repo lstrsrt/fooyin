@@ -46,6 +46,8 @@ public:
     void setOutputDevice(const QString& device);
     //! Set runtime backend state callback for active output instances.
     void setOutputStateHandler(std::function<void(AudioOutput::State)> handler);
+    //! Set runtime backend volume callback for active output instances.
+    void setOutputVolumeHandler(std::function<void(double)> handler);
 
     [[nodiscard]] const QString& outputDevice() const;
 
@@ -62,6 +64,7 @@ private:
     AudioPipeline* m_pipeline;
     OutputCreator m_outputCreator;
     std::function<void(AudioOutput::State)> m_outputStateHandler;
+    std::function<void(double)> m_outputVolumeHandler;
     QString m_outputDevice;
 };
 } // namespace Fooyin

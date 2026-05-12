@@ -136,6 +136,11 @@ void MprisPlugin::initialise(const CorePluginContext& context)
     QObject::connect(m_playerController, &PlayerController::positionMoved, this,
                      [this](uint64_t ms) { Q_EMIT Seeked(static_cast<qlonglong>(ms) * 1000); });
 
+    m_settings->subscribe<Settings::Core::OutputVolume>(this, [this](double volume) {
+        notify(u"Volume"_s, volume);
+        Q_EMIT volumeChanged(volume);
+    });
+
     QObject::connect(this, &MprisPlugin::reloadMetadata, this, [this]() { notify(u"Metadata"_s, metadata()); });
 }
 

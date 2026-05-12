@@ -63,6 +63,11 @@ void OutputController::setOutputStateHandler(std::function<void(AudioOutput::Sta
     m_outputStateHandler = std::move(handler);
 }
 
+void OutputController::setOutputVolumeHandler(std::function<void(double)> handler)
+{
+    m_outputVolumeHandler = std::move(handler);
+}
+
 const QString& OutputController::outputDevice() const
 {
     return m_outputDevice;
@@ -97,6 +102,15 @@ bool OutputController::initOutput(const AudioFormat& format, double volume)
                          [handler = m_outputStateHandler](AudioOutput::State state) {
                              if(handler) {
                                  handler(state);
+                             }
+                         });
+    }
+
+    if(m_outputVolumeHandler && m_signalTarget) {
+        QObject::connect(output.get(), &AudioOutput::volumeChanged, m_signalTarget,
+                         [handler = m_outputVolumeHandler](double changedVolume) {
+                             if(handler) {
+                                 handler(changedVolume);
                              }
                          });
     }

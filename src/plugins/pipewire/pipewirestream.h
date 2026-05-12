@@ -82,6 +82,7 @@ private:
 
     spa_hook m_streamListener;
     PwStreamUPtr m_stream;
+    uint32_t m_channelCount;
 };
 } // namespace Pipewire
 } // namespace Fooyin

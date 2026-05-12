@@ -357,6 +357,7 @@ AudioEngine::AudioEngine(std::shared_ptr<AudioLoader> audioLoader, SettingsManag
             },
             Qt::QueuedConnection);
     });
+    m_outputController.setOutputVolumeHandler([this](double volume) { handleOutputVolumeChange(volume); });
 
     QObject::connect(
         &m_audioClock, &AudioClock::positionChanged, this, [this](uint64_t positionMs, uint64_t generation) {
@@ -4443,6 +4444,17 @@ void AudioEngine::setVolume(double volume)
 {
     m_volume = std::clamp(volume, 0.0, 1.0);
     m_pipeline.setOutputVolume(m_volume);
+}
+
+void AudioEngine::handleOutputVolumeChange(double volume)
+{
+    volume = std::clamp(volume, 0.0, 1.0);
+    if(qFuzzyCompare(m_volume + 1.0, volume + 1.0)) {
+        return;
+    }
+
+    m_volume = volume;
+    Q_EMIT volumeChanged(m_volume);
 }
 
 void AudioEngine::updateCurrentTrackMetadata(const Track& track)
