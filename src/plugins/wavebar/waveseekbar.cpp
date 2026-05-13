@@ -21,6 +21,7 @@
 
 #include <utils/stringutils.h>
 
+#include <QEvent>
 #include <QImage>
 #include <QMouseEvent>
 #include <QPainter>
@@ -79,8 +80,10 @@ WaveSeekBar::WaveSeekBar(QWidget* parent)
     , m_supersampleFactor{1}
     , m_maxScale{1.0}
     , m_centreGap{0}
-    , m_mode{WaveMode::Default}
+    , m_mode{Default}
     , m_colours{}
+    , m_waveformCacheRenderWidth{0}
+    , m_waveformCacheDirty{true}
 {
     setFocusPolicy(Qt::FocusPolicy(style()->styleHint(QStyle::SH_Button_FocusPolicy)));
 }
@@ -90,6 +93,7 @@ void WaveSeekBar::processData(const WaveformData<float>& waveData)
     m_data  = waveData;
     m_scale = 1.0;
 
+    invalidateWaveformCache();
     update();
 }
 
@@ -138,7 +142,7 @@ void WaveSeekBar::setChannelScale(double scale)
 {
     const double validatedScale = std::clamp(scale, 0.0, 1.0);
     if(std::exchange(m_channelScale, validatedScale) != validatedScale) {
-        update();
+        invalidate();
     }
 }
 
@@ -147,7 +151,7 @@ void WaveSeekBar::setBarWidth(int width)
     const int validatedWidth = std::max(1, width);
     if(std::exchange(m_barWidth, validatedWidth) != validatedWidth) {
         m_sampleWidth = m_barWidth + m_barGap;
-        update();
+        invalidate();
     }
 }
 
@@ -156,7 +160,7 @@ void WaveSeekBar::setBarGap(int gap)
     const int validatedGap = std::max(0, gap);
     if(std::exchange(m_barGap, validatedGap) != validatedGap) {
         m_sampleWidth = m_barWidth + m_barGap;
-        update();
+        invalidate();
     }
 }
 
@@ -164,7 +168,7 @@ void WaveSeekBar::setMaxScale(double scale)
 {
     const double validatedScale = std::clamp(scale, 0.0, 2.0);
     if(std::exchange(m_maxScale, validatedScale) != validatedScale) {
-        update();
+        invalidate();
     }
 }
 
@@ -172,21 +176,21 @@ void WaveSeekBar::setCentreGap(int gap)
 {
     const int validatedGap = std::max(0, gap);
     if(std::exchange(m_centreGap, validatedGap) != validatedGap) {
-        update();
+        invalidate();
     }
 }
 
 void WaveSeekBar::setMode(WaveModes mode)
 {
     if(std::exchange(m_mode, mode) != mode) {
-        update();
+        invalidate();
     }
 }
 
 void WaveSeekBar::setColours(const Colours& colours)
 {
     if(std::exchange(m_colours, colours) != colours) {
-        update();
+        invalidate();
     }
 }
 
@@ -194,7 +198,7 @@ void WaveSeekBar::setSupersampleFactor(int factor)
 {
     factor = std::max(1, factor);
     if(std::exchange(m_supersampleFactor, factor) != factor) {
-        update();
+        invalidate();
     }
 }
 
@@ -222,63 +226,17 @@ void WaveSeekBar::paintEvent(QPaintEvent* event)
         return;
     }
 
-    const QRect dirtyRect = event->rect();
-    const int padPx       = std::max(2, m_sampleWidth * 2);
-    const QRect targetRect
-        = QRect{dirtyRect.left() - padPx, 0, dirtyRect.width() + (padPx * 2), height()}.intersected(rect());
-    const int widgetWidth = std::max(1, width());
-    const int renderWidth = std::max(widgetWidth * m_supersampleFactor, m_data.sampleCount() * m_sampleWidth);
-    const int sourceLeft  = std::max(
-        0, static_cast<int>(std::floor((static_cast<double>(targetRect.left()) * renderWidth) / widgetWidth)));
-    const int sourceRight = std::min(
-        renderWidth,
-        static_cast<int>(std::ceil((static_cast<double>(targetRect.right() + 1) * renderWidth) / widgetWidth)));
-    const QRect sourceRect(sourceLeft, 0, std::max(1, sourceRight - sourceLeft), height());
-
-    QImage image{sourceRect.size(), QImage::Format_ARGB32_Premultiplied};
-    image.fill(Qt::transparent);
-
-    QPainter imagePainter{&image};
-    imagePainter.translate(-sourceRect.topLeft());
-    paintWaveform(imagePainter, sourceRect, renderWidth);
-
-    painter.save();
-    painter.setClipRect(dirtyRect);
-    painter.setRenderHint(QPainter::SmoothPixmapTransform, true);
-
-    const double positionX    = positionFromValue(static_cast<double>(m_position));
-    const double targetLeft   = targetRect.left();
-    const double targetRight  = targetRect.right() + 1;
-    const double targetWidth  = std::max(1.0, targetRight - targetLeft);
-    const double sourceWidthF = sourceRect.width();
-
-    auto drawSlice = [&](const QRectF& sliceTarget) {
-        if(sliceTarget.width() <= 0.0) {
-            return;
-        }
-
-        const double sliceLeft       = sliceTarget.x();
-        const double sliceRight      = sliceLeft + sliceTarget.width();
-        const double normalisedLeft  = std::clamp((sliceLeft - targetLeft) / targetWidth, 0.0, 1.0);
-        const double normalisedRight = std::clamp((sliceRight - targetLeft) / targetWidth, 0.0, 1.0);
-        const QRectF sliceSource(normalisedLeft * sourceWidthF, 0.0,
-                                 std::max(0.0, (normalisedRight - normalisedLeft) * sourceWidthF),
-                                 static_cast<double>(image.height()));
-        painter.drawImage(sliceTarget, image, sliceSource);
-    };
-
-    if(positionX > targetLeft && positionX < targetRight) {
-        drawSlice(QRectF{targetLeft, static_cast<double>(targetRect.top()), positionX - targetLeft,
-                         static_cast<double>(targetRect.height())});
-        drawSlice(QRectF{positionX, static_cast<double>(targetRect.top()), targetRight - positionX,
-                         static_cast<double>(targetRect.height())});
-    }
-    else {
-        painter.drawImage(QRectF{targetRect}, image, QRectF{image.rect()});
-    }
-
-    painter.restore();
+    drawCachedWaveform(painter, event->rect());
     drawCursors(painter);
+}
+
+void WaveSeekBar::changeEvent(QEvent* event)
+{
+    if(event->type() == QEvent::PaletteChange || event->type() == QEvent::StyleChange) {
+        invalidateWaveformCache();
+    }
+
+    QWidget::changeEvent(event);
 }
 
 void WaveSeekBar::mouseMoveEvent(QMouseEvent* event)
@@ -448,6 +406,137 @@ void WaveSeekBar::updateRange(double first, double last)
     }
 }
 
+void WaveSeekBar::invalidateWaveformCache()
+{
+    m_waveformCacheDirty = true;
+}
+
+int WaveSeekBar::cachedRenderWidth() const
+{
+    const int widgetWidth = std::max(1, width());
+    return std::max(widgetWidth * m_supersampleFactor, m_data.sampleCount() * m_sampleWidth);
+}
+
+void WaveSeekBar::ensureWaveformCache()
+{
+    const QSize targetSize{cachedRenderWidth(), height()};
+    if(targetSize.isEmpty()) {
+        m_unplayedWaveformCache    = {};
+        m_playedWaveformCache      = {};
+        m_waveformCacheSize        = {};
+        m_waveformCacheRenderWidth = 0;
+        m_waveformCacheDirty       = true;
+        return;
+    }
+
+    if(!m_waveformCacheDirty && m_waveformCacheSize == targetSize) {
+        return;
+    }
+
+    m_waveformCacheSize        = targetSize;
+    m_waveformCacheRenderWidth = targetSize.width();
+
+    m_unplayedWaveformCache = QImage{targetSize, QImage::Format_ARGB32_Premultiplied};
+    m_unplayedWaveformCache.fill(Qt::transparent);
+    {
+        QPainter painter{&m_unplayedWaveformCache};
+        paintWaveform(painter, QRect{QPoint{0, 0}, targetSize}, m_waveformCacheRenderWidth,
+                      PlaybackColourMode::Unplayed);
+    }
+
+    m_playedWaveformCache = QImage{targetSize, QImage::Format_ARGB32_Premultiplied};
+    m_playedWaveformCache.fill(Qt::transparent);
+    {
+        QPainter painter{&m_playedWaveformCache};
+        paintWaveform(painter, QRect{QPoint{0, 0}, targetSize}, m_waveformCacheRenderWidth, PlaybackColourMode::Played);
+    }
+
+    m_waveformCacheDirty = false;
+}
+
+void WaveSeekBar::drawCachedWaveform(QPainter& painter, const QRect& dirtyRect)
+{
+    ensureWaveformCache();
+
+    if(m_unplayedWaveformCache.isNull() || m_playedWaveformCache.isNull()) {
+        paintWaveform(painter, dirtyRect, width());
+        return;
+    }
+
+    const int padPx = std::max(2, m_sampleWidth * 2);
+    const QRect targetRect
+        = QRect{dirtyRect.left() - padPx, 0, dirtyRect.width() + (padPx * 2), height()}.intersected(rect());
+
+    painter.save();
+    painter.setClipRect(dirtyRect);
+    painter.setRenderHint(QPainter::SmoothPixmapTransform, true);
+
+    const double positionX   = positionFromValue(static_cast<double>(m_position));
+    const double targetLeft  = targetRect.left();
+    const double targetRight = targetRect.right() + 1;
+
+    if(positionX > targetLeft && positionX < targetRight) {
+        drawCachedSlice(painter, m_playedWaveformCache,
+                        QRectF{targetLeft, static_cast<double>(targetRect.top()), positionX - targetLeft,
+                               static_cast<double>(targetRect.height())});
+        drawCachedSlice(painter, m_unplayedWaveformCache,
+                        QRectF{positionX, static_cast<double>(targetRect.top()), targetRight - positionX,
+                               static_cast<double>(targetRect.height())});
+    }
+    else {
+        const bool played = positionX >= targetRight;
+        drawCachedSlice(painter, played ? m_playedWaveformCache : m_unplayedWaveformCache, QRectF{targetRect});
+    }
+
+    if(m_barGap == 0) {
+        drawCachedTransition(painter, positionX, targetRect);
+    }
+
+    painter.restore();
+}
+
+void WaveSeekBar::drawCachedSlice(QPainter& painter, const QImage& image, const QRectF& targetRect) const
+{
+    if(targetRect.width() <= 0.0 || targetRect.height() <= 0.0 || image.isNull()) {
+        return;
+    }
+
+    const double widgetWidth = std::max(1, width());
+    const double scale       = static_cast<double>(m_waveformCacheRenderWidth) / widgetWidth;
+    const QRectF sourceRect{targetRect.x() * scale, targetRect.y(), targetRect.width() * scale, targetRect.height()};
+
+    painter.drawImage(targetRect, image, sourceRect);
+}
+
+void WaveSeekBar::drawCachedTransition(QPainter& painter, double positionX, const QRect& targetRect)
+{
+    const int radius = std::max(2, m_barWidth * 2);
+    const QRect transitionRect{static_cast<int>(std::floor(positionX)), 0, radius + 1, height()};
+    const QRect overlayRect = transitionRect.intersected(targetRect);
+    if(!overlayRect.isValid()) {
+        return;
+    }
+
+    QImage overlay{overlayRect.size(), QImage::Format_ARGB32_Premultiplied};
+    overlay.fill(Qt::transparent);
+
+    QPainter overlayPainter{&overlay};
+    overlayPainter.setRenderHint(QPainter::SmoothPixmapTransform, true);
+
+    const QPointF offset{-static_cast<double>(overlayRect.left()), -static_cast<double>(overlayRect.top())};
+    overlayPainter.translate(offset);
+    drawCachedSlice(overlayPainter, m_playedWaveformCache, QRectF{overlayRect});
+
+    overlayPainter.setCompositionMode(QPainter::CompositionMode_DestinationIn);
+    QLinearGradient alphaGradient{QPointF{positionX, 0.0}, QPointF{positionX + radius, 0.0}};
+    alphaGradient.setColorAt(0.0, QColor{0, 0, 0, 255});
+    alphaGradient.setColorAt(1.0, QColor{0, 0, 0, 0});
+    overlayPainter.fillRect(QRectF{overlayRect}, alphaGradient);
+    overlayPainter.end();
+
+    painter.drawImage(overlayRect.topLeft(), overlay);
+}
+
 void WaveSeekBar::drawCursors(QPainter& painter)
 {
     if(m_showCursor && m_playState != Player::PlayState::Stopped) {
@@ -465,7 +554,7 @@ void WaveSeekBar::drawCursors(QPainter& painter)
     }
 }
 
-void WaveSeekBar::paintWaveform(QPainter& painter, const QRect& rect, double renderWidth)
+void WaveSeekBar::paintWaveform(QPainter& painter, const QRect& rect, double renderWidth, PlaybackColourMode colourMode)
 {
     const QRect waveformRect{rect.left(), 0, rect.width(), height()};
 
@@ -482,7 +571,19 @@ void WaveSeekBar::paintWaveform(QPainter& painter, const QRect& rect, double ren
     const int first          = std::max(0, static_cast<int>(std::floor(firstSample)));
     const int last           = std::max(first, static_cast<int>(std::ceil(lastSample)));
     const double firstX      = first * m_sampleWidth;
-    const double posX        = positionFromValue(static_cast<double>(m_position), renderWidth);
+
+    double posX{0.0};
+    switch(colourMode) {
+        case PlaybackColourMode::Unplayed:
+            posX = 0.0;
+            break;
+        case PlaybackColourMode::Played:
+            posX = renderWidth;
+            break;
+        case PlaybackColourMode::Position:
+            posX = positionFromValue(static_cast<double>(m_position), renderWidth);
+            break;
+    }
 
     painter.fillRect(waveformRect, m_colours.colour(Colours::Type::BgUnplayed, palette()));
     const double playedWidth = std::max(0.0, posX - firstX);
@@ -494,13 +595,13 @@ void WaveSeekBar::paintWaveform(QPainter& painter, const QRect& rect, double ren
 
     int y = static_cast<int>((channelHeight - waveformHeight) / 2);
     for(int ch{0}; ch < channels; ++ch) {
-        drawChannel(painter, ch, waveformHeight, first, last, y, renderWidth);
+        drawChannel(painter, ch, waveformHeight, first, last, y, renderWidth, colourMode);
         y += channelHeight;
     }
 }
 
 void WaveSeekBar::drawChannel(QPainter& painter, int channel, double height, int first, int last, int y,
-                              double renderWidth)
+                              double renderWidth, PlaybackColourMode colourMode)
 {
     const auto& [max, min, rms] = m_data.channelData[channel];
     if(max.empty() || min.empty() || rms.empty()) {
@@ -527,13 +628,13 @@ void WaveSeekBar::drawChannel(QPainter& painter, int channel, double height, int
         const auto finalX    = static_cast<double>(total * m_sampleWidth);
         const double endX    = renderWidth;
         const double centreY = centre + (centreGap > 0 ? centreGap / 2 : 0);
-        drawSilence(painter, finalX, endX, centreY, currentPosition);
+        drawSilence(painter, finalX, endX, centreY, currentPosition, colourMode);
     }
     else if(m_mode & Silence && drawMax && drawMin) {
         const auto firstX    = static_cast<double>(first * m_sampleWidth);
         const auto lastX     = static_cast<double>((last + 1) * m_sampleWidth);
         const double centreY = centre + (centreGap > 0 ? centreGap / 2 : 0);
-        drawSilence(painter, firstX, lastX, centreY, currentPosition);
+        drawSilence(painter, firstX, lastX, centreY, currentPosition, colourMode);
     }
 
     const auto clipH    = static_cast<double>(this->height());
@@ -582,7 +683,13 @@ void WaveSeekBar::drawChannel(QPainter& painter, int channel, double height, int
         }
     };
 
-    if(m_barGap == 0) {
+    if(colourMode != PlaybackColourMode::Position) {
+        const bool isPlayed = colourMode == PlaybackColourMode::Played;
+        for(int i{drawFirst}; i <= last && i < total; ++i) {
+            drawBar(i, false, isPlayed, 0.0);
+        }
+    }
+    else if(m_barGap == 0) {
         // Pass 1: all bars unplayed
         for(int i{drawFirst}; i <= last && i < total; ++i) {
             drawBar(i, false, false, 0.0);
@@ -635,7 +742,8 @@ void WaveSeekBar::drawChannel(QPainter& painter, int channel, double height, int
     }
 }
 
-void WaveSeekBar::drawSilence(QPainter& painter, double first, double last, double y, double currentPosition)
+void WaveSeekBar::drawSilence(QPainter& painter, double first, double last, double y, double currentPosition,
+                              PlaybackColourMode colourMode)
 {
     const bool showRms        = m_data.complete && m_mode & Rms;
     const auto unplayedColour = showRms ? m_colours.colour(Colours::Type::RmsMaxUnplayed, palette())
@@ -643,7 +751,11 @@ void WaveSeekBar::drawSilence(QPainter& painter, double first, double last, doub
     const auto playedColour   = showRms ? m_colours.colour(Colours::Type::RmsMaxPlayed, palette())
                                         : m_colours.colour(Colours::Type::MaxPlayed, palette());
 
-    if(currentPosition <= first) {
+    if(colourMode != PlaybackColourMode::Position) {
+        painter.setPen(colourMode == PlaybackColourMode::Played ? playedColour : unplayedColour);
+        painter.drawLine(QLineF{first, y, last, y});
+    }
+    else if(currentPosition <= first) {
         painter.setPen(unplayedColour);
         const QLineF unplayedLine{first, y, last, y};
         painter.drawLine(unplayedLine);
@@ -697,6 +809,12 @@ void WaveSeekBar::drawSeekTip()
     seekTipPos.ry() = std::min(seekTipPos.y(), height());
 
     m_seekTip->setPosition(mapToGlobal(seekTipPos));
+}
+
+void WaveSeekBar::invalidate()
+{
+    invalidateWaveformCache();
+    update();
 }
 } // namespace Fooyin::WaveBar
 

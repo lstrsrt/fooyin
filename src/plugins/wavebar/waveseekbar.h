@@ -26,6 +26,7 @@
 #include <core/player/playerdefs.h>
 #include <gui/widgets/tooltip.h>
 
+#include <QImage>
 #include <QPointer>
 #include <QWidget>
 
@@ -63,6 +64,7 @@ Q_SIGNALS:
 
 protected:
     void paintEvent(QPaintEvent* event) override;
+    void changeEvent(QEvent* event) override;
     void mouseMoveEvent(QMouseEvent* event) override;
     void mousePressEvent(QMouseEvent* event) override;
     void mouseReleaseEvent(QMouseEvent* event) override;
@@ -70,17 +72,35 @@ protected:
     void keyPressEvent(QKeyEvent* event) override;
 
 private:
+    enum class PlaybackColourMode : uint8_t
+    {
+        Position = 0,
+        Unplayed,
+        Played
+    };
+
     [[nodiscard]] double positionFromValue(double value) const;
     [[nodiscard]] double positionFromValue(double value, double renderWidth) const;
     [[nodiscard]] uint64_t valueFromPosition(int pos) const;
     void updateMousePosition(const QPoint& pos);
     void updateRange(double first, double last);
 
+    void invalidateWaveformCache();
+    void ensureWaveformCache();
+    [[nodiscard]] int cachedRenderWidth() const;
+    void drawCachedWaveform(QPainter& painter, const QRect& dirtyRect);
+    void drawCachedSlice(QPainter& painter, const QImage& image, const QRectF& targetRect) const;
+    void drawCachedTransition(QPainter& painter, double positionX, const QRect& targetRect);
     void drawCursors(QPainter& painter);
-    void paintWaveform(QPainter& painter, const QRect& rect, double renderWidth);
-    void drawChannel(QPainter& painter, int channel, double height, int first, int last, int y, double renderWidth);
-    void drawSilence(QPainter& painter, double first, double last, double y, double currentPosition);
+    void paintWaveform(QPainter& painter, const QRect& rect, double renderWidth,
+                       PlaybackColourMode colourMode = PlaybackColourMode::Position);
+    void drawChannel(QPainter& painter, int channel, double height, int first, int last, int y, double renderWidth,
+                     PlaybackColourMode colourMode);
+    void drawSilence(QPainter& painter, double first, double last, double y, double currentPosition,
+                     PlaybackColourMode colourMode);
     void drawSeekTip();
+
+    void invalidate();
 
     Player::PlayState m_playState;
     bool m_seekable;
@@ -103,5 +123,11 @@ private:
 
     WaveModes m_mode;
     Colours m_colours;
+
+    QImage m_unplayedWaveformCache;
+    QImage m_playedWaveformCache;
+    QSize m_waveformCacheSize;
+    int m_waveformCacheRenderWidth;
+    bool m_waveformCacheDirty;
 };
 } // namespace Fooyin::WaveBar
