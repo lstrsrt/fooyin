@@ -20,6 +20,7 @@
 #include "tracklistfuncs.h"
 
 #include <core/track.h>
+#include <utils/fileutils.h>
 #include <utils/stringutils.h>
 
 #include <set>
@@ -42,8 +43,26 @@ QString playtime(const TrackList& tracks)
 
 QString playlistSize(const TrackList& tracks)
 {
-    const uint64_t total = std::transform_reduce(tracks.cbegin(), tracks.cend(), 0ULL, std::plus<>(),
-                                                 [](const auto& track) { return track.fileSize(); });
+    uint64_t total{0};
+    std::set<QString> seenSegmentPaths;
+
+    for(const Track& track : tracks) {
+        if(!track.isBoundedSegment()) {
+            total += track.fileSize();
+            continue;
+        }
+
+        const QString sourcePath = Utils::File::cleanPath(track.filepath());
+        if(sourcePath.isEmpty()) {
+            total += track.fileSize();
+            continue;
+        }
+
+        const auto [_, inserted] = seenSegmentPaths.emplace(sourcePath);
+        if(inserted) {
+            total += track.fileSize();
+        }
+    }
 
     return Utils::formatFileSize(total);
 }

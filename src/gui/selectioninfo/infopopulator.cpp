@@ -25,10 +25,9 @@
 #include <core/library/librarymanager.h>
 #include <core/track.h>
 #include <utils/enum.h>
+#include <utils/fileutils.h>
 #include <utils/stringutils.h>
 #include <utils/utils.h>
-
-#include <QFileInfo>
 
 #include <set>
 #include <tuple>
@@ -51,7 +50,6 @@ public:
     InfoItem* getOrAddNode(const QString& key, const QString& name, ItemParent parent, InfoItem::ItemType type,
                            InfoItem::ValueType valueType = InfoItem::Concat, const InfoItem::FormatFunc& numFunc = {});
     void checkAddParentNode(InfoModel::ItemParent parent);
-    void checkAddEntryNode(const QString& key, const QString& name, InfoModel::ItemParent parent);
 
     template <typename Value>
     void checkAddEntryNode(const QString& key, const QString& name, InfoModel::ItemParent parent, Value&& value,
@@ -81,6 +79,7 @@ public:
     void addTrackPlayStats(const Track& track);
     void addTrackReplayGain(int total);
     void addTrackOther(const Track& track);
+    uint64_t fileSize(const Track& track);
 
     void addTrackNodes(InfoItem::Options options, const TrackList& tracks);
 
@@ -93,6 +92,7 @@ public:
     std::set<float> m_albumGain;
     std::set<float> m_albumPeak;
     std::set<float> m_opusHeaderGain;
+    std::set<QString> m_seenSegmentFileSizePaths;
     int m_opusTrackCount{0};
 };
 
@@ -104,6 +104,7 @@ void InfoPopulatorPrivate::reset()
     m_albumGain.clear();
     m_albumPeak.clear();
     m_opusHeaderGain.clear();
+    m_seenSegmentFileSizePaths.clear();
     m_opusTrackCount = 0;
 }
 
@@ -149,12 +150,6 @@ void InfoPopulatorPrivate::checkAddParentNode(InfoModel::ItemParent parent)
     }
 }
 
-void InfoPopulatorPrivate::checkAddEntryNode(const QString& key, const QString& name, InfoModel::ItemParent parent)
-{
-    checkAddParentNode(parent);
-    getOrAddNode(key, name, parent, InfoItem::Entry);
-}
-
 void InfoPopulatorPrivate::addTrackMetadata(const Track& track, bool extended)
 {
     checkAddEntryNode(u"Artist"_s, InfoPopulator::tr("Artist"), ItemParent::Metadata, track.artists());
@@ -195,7 +190,7 @@ void InfoPopulatorPrivate::addTrackLocation(int total, const Track& track)
 
     checkAddEntryNode(
         u"FileSize"_s, total > 1 ? InfoPopulator::tr("Total Size") : InfoPopulator::tr("File Size"),
-        ItemParent::Location, track.fileSize(), InfoItem::Total,
+        ItemParent::Location, fileSize(track), InfoItem::Total,
         InfoItem::FormatUIntFunc{[](uint64_t size) -> QString { return Utils::formatFileSize(size, true); }});
     checkAddEntryNode(u"LastModified"_s, InfoPopulator::tr("Last Modified"), ItemParent::Location, track.modifiedTime(),
                       InfoItem::Max, InfoItem::FormatUIntFunc{Utils::formatTimeMs});
@@ -330,6 +325,21 @@ void InfoPopulatorPrivate::addTrackOther(const Track& track)
         const auto extraProp = u"<%1>"_s.arg(prop);
         checkAddEntryNode(extraProp, extraProp, ItemParent::Other, value, InfoItem::Percentage);
     }
+}
+
+uint64_t InfoPopulatorPrivate::fileSize(const Track& track)
+{
+    if(!track.isBoundedSegment()) {
+        return track.fileSize();
+    }
+
+    const QString sourcePath = Utils::File::cleanPath(track.filepath());
+    if(sourcePath.isEmpty()) {
+        return track.fileSize();
+    }
+
+    const auto [_, inserted] = m_seenSegmentFileSizePaths.emplace(sourcePath);
+    return inserted ? track.fileSize() : 0;
 }
 
 void InfoPopulatorPrivate::addTrackNodes(InfoItem::Options options, const TrackList& tracks)
