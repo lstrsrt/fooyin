@@ -393,9 +393,18 @@ void SettingsDialog::checkCategoryWidget(SettingsCategory* category)
         return;
     }
 
+    if(category->pages.size() == 1) {
+        auto* page = category->pages.front();
+        if(const QWidget* widget = page->widget()) {
+            if(auto* layout = widget->layout()) {
+                layout->setContentsMargins({});
+            }
+        }
+    }
+
     auto* tabWidget = new QTabWidget();
     tabWidget->setTabBarAutoHide(true);
-    tabWidget->setDocumentMode(false);
+    tabWidget->setDocumentMode(category->pages.size() == 1);
 
     const auto addPageToTabWidget = [tabWidget](const auto& page) {
         if(QWidget* widget = page->widget()) {
