@@ -20,6 +20,7 @@
 #include "queueviewer.h"
 
 #include "internalguisettings.h"
+#include "playlist/playlistcontroller.h"
 #include "playlist/playlistinteractor.h"
 #include "queueviewerconfigwidget.h"
 #include "queueviewerdelegate.h"
@@ -32,6 +33,7 @@
 #include <gui/guiconstants.h>
 #include <gui/guiutils.h>
 #include <gui/trackmimedata.h>
+#include <gui/trackselectioncontroller.h>
 #include <gui/widgets/scriptlineedit.h>
 #include <utils/actions/actioncontainer.h>
 #include <utils/actions/actionmanager.h>
@@ -75,10 +77,14 @@ QueueViewer::QueueViewer(ActionManager* actionManager, PlaylistInteractor* playl
     , m_actionManager{actionManager}
     , m_playlistInteractor{playlistInteractor}
     , m_playerController{m_playlistInteractor->playerController()}
+    , m_selectionController{m_playlistInteractor->playlistController()->selectionController()}
     , m_settings{settings}
     , m_view{new QueueViewerView(this)}
     , m_model{new QueueViewerModel(std::move(audioLoader), m_playerController, settings, this)}
-    , m_context{new WidgetContext(this, Context{Id{"Context.QueueViewer."}.append(Utils::generateUniqueHash())}, this)}
+    , m_context{new WidgetContext(this,
+                                  Context{IdList{Constants::Context::TrackSelection,
+                                                 Id{"Context.QueueViewer."}.append(Utils::generateUniqueHash())}},
+                                  this)}
     , m_remove{new QAction(tr("&Remove"), this)}
     , m_removeCmd{nullptr}
     , m_clear{new QAction(tr("&Clear"), this)}
@@ -180,6 +186,9 @@ void QueueViewer::contextMenuEvent(QContextMenuEvent* event)
 
     addConfigureAction(menu, false);
 
+    menu->addSeparator();
+    m_selectionController->addTrackContextMenu(menu);
+
     menu->popup(event->globalPos());
 }
 
@@ -187,26 +196,30 @@ void QueueViewer::setupActions()
 {
     m_actionManager->addContextObject(m_context);
 
+    Context actionContext{m_context->context()};
+    actionContext.erase(Constants::Context::TrackSelection);
+
     m_remove->setStatusTip(tr("Remove the selected tracks from the playback queue"));
-    m_removeCmd = m_actionManager->registerAction(m_remove, Constants::Actions::Remove, m_context->context());
+    m_removeCmd = m_actionManager->registerAction(m_remove, Constants::Actions::Remove, actionContext);
     m_removeCmd->setDefaultShortcut(QKeySequence::Delete);
     QObject::connect(m_remove, &QAction::triggered, this, &QueueViewer::removeSelectedTracks);
-    QObject::connect(m_view->selectionModel(), &QItemSelectionModel::selectionChanged, this,
-                     [this]() { m_remove->setEnabled(canRemoveSelected()); });
+    QObject::connect(m_view->selectionModel(), &QItemSelectionModel::selectionChanged, this, [this]() {
+        m_remove->setEnabled(canRemoveSelected());
+        updateSelectedTracks();
+    });
     m_remove->setEnabled(canRemoveSelected());
 
     auto* editMenu = m_actionManager->actionContainer(Constants::Menus::Edit);
 
     m_clear->setStatusTip(tr("Remove all tracks in the playback queue"));
-    m_clearCmd = m_actionManager->registerAction(m_clear, Constants::Actions::Clear, m_context->context());
+    m_clearCmd = m_actionManager->registerAction(m_clear, Constants::Actions::Clear, actionContext);
     editMenu->addAction(m_clearCmd);
     QObject::connect(m_clear, &QAction::triggered, m_playerController, &PlayerController::clearQueue);
     m_clear->setEnabled(m_playerController->queuedTracksCount() > 0);
 
     auto* selectAllAction = new QAction(tr("&Select all"), this);
     selectAllAction->setStatusTip(tr("Select all tracks in the playback queue"));
-    auto* selectAllCmd
-        = m_actionManager->registerAction(selectAllAction, Constants::Actions::SelectAll, m_context->context());
+    auto* selectAllCmd = m_actionManager->registerAction(selectAllAction, Constants::Actions::SelectAll, actionContext);
     selectAllCmd->setDefaultShortcut(QKeySequence::SelectAll);
     editMenu->addAction(selectAllCmd);
     QObject::connect(selectAllAction, &QAction::triggered, m_view, &QAbstractItemView::selectAll);
@@ -247,6 +260,8 @@ void QueueViewer::resetModel() const
     if(m_view->selectionModel()) {
         restoreViewState(viewState);
     }
+
+    updateSelectedTracks();
 }
 
 QueueViewer::ViewState QueueViewer::captureViewState() const
@@ -391,9 +406,54 @@ bool QueueViewer::canRemoveSelected() const
     });
 }
 
+void QueueViewer::updateSelectedTracks() const
+{
+    TrackSelection selection;
+
+    const auto selected = m_view->selectionModel()->selectedRows();
+    selection.tracks.reserve(selected.size());
+    selection.playlistIndexes.reserve(selected.size());
+    selection.playlistEntryIds.reserve(selected.size());
+
+    std::optional<UId> playlistId;
+    bool playlistBacked{!selected.empty()};
+
+    for(const QModelIndex& index : selected) {
+        const auto playlistTrack = index.data(QueueViewerItem::Track).value<PlaylistTrack>();
+        if(!playlistTrack.isValid()) {
+            playlistBacked = false;
+            continue;
+        }
+
+        selection.tracks.emplace_back(playlistTrack.track);
+
+        if(playlistTrack.playlistId.isValid() && playlistTrack.indexInPlaylist >= 0
+           && (!playlistId || *playlistId == playlistTrack.playlistId)) {
+            playlistId = playlistTrack.playlistId;
+            selection.playlistIndexes.emplace_back(playlistTrack.indexInPlaylist);
+            selection.playlistEntryIds.emplace_back(playlistTrack.entryId);
+        }
+        else {
+            playlistBacked = false;
+        }
+    }
+
+    if(playlistBacked && playlistId && selection.playlistIndexes.size() == selection.tracks.size()) {
+        selection.playlistId     = *playlistId;
+        selection.playlistBacked = true;
+    }
+    else {
+        selection.playlistIndexes.clear();
+        selection.playlistEntryIds.clear();
+    }
+
+    m_selectionController->changeSelectedTracks(m_context, selection);
+}
+
 void QueueViewer::handleRowsChanged() const
 {
     m_clear->setEnabled(m_playerController->queuedTracksCount() > 0);
+    updateSelectedTracks();
 }
 
 void QueueViewer::removeSelectedTracks() const

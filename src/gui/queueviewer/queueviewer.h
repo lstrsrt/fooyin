@@ -38,6 +38,7 @@ class PlaylistInteractor;
 class QueueViewerModel;
 class QueueViewerView;
 class SettingsManager;
+class TrackSelectionController;
 class WidgetContext;
 
 class QueueViewer : public FyWidget
@@ -114,6 +115,7 @@ private:
     [[nodiscard]] QModelIndex indexForViewRowState(const ViewRowState& state) const;
 
     [[nodiscard]] bool canRemoveSelected() const;
+    void updateSelectedTracks() const;
 
     void handleRowsChanged() const;
     void removeSelectedTracks() const;
@@ -133,6 +135,7 @@ private:
     ActionManager* m_actionManager;
     PlaylistInteractor* m_playlistInteractor;
     PlayerController* m_playerController;
+    TrackSelectionController* m_selectionController;
     SettingsManager* m_settings;
 
     QueueViewerView* m_view;
