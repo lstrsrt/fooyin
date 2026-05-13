@@ -78,6 +78,41 @@ void movePage(PageList& pages, PageList::iterator page, PageList::iterator ancho
     pages.insert(pages.begin() + static_cast<std::ptrdiff_t>(anchorIndex), movedPage);
 }
 
+[[nodiscard]] bool categoryContainsPage(const SettingsItem* item, const Id& page)
+{
+    if(const auto* category = item->data()) {
+        if(category->findPageById(page) >= 0) {
+            return true;
+        }
+    }
+
+    for(int i{0}; i < item->childCount(); ++i) {
+        if(categoryContainsPage(item->child(i), page)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+[[nodiscard]] const SettingsPage* relativePageForCategory(const SettingsItem* item)
+{
+    if(const auto* category = item->data()) {
+        const auto it = std::ranges::find_if(category->pages, hasRelativePosition);
+        if(it != category->pages.cend()) {
+            return *it;
+        }
+    }
+
+    for(int i{0}; i < item->childCount(); ++i) {
+        if(const auto* page = relativePageForCategory(item->child(i))) {
+            return page;
+        }
+    }
+
+    return nullptr;
+}
+
 void sortPages(PageList& pages)
 {
     std::ranges::stable_sort(pages, [](const SettingsPage* lhs, const SettingsPage* rhs) {
@@ -97,6 +132,59 @@ void sortPages(PageList& pages)
 
         movePage(pages, it, anchor, page->relativePosition());
         it = std::ranges::find(pages, page);
+    }
+}
+
+void sortRelativeCategories(std::vector<SettingsItem*>& categories)
+{
+    struct RelativeCategory
+    {
+        SettingsItem* item;
+        SettingsItem* anchor;
+        SettingsPageRelativePosition position;
+    };
+
+    std::vector<RelativeCategory> relativeCategories;
+
+    for(auto* item : categories) {
+        const auto* page = relativePageForCategory(item);
+        if(!page || categoryContainsPage(item, page->positionPage())) {
+            continue;
+        }
+
+        auto anchor = std::ranges::find_if(categories, [page](const SettingsItem* category) {
+            return categoryContainsPage(category, page->positionPage());
+        });
+        if(anchor != categories.end() && *anchor != item) {
+            relativeCategories.push_back({item, *anchor, page->relativePosition()});
+        }
+    }
+
+    for(const auto& relative : relativeCategories) {
+        categories.erase(std::ranges::find(categories, relative.item));
+    }
+
+    const auto anchors{categories};
+    for(auto* anchor : anchors) {
+        if(!Utils::contains(categories, anchor)) {
+            continue;
+        }
+
+        auto before = std::views::filter(relativeCategories, [anchor](const RelativeCategory& relative) {
+            return relative.anchor == anchor && relative.position == SettingsPageRelativePosition::Before;
+        });
+        auto after  = std::views::filter(relativeCategories, [anchor](const RelativeCategory& relative) {
+            return relative.anchor == anchor && relative.position == SettingsPageRelativePosition::After;
+        });
+
+        for(const auto& relative : before) {
+            categories.insert(std::ranges::find(categories, anchor), relative.item);
+        }
+
+        auto afterPosition = std::ranges::find(categories, anchor) + 1;
+        for(const auto& relative : after) {
+            afterPosition = categories.insert(afterPosition, relative.item) + 1;
+        }
     }
 }
 } // namespace
@@ -142,6 +230,9 @@ void SettingsItem::sort()
         }
         return cmp < 0;
     });
+
+    sortRelativeCategories(m_children);
+    resetChildren();
 }
 
 SettingsModel::SettingsModel(QObject* parent)
