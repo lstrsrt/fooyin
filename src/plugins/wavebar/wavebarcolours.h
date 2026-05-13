@@ -57,7 +57,7 @@ struct Colours
 
     [[nodiscard]] static QColor defaultColour(Type type, const QPalette& palette = QApplication::palette())
     {
-        const QColor highlight = palette.highlight().color();
+        const QColor highlight = palette.color(QPalette::Active, QPalette::Highlight);
         const QColor rmsPlayed = highlight.darker(150);
 
         switch(type) {
