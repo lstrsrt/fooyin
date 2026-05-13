@@ -462,6 +462,7 @@ ShortcutsPage::ShortcutsPage(ActionManager* actionManager, SettingsManager* sett
     setId(Constants::Page::Shortcuts);
     setName(tr("Shortcuts"));
     setCategory({tr("Shortcuts")});
+    setRelativePosition(SettingsPageRelativePosition::After, ::Fooyin::Constants::Page::PlaylistGeneral);
     setWidgetCreator([actionManager] { return new ShortcutsPageWidget(actionManager); });
 }
 } // namespace Fooyin

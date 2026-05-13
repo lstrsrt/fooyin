@@ -22,6 +22,7 @@
 #include "lyricsconstants.h"
 #include "lyricssettings.h"
 
+#include <gui/guiconstants.h>
 #include <gui/widgets/slidereditor.h>
 #include <utils/settings/settingsmanager.h>
 
@@ -134,7 +135,8 @@ LyricsSearchingPage::LyricsSearchingPage(SettingsManager* settings, QObject* par
 {
     setId(Constants::Page::LyricsSearching);
     setName(tr("Searching"));
-    setCategory({tr("Plugins"), tr("Lyrics")});
+    setCategory({tr("Lyrics")});
+    setRelativePosition(SettingsPageRelativePosition::After, ::Fooyin::Constants::Page::PlaylistGeneral);
     setWidgetCreator([settings] { return new LyricsSearchingPageWidget(settings); });
 }
 } // namespace Fooyin::Lyrics

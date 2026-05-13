@@ -149,7 +149,8 @@ ShellIntegrationPage::ShellIntegrationPage(SettingsManager* settings, QObject* p
 {
     setId(Constants::Page::ShellIntegration);
     setName(tr("General"));
-    setCategory({tr("Shell Integration")});
+    setCategory({tr("Integrations"), tr("Shell")});
+    setRelativePosition(SettingsPageRelativePosition::After, Constants::Page::Plugins);
     setWidgetCreator([settings] { return new ShellIntegrationPageWidget(settings); });
 }
 } // namespace Fooyin

@@ -311,7 +311,8 @@ LyricsSavingPage::LyricsSavingPage(SettingsManager* settings, QObject* parent)
 {
     setId(Constants::Page::LyricsSaving);
     setName(tr("Saving"));
-    setCategory({tr("Plugins"), tr("Lyrics")});
+    setCategory({tr("Lyrics"), tr("Saving")});
+    setRelativePosition(SettingsPageRelativePosition::After, ::Fooyin::Constants::Page::PlaylistGeneral);
     setWidgetCreator([settings] { return new LyricsSavingPageWidget(settings); });
 }
 } // namespace Fooyin::Lyrics

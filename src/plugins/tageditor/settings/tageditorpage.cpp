@@ -24,6 +24,7 @@
 #include "tageditorconstants.h"
 #include "tageditorsettings.h"
 
+#include <gui/guiconstants.h>
 #include <gui/widgets/checkboxdelegate.h>
 #include <gui/widgets/extendabletableview.h>
 #include <utils/settings/settingsmanager.h>
@@ -143,6 +144,7 @@ TagEditorFieldsPage::TagEditorFieldsPage(TagEditorFieldRegistry* registry, Setti
     setId(Constants::Page::TagEditorFields);
     setName(tr("Fields"));
     setCategory({tr("Tagging"), tr("Tag Editor")});
+    setRelativePosition(SettingsPageRelativePosition::After, ::Fooyin::Constants::Page::PlaylistGeneral);
     setWidgetCreator([registry, settings] { return new TagEditorFieldsPageWidget(registry, settings); });
 }
 } // namespace Fooyin::TagEditor

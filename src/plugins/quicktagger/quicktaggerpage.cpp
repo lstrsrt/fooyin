@@ -23,6 +23,7 @@
 #include "quicktaggerconstants.h"
 #include "quicktaggermodel.h"
 
+#include <gui/guiconstants.h>
 #include <gui/widgets/extendabletableview.h>
 #include <utils/settings/settingsdialogcontroller.h>
 #include <utils/settings/settingsmanager.h>
@@ -110,6 +111,7 @@ QuickTaggerPage::QuickTaggerPage(SettingsManager* settings, QObject* parent)
     setId(Constants::Page::QuickTagger);
     setName(QObject::tr("Quick Tagger"));
     setCategory({QObject::tr("Tagging"), QObject::tr("Quick Tagger")});
+    setRelativePosition(SettingsPageRelativePosition::After, ::Fooyin::Constants::Page::PlaylistGeneral);
     setWidgetCreator([settings] { return new QuickTaggerPageWidget{settings}; });
 }
 } // namespace Fooyin::QuickTagger

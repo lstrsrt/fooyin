@@ -128,9 +128,9 @@ void DiscordPageWidget::reset()
 DiscordPage::DiscordPage(SettingsManager* settings, QObject* parent)
     : SettingsPage{settings->settingsDialog(), parent}
 {
-    setId("Fooyin.Page.Network.Discord");
+    setId("Fooyin.Page.Integrations.Discord");
     setName(tr("General"));
-    setCategory({tr("Plugins"), tr("Discord")});
+    setCategory({tr("Integrations"), tr("Discord")});
     setWidgetCreator([settings] { return new DiscordPageWidget(settings); });
 }
 } // namespace Fooyin::Discord

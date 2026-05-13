@@ -21,6 +21,6 @@
 
 namespace Fooyin::TagEditor::Constants {
 namespace Page {
-constexpr auto TagEditorFields = "Fooyin.Page.TagEditor.Fields";
+constexpr auto TagEditorFields = "Fooyin.Page.Tagging.TagEditor.Fields";
 } // namespace Page
 } // namespace Fooyin::TagEditor::Constants

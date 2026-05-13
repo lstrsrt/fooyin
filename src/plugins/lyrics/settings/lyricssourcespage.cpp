@@ -24,6 +24,7 @@
 #include "lyricssettings.h"
 #include "lyricssourcesmodel.h"
 
+#include <gui/guiconstants.h>
 #include <utils/settings/settingsmanager.h>
 
 #include <QCheckBox>
@@ -138,7 +139,8 @@ LyricsSourcesPage::LyricsSourcesPage(LyricsFinder* lyricsFinder, SettingsManager
 {
     setId(Constants::Page::LyricsSources);
     setName(tr("Sources"));
-    setCategory({tr("Plugins"), tr("Lyrics")});
+    setCategory({tr("Lyrics"), tr("Sources")});
+    setRelativePosition(SettingsPageRelativePosition::After, ::Fooyin::Constants::Page::PlaylistGeneral);
     setWidgetCreator([lyricsFinder, settings] { return new LyricsSourcesPageWidget(lyricsFinder, settings); });
 }
 } // namespace Fooyin::Lyrics

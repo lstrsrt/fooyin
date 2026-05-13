@@ -199,6 +199,7 @@ NetworkPage::NetworkPage(SettingsManager* settings, QObject* parent)
     setId(Constants::Page::Network);
     setName(tr("General"));
     setCategory({tr("Networking")});
+    setRelativePosition(SettingsPageRelativePosition::Before, Constants::Page::Plugins);
     setWidgetCreator([settings] { return new NetworkPageWidget(settings); });
 }
 } // namespace Fooyin

@@ -21,7 +21,7 @@
 
 namespace Fooyin::QuickTagger::Constants {
 namespace Page {
-constexpr auto QuickTagger = "Fooyin.Page.QuickTagger";
+constexpr auto QuickTagger = "Fooyin.Page.Tagging.QuickTagger";
 } // namespace Page
 
 namespace Menus {
