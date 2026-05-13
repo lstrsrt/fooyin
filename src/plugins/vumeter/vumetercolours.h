@@ -49,7 +49,7 @@ struct Colours
             case Type::Gradient1:
                 return {65, 65, 65};
             case Type::Gradient2:
-                return palette.highlight().color();
+                return palette.color(QPalette::Active, QPalette::Highlight);
         }
 
         return {};
