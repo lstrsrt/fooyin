@@ -187,7 +187,6 @@ SettingsDialog::SettingsDialog(PageList pages, QWidget* parent)
     m_categoryTree->setHeaderHidden(true);
     m_categoryTree->setModel(m_model);
     m_categoryTree->setFocus();
-    m_categoryTree->expandAll();
 
     m_buttonBox->button(QDialogButtonBox::Ok)->setDefault(true);
     m_buttonBox->button(QDialogButtonBox::RestoreDefaults)->setText(tr("Reset Page"));
