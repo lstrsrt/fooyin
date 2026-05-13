@@ -38,7 +38,7 @@
 #include <QMainWindow>
 #include <QRadioButton>
 #include <QSpinBox>
-#include <QTabWidget>
+#include <QStackedWidget>
 
 using namespace Qt::StringLiterals;
 
@@ -59,7 +59,8 @@ private:
 
     SettingsManager* m_settings;
 
-    QTabWidget* m_coverTypes;
+    QComboBox* m_coverTypes;
+    QStackedWidget* m_coverStack;
     QWidget* m_frontWidget;
     QWidget* m_backWidget;
     QWidget* m_artistWidget;
@@ -90,15 +91,19 @@ private:
 
 ArtworkDownloadPageWidget::ArtworkDownloadPageWidget(SettingsManager* settings)
     : m_settings{settings}
-    , m_coverTypes{new QTabWidget(this)}
+    , m_coverTypes{new QComboBox(this)}
+    , m_coverStack{new QStackedWidget(this)}
     , m_frontWidget{new QWidget(this)}
     , m_backWidget{new QWidget(this)}
     , m_artistWidget{new QWidget(this)}
 {
-    m_coverTypes->setDocumentMode(true);
-    m_coverTypes->addTab(m_frontWidget, tr("Front Cover"));
-    m_coverTypes->addTab(m_backWidget, tr("Back Cover"));
-    m_coverTypes->addTab(m_artistWidget, tr("Artist"));
+    m_coverTypes->addItem(tr("Front Cover"));
+    m_coverTypes->addItem(tr("Back Cover"));
+    m_coverTypes->addItem(tr("Artist"));
+
+    m_coverStack->addWidget(m_frontWidget);
+    m_coverStack->addWidget(m_backWidget);
+    m_coverStack->addWidget(m_artistWidget);
 
     int row{0};
 
@@ -171,8 +176,13 @@ ArtworkDownloadPageWidget::ArtworkDownloadPageWidget(SettingsManager* settings)
     auto* layout = new QGridLayout(this);
 
     row = 0;
-    layout->addWidget(m_coverTypes, row++, 0);
+    layout->addWidget(new QLabel(tr("Cover type") + u":"_s, this), row, 0);
+    layout->addWidget(m_coverTypes, row++, 1);
+    layout->addWidget(m_coverStack, row++, 0, 1, 3);
+    layout->setColumnStretch(2, 1);
     layout->setRowStretch(layout->rowCount(), 1);
+
+    QObject::connect(m_coverTypes, &QComboBox::currentIndexChanged, m_coverStack, &QStackedWidget::setCurrentIndex);
 }
 
 void ArtworkDownloadPageWidget::load()
