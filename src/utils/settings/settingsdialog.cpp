@@ -30,12 +30,14 @@
 #include <QDialogButtonBox>
 #include <QEvent>
 #include <QIODevice>
+#include <QLabel>
 #include <QMessageBox>
 #include <QPushButton>
 #include <QResizeEvent>
 #include <QScrollArea>
 #include <QStackedLayout>
 #include <QTreeView>
+#include <QVBoxLayout>
 
 namespace Fooyin {
 class ScrollArea : public QScrollArea
@@ -358,13 +360,16 @@ void SettingsDialog::showCategory(const QModelIndex& index)
     checkCategoryWidget(category);
 
     m_currentCategory = category->id;
+    m_currentPage     = {};
 
-    const int currentTabIndex = category->tabWidget->currentIndex();
-    if(currentTabIndex != -1) {
+    const int currentTabIndex = category->tabWidget ? category->tabWidget->currentIndex() : -1;
+    if(currentTabIndex != -1 && std::cmp_less(currentTabIndex, category->pages.size())) {
         auto* page    = category->pages.at(currentTabIndex);
         m_currentPage = page->id();
         m_visitedPages.emplace(page);
     }
+
+    m_buttonBox->button(QDialogButtonBox::RestoreDefaults)->setEnabled(m_currentPage.isValid());
     m_stackedLayout->setCurrentIndex(category->index);
 
     setWindowTitle(tr("Settings") + QLatin1String(": ") + category->name);
@@ -372,13 +377,25 @@ void SettingsDialog::showCategory(const QModelIndex& index)
 
 void SettingsDialog::checkCategoryWidget(SettingsCategory* category)
 {
-    if(category->tabWidget) {
+    if(category->index >= 0) {
+        return;
+    }
+
+    if(category->pages.empty()) {
+        auto* placeholder = new QWidget();
+        auto* layout      = new QVBoxLayout(placeholder);
+        auto* label       = new QLabel(tr("Select a page from this category."), placeholder);
+
+        label->setAlignment(Qt::AlignCenter);
+        layout->addWidget(label);
+
+        category->index = m_stackedLayout->addWidget(placeholder);
         return;
     }
 
     auto* tabWidget = new QTabWidget();
     tabWidget->setTabBarAutoHide(true);
-    tabWidget->setDocumentMode(true);
+    tabWidget->setDocumentMode(false);
 
     const auto addPageToTabWidget = [tabWidget](const auto& page) {
         if(QWidget* widget = page->widget()) {
@@ -411,6 +428,8 @@ void SettingsDialog::currentChanged(const QModelIndex& current)
 void SettingsDialog::currentTabChanged(int index)
 {
     if(index < 0) {
+        m_currentPage = {};
+        m_buttonBox->button(QDialogButtonBox::RestoreDefaults)->setDisabled(true);
         return;
     }
 
@@ -419,10 +438,17 @@ void SettingsDialog::currentTabChanged(int index)
         return;
     }
 
-    auto* category     = modelIndex.data(SettingsItem::Data).value<SettingsCategory*>();
+    auto* category = modelIndex.data(SettingsItem::Data).value<SettingsCategory*>();
+    if(!category || std::cmp_greater_equal(index, category->pages.size())) {
+        m_currentPage = {};
+        m_buttonBox->button(QDialogButtonBox::RestoreDefaults)->setDisabled(true);
+        return;
+    }
+
     SettingsPage* page = category->pages.at(index);
     m_currentPage      = page->id();
     m_visitedPages.emplace(page);
+    m_buttonBox->button(QDialogButtonBox::RestoreDefaults)->setEnabled(true);
 }
 
 SettingsPage* SettingsDialog::findPage(const Id& id)
