@@ -414,6 +414,13 @@ void Widgets::registerAdvancedSettings()
          .editor      = AdvancedSettingSpinBox{.minimum = 0, .maximum = 1024, .singleStep = 1, .suffix = u" MB"_s},
          .normalise   = {},
          .validate    = {}});
+    advancedSettingsRegistry->add<Settings::Gui::Internal::EditingMenuLevels>(
+        {.category    = {tr("Interface"), tr("Layout Editing")},
+         .label       = tr("Menu levels"),
+         .description = tr("Number of widget levels shown in the layout editing context menu."),
+         .editor      = AdvancedSettingSpinBox{.minimum = 1, .maximum = 4, .singleStep = 1, .suffix = {}},
+         .normalise   = {},
+         .validate    = {}});
     advancedSettingsRegistry->add<Settings::Core::Internal::VBRUpdateInterval>(
         {.category    = {tr("Playback"), tr("Decoding")},
          .label       = tr("VBR update interval"),
