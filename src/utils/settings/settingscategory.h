@@ -37,6 +37,7 @@ struct SettingsCategory
     QTabWidget* tabWidget{nullptr};
     PageList pages{};
     int index{-1};
+    int order{-1};
     SettingsPagePosition position{SettingsPagePosition::Default};
 
     bool operator==(const SettingsCategory& other) const

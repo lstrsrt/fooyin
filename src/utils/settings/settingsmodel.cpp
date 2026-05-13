@@ -25,6 +25,8 @@
 
 #include <ranges>
 
+using namespace Qt::StringLiterals;
+
 namespace Fooyin {
 namespace {
 [[nodiscard]] int positionIndex(SettingsPagePosition position)
@@ -111,6 +113,35 @@ void movePage(PageList& pages, PageList::iterator page, PageList::iterator ancho
     }
 
     return nullptr;
+}
+
+[[nodiscard]] QStringList categoryIdParts(const SettingsPage* page, int count)
+{
+    const QString pageId         = page->id().name();
+    static constexpr auto Prefix = "Fooyin.Page."_L1;
+
+    if(!pageId.startsWith(Prefix)) {
+        return {};
+    }
+
+    QStringList parts = pageId.sliced(Prefix.length()).split('.'_L1, Qt::SkipEmptyParts);
+    if(parts.size() > count) {
+        parts.erase(parts.begin() + count, parts.end());
+    }
+    return parts;
+}
+
+[[nodiscard]] Id categoryIdForPage(const SettingsPage* page, const QStringList& categories, int depth)
+{
+    QString id                = u"Fooyin.Category"_s;
+    const QStringList idParts = categoryIdParts(page, depth + 1);
+
+    for(int i{0}; i <= depth; ++i) {
+        id += u'.';
+        id += i < idParts.size() ? idParts.at(i) : categories.at(i);
+    }
+
+    return Id{id};
 }
 
 void sortPages(PageList& pages)
@@ -217,11 +248,15 @@ void SettingsItem::sort()
 
     StringCollator collator;
 
-    std::ranges::sort(m_children, [&collator](const SettingsItem* lhs, const SettingsItem* rhs) {
+    std::ranges::sort(m_children, [this, &collator](const SettingsItem* lhs, const SettingsItem* rhs) {
         const int lhsPosition = positionIndex(lhs->m_data->position);
         const int rhsPosition = positionIndex(rhs->m_data->position);
         if(lhsPosition != rhsPosition) {
             return lhsPosition < rhsPosition;
+        }
+
+        if(!m_data && lhs->m_data->order != rhs->m_data->order) {
+            return lhs->m_data->order < rhs->m_data->order;
         }
 
         const auto cmp = collator.compare(lhs->m_data->name, rhs->m_data->name);
@@ -264,8 +299,12 @@ void SettingsModel::setPages(const PageList& pages)
 {
     beginResetModel();
 
+    resetRoot();
     m_categories.clear();
+    m_items.clear();
     m_pageIds.clear();
+
+    int categoryOrder{0};
 
     for(const auto& page : pages) {
         if(m_pageIds.contains(page->id())) {
@@ -279,11 +318,13 @@ void SettingsModel::setPages(const PageList& pages)
         Id categoryId;
         SettingsCategory* category = nullptr;
 
-        for(const QString& categoryName : categories) {
-            categoryId = categoryId.append(categoryName);
+        for(int depth{0}; depth < categories.size(); ++depth) {
+            const QString& categoryName = categories.at(depth);
+            categoryId                  = categoryIdForPage(page, categories, depth);
 
             if(!m_items.contains(categoryId)) {
-                m_categories.emplace(categoryId, SettingsCategory{.id = categoryId, .name = categoryName});
+                m_categories.emplace(
+                    categoryId, SettingsCategory{.id = categoryId, .name = categoryName, .order = categoryOrder++});
                 category = &m_categories.at(categoryId);
                 m_items.emplace(categoryId, SettingsItem{category, parent});
                 auto* item = &m_items.at(categoryId);
