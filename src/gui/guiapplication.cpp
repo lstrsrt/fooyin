@@ -300,7 +300,7 @@ GuiApplicationPrivate::GuiApplicationPrivate(GuiApplication* self_, Application*
     , m_mainWindow{std::make_unique<MainWindow>(m_actionManager, m_menubar.get(), m_library, m_settings)}
     , m_mainContext{new WidgetContext(m_mainWindow.get(), Context{"Fooyin.MainWindow"}, m_self)}
     , m_playlistController{std::make_unique<PlaylistController>(m_core, &m_selectionController)}
-    , m_playlistInteractor{m_core->playlistHandler(), m_playlistController.get(), m_library}
+    , m_playlistInteractor{m_core->playlistHandler(), m_playlistController.get(), m_library, m_settings}
     , m_selectionController{m_actionManager, m_core->audioLoader().get(), m_settings, m_playlistController.get()}
     , m_searchController{new SearchController(m_editableLayout.get(), m_self)}
     , m_fileMenu{new FileMenu(m_actionManager, m_settings, m_self)}

@@ -105,6 +105,8 @@ CoreSettings::CoreSettings(SettingsManager* settingsManager)
     m_settings->createSetting<OverwriteRatingOnReload>(false, u"Library/OverwriteRatingOnReload"_s);
     m_settings->createSetting<OverwritePlaycountOnReload>(false, u"Library/OverwritePlaycountOnReload"_s);
     m_settings->createSetting<OpenFileAddDirectory>(false, u"Playlist/OpenFileAddDirectory"_s);
+    m_settings->createSetting<AddFoldersIgnorePlaylists>(true, u"Playlist/AddFoldersIgnorePlaylists"_s);
+    m_settings->createSetting<PlaylistPreventDuplicates>(false, u"Playlist/PreventDuplicates"_s);
 
     m_settings->createSetting<Internal::MonitorLibraries>(false, u"Library/MonitorLibraries"_s);
     m_settings->createTempSetting<Internal::MuteVolume>(m_settings->value<OutputVolume>());

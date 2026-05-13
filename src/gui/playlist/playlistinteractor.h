@@ -34,6 +34,7 @@ class Playlist;
 class PlaylistController;
 class PlaylistHandler;
 class PlaylistWidget;
+class SettingsManager;
 class UId;
 
 class PlaylistInteractor : public QObject
@@ -42,7 +43,7 @@ class PlaylistInteractor : public QObject
 
 public:
     PlaylistInteractor(PlaylistHandler* handler, PlaylistController* controller, MusicLibrary* library,
-                       QObject* parent = nullptr);
+                       SettingsManager* settings, QObject* parent = nullptr);
 
     [[nodiscard]] PlaylistHandler* handler() const;
     [[nodiscard]] PlaylistController* playlistController() const;
@@ -96,7 +97,9 @@ private:
     void activatePlaylist(Playlist* playlist, bool play = false) const;
     void activatePlaylist(Playlist* playlist, int indexToPlay, bool play = false) const;
     void appendToPlaylist(Playlist* playlist, const TrackList& tracks) const;
-    [[nodiscard]] Playlist* appendOrCreateNamedPlaylist(const QString& playlistName, const TrackList& tracks) const;
+    [[nodiscard]] TrackList filterDuplicateTracks(const Playlist* playlist, const TrackList& tracks) const;
+    [[nodiscard]] Playlist* appendOrCreateNamedPlaylist(const QString& playlistName, const TrackList& tracks,
+                                                        bool preventDuplicates = false) const;
     void tracksToNewPlaylist(const QString& playlistName, const TrackList& tracks, int indexToPlay, bool replace,
                              bool play = false);
 
@@ -115,5 +118,6 @@ private:
     PlaylistHandler* m_handler;
     PlaylistController* m_controller;
     MusicLibrary* m_library;
+    SettingsManager* m_settings;
 };
 } // namespace Fooyin

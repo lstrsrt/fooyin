@@ -44,6 +44,7 @@ struct FYCORE_EXPORT LibraryScanConfig
     QStringList externalRestrictExt;
     QStringList externalExcludeExt;
     bool playlistSkipMissing{true};
+    bool addFoldersIgnorePlaylists{false};
     bool overwriteRatingOnReload{false};
     bool overwritePlaycountOnReload{false};
 };

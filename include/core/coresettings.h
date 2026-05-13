@@ -88,6 +88,8 @@ enum CoreSettings : uint32_t
     OverwriteRatingOnReload       = 39 | Type::Bool,
     OverwritePlaycountOnReload    = 40 | Type::Bool,
     OpenFileAddDirectory          = 41 | Type::Bool,
+    AddFoldersIgnorePlaylists     = 42 | Type::Bool,
+    PlaylistPreventDuplicates     = 43 | Type::Bool,
 };
 Q_ENUM_NS(CoreSettings)
 } // namespace Settings::Core

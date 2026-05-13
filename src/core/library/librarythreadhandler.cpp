@@ -78,6 +78,7 @@ LibraryScanConfig currentScanConfig(SettingsManager* settings)
         .externalRestrictExt        = normaliseExtensions(settings->fileValue(ExternalRestrictTypes).toStringList()),
         .externalExcludeExt         = normaliseExtensions(settings->fileValue(ExternalExcludeTypes).toStringList()),
         .playlistSkipMissing        = settings->value<Settings::Core::PlaylistSkipMissing>(),
+        .addFoldersIgnorePlaylists  = settings->value<Settings::Core::AddFoldersIgnorePlaylists>(),
         .overwriteRatingOnReload    = settings->value<Settings::Core::OverwriteRatingOnReload>(),
         .overwritePlaycountOnReload = settings->value<Settings::Core::OverwritePlaycountOnReload>(),
     };

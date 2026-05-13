@@ -177,6 +177,11 @@ bool LibraryScanSession::handleEnumeratedFile(const QFileInfo& info, const Enume
 
     if(m_enumerationMode == EnumerationMode::External) {
         if(type == EnumeratedFileType::Playlist) {
+            if(m_config.addFoldersIgnorePlaylists && !m_externalExplicitPaths.contains(filepath)) {
+                m_state.rememberScannedFile(filepath);
+                return true;
+            }
+
             const size_t playlistTrackCount = m_resolver->countPlaylistTracks(filepath);
             m_state.setProgressPhase(m_phase, m_state.progressCount() + playlistTrackCount);
             m_state.reportProgress(filepath);

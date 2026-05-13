@@ -65,6 +65,8 @@ private:
     QComboBox* m_middleClick;
     QCheckBox* m_inlineTagEditing;
     QCheckBox* m_skipMissing;
+    QCheckBox* m_ignoreFolderPlaylists;
+    QCheckBox* m_preventDuplicates;
 };
 
 PlaylistGeneralPageWidget::PlaylistGeneralPageWidget(SettingsManager* settings)
@@ -73,6 +75,8 @@ PlaylistGeneralPageWidget::PlaylistGeneralPageWidget(SettingsManager* settings)
     , m_middleClick{new QComboBox(this)}
     , m_inlineTagEditing{new QCheckBox(tr("Enable inline tag editing"), this)}
     , m_skipMissing{new QCheckBox(tr("Skip missing tracks"), this)}
+    , m_ignoreFolderPlaylists{new QCheckBox(tr("Ignore playlist files when adding folders"), this)}
+    , m_preventDuplicates{new QCheckBox(tr("Prevent duplicate tracks when loading playlists"), this)}
 {
     auto* behaviour       = new QGroupBox(tr("Behaviour"), this);
     auto* behaviourLayout = new QGridLayout(behaviour);
@@ -103,12 +107,17 @@ PlaylistGeneralPageWidget::PlaylistGeneralPageWidget(SettingsManager* settings)
     clickBehaviourLayout->setColumnStretch(clickBehaviourLayout->columnCount(), 1);
 
     m_skipMissing->setToolTip(tr("Skip unavailable tracks when loading playlists"));
+    m_ignoreFolderPlaylists->setToolTip(
+        tr("Only add media files from folders, without loading playlist files found inside"));
+    m_preventDuplicates->setToolTip(tr("Skip playlist entries that are already present in the target playlist"));
 
     auto* loading       = new QGroupBox(tr("Loading"), this);
     auto* loadingLayout = new QGridLayout(loading);
 
     row = 0;
-    loadingLayout->addWidget(m_skipMissing, row, 0);
+    loadingLayout->addWidget(m_skipMissing, row++, 0);
+    loadingLayout->addWidget(m_ignoreFolderPlaylists, row++, 0);
+    loadingLayout->addWidget(m_preventDuplicates, row++, 0);
 
     auto* mainLayout = new QGridLayout(this);
 
@@ -137,6 +146,8 @@ void PlaylistGeneralPageWidget::load()
     }
 
     m_skipMissing->setChecked(m_settings->value<Settings::Core::PlaylistSkipMissing>());
+    m_ignoreFolderPlaylists->setChecked(m_settings->value<Settings::Core::AddFoldersIgnorePlaylists>());
+    m_preventDuplicates->setChecked(m_settings->value<Settings::Core::PlaylistPreventDuplicates>());
 }
 
 void PlaylistGeneralPageWidget::apply()
@@ -145,6 +156,8 @@ void PlaylistGeneralPageWidget::apply()
     m_settings->set<Settings::Gui::Internal::PlaylistInlineTagEditing>(m_inlineTagEditing->isChecked());
     m_settings->set<Settings::Gui::Internal::PlaylistMiddleClick>(m_middleClick->currentData().toInt());
     m_settings->set<Settings::Core::PlaylistSkipMissing>(m_skipMissing->isChecked());
+    m_settings->set<Settings::Core::AddFoldersIgnorePlaylists>(m_ignoreFolderPlaylists->isChecked());
+    m_settings->set<Settings::Core::PlaylistPreventDuplicates>(m_preventDuplicates->isChecked());
 }
 
 void PlaylistGeneralPageWidget::reset()
@@ -153,6 +166,8 @@ void PlaylistGeneralPageWidget::reset()
     m_settings->reset<Settings::Gui::Internal::PlaylistInlineTagEditing>();
     m_settings->reset<Settings::Gui::Internal::PlaylistMiddleClick>();
     m_settings->reset<Settings::Core::PlaylistSkipMissing>();
+    m_settings->reset<Settings::Core::AddFoldersIgnorePlaylists>();
+    m_settings->reset<Settings::Core::PlaylistPreventDuplicates>();
 }
 
 PlaylistGeneralPage::PlaylistGeneralPage(SettingsManager* settings, QObject* parent)

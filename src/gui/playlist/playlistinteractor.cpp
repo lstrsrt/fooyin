@@ -22,6 +22,7 @@
 #include "playlistcontroller.h"
 #include "playlistuicontroller.h"
 
+#include <core/coresettings.h>
 #include <core/library/musiclibrary.h>
 #include <core/player/playercontroller.h>
 #include <core/playlist/playlist.h>
@@ -31,11 +32,14 @@
 #include <gui/widgets/elapsedprogressdialog.h>
 #include <utils/datastream.h>
 #include <utils/fileutils.h>
+#include <utils/settings/settingsmanager.h>
 #include <utils/utils.h>
 
 #include <QIODevice>
 #include <QMainWindow>
 #include <QPointer>
+
+#include <unordered_set>
 
 using namespace std::chrono_literals;
 using namespace Qt::StringLiterals;
@@ -158,11 +162,12 @@ private:
 } // namespace
 
 PlaylistInteractor::PlaylistInteractor(PlaylistHandler* handler, PlaylistController* controller, MusicLibrary* library,
-                                       QObject* parent)
+                                       SettingsManager* settings, QObject* parent)
     : QObject{parent}
     , m_handler{handler}
     , m_controller{controller}
     , m_library{library}
+    , m_settings{settings}
 { }
 
 PlaylistHandler* PlaylistInteractor::handler() const
@@ -234,15 +239,47 @@ void PlaylistInteractor::appendToPlaylist(Playlist* playlist, const TrackList& t
     m_handler->appendToPlaylist(playlist->id(), tracks);
 }
 
-Playlist* PlaylistInteractor::appendOrCreateNamedPlaylist(const QString& playlistName, const TrackList& tracks) const
+TrackList PlaylistInteractor::filterDuplicateTracks(const Playlist* playlist, const TrackList& tracks) const
+{
+    if(!playlist || !m_settings->value<Settings::Core::PlaylistPreventDuplicates>()) {
+        return tracks;
+    }
+
+    std::unordered_set<QString> seenTracks;
+    seenTracks.reserve(static_cast<size_t>(playlist->trackCount()) + tracks.size());
+
+    const auto playlistTracks = playlist->playlistTracks();
+    for(const PlaylistTrack& track : playlistTracks) {
+        seenTracks.emplace(track.track.uniqueFilepath());
+    }
+
+    TrackList filteredTracks;
+    filteredTracks.reserve(tracks.size());
+
+    for(const Track& track : tracks) {
+        if(seenTracks.emplace(track.uniqueFilepath()).second) {
+            filteredTracks.push_back(track);
+        }
+    }
+
+    return filteredTracks;
+}
+
+Playlist* PlaylistInteractor::appendOrCreateNamedPlaylist(const QString& playlistName, const TrackList& tracks,
+                                                          const bool preventDuplicates) const
 {
     if(tracks.empty()) {
         return nullptr;
     }
 
     if(Playlist* playlist = m_handler->playlistByName(playlistName)) {
+        const TrackList filteredTracks = preventDuplicates ? filterDuplicateTracks(playlist, tracks) : tracks;
+        if(filteredTracks.empty()) {
+            return playlist;
+        }
+
         const int indexToPlay = playlist->trackCount();
-        appendToPlaylist(playlist, tracks);
+        appendToPlaylist(playlist, filteredTracks);
         playlist->changeCurrentIndex(indexToPlay);
         return playlist;
     }
@@ -334,7 +371,7 @@ void PlaylistInteractor::loadPlaylist(const QList<QPair<QString, QUrl>>& playlis
     for(const QPair<QString, QUrl>& item : playlistData) {
         auto [name, url]      = item;
         auto handleScanResult = [this, name, play](const TrackList& scannedTracks) {
-            activatePlaylist(appendOrCreateNamedPlaylist(name, scannedTracks), play);
+            activatePlaylist(appendOrCreateNamedPlaylist(name, scannedTracks, true), play);
         };
         loadPlaylistTracks({url}, handleScanResult);
     }
