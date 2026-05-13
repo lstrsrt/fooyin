@@ -81,10 +81,8 @@ QueueViewer::QueueViewer(ActionManager* actionManager, PlaylistInteractor* playl
     , m_settings{settings}
     , m_view{new QueueViewerView(this)}
     , m_model{new QueueViewerModel(std::move(audioLoader), m_playerController, settings, this)}
-    , m_context{new WidgetContext(this,
-                                  Context{IdList{Constants::Context::TrackSelection,
-                                                 Id{"Context.QueueViewer."}.append(Utils::generateUniqueHash())}},
-                                  this)}
+    , m_context{new WidgetContext(
+          this, Context{IdList{Constants::Context::TrackSelection, Id{"Context.QueueViewer."}.append(id())}}, this)}
     , m_remove{new QAction(tr("&Remove"), this)}
     , m_removeCmd{nullptr}
     , m_clear{new QAction(tr("&Clear"), this)}
