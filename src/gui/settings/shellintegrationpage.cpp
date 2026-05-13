@@ -93,14 +93,13 @@ ShellIntegrationPageWidget::ShellIntegrationPageWidget(SettingsManager* settings
     playlistGroupLayout->addWidget(m_externalPlaylist, row++, 1);
     playlistGroupLayout->addWidget(new QLabel(tr("Sort incoming tracks by") + ":"_L1, this), row, 0);
     playlistGroupLayout->addWidget(m_externalSortScript, row++, 1);
-    playlistGroupLayout->setRowStretch(row, 1);
     playlistGroupLayout->setColumnStretch(1, 1);
 
     auto* mainLayout = new QGridLayout(this);
 
     row = 0;
     mainLayout->addWidget(fileTypesGroup, row++, 0);
-    mainLayout->addWidget(playlistGroup, row, 0);
+    mainLayout->addWidget(playlistGroup, row++, 0);
     mainLayout->setRowStretch(row, 1);
 }
 
@@ -149,7 +148,7 @@ ShellIntegrationPage::ShellIntegrationPage(SettingsManager* settings, QObject* p
 {
     setId(Constants::Page::ShellIntegration);
     setName(tr("General"));
-    setCategory({tr("Integrations"), tr("Shell")});
+    setCategory({tr("Integrations"), tr("System")});
     setRelativePosition(SettingsPageRelativePosition::After, Constants::Page::Plugins);
     setWidgetCreator([settings] { return new ShellIntegrationPageWidget(settings); });
 }

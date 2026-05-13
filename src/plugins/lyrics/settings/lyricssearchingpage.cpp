@@ -70,12 +70,21 @@ LyricsSearchingPageWidget::LyricsSearchingPageWidget(SettingsManager* settings)
     , m_albumParam{new QLineEdit(this)}
     , m_matchThreshold{new SliderEditor(tr("Minimum match threshold"), this)}
 {
+    auto* behaviourGroup  = new QGroupBox(tr("Behaviour"), this);
+    auto* behaviourLayout = new QGridLayout(behaviourGroup);
+
+    int row{0};
+    behaviourLayout->addWidget(m_autoSearch, row++, 0);
+    behaviourLayout->addWidget(m_skipRemaining, row++, 0);
+    behaviourLayout->addWidget(m_skipExternal, row++, 0);
+
     auto* paramsGroup  = new QGroupBox(tr("Search parameters"), this);
     auto* paramsLayout = new QGridLayout(paramsGroup);
 
     m_matchThreshold->setRange(0, 100);
+    m_autoSearch->setToolTip(tr("Only local lyrics will be used if unchecked"));
 
-    int row{0};
+    row = 0;
     paramsLayout->addWidget(new QLabel(tr("Title") + ":"_L1, this), row, 0);
     paramsLayout->addWidget(m_titleParam, row++, 1);
     paramsLayout->addWidget(new QLabel(tr("Artist") + ":"_L1, this), row, 0);
@@ -84,14 +93,10 @@ LyricsSearchingPageWidget::LyricsSearchingPageWidget(SettingsManager* settings)
     paramsLayout->addWidget(m_albumParam, row++, 1);
     paramsLayout->addWidget(m_matchThreshold, row++, 0, 1, 2);
 
-    m_autoSearch->setToolTip(tr("Only local lyrics will be used if unchecked"));
-
     auto* layout = new QGridLayout(this);
 
     row = 0;
-    layout->addWidget(m_autoSearch, row++, 0);
-    layout->addWidget(m_skipRemaining, row++, 0);
-    layout->addWidget(m_skipExternal, row++, 0);
+    layout->addWidget(behaviourGroup, row++, 0);
     layout->addWidget(paramsGroup, row++, 0);
     layout->setRowStretch(layout->rowCount(), 1);
 }
