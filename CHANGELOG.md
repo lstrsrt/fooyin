@@ -1,5 +1,54 @@
 # Changelog
 
+## Unreleased
+
+### New Features
+
+* Quick Tagger
+  - Add a Quick Tagger plugin for configurable tagging actions ([#836](https://github.com/fooyin/fooyin/issues/836), [#1153](https://github.com/fooyin/fooyin/pull/1153))
+
+### Improvements
+
+* DSP
+  - Add `View -> Equaliser` option when an equaliser DSP is present in a chain
+* Interface
+  - Reorganise settings page categories and start categories collapsed by default
+  - Show a placeholder for empty settings categories and simplify single-page category display
+  - Replace Tab Stack cardinal direction labels with standard directions ([#1156](https://github.com/fooyin/fooyin/pull/1156))
+  - Add an Advanced settings page
+* Playlist
+  - Add settings to ignore playlist files when adding folders and prevent duplicate entries when loading playlists ([#1160](https://github.com/fooyin/fooyin/issues/1160))
+* Tag Editor
+  - Add enabled and multi-value columns to tag editor fields
+* WaveBar
+  - Cache supersampled waveform renders
+
+### Fixes
+
+* Audio/Playback
+  - Fix Stop After Current follow-up navigation ([#1154](https://github.com/fooyin/fooyin/issues/1154))
+  - Fix queue follow navigation after queued playback
+  - Avoid duplicate file size calculations for bounded segments ([#1161](https://github.com/fooyin/fooyin/issues/1161))
+  - Refine CUE handling in external scans
+* Filters
+  - Fix filtered `All` selections using the whole library instead of matching entries ([#1151](https://github.com/fooyin/fooyin/issues/1151))
+* Library/Metadata
+  - Fix custom rating text tag settings and rating write mappings ([#1148](https://github.com/fooyin/fooyin/issues/1148), [#1150](https://github.com/fooyin/fooyin/issues/1150))
+* PipeWire
+  - Sync PipeWire volume and mute state with the system mixer ([#1147](https://github.com/fooyin/fooyin/issues/1147))
+* Scrobbling
+  - Make the scrobbling threshold independent of the playcount threshold ([#1152](https://github.com/fooyin/fooyin/issues/1152))
+* Settings
+  - Fix relative positioning of settings categories and category identity across translations
+* VU Meter, WaveBar
+  - Always se the active palette for the default highlight colour
+
+### Build/System
+
+* Translations
+  - Update translations and translation sources ([#1164](https://github.com/fooyin/fooyin/pull/1164), [#1165](https://github.com/fooyin/fooyin/pull/1165))
+
+
 ## [0.10.6](https://github.com/fooyin/fooyin/releases/tag/v0.10.6) (2026-05-11)
 
 ### Improvements
