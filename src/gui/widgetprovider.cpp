@@ -39,6 +39,7 @@ struct FactoryWidget
     QString key;
     QString name;
     std::function<Fooyin::FyWidget*()> instantiator;
+    std::function<bool()> isVisibleWhen;
     QStringList subMenus;
     bool isHidden{false};
     int limit{0};
@@ -81,16 +82,14 @@ public:
     template <typename Func>
     void setupWidgetMenu(QMenu* menu, Func&& func, const QString& singleMenu = {})
     {
-        if(!menu->isEmpty()) {
-            return;
-        }
+        menu->clear();
 
         std::map<QString, QMenu*> menuCache;
 
         const auto widgets = sortBySubMenu(m_widgets);
 
         for(const auto& widget : widgets) {
-            if(widget.isHidden) {
+            if(widget.isHidden || (widget.isVisibleWhen && !widget.isVisibleWhen())) {
                 continue;
             }
 
@@ -184,6 +183,16 @@ void WidgetProvider::setIsHidden(const QString& key, bool hidden)
     }
 
     p->m_widgets.at(key).isHidden = hidden;
+}
+
+void WidgetProvider::setIsVisibleWhen(const QString& key, std::function<bool()> predicate)
+{
+    if(!p->m_widgets.contains(key)) {
+        qCWarning(WIDGET_PROV) << "Subclass not registered";
+        return;
+    }
+
+    p->m_widgets.at(key).isVisibleWhen = std::move(predicate);
 }
 
 bool WidgetProvider::widgetExists(const QString& key) const

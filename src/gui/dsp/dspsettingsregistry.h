@@ -21,9 +21,8 @@
 
 #include <gui/dsp/dspsettingsprovider.h>
 
-#include <QHash>
-
 #include <memory>
+#include <unordered_map>
 #include <vector>
 
 namespace Fooyin {
@@ -33,10 +32,13 @@ public:
     void registerProvider(std::unique_ptr<DspSettingsProvider> provider);
 
     [[nodiscard]] DspSettingsProvider* providerFor(const QString& id) const;
+    [[nodiscard]] std::vector<DspSettingsProvider*> providers() const;
     [[nodiscard]] bool hasProvider(const QString& id) const;
 
+    [[nodiscard]] static QString layoutWidgetKey(const QString& id);
+
 private:
-    QHash<QString, DspSettingsProvider*> m_providerById;
+    std::unordered_map<QString, DspSettingsProvider*> m_providerById;
     std::vector<std::unique_ptr<DspSettingsProvider>> m_providers;
 };
 } // namespace Fooyin

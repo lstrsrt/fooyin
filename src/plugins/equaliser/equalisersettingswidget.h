@@ -116,6 +116,11 @@ class EqualiserSettingsProvider : public DspSettingsProvider
 {
 public:
     [[nodiscard]] QString id() const override;
+    [[nodiscard]] QString displayName() const override;
+    [[nodiscard]] QString viewMenuText() const override;
+    [[nodiscard]] QString viewMenuStatusTip() const override;
+    [[nodiscard]] bool showInViewMenu() const override;
+    [[nodiscard]] bool showAsLayoutWidget() const override;
     DspSettingsDialog* createSettingsWidget(QWidget* parent) override;
 };
 } // namespace Equaliser

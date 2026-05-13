@@ -136,7 +136,11 @@ set(SOURCES
     dsp/dsppreset.h
     dsp/dsppresetregistry.cpp
     dsp/dsppresetregistry.h
+    dsp/dspsettingscontroller.cpp
+    dsp/dspsettingscontroller.h
     dsp/dspsettingsdialog.cpp
+    dsp/dspsettingslayoutwidget.cpp
+    dsp/dspsettingslayoutwidget.h
     dsp/dspsettingsregistry.cpp
     dsp/dspsettingsregistry.h
     dsp/resamplersettingswidget.cpp

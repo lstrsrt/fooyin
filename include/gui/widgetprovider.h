@@ -67,6 +67,8 @@ public:
     void setLimit(const QString& key, int limit);
     /** Sets whether the widget at @p key is shown in layout editing menus. */
     void setIsHidden(const QString& key, bool hidden);
+    /** Sets a dynamic predicate controlling whether the widget is shown in layout editing menus. */
+    void setIsVisibleWhen(const QString& key, std::function<bool()> predicate);
 
     /** Returns @c true if the widget at @p key exists. */
     [[nodiscard]] bool widgetExists(const QString& key) const;

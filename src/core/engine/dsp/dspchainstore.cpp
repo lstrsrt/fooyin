@@ -120,7 +120,8 @@ DspChains deserialiseChain(const QByteArray& data)
 
 namespace Fooyin {
 DspChainStore::DspChainStore(SettingsManager* settings, DspRegistry* registry, EngineHandler* engine)
-    : m_settings{settings}
+    : QObject{engine}
+    , m_settings{settings}
     , m_registry{registry}
     , m_engine{engine}
     , m_nextInstanceId{1}
@@ -175,6 +176,8 @@ void DspChainStore::setActiveChain(const DspChains& chain)
     if(m_engine) {
         m_engine->setDspChain(m_activeChain);
     }
+
+    Q_EMIT activeChainChanged(m_activeChain);
 }
 
 void DspChainStore::syncActiveChain(const DspChains& chain)
@@ -182,6 +185,8 @@ void DspChainStore::syncActiveChain(const DspChains& chain)
     m_activeChain = normaliseChain(chain);
     m_liveRevisionByKey.clear();
     persistChain(m_activeChain);
+
+    Q_EMIT activeChainChanged(m_activeChain);
 }
 
 bool DspChainStore::updateLiveDspSettings(const DspChainScope scope, uint64_t instanceId, const QByteArray& settings,

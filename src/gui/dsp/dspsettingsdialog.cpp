@@ -28,6 +28,7 @@ DspSettingsDialog::DspSettingsDialog(QWidget* parent)
     : QDialog{parent}
     , m_mainLayout{new QVBoxLayout(this)}
     , m_contentLayout{new QVBoxLayout()}
+    , m_buttonLayout{new QHBoxLayout()}
     , m_restoreButtonBox{new QDialogButtonBox(QDialogButtonBox::RestoreDefaults, this)}
     , m_buttonBox{new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this)}
 {
@@ -38,13 +39,12 @@ DspSettingsDialog::DspSettingsDialog(QWidget* parent)
     m_contentLayout->setSpacing(10);
     m_mainLayout->addLayout(m_contentLayout, 1);
 
-    auto* buttonRow = new QHBoxLayout();
-    buttonRow->setContentsMargins(0, 0, 0, 0);
-    buttonRow->setSpacing(6);
-    buttonRow->addWidget(m_restoreButtonBox);
-    buttonRow->addStretch();
-    buttonRow->addWidget(m_buttonBox);
-    m_mainLayout->addLayout(buttonRow);
+    m_buttonLayout->setContentsMargins(0, 0, 0, 0);
+    m_buttonLayout->setSpacing(6);
+    m_buttonLayout->addWidget(m_restoreButtonBox);
+    m_buttonLayout->addStretch();
+    m_buttonLayout->addWidget(m_buttonBox);
+    m_mainLayout->addLayout(m_buttonLayout);
 
     QObject::connect(m_buttonBox, &QDialogButtonBox::accepted, this, &QDialog::accept);
     QObject::connect(m_buttonBox, &QDialogButtonBox::rejected, this, &QDialog::reject);
@@ -58,9 +58,22 @@ QVBoxLayout* DspSettingsDialog::contentLayout() const
     return m_contentLayout;
 }
 
-void DspSettingsDialog::setRestoreDefaultsVisible(const bool visible)
+void DspSettingsDialog::setRestoreDefaultsVisible(bool visible)
 {
     m_restoreButtonBox->setVisible(visible);
+}
+
+void DspSettingsDialog::addButtonRowWidget(QWidget* widget)
+{
+    if(widget) {
+        m_buttonLayout->insertWidget(0, widget);
+    }
+}
+
+void DspSettingsDialog::setButtonsVisible(bool visible)
+{
+    m_restoreButtonBox->setVisible(visible);
+    m_buttonBox->setVisible(visible);
 }
 
 void DspSettingsDialog::publishPreviewSettings()

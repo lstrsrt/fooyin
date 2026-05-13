@@ -19,6 +19,10 @@
 
 #include "viewmenu.h"
 
+#include "dsp/dspsettingscontroller.h"
+#include "dsp/dspsettingsregistry.h"
+
+#include <gui/dsp/dspsettingsprovider.h>
 #include <gui/guiconstants.h>
 #include <gui/iconloader.h>
 #include <utils/actions/actioncontainer.h>
@@ -28,16 +32,20 @@
 #include <utils/utils.h>
 
 #include <QAction>
+#include <QMenu>
+
+using namespace Qt::StringLiterals;
 
 namespace Fooyin {
 ViewMenu::ViewMenu(ActionManager* actionManager, SettingsManager* settings, QObject* parent)
     : QObject{parent}
     , m_actionManager{actionManager}
     , m_settings{settings}
+    , m_dspInsertBefore{nullptr}
 {
     auto* viewMenu = m_actionManager->actionContainer(Constants::Menus::View);
 
-    const QStringList viewCategory = {tr("View")};
+    const QStringList viewCategory{tr("View")};
 
     auto* openQuickSetup = new QAction(tr("Quick &setup"), this);
     Gui::setThemeIcon(openQuickSetup, Constants::Icons::QuickSetup);
@@ -78,7 +86,8 @@ ViewMenu::ViewMenu(ActionManager* actionManager, SettingsManager* settings, QObj
     viewMenu->addAction(showPlaybackQueueCmd);
     QObject::connect(showPlaybackQueue, &QAction::triggered, this, &ViewMenu::openPlaybackQueue);
 
-    viewMenu->addSeparator();
+    auto* separator   = viewMenu->addSeparator();
+    m_dspInsertBefore = separator->action();
 
     auto* focusSearchBar = new QAction(tr("Focus Search &Bar"), this);
     focusSearchBar->setStatusTip(tr("Focus the first Search Bar found in the current layout"));
@@ -93,6 +102,79 @@ ViewMenu::ViewMenu(ActionManager* actionManager, SettingsManager* settings, QObj
     showNowPlayingCmd->setCategories(viewCategory);
     viewMenu->addAction(showNowPlayingCmd);
     QObject::connect(showNowPlaying, &QAction::triggered, this, &ViewMenu::showNowPlaying);
+}
+
+void ViewMenu::registerDspSettingsActions(DspSettingsRegistry* registry, DspSettingsController* controller)
+{
+    if(!registry || !controller) {
+        return;
+    }
+
+    auto* viewMenu = m_actionManager->actionContainer(Constants::Menus::View);
+
+    QObject::connect(viewMenu->menu(), &QMenu::aboutToShow, this,
+                     [this, controller]() { refreshDspSettingsActions(controller); });
+
+    const QStringList viewCategory{tr("View"), tr("DSP")};
+
+    const auto providers = registry->providers();
+    for(auto* provider : providers) {
+        if(!provider || !provider->showInViewMenu()) {
+            continue;
+        }
+
+        const QString dspId = provider->id();
+        if(m_registeredDspActions.contains(dspId)) {
+            continue;
+        }
+
+        auto* action = new QAction(provider->viewMenuText(), this);
+        action->setStatusTip(provider->viewMenuStatusTip());
+
+        auto* command = m_actionManager->registerAction(action, Id{u"View.DSP.%1"_s.arg(dspId)});
+        command->setDescription(provider->viewMenuText());
+        command->setCategories(viewCategory);
+
+        QObject::connect(action, &QAction::triggered, this, [controller, dspId]() {
+            if(controller->hasDsp(dspId)) {
+                controller->showDialog(dspId);
+            }
+        });
+
+        m_registeredDspActions.insert(dspId);
+        m_dspActions.emplace(dspId, command);
+        m_dspActionOrder.emplace_back(dspId);
+    }
+
+    refreshDspSettingsActions(controller);
+}
+
+void ViewMenu::refreshDspSettingsActions(DspSettingsController* controller)
+{
+    if(!controller) {
+        return;
+    }
+
+    auto* viewMenu = m_actionManager->actionContainer(Constants::Menus::View);
+
+    for(const QString& dspId : m_dspActionOrder) {
+        auto actionIt = m_dspActions.find(dspId);
+        if(actionIt == m_dspActions.end()) {
+            continue;
+        }
+
+        QAction* action = actionIt->second ? actionIt->second->action() : nullptr;
+        if(!action) {
+            continue;
+        }
+
+        if(controller->hasDsp(dspId)) {
+            viewMenu->insertAction(m_dspInsertBefore, action);
+        }
+        else {
+            viewMenu->menu()->removeAction(action);
+        }
+    }
 }
 } // namespace Fooyin
 

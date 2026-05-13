@@ -36,23 +36,42 @@ void DspSettingsRegistry::registerProvider(std::unique_ptr<DspSettingsProvider> 
     auto it = std::ranges::find_if(
         m_providers, [&providerId](const auto& existing) { return existing && existing->id() == providerId; });
     if(it != m_providers.end()) {
-        m_providerById.insert(providerId, provider.get());
-        *it = std::move(provider);
+        m_providerById[providerId] = provider.get();
+        *it                        = std::move(provider);
         return;
     }
 
-    m_providerById.insert(providerId, provider.get());
-    m_providers.push_back(std::move(provider));
+    m_providerById.emplace(providerId, provider.get());
+    m_providers.emplace_back(std::move(provider));
 }
 
 DspSettingsProvider* DspSettingsRegistry::providerFor(const QString& id) const
 {
-    const auto it = m_providerById.constFind(id);
-    return it == m_providerById.constEnd() ? nullptr : it.value();
+    const auto it = m_providerById.find(id);
+    return it == m_providerById.cend() ? nullptr : it->second;
+}
+
+std::vector<DspSettingsProvider*> DspSettingsRegistry::providers() const
+{
+    std::vector<DspSettingsProvider*> result;
+    result.reserve(m_providers.size());
+
+    for(const auto& provider : m_providers) {
+        if(provider) {
+            result.emplace_back(provider.get());
+        }
+    }
+
+    return result;
 }
 
 bool DspSettingsRegistry::hasProvider(const QString& id) const
 {
     return m_providerById.contains(id);
+}
+
+QString DspSettingsRegistry::layoutWidgetKey(const QString& id)
+{
+    return QStringLiteral("DspSettings.%1").arg(id);
 }
 } // namespace Fooyin

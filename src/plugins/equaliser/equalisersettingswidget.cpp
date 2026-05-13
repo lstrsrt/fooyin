@@ -25,6 +25,7 @@
 #include <gui/widgets/tooltip.h>
 
 #include <QComboBox>
+#include <QCoreApplication>
 #include <QDataStream>
 #include <QDoubleSpinBox>
 #include <QFileDialog>
@@ -895,6 +896,32 @@ void EqualiserSettingsWidget::timerEvent(QTimerEvent* event)
 QString EqualiserSettingsProvider::id() const
 {
     return QStringLiteral("fooyin.dsp.equaliser");
+}
+
+QString EqualiserSettingsProvider::displayName() const
+{
+    return QCoreApplication::translate("Fooyin::Equaliser::EqualiserSettingsProvider", "Equaliser");
+}
+
+QString EqualiserSettingsProvider::viewMenuText() const
+{
+    return QCoreApplication::translate("Fooyin::Equaliser::EqualiserSettingsProvider", "Equaliser");
+}
+
+QString EqualiserSettingsProvider::viewMenuStatusTip() const
+{
+    return QCoreApplication::translate("Fooyin::Equaliser::EqualiserSettingsProvider", "Open Equaliser settings");
+}
+
+bool EqualiserSettingsProvider::showInViewMenu() const
+{
+    return true;
+}
+
+bool EqualiserSettingsProvider::showAsLayoutWidget() const
+{
+    // TODO when the settings UI is more splitter friendly
+    return false;
 }
 
 DspSettingsDialog* EqualiserSettingsProvider::createSettingsWidget(QWidget* parent)

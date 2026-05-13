@@ -29,7 +29,33 @@ class DspSettingsProvider
 public:
     virtual ~DspSettingsProvider() = default;
 
-    [[nodiscard]] virtual QString id() const                                       = 0;
+    [[nodiscard]] virtual QString id() const = 0;
+
+    [[nodiscard]] virtual QString displayName() const
+    {
+        return id();
+    }
+
+    [[nodiscard]] virtual QString viewMenuText() const
+    {
+        return displayName();
+    }
+
+    [[nodiscard]] virtual QString viewMenuStatusTip() const
+    {
+        return {};
+    }
+
+    [[nodiscard]] virtual bool showInViewMenu() const
+    {
+        return false;
+    }
+
+    [[nodiscard]] virtual bool showAsLayoutWidget() const
+    {
+        return false;
+    }
+
     [[nodiscard]] virtual DspSettingsDialog* createSettingsWidget(QWidget* parent) = 0;
 };
 } // namespace Fooyin

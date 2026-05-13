@@ -24,6 +24,8 @@
 #include <QDialog>
 
 class QDialogButtonBox;
+class QHBoxLayout;
+class QWidget;
 class QVBoxLayout;
 
 namespace Fooyin {
@@ -37,6 +39,8 @@ public:
 
     virtual void loadSettings(const QByteArray& settings) = 0;
     [[nodiscard]] virtual QByteArray saveSettings() const = 0;
+    void setButtonsVisible(bool visible);
+    void addButtonRowWidget(QWidget* widget);
 
 protected:
     [[nodiscard]] QVBoxLayout* contentLayout() const;
@@ -50,6 +54,7 @@ Q_SIGNALS:
 private:
     QVBoxLayout* m_mainLayout;
     QVBoxLayout* m_contentLayout;
+    QHBoxLayout* m_buttonLayout;
     QDialogButtonBox* m_restoreButtonBox;
     QDialogButtonBox* m_buttonBox;
 };

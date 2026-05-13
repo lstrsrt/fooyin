@@ -360,6 +360,9 @@ void GuiApplicationPrivate::initialise()
     m_actionManager->addContextObject(m_mainContext);
 
     initialisePlugins();
+
+    m_widgets->registerDspWidgets();
+    m_viewMenu->registerDspSettingsActions(m_widgets->dspSettingsRegistry(), m_widgets->dspSettingsController());
     m_layoutProvider.findLayouts();
     m_layoutMenu->setup();
     m_editableLayout->initialise();

@@ -31,6 +31,7 @@
 #include "controls/volumecontrol.h"
 #include "dirbrowser/dirbrowser.h"
 #include "dsp/dsppresetregistry.h"
+#include "dsp/dspsettingscontroller.h"
 #include "dsp/dspsettingsregistry.h"
 #include "dsp/resamplersettingswidget.h"
 #include "dsp/skipsilencesettingswidget.h"
@@ -143,11 +144,15 @@ Widgets::Widgets(Application* core, MainWindow* window, GuiApplication* gui, Pla
     , m_outputProfileManager{new OutputProfileManager(m_core->engine(), m_core->dspChainStore(), m_dspPresetRegistry,
                                                       m_settings, this)}
     , m_dspSettingsRegistry{std::make_unique<DspSettingsRegistry>()}
+    , m_dspSettingsController{std::make_unique<DspSettingsController>(m_core->dspChainStore(),
+                                                                      m_dspSettingsRegistry.get(), this)}
     , m_pluginSettingsRegistry{std::make_unique<PluginSettingsRegistry>()}
     , m_scriptCommandHandler{scriptCommandHandler}
 {
     m_outputProfileManager->reapplyCurrentProfile();
 }
+
+Widgets::~Widgets() = default;
 
 void Widgets::registerWidgets()
 {
@@ -489,6 +494,30 @@ void Widgets::registerDspSettings()
     m_dspSettingsRegistry->registerProvider(std::make_unique<ResamplerSettingsProvider>());
 }
 
+void Widgets::registerDspWidgets()
+{
+    auto* widgetProvider = m_gui->widgetProvider();
+
+    const auto providers = m_dspSettingsRegistry->providers();
+    for(auto* settingsProvider : providers) {
+        if(!settingsProvider || !settingsProvider->showAsLayoutWidget()) {
+            continue;
+        }
+
+        const QString dspId = settingsProvider->id();
+        const QString key   = DspSettingsRegistry::layoutWidgetKey(dspId);
+        if(widgetProvider->widgetExists(key)) {
+            continue;
+        }
+
+        widgetProvider->registerWidget(
+            key, [this, dspId]() { return m_dspSettingsController->createLayoutWidget(dspId); },
+            settingsProvider->displayName());
+        widgetProvider->setSubMenus(key, {tr("DSP")});
+        widgetProvider->setIsVisibleWhen(key, [this, dspId]() { return m_dspSettingsController->hasDsp(dspId); });
+    }
+}
+
 void Widgets::registerPropertiesTabs()
 {
     m_gui->propertiesDialog()->addTab(tr("Details"), [this](const TrackList& tracks) {
@@ -524,6 +553,11 @@ void Widgets::registerFontEntries() const
 DspSettingsRegistry* Widgets::dspSettingsRegistry() const
 {
     return m_dspSettingsRegistry.get();
+}
+
+DspSettingsController* Widgets::dspSettingsController() const
+{
+    return m_dspSettingsController.get();
 }
 
 PluginSettingsRegistry* Widgets::pluginSettingsRegistry() const

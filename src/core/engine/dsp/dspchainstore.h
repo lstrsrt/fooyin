@@ -23,6 +23,8 @@
 
 #include <core/engine/enginedefs.h>
 
+#include <QObject>
+
 #include <cstdint>
 #include <unordered_map>
 
@@ -32,8 +34,10 @@ class DspRegistry;
 class EngineHandler;
 class SettingsManager;
 
-class FYCORE_EXPORT DspChainStore
+class FYCORE_EXPORT DspChainStore : public QObject
 {
+    Q_OBJECT
+
 public:
     DspChainStore(SettingsManager* settings, DspRegistry* registry, EngineHandler* engine = nullptr);
 
@@ -47,6 +51,9 @@ public:
     void syncActiveChain(const Engine::DspChains& chain);
     bool updateLiveDspSettings(Engine::DspChainScope scope, uint64_t instanceId, const QByteArray& settings,
                                bool persist);
+
+Q_SIGNALS:
+    void activeChainChanged(const Fooyin::Engine::DspChains& chain);
 
 private:
     [[nodiscard]] uint64_t nextInstanceId();
