@@ -21,8 +21,6 @@
 
 #include <core/track.h>
 
-constexpr auto MaxQueue = 250;
-
 namespace Fooyin {
 bool PlaybackQueue::empty() const
 {
@@ -46,11 +44,6 @@ PlaylistTrack PlaybackQueue::track(int index) const
 int PlaybackQueue::trackCount() const
 {
     return static_cast<int>(m_tracks.size());
-}
-
-int PlaybackQueue::freeSpace() const
-{
-    return MaxQueue - trackCount();
 }
 
 PlaylistIndexes PlaybackQueue::playlistIndexes() const

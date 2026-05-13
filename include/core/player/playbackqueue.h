@@ -43,7 +43,6 @@ public:
     [[nodiscard]] const QueueTracks& tracks() const;
     [[nodiscard]] PlaylistTrack track(int index) const;
     [[nodiscard]] int trackCount() const;
-    [[nodiscard]] int freeSpace() const;
 
     [[nodiscard]] PlaylistIndexes playlistIndexes() const;
     [[nodiscard]] PlaylistTrackIndexes indexesForPlaylist(const UId& id) const;

@@ -1560,17 +1560,10 @@ void PlayerController::queueTracks(const QueueTracks& tracks)
         return;
     }
 
-    QueueTracks tracksToAdd{tracks};
-
-    const int freeTracks = p->m_queue.freeSpace();
-    if(std::cmp_greater_equal(tracks.size(), freeTracks)) {
-        tracksToAdd = {tracks.begin(), tracks.begin() + freeTracks};
-    }
-
     const int index = p->m_queue.trackCount();
 
-    p->m_queue.addTracks(tracksToAdd);
-    Q_EMIT tracksQueued(tracksToAdd, index);
+    p->m_queue.addTracks(tracks);
+    Q_EMIT tracksQueued(tracks, index);
     p->emitUpcomingTrackChangedIfNeeded();
 }
 
@@ -1604,14 +1597,7 @@ void PlayerController::queueTracksNext(const QueueTracks& tracks)
         return;
     }
 
-    QueueTracks tracksToAdd{tracks};
-
-    const int freeTracks = p->m_queue.freeSpace();
-    if(std::cmp_greater_equal(tracks.size(), freeTracks)) {
-        tracksToAdd = {tracks.begin(), tracks.begin() + freeTracks};
-    }
-
-    p->m_queue.addTracks(tracksToAdd, 0);
+    p->m_queue.addTracks(tracks, 0);
     Q_EMIT trackQueueChanged({}, p->m_queue.tracks());
     p->emitUpcomingTrackChangedIfNeeded();
 }
