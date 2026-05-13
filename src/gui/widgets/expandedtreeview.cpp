@@ -815,13 +815,17 @@ int TreeView::lastVisibleItem(int firstVisual, int offset) const
         }
     }
 
-    int y{-offset};
+    int y{offset};
     const int value = viewport()->height();
 
     const int count = itemCount();
     for(int i{firstVisual}; i < count; ++i) {
+        if(y >= value) {
+            return std::max(firstVisual, i - 1);
+        }
+
         y += itemHeight(i) + itemPadding(i);
-        if(y > value) {
+        if(y >= value) {
             return i;
         }
     }
