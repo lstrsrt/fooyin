@@ -140,6 +140,12 @@ bool LibraryFileEnumerator::processDirectory(const QString& path, const QStringL
         return m_handler(info, type);
     };
 
+    for(const auto& cue : cueFiles) {
+        if(!emitTypedFile(cue, EnumeratedFileType::Cue)) {
+            return false;
+        }
+    }
+
     for(const auto& entry : entries) {
         if(entry.isDir()) {
             if(!processDirectory(normalisePath(entry.absoluteFilePath()), trackExtensions, playlistExtensions,
@@ -151,9 +157,6 @@ bool LibraryFileEnumerator::processDirectory(const QString& path, const QStringL
 
         const QString suffix = entry.suffix().toLower();
         if(suffix == "cue"_L1 && trackExtensions.contains(u"cue"_s)) {
-            if(!emitTypedFile(entry, EnumeratedFileType::Cue)) {
-                return false;
-            }
             continue;
         }
 

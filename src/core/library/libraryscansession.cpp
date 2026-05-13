@@ -194,6 +194,11 @@ bool LibraryScanSession::handleEnumeratedFile(const QFileInfo& info, const Enume
         }
 
         if(!m_state.filesScanned().contains(filepath)) {
+            if(type == EnumeratedFileType::Track && m_externalCueCoveredPaths.contains(filepath)) {
+                m_state.fileScanned(filepath);
+                return true;
+            }
+
             if(m_state.trackPaths().contains(filepath)) {
                 const auto& existingTracks = m_state.trackPaths().at(filepath);
                 m_fileScanResult->tracksScanned.insert(m_fileScanResult->tracksScanned.end(), existingTracks.cbegin(),
@@ -222,11 +227,6 @@ bool LibraryScanSession::handleEnumeratedFile(const QFileInfo& info, const Enume
                 }
             }
             else {
-                if(m_externalCueCoveredPaths.contains(filepath)) {
-                    m_state.fileScanned(filepath);
-                    return true;
-                }
-
                 const TrackList tracks = m_resolver->readTracks(filepath);
                 for(Track track : tracks) {
                     readFileProperties(track);
