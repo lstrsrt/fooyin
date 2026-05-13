@@ -25,6 +25,7 @@
 
 #include <QCheckBox>
 #include <QComboBox>
+#include <QJsonObject>
 #include <QVBoxLayout>
 
 using namespace Qt::StringLiterals;
