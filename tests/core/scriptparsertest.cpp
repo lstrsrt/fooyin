@@ -199,9 +199,7 @@ public:
         m_trackListPlaceholder   = std::move(placeholder);
         m_escapeRichText         = escapeRichText;
         m_useVariousArtists      = useVariousArtists;
-        m_fullStarSymbol         = std::move(fullStarSymbol);
-        m_halfStarSymbol         = std::move(halfStarSymbol);
-        m_emptyStarSymbol        = std::move(emptyStarSymbol);
+        m_ratingSymbols          = {std::move(fullStarSymbol), std::move(halfStarSymbol), std::move(emptyStarSymbol)};
     }
 
     [[nodiscard]] const ScriptPlaylistEnvironment* playlistEnvironment() const override
@@ -314,19 +312,22 @@ public:
         return m_useVariousArtists;
     }
 
-    [[nodiscard]] QString ratingFullStarSymbol() const override
+    [[nodiscard]] RatingStarSymbols ratingStarSymbols() const override
     {
-        return m_fullStarSymbol.isEmpty() ? ScriptEvaluationEnvironment::ratingFullStarSymbol() : m_fullStarSymbol;
-    }
+        RatingStarSymbols symbols{m_ratingSymbols};
+        const RatingStarSymbols defaultSymbols = ScriptEvaluationEnvironment::ratingStarSymbols();
 
-    [[nodiscard]] QString ratingHalfStarSymbol() const override
-    {
-        return m_halfStarSymbol.isEmpty() ? ScriptEvaluationEnvironment::ratingHalfStarSymbol() : m_halfStarSymbol;
-    }
+        if(symbols.fullStarSymbol.isEmpty()) {
+            symbols.fullStarSymbol = defaultSymbols.fullStarSymbol;
+        }
+        if(symbols.halfStarSymbol.isEmpty()) {
+            symbols.halfStarSymbol = defaultSymbols.halfStarSymbol;
+        }
+        if(symbols.emptyStarSymbol.isEmpty()) {
+            symbols.emptyStarSymbol = defaultSymbols.emptyStarSymbol;
+        }
 
-    [[nodiscard]] QString ratingEmptyStarSymbol() const override
-    {
-        return m_emptyStarSymbol.isEmpty() ? ScriptEvaluationEnvironment::ratingEmptyStarSymbol() : m_emptyStarSymbol;
+        return symbols;
     }
 
 private:
@@ -346,9 +347,7 @@ private:
     QString m_trackListPlaceholder;
     bool m_escapeRichText{false};
     bool m_useVariousArtists{false};
-    QString m_fullStarSymbol;
-    QString m_halfStarSymbol;
-    QString m_emptyStarSymbol;
+    RatingStarSymbols m_ratingSymbols;
 };
 
 static const StaticScriptVariableProvider EnvironmentVariableProvider{

@@ -33,9 +33,7 @@ LibraryScriptEnvironment::LibraryScriptEnvironment(const LibraryManager* library
     , m_trackListContextPolicy{TrackListContextPolicy::Unresolved}
     , m_escapeRichText{false}
     , m_useVariousArtists{false}
-    , m_fullStarSymbol{defaultRatingFullStarSymbol()}
-    , m_halfStarSymbol{defaultRatingHalfStarSymbol()}
-    , m_emptyStarSymbol{defaultRatingEmptyStarSymbol()}
+    , m_ratingSymbols{defaultRatingStarSymbols()}
 { }
 
 void LibraryScriptEnvironment::setEvaluationPolicy(TrackListContextPolicy policy, QString placeholder,
@@ -49,9 +47,7 @@ void LibraryScriptEnvironment::setEvaluationPolicy(TrackListContextPolicy policy
 
 void LibraryScriptEnvironment::setRatingStarSymbols(const RatingStarSymbols& ratingSymbols)
 {
-    m_fullStarSymbol  = ratingSymbols.fullStarSymbol;
-    m_halfStarSymbol  = ratingSymbols.halfStarSymbol;
-    m_emptyStarSymbol = ratingSymbols.emptyStarSymbol;
+    m_ratingSymbols = ratingSymbols;
 }
 
 const ScriptLibraryEnvironment* LibraryScriptEnvironment::libraryEnvironment() const
@@ -116,19 +112,18 @@ bool LibraryScriptEnvironment::useVariousArtists() const
     return m_useVariousArtists;
 }
 
-QString LibraryScriptEnvironment::ratingFullStarSymbol() const
+RatingStarSymbols LibraryScriptEnvironment::ratingStarSymbols() const
 {
-    return m_fullStarSymbol.isEmpty() ? ScriptEvaluationEnvironment::ratingFullStarSymbol() : m_fullStarSymbol;
-}
+    RatingStarSymbols symbols{m_ratingSymbols};
 
-QString LibraryScriptEnvironment::ratingHalfStarSymbol() const
-{
-    return m_halfStarSymbol.isEmpty() ? ScriptEvaluationEnvironment::ratingHalfStarSymbol() : m_halfStarSymbol;
-}
+    if(symbols.fullStarSymbol.isEmpty()) {
+        symbols.fullStarSymbol = defaultRatingFullStarSymbol();
+    }
+    if(symbols.halfStarSymbol.isEmpty()) {
+        symbols.halfStarSymbol = defaultRatingHalfStarSymbol();
+    }
 
-QString LibraryScriptEnvironment::ratingEmptyStarSymbol() const
-{
-    return m_emptyStarSymbol;
+    return symbols;
 }
 
 PlaylistScriptEnvironment::PlaylistScriptEnvironment()
@@ -313,21 +308,18 @@ bool PlaylistScriptEnvironment::useVariousArtists() const
     return m_useVariousArtists;
 }
 
-QString PlaylistScriptEnvironment::ratingFullStarSymbol() const
+RatingStarSymbols PlaylistScriptEnvironment::ratingStarSymbols() const
 {
-    return m_ratingSymbols.fullStarSymbol.isEmpty() ? ScriptEvaluationEnvironment::ratingFullStarSymbol()
-                                                    : m_ratingSymbols.fullStarSymbol;
-}
+    RatingStarSymbols symbols{m_ratingSymbols};
 
-QString PlaylistScriptEnvironment::ratingHalfStarSymbol() const
-{
-    return m_ratingSymbols.halfStarSymbol.isEmpty() ? ScriptEvaluationEnvironment::ratingHalfStarSymbol()
-                                                    : m_ratingSymbols.halfStarSymbol;
-}
+    if(symbols.fullStarSymbol.isEmpty()) {
+        symbols.fullStarSymbol = defaultRatingFullStarSymbol();
+    }
+    if(symbols.halfStarSymbol.isEmpty()) {
+        symbols.halfStarSymbol = defaultRatingHalfStarSymbol();
+    }
 
-QString PlaylistScriptEnvironment::ratingEmptyStarSymbol() const
-{
-    return m_ratingSymbols.emptyStarSymbol;
+    return symbols;
 }
 
 bool PlaylistScriptEnvironment::hasDirectQueueState() const

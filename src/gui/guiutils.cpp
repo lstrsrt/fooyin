@@ -22,6 +22,7 @@
 #include <core/coresettings.h>
 #include <core/library/musiclibrary.h>
 #include <core/library/tracksort.h>
+#include <gui/guisettings.h>
 #include <utils/datastream.h>
 #include <utils/settings/settingsmanager.h>
 
@@ -155,6 +156,15 @@ QueueTracks queueTracksFromMimeData(MusicLibrary* library, QByteArray data)
     }
 
     return tracks;
+}
+
+RatingStarSymbols ratingStarSymbols(const SettingsManager& settings)
+{
+    return {
+        settings.value<Settings::Gui::RatingFullStarSymbol>(),
+        settings.value<Settings::Gui::RatingHalfStarSymbol>(),
+        settings.value<Settings::Gui::RatingEmptyStarSymbol>(),
+    };
 }
 
 QMap<PaletteKey, QColor> coloursFromPalette()

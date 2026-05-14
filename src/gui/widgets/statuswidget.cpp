@@ -30,6 +30,7 @@
 #include <core/track.h>
 #include <gui/guiconstants.h>
 #include <gui/guisettings.h>
+#include <gui/guiutils.h>
 #include <gui/iconloader.h>
 #include <gui/playlist/playlistcontroller.h>
 #include <gui/playlist/playlistuicontroller.h>
@@ -359,9 +360,7 @@ void StatusWidgetPrivate::updateScripts()
 
 RatingStarSymbols StatusWidgetPrivate::ratingSymbols() const
 {
-    return {m_settings->value<Settings::Gui::RatingFullStarSymbol>(),
-            m_settings->value<Settings::Gui::RatingHalfStarSymbol>(),
-            m_settings->value<Settings::Gui::RatingEmptyStarSymbol>()};
+    return Gui::ratingStarSymbols(*m_settings);
 }
 
 PlaybackScriptContext StatusWidgetPrivate::makeSelectionContext(const TrackSelection* selection) const
@@ -427,12 +426,10 @@ void StatusWidgetPrivate::updatePlayingText()
         QString playingText;
 
         if(const Track currentTrack = m_playerController->currentTrack(); currentTrack.isValid()) {
-            auto contextData = makePlaybackScriptContext(m_playerController, m_playlistHandler->activePlaylist(),
-                                                         TrackListContextPolicy::Fallback, {}, true, false,
-                                                         {m_settings->value<Settings::Gui::RatingFullStarSymbol>(),
-                                                          m_settings->value<Settings::Gui::RatingHalfStarSymbol>(),
-                                                          m_settings->value<Settings::Gui::RatingEmptyStarSymbol>()});
-            playingText      = m_scriptParser.evaluate(m_playingScript, currentTrack, contextData.context);
+            auto contextData
+                = makePlaybackScriptContext(m_playerController, m_playlistHandler->activePlaylist(),
+                                            TrackListContextPolicy::Fallback, {}, true, false, ratingSymbols());
+            playingText = m_scriptParser.evaluate(m_playingScript, currentTrack, contextData.context);
         }
         else {
             playingText = m_scriptParser.evaluate(m_playingScript, m_playerController->currentTrack());

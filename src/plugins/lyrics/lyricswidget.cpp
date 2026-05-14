@@ -37,6 +37,7 @@
 #include <core/scripting/scriptparser.h>
 #include <gui/configdialog.h>
 #include <gui/guisettings.h>
+#include <gui/guiutils.h>
 #include <gui/scripting/scriptformatter.h>
 #include <gui/widgets/colourbutton.h>
 #include <gui/widgets/scriptlineedit.h>
@@ -879,12 +880,9 @@ void LyricsWidget::setCurrentTime(uint64_t time)
 
 RichText LyricsWidget::noLyricsDisplayText(const Track& track)
 {
-    auto contextData = makePlaybackScriptContext(m_playerController,
-                                                 m_playlistHandler ? m_playlistHandler->activePlaylist() : nullptr,
-                                                 TrackListContextPolicy::Fallback, {}, true, false,
-                                                 {m_settings->value<Fooyin::Settings::Gui::RatingFullStarSymbol>(),
-                                                  m_settings->value<Fooyin::Settings::Gui::RatingHalfStarSymbol>(),
-                                                  m_settings->value<Fooyin::Settings::Gui::RatingEmptyStarSymbol>()});
+    auto contextData = makePlaybackScriptContext(
+        m_playerController, m_playlistHandler ? m_playlistHandler->activePlaylist() : nullptr,
+        TrackListContextPolicy::Fallback, {}, true, false, Gui::ratingStarSymbols(*m_settings));
     const QString displayText = m_parser.evaluate(m_config.noLyricsScript, track, contextData.context);
     if(displayText.isEmpty()) {
         return {};

@@ -67,6 +67,7 @@
 #include <gui/editablelayout.h>
 #include <gui/guiconstants.h>
 #include <gui/guisettings.h>
+#include <gui/guiutils.h>
 #include <gui/iconloader.h>
 #include <gui/layoutprovider.h>
 #include <gui/plugins/dspguiplugin.h>
@@ -597,11 +598,9 @@ void GuiApplicationPrivate::updateWindowTitle()
         return;
     }
 
-    auto contextData = makePlaybackScriptContext(
-        m_playerController, m_playlistHandler->activePlaylist(), TrackListContextPolicy::Fallback, {}, false, false,
-        {.fullStarSymbol  = m_settings->value<Settings::Gui::RatingFullStarSymbol>(),
-         .halfStarSymbol  = m_settings->value<Settings::Gui::RatingHalfStarSymbol>(),
-         .emptyStarSymbol = m_settings->value<Settings::Gui::RatingEmptyStarSymbol>()});
+    auto contextData     = makePlaybackScriptContext(m_playerController, m_playlistHandler->activePlaylist(),
+                                                     TrackListContextPolicy::Fallback, {}, false, false,
+                                                     Gui::ratingStarSymbols(*m_settings));
     const QString script = m_settings->value<Settings::Gui::Internal::WindowTitleTrackScript>();
     const QString title  = m_scriptParser.evaluate(script, currentTrack, contextData.context);
     m_mainWindow->setTitle(title);

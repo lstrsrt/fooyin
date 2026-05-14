@@ -24,7 +24,7 @@
 
 #include <core/constants.h>
 #include <core/scripting/scriptparser.h>
-#include <gui/guisettings.h>
+#include <gui/guiutils.h>
 #include <gui/scripting/richtextutils.h>
 #include <gui/scripting/scriptformatter.h>
 #include <utils/settings/settingsmanager.h>
@@ -275,10 +275,7 @@ void LibraryTreePopulator::run(const LibraryTreeGrouping& grouping, const TrackL
     p->m_emittedItems.clear();
     p->m_childKeys.clear();
 
-    p->m_scriptEnvironment.setRatingStarSymbols(
-        {.fullStarSymbol  = p->m_settings->value<Settings::Gui::RatingFullStarSymbol>(),
-         .halfStarSymbol  = p->m_settings->value<Settings::Gui::RatingHalfStarSymbol>(),
-         .emptyStarSymbol = p->m_settings->value<Settings::Gui::RatingEmptyStarSymbol>()});
+    p->m_scriptEnvironment.setRatingStarSymbols(Gui::ratingStarSymbols(*p->m_settings));
     p->m_scriptEnvironment.setEvaluationPolicy(TrackListContextPolicy::Unresolved, {}, true, useVarious);
     p->m_scriptEnvironment.setNodeVariablePolicy(LibraryTreeNodePolicy::Unresolved);
 
@@ -304,10 +301,7 @@ void LibraryTreePopulator::updateItems(ItemKeyMap items, bool useVarious)
 {
     setState(Running);
 
-    p->m_scriptEnvironment.setRatingStarSymbols(
-        {.fullStarSymbol  = p->m_settings->value<Settings::Gui::RatingFullStarSymbol>(),
-         .halfStarSymbol  = p->m_settings->value<Settings::Gui::RatingHalfStarSymbol>(),
-         .emptyStarSymbol = p->m_settings->value<Settings::Gui::RatingEmptyStarSymbol>()});
+    p->m_scriptEnvironment.setRatingStarSymbols(Gui::ratingStarSymbols(*p->m_settings));
     p->m_scriptEnvironment.setEvaluationPolicy(TrackListContextPolicy::Unresolved, {}, true, useVarious);
     p->m_scriptEnvironment.setNodeVariablePolicy(LibraryTreeNodePolicy::Unresolved);
 

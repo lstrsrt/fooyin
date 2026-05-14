@@ -40,31 +40,18 @@
 using namespace Qt::StringLiterals;
 
 namespace {
-QString ratingFullStarSymbol(const Fooyin::ScriptContext& context)
+Fooyin::RatingStarSymbols ratingStarSymbols(const Fooyin::ScriptContext& context)
 {
     const auto* environment = context.environment ? context.environment->evaluationEnvironment() : nullptr;
-    return environment ? environment->ratingFullStarSymbol() : Fooyin::defaultRatingFullStarSymbol();
-}
-
-QString ratingHalfStarSymbol(const Fooyin::ScriptContext& context)
-{
-    const auto* environment = context.environment ? context.environment->evaluationEnvironment() : nullptr;
-    return environment ? environment->ratingHalfStarSymbol() : Fooyin::defaultRatingHalfStarSymbol();
-}
-
-QString ratingEmptyStarSymbol(const Fooyin::ScriptContext& context)
-{
-    const auto* environment = context.environment ? context.environment->evaluationEnvironment() : nullptr;
-    return environment ? environment->ratingEmptyStarSymbol() : Fooyin::defaultRatingEmptyStarSymbol();
+    return environment ? environment->ratingStarSymbols() : Fooyin::defaultRatingStarSymbols();
 }
 
 QString formattedRatingStars(const Fooyin::Track& track, const Fooyin::ScriptContext& context, bool includeEmptyStars)
 {
     const int rating = track.ratingStars();
 
-    const QString fullStarSymbol  = ratingFullStarSymbol(context);
-    const QString halfStarSymbol  = ratingHalfStarSymbol(context);
-    const QString emptyStarSymbol = includeEmptyStars ? ratingEmptyStarSymbol(context) : QString{};
+    const Fooyin::RatingStarSymbols symbols = ratingStarSymbols(context);
+    const QString emptyStarSymbol           = includeEmptyStars ? symbols.emptyStarSymbol : QString{};
 
     if(rating <= 0) {
         return includeEmptyStars && !emptyStarSymbol.isEmpty() ? emptyStarSymbol.repeated(5) : QString{};
@@ -74,10 +61,10 @@ QString formattedRatingStars(const Fooyin::Track& track, const Fooyin::ScriptCon
 
     QString text;
     for(int i{0}; i < rating / 2; ++i) {
-        text.append(fullStarSymbol);
+        text.append(symbols.fullStarSymbol);
     }
     if((rating % 2) != 0) {
-        text.append(halfStarSymbol);
+        text.append(symbols.halfStarSymbol);
     }
     if(includeEmptyStars && !emptyStarSymbol.isEmpty()) {
         for(int i{0}; i < emptyStars; ++i) {

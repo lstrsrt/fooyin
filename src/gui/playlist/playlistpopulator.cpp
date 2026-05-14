@@ -25,7 +25,7 @@
 
 #include <core/player/playercontroller.h>
 #include <core/scripting/scriptenvironmenthelpers.h>
-#include <gui/guisettings.h>
+#include <gui/guiutils.h>
 #include <utils/settings/settingsmanager.h>
 
 #include <QTimer>
@@ -599,9 +599,7 @@ void PlaylistPopulator::setFont(const QFont& font)
 
 void PlaylistPopulator::setUseVarious(bool enabled)
 {
-    p->m_scriptEnvironment.setRatingStarSymbols({p->m_settings->value<Settings::Gui::RatingFullStarSymbol>(),
-                                                 p->m_settings->value<Settings::Gui::RatingHalfStarSymbol>(),
-                                                 p->m_settings->value<Settings::Gui::RatingEmptyStarSymbol>()});
+    p->m_scriptEnvironment.setRatingStarSymbols(Gui::ratingStarSymbols(*p->m_settings));
     p->m_scriptEnvironment.setEvaluationPolicy(TrackListContextPolicy::Placeholder, QStringLiteral("|Loading|"), true,
                                                enabled);
 }

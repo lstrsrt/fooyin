@@ -21,6 +21,7 @@
 
 #include "filterfwd.h"
 
+#include <core/ratingsymbols.h>
 #include <core/track.h>
 #include <gui/scripting/richtext.h>
 #include <utils/crypto.h>
@@ -46,9 +47,7 @@ using FilterRowList = std::vector<FilterRow>;
 struct FilterRowBuildContext
 {
     QFont font;
-    QString fullStar;
-    QString halfStar;
-    QString emptyStar;
+    RatingStarSymbols ratingSymbols;
     bool useVarious{false};
 };
 

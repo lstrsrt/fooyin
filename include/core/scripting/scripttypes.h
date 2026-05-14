@@ -122,17 +122,9 @@ public:
     {
         return false;
     }
-    [[nodiscard]] virtual QString ratingFullStarSymbol() const
+    [[nodiscard]] virtual RatingStarSymbols ratingStarSymbols() const
     {
-        return defaultRatingFullStarSymbol();
-    }
-    [[nodiscard]] virtual QString ratingHalfStarSymbol() const
-    {
-        return defaultRatingHalfStarSymbol();
-    }
-    [[nodiscard]] virtual QString ratingEmptyStarSymbol() const
-    {
-        return defaultRatingEmptyStarSymbol();
+        return defaultRatingStarSymbols();
     }
     [[nodiscard]] virtual bool replacePathSeparators() const
     {

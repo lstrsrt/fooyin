@@ -26,6 +26,7 @@
 #include <core/scripting/scriptenvironmenthelpers.h>
 #include <gui/guiconstants.h>
 #include <gui/guisettings.h>
+#include <gui/guiutils.h>
 #include <gui/iconloader.h>
 #include <gui/trackmimedata.h>
 #include <utils/modelutils.h>
@@ -117,9 +118,7 @@ PlaybackScriptContext makeQueueScriptContext(PlayerController* playerController,
 
     data.environment.setTrackState(queueTrack.indexInPlaylist, currentPlayingTrackIndex, currentTrackId, 0);
     data.environment.setPlaybackState(currentPosition, currentTrackDuration, bitrate, playState);
-    data.environment.setRatingStarSymbols({settings->value<Settings::Gui::RatingFullStarSymbol>(),
-                                           settings->value<Settings::Gui::RatingHalfStarSymbol>(),
-                                           settings->value<Settings::Gui::RatingEmptyStarSymbol>()});
+    data.environment.setRatingStarSymbols(Gui::ratingStarSymbols(*settings));
     data.environment.setEvaluationPolicy(TrackListContextPolicy::Unresolved, {}, true);
     data.environment.setQueueState(queueIndexes, queueTotal);
 

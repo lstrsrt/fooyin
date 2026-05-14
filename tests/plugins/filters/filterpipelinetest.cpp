@@ -187,11 +187,9 @@ TEST(FilterPipelineTest, PatchFilterRowsMovesUpdatedTrackBetweenBucketsAndPrunes
 
     const Filters::FilterColumnList columns{{.id = 0, .name = u"Genre"_s, .field = u"%<genre>%"_s}};
     const Filters::FilterRowBuildContext context{
-        .font       = {},
-        .fullStar   = u"*"_s,
-        .halfStar   = u"/"_s,
-        .emptyStar  = u"-"_s,
-        .useVarious = false,
+        .font          = {},
+        .ratingSymbols = {u"*"_s, u"/"_s, u"-"_s},
+        .useVarious    = false,
     };
 
     const Filters::FilterRowList previousRows = Filters::buildFilterRows(nullptr, columns, {oldRock, oldJazz}, context);
@@ -224,11 +222,9 @@ TEST(FilterPipelineTest, PatchFilterRowsAddsNewTrackIntoExistingBucketInCurrentO
 
     const Filters::FilterColumnList columns{{.id = 0, .name = u"Genre"_s, .field = u"%<genre>%"_s}};
     const Filters::FilterRowBuildContext context{
-        .font       = {},
-        .fullStar   = u"*"_s,
-        .halfStar   = u"/"_s,
-        .emptyStar  = u"-"_s,
-        .useVarious = false,
+        .font          = {},
+        .ratingSymbols = {u"*"_s, u"/"_s, u"-"_s},
+        .useVarious    = false,
     };
 
     const Filters::FilterRowList previousRows = Filters::buildFilterRows(nullptr, columns, {oldRock}, context);

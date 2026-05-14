@@ -96,8 +96,7 @@ FilterRowList buildFilterRows(LibraryManager* libraryManager, const FilterColumn
     formatter.setBaseFont(context.font);
 
     LibraryScriptEnvironment scriptEnvironment{libraryManager};
-    scriptEnvironment.setRatingStarSymbols(
-        {.fullStarSymbol = context.fullStar, .halfStarSymbol = context.halfStar, .emptyStarSymbol = context.emptyStar});
+    scriptEnvironment.setRatingStarSymbols(context.ratingSymbols);
     scriptEnvironment.setEvaluationPolicy(TrackListContextPolicy::Unresolved, {}, false, context.useVarious);
 
     const ParsedScript script = parser.parse(fields.join("\036"_L1));

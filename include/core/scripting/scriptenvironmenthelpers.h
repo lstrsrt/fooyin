@@ -59,9 +59,7 @@ public:
     [[nodiscard]] QString trackListPlaceholder() const override;
     [[nodiscard]] bool escapeRichText() const override;
     [[nodiscard]] bool useVariousArtists() const override;
-    [[nodiscard]] QString ratingFullStarSymbol() const override;
-    [[nodiscard]] QString ratingHalfStarSymbol() const override;
-    [[nodiscard]] QString ratingEmptyStarSymbol() const override;
+    [[nodiscard]] RatingStarSymbols ratingStarSymbols() const override;
 
 private:
     const LibraryManager* m_libraryManager;
@@ -69,9 +67,7 @@ private:
     QString m_trackListPlaceholder;
     bool m_escapeRichText;
     bool m_useVariousArtists;
-    QString m_fullStarSymbol;
-    QString m_halfStarSymbol;
-    QString m_emptyStarSymbol;
+    RatingStarSymbols m_ratingSymbols;
 };
 
 /*!
@@ -121,9 +117,7 @@ public:
     [[nodiscard]] QString trackListPlaceholder() const override;
     [[nodiscard]] bool escapeRichText() const override;
     [[nodiscard]] bool useVariousArtists() const override;
-    [[nodiscard]] QString ratingFullStarSymbol() const override;
-    [[nodiscard]] QString ratingHalfStarSymbol() const override;
-    [[nodiscard]] QString ratingEmptyStarSymbol() const override;
+    [[nodiscard]] RatingStarSymbols ratingStarSymbols() const override;
     [[nodiscard]] bool hasDirectQueueState() const;
 
 private:

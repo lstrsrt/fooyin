@@ -349,11 +349,9 @@ void FilterControllerPrivate::filterContextMenu(FilterWidget* widget, const QPoi
 FilterRowBuildContext FilterControllerPrivate::rowBuildContext() const
 {
     return {
-        .font       = QApplication::font("Fooyin::Filters::FilterView"),
-        .fullStar   = m_settings->value<Settings::Gui::RatingFullStarSymbol>(),
-        .halfStar   = m_settings->value<Settings::Gui::RatingHalfStarSymbol>(),
-        .emptyStar  = m_settings->value<Settings::Gui::RatingEmptyStarSymbol>(),
-        .useVarious = m_settings->value<Settings::Core::UseVariousForCompilations>(),
+        .font          = QApplication::font("Fooyin::Filters::FilterView"),
+        .ratingSymbols = Gui::ratingStarSymbols(*m_settings),
+        .useVarious    = m_settings->value<Settings::Core::UseVariousForCompilations>(),
     };
 }
 

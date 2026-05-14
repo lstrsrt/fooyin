@@ -31,6 +31,7 @@
 #include <gui/configdialog.h>
 #include <gui/guiconstants.h>
 #include <gui/guisettings.h>
+#include <gui/guiutils.h>
 #include <gui/scripting/richtext.h>
 #include <gui/scripting/richtextutils.h>
 #include <gui/scripting/scriptformatter.h>
@@ -541,11 +542,9 @@ Playlist* ScriptDisplay::currentPlaylist() const
 QString ScriptDisplay::evaluateScript()
 {
     if(const Track track = currentTrack(); track.isValid()) {
-        auto contextData = makePlaybackScriptContext(m_playerController, currentPlaylist(),
-                                                     TrackListContextPolicy::Fallback, {}, true, false,
-                                                     {m_settings->value<Settings::Gui::RatingFullStarSymbol>(),
-                                                      m_settings->value<Settings::Gui::RatingHalfStarSymbol>(),
-                                                      m_settings->value<Settings::Gui::RatingEmptyStarSymbol>()});
+        auto contextData
+            = makePlaybackScriptContext(m_playerController, currentPlaylist(), TrackListContextPolicy::Fallback, {},
+                                        true, false, Gui::ratingStarSymbols(*m_settings));
         return m_scriptParser.evaluate(m_config.script, track, contextData.context);
     }
 
