@@ -12,16 +12,28 @@
 * DSP
   - Add `View -> Equaliser` option when an equaliser DSP is present in a chain
 * Interface
+  - Add track selection support to the Queue Viewer ([#318](https://github.com/fooyin/fooyin/issues/318))
+  - Add `Add to Playlist` context menu actions to track selections, filters, the Library Tree, and the Directory Browser ([#831](https://github.com/fooyin/fooyin/issues/831))
   - Reorganise settings page categories and start categories collapsed by default
   - Show a placeholder for empty settings categories and simplify single-page category display
   - Replace Tab Stack cardinal direction labels with standard directions ([#1156](https://github.com/fooyin/fooyin/pull/1156))
   - Add an Advanced settings page
+  - Add a seekbar and WaveBar setting for whether mouse interaction takes focus ([#769](https://github.com/fooyin/fooyin/issues/769))
 * Playlist
   - Add settings to ignore playlist files when adding folders and prevent duplicate entries when loading playlists ([#1160](https://github.com/fooyin/fooyin/issues/1160))
+  - Remove the playback queue size limit
+* FileOps
+  - Move the single-operation confirmation setting to Advanced settings
+* Lyrics
+  - Improve the layout of font and colour settings
+* Scripting
+  - Add `$isalpha`, `$isalnum`, and `$isnum` string functions ([#982](https://github.com/fooyin/fooyin/issues/982), [#1168](https://github.com/fooyin/fooyin/pull/1168))
+  - Preserve path separators in path variables ([#777](https://github.com/fooyin/fooyin/issues/777))
 * Tag Editor
   - Add enabled and multi-value columns to tag editor fields
 * WaveBar
   - Cache supersampled waveform renders
+  - Add options to normalise waveforms, use a dB scale, and choose peak display mode
 
 ### Fixes
 
@@ -32,6 +44,10 @@
   - Refine CUE handling in external scans
 * Filters
   - Fix filtered `All` selections using the whole library instead of matching entries ([#1151](https://github.com/fooyin/fooyin/issues/1151))
+* Interface
+  - Fix inline editors accepting changes after pressing Escape ([#1170](https://github.com/fooyin/fooyin/pull/1170))
+  - Fix bottom viewport row selection repaint in tree views
+  - Sync widget configuration state after applying
 * Library/Metadata
   - Fix custom rating text tag settings and rating write mappings ([#1148](https://github.com/fooyin/fooyin/issues/1148), [#1150](https://github.com/fooyin/fooyin/issues/1150))
 * PipeWire
@@ -41,10 +57,12 @@
 * Settings
   - Fix relative positioning of settings categories and category identity across translations
 * VU Meter, WaveBar
-  - Always se the active palette for the default highlight colour
+  - Always set the active palette for the default highlight colour
 
 ### Build/System
 
+* Packaging
+  - Target Ubuntu 26.04 and update distro-specific dependencies ([#1171](https://github.com/fooyin/fooyin/issues/1171))
 * Translations
   - Update translations and translation sources ([#1164](https://github.com/fooyin/fooyin/pull/1164), [#1165](https://github.com/fooyin/fooyin/pull/1165))
 
