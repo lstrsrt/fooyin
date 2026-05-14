@@ -247,7 +247,8 @@ void FilterControllerPrivate::filterContextMenu(FilterWidget* widget, const QPoi
     ContextMenuUtils::renderStaticContextMenu(
         menu, FilterContextMenu::DefaultItems,
         m_settings->fileValue(FilterContextMenu::LayoutKey, QStringList{}).toStringList(),
-        m_settings->fileValue(FilterContextMenu::DisabledSectionsKey, QStringList{}).toStringList(),
+        m_settings->fileValue(FilterContextMenu::DisabledSectionsKey, FilterContextMenu::defaultDisabledSections())
+            .toStringList(),
         [&](const auto& id, QMenu* targetMenu, const auto& sectionEnabled) {
             if(id == QLatin1StringView{Constants::Actions::AddToCurrent}) {
                 if(!hasSelection || !m_trackSelection || !sectionEnabled(Constants::Actions::AddToCurrent)) {
@@ -286,6 +287,14 @@ void FilterControllerPrivate::filterContextMenu(FilterWidget* widget, const QPoi
 
                 if(auto* sendNewCmd = m_actionManager->command(Constants::Actions::SendToNew)) {
                     targetMenu->addAction(sendNewCmd->action());
+                }
+                return;
+            }
+            if(id == QLatin1StringView{Constants::Actions::AddToPlaylist}) {
+                if(hasSelection && m_trackSelection && sectionEnabled(Constants::Actions::AddToPlaylist)) {
+                    auto* playlistMenu = new QMenu(FilterWidget::tr("Add to playlist"), targetMenu);
+                    m_trackSelection->addTrackAddToPlaylistContextMenu(playlistMenu);
+                    targetMenu->addMenu(playlistMenu);
                 }
                 return;
             }

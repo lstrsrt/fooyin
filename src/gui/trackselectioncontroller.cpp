@@ -140,6 +140,8 @@ public:
     void sendToCurrentPlaylist(PlaylistAction::ActionOptions options) const;
     void addToCurrentPlaylist() const;
     void addToActivePlaylist() const;
+    void addToPlaylist(const UId& playlistId, const TrackList& tracks) const;
+    void addPlaylistTargets(QMenu* menu, const TrackSelection& selection) const;
     void startPlayback(PlaylistAction::ActionOptions options);
     void addToQueue() const;
     void queueNext() const;
@@ -985,6 +987,40 @@ void TrackSelectionControllerPrivate::addToActivePlaylist() const
     }
 }
 
+void TrackSelectionControllerPrivate::addToPlaylist(const UId& playlistId, const TrackList& tracks) const
+{
+    if(tracks.empty()) {
+        return;
+    }
+
+    if(const auto* playlist = m_playlistHandler->playlistById(playlistId); playlist && !playlist->isAutoPlaylist()) {
+        m_playlistHandler->appendToPlaylist(playlistId, tracks);
+    }
+}
+
+void TrackSelectionControllerPrivate::addPlaylistTargets(QMenu* menu, const TrackSelection& selection) const
+{
+    if(!menu || selection.tracks.empty()) {
+        return;
+    }
+
+    const auto playlists = m_playlistHandler->playlists();
+    if(playlists.empty()) {
+        return;
+    }
+
+    for(const auto* playlist : playlists) {
+        if(!playlist || playlist->isAutoPlaylist() || playlist->isTemporary()) {
+            continue;
+        }
+
+        auto* action = menu->addAction(playlist->name());
+        QObject::connect(
+            action, &QAction::triggered, m_self,
+            [this, playlistId = playlist->id(), tracks = selection.tracks]() { addToPlaylist(playlistId, tracks); });
+    }
+}
+
 void TrackSelectionControllerPrivate::startPlayback(PlaylistAction::ActionOptions options)
 {
     if(!hasTracks()) {
@@ -1425,6 +1461,11 @@ void TrackSelectionController::addTrackPlaylistContextMenu(QMenu* menu) const
             separator->deleteLater();
         }
     }
+}
+
+void TrackSelectionController::addTrackAddToPlaylistContextMenu(QMenu* menu) const
+{
+    p->addPlaylistTargets(menu, selectedSelection() ? *selectedSelection() : TrackSelection{});
 }
 
 bool TrackSelectionController::registerTrackContextSubmenu(QObject* owner, TrackContextMenuArea area,

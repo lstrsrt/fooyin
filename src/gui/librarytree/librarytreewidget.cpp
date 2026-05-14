@@ -782,6 +782,19 @@ void LibraryTreeWidget::populateContextMenu(QMenu* menu)
                 }
                 return;
             }
+            if(id == QLatin1StringView{Constants::Actions::AddToPlaylist}) {
+                if(hasSelection && sectionEnabled(Constants::Actions::AddToPlaylist)) {
+                    auto* playlistMenu = new QMenu(tr("Add to playlist"), targetMenu);
+                    m_trackSelection->addTrackAddToPlaylistContextMenu(playlistMenu);
+                    if(!playlistMenu->actions().empty()) {
+                        targetMenu->addMenu(playlistMenu);
+                    }
+                    else {
+                        playlistMenu->deleteLater();
+                    }
+                }
+                return;
+            }
             if(id == QLatin1StringView{Constants::Actions::AddToQueue}) {
                 if(!hasSelection || !sectionEnabled(Constants::Actions::AddToQueue)) {
                     return;

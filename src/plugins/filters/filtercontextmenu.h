@@ -38,6 +38,11 @@ constexpr auto Configure         = "Fooyin.Context.LibraryFilter.Configure";
 constexpr auto WidgetSeparator   = "Fooyin.Context.LibraryFilter.Widget.Separator";
 constexpr auto TrackActions      = "Fooyin.Context.LibraryFilter.TrackActions";
 
+inline QStringList defaultDisabledSections()
+{
+    return {QString::fromLatin1(Constants::Actions::AddToPlaylist)};
+}
+
 constexpr auto DefaultItems = std::to_array<StaticContextMenu::Item>({
     {.id    = Constants::Actions::AddToCurrent,
      .title = {.context = "FilterWidget", .sourceText = QT_TRANSLATE_NOOP("FilterWidget", "Add to current playlist")},
@@ -50,6 +55,9 @@ constexpr auto DefaultItems = std::to_array<StaticContextMenu::Item>({
      .isSeparator = false},
     {.id          = Constants::Actions::SendToNew,
      .title       = {.context = "FilterWidget", .sourceText = QT_TRANSLATE_NOOP("FilterWidget", "Create new playlist")},
+     .isSeparator = false},
+    {.id          = Constants::Actions::AddToPlaylist,
+     .title       = {.context = "FilterWidget", .sourceText = QT_TRANSLATE_NOOP("FilterWidget", "Add to playlist")},
      .isSeparator = false},
     {.id = PlaylistSeparator, .title = {}, .isSeparator = true},
     {.id    = Constants::Actions::AddToQueue,

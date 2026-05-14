@@ -19,7 +19,6 @@
 
 #include "internalguisettings.h"
 
-#include "librarytree/librarytreecontroller.h"
 #include "search/searchwidget.h"
 #include "widgets/statuswidget.h"
 
@@ -175,11 +174,13 @@ GuiSettings::GuiSettings(SettingsManager* settingsManager)
     m_settings->createSetting<Internal::ContextMenuPlaylistLayout>(QStringList{},
                                                                    u"Interface/ContextMenuPlaylistLayout"_s);
     m_settings->createSetting<Internal::ContextMenuLibraryTreeDisabledSections>(
-        QStringList{}, u"Interface/ContextMenuLibraryTreeDisabledSections"_s);
+        QStringList{QString::fromLatin1(Constants::Actions::AddToPlaylist)},
+        u"Interface/ContextMenuLibraryTreeDisabledSections"_s);
     m_settings->createSetting<Internal::ContextMenuLibraryTreeLayout>(QStringList{},
                                                                       u"Interface/ContextMenuLibraryTreeLayout"_s);
     m_settings->createSetting<Internal::ContextMenuDirBrowserDisabledSections>(
-        QStringList{}, u"Interface/ContextMenuDirBrowserDisabledSections"_s);
+        QStringList{QString::fromLatin1(Constants::Actions::AddToPlaylist)},
+        u"Interface/ContextMenuDirBrowserDisabledSections"_s);
     m_settings->createSetting<Internal::ContextMenuDirBrowserLayout>(QStringList{},
                                                                      u"Interface/ContextMenuDirBrowserLayout"_s);
     m_settings->createSetting<Internal::ContextMenuLayoutEditingDisabledSections>(

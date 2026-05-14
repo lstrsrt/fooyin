@@ -35,6 +35,7 @@ class QHBoxLayout;
 class QJsonObject;
 class QLineEdit;
 class QModelIndex;
+class QMenu;
 class QUrl;
 
 namespace Fooyin {
@@ -116,9 +117,11 @@ private:
     void handleModelUpdated() const;
 
     [[nodiscard]] QueueTracks loadQueueTracks(const TrackList& tracks) const;
+    [[nodiscard]] QList<QUrl> selectedFiles() const;
 
     void handleAction(TrackAction action, bool onlySelection);
     void handlePlayAction(const QList<QUrl>& files, const QString& startingFile);
+    void addPlaylistMenu(QMenu* menu) const;
     void handleDoubleClick(const QModelIndex& index);
     void handleMiddleClick();
     void handleModelReset();

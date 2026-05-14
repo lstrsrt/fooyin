@@ -176,6 +176,9 @@ constexpr auto DefaultItems = std::to_array<Item>({
      .title
      = {.context = "LibraryTreeWidget", .sourceText = QT_TRANSLATE_NOOP("LibraryTreeWidget", "Create new playlist")},
      .isSeparator = false},
+    {.id    = Constants::Actions::AddToPlaylist,
+     .title = {.context = "LibraryTreeWidget", .sourceText = QT_TRANSLATE_NOOP("LibraryTreeWidget", "Add to playlist")},
+     .isSeparator = false},
     {.id = PlaylistSeparator, .title = {}, .isSeparator = true},
     {.id = Constants::Actions::AddToQueue,
      .title
@@ -232,6 +235,9 @@ constexpr auto DefaultItems = std::to_array<Item>({
      .isSeparator = false},
     {.id          = Constants::Actions::SendToNew,
      .title       = {.context = "DirBrowser", .sourceText = QT_TRANSLATE_NOOP("DirBrowser", "Create new playlist")},
+     .isSeparator = false},
+    {.id          = Constants::Actions::AddToPlaylist,
+     .title       = {.context = "DirBrowser", .sourceText = QT_TRANSLATE_NOOP("DirBrowser", "Add to playlist")},
      .isSeparator = false},
     {.id = PlaylistSeparator, .title = {}, .isSeparator = true},
     {.id          = Constants::Actions::AddToQueue,

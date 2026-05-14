@@ -188,6 +188,7 @@ constexpr auto SeekBackwardSmall         = "Seek.Backward.Small";
 constexpr auto SeekBackwardLarge         = "Seek.Backward.Large";
 constexpr auto AddToCurrent              = "Tracks.AddToCurrent";
 constexpr auto AddToActive               = "Tracks.AddToActive";
+constexpr auto AddToPlaylist             = "Tracks.AddToPlaylist";
 constexpr auto SendToCurrent             = "Tracks.SendToCurrent";
 constexpr auto SendToNew                 = "Tracks.SendToNew";
 constexpr auto AddToQueue                = "Tracks.AddToQueue";

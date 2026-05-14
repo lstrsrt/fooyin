@@ -547,6 +547,12 @@ void DirBrowser::contextMenuEvent(QContextMenuEvent* event)
                 }
                 return;
             }
+            if(id == QLatin1StringView{Constants::Actions::AddToPlaylist}) {
+                if(hasSelection && sectionEnabled(Constants::Actions::AddToPlaylist)) {
+                    addPlaylistMenu(targetMenu);
+                }
+                return;
+            }
             if(id == QLatin1StringView{Constants::Actions::AddToQueue}) {
                 if(hasSelection && sectionEnabled(Constants::Actions::AddToQueue)) {
                     targetMenu->addAction(m_addQueue);
@@ -671,6 +677,59 @@ QueueTracks DirBrowser::loadQueueTracks(const TrackList& tracks) const
     }
 
     return queueTracks;
+}
+
+QList<QUrl> DirBrowser::selectedFiles() const
+{
+    QList<QUrl> files;
+
+    const QModelIndexList selected = m_dirTree->selectionModel()->selectedRows();
+    for(const QModelIndex& index : selected) {
+        if(!index.isValid()) {
+            continue;
+        }
+
+        const QFileInfo filePath{index.data(QFileSystemModel::FilePathRole).toString()};
+        if(filePath.isDir()) {
+            files.append(Utils::File::getUrlsInDirRecursive(filePath.absoluteFilePath(), m_supportedExtensions));
+        }
+        else {
+            files.append(QUrl::fromLocalFile(filePath.absoluteFilePath()));
+        }
+    }
+
+    return files;
+}
+
+void DirBrowser::addPlaylistMenu(QMenu* menu) const
+{
+    if(!menu) {
+        return;
+    }
+
+    const QList<QUrl> files = selectedFiles();
+    if(files.empty()) {
+        return;
+    }
+
+    const auto playlists = m_playlistHandler->playlists();
+    if(playlists.empty()) {
+        return;
+    }
+
+    auto* playlistMenu = new QMenu(tr("Add to playlist"), menu);
+    for(const auto* playlist : playlists) {
+        if(!playlist || playlist->isAutoPlaylist() || playlist->isTemporary()) {
+            continue;
+        }
+
+        auto* action = playlistMenu->addAction(playlist->name());
+        QObject::connect(action, &QAction::triggered, this, [this, playlistId = playlist->id(), files]() {
+            m_playlistInteractor->filesToPlaylist(files, playlistId);
+        });
+    }
+
+    menu->addMenu(playlistMenu);
 }
 
 void DirBrowser::handleAction(TrackAction action, bool onlySelection)
