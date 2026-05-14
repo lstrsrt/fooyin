@@ -29,6 +29,7 @@ PopupLineEdit::PopupLineEdit(QWidget* parent)
 
 PopupLineEdit::PopupLineEdit(const QString& contents, QWidget* parent)
     : QLineEdit{contents, parent}
+    , m_initialString{contents}
 { }
 
 void PopupLineEdit::paintEvent(QPaintEvent* event)
@@ -47,15 +48,21 @@ void PopupLineEdit::keyPressEvent(QKeyEvent* event)
     QLineEdit::keyPressEvent(event);
 
     if(event->key() == Qt::Key_Escape) {
+        m_cancelled = true;
         Q_EMIT editingCancelled();
     }
 }
 
 void PopupLineEdit::focusOutEvent(QFocusEvent* event)
 {
-    QLineEdit::focusOutEvent(event);
+    if(m_initialString == text()) {
+        Q_EMIT editingCancelled();
+    }
 
-    Q_EMIT editingFinished();
+    if(!m_cancelled) {
+        // Allow our base widget to emit editingFinished.
+        QLineEdit::focusOutEvent(event);
+    }
 }
 } // namespace Fooyin
 

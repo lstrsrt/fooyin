@@ -39,5 +39,9 @@ protected:
     void paintEvent(QPaintEvent* event) override;
     void keyPressEvent(QKeyEvent* event) override;
     void focusOutEvent(QFocusEvent* event) override;
+
+private:
+    bool m_cancelled{};
+    QString m_initialString;
 };
 } // namespace Fooyin

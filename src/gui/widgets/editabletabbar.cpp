@@ -51,7 +51,7 @@ void EditableTabBar::showEditor(int index)
         QObject::connect(m_lineEdit, &PopupLineEdit::editingCancelled, m_lineEdit, &QWidget::close);
         QObject::connect(m_lineEdit, &PopupLineEdit::editingFinished, this, [this, index]() {
             const QString text = m_lineEdit->text();
-            if(text != tabText(index)) {
+            if(!text.isEmpty() && text != tabText(index)) {
                 setTabText(index, m_lineEdit->text());
                 Q_EMIT tabTextChanged(index, m_lineEdit->text());
             }
