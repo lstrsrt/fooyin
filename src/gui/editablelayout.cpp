@@ -385,20 +385,18 @@ void EditableLayoutPrivate::setupAddWidgetMenu(QMenu* menu, WidgetContainer* par
     };
 
     if(auto* container = qobject_cast<WidgetContainer*>(current)) {
-        auto* insertMenu = new QMenu(EditableLayout::tr("&Insert"), menu);
-
         if(current != prev) {
             if(container->canAddWidget()) {
                 const int previousIndex = container->widgetIndex(prev->id());
 
-                auto* beforeMenu = new QMenu(EditableLayout::tr("&Before"), insertMenu);
+                auto* beforeMenu = new QMenu(EditableLayout::tr("Insert &before"), menu);
                 if(addWidgetMenu(beforeMenu, container, previousIndex)) {
-                    insertMenu->addMenu(beforeMenu);
+                    menu->addMenu(beforeMenu);
                 }
 
-                auto* afterMenu = new QMenu(EditableLayout::tr("&After"), insertMenu);
+                auto* afterMenu = new QMenu(EditableLayout::tr("Insert &after"), menu);
                 if(addWidgetMenu(afterMenu, container, previousIndex + 1)) {
-                    insertMenu->addMenu(afterMenu);
+                    menu->addMenu(afterMenu);
                 }
             }
         }
@@ -406,28 +404,24 @@ void EditableLayoutPrivate::setupAddWidgetMenu(QMenu* menu, WidgetContainer* par
             if(parent && parent->canAddWidget()) {
                 const int currentIndex = parent->widgetIndex(current->id());
 
-                auto* beforeMenu = new QMenu(EditableLayout::tr("&Before"), insertMenu);
+                auto* beforeMenu = new QMenu(EditableLayout::tr("Insert &before"), menu);
                 if(addWidgetMenu(beforeMenu, parent, currentIndex)) {
-                    insertMenu->addMenu(beforeMenu);
+                    menu->addMenu(beforeMenu);
                 }
 
-                auto* afterMenu = new QMenu(EditableLayout::tr("&After"), insertMenu);
+                auto* afterMenu = new QMenu(EditableLayout::tr("Insert &after"), menu);
                 if(addWidgetMenu(afterMenu, parent, currentIndex + 1)) {
-                    insertMenu->addMenu(afterMenu);
+                    menu->addMenu(afterMenu);
                 }
             }
 
             if(container->canAddWidget()) {
-                auto* insideMenu      = new QMenu(EditableLayout::tr("&Inside"), insertMenu);
+                auto* insideMenu      = new QMenu(EditableLayout::tr("Insert &inside"), menu);
                 const int insertIndex = container->widgetCount();
                 if(addWidgetMenu(insideMenu, container, insertIndex)) {
-                    insertMenu->addMenu(insideMenu);
+                    menu->addMenu(insideMenu);
                 }
             }
-        }
-
-        if(!insertMenu->isEmpty()) {
-            menu->addMenu(insertMenu);
         }
     }
     else if(qobject_cast<Dummy*>(current)) {
