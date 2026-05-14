@@ -47,15 +47,17 @@ void PopupLineEdit::keyPressEvent(QKeyEvent* event)
     QLineEdit::keyPressEvent(event);
 
     if(event->key() == Qt::Key_Escape) {
+        m_cancelled = true;
         Q_EMIT editingCancelled();
     }
 }
 
 void PopupLineEdit::focusOutEvent(QFocusEvent* event)
 {
-    QLineEdit::focusOutEvent(event);
-
-    Q_EMIT editingFinished();
+    if(!m_cancelled) {
+        // Allow our base widget to emit editingFinished.
+        QLineEdit::focusOutEvent(event);
+    }
 }
 } // namespace Fooyin
 
