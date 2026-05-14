@@ -38,7 +38,7 @@ if(CPACK_GENERATOR STREQUAL "DEB")
         noble    libicu74
         trixie   libicu76
         questing libicu76
-        forky    libicu76
+        forky    libicu78
         resolute libicu78
     )
 
