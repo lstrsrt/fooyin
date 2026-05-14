@@ -85,7 +85,12 @@ WaveSeekBar::WaveSeekBar(QWidget* parent)
     , m_waveformCacheRenderWidth{0}
     , m_waveformCacheDirty{true}
 {
-    setFocusPolicy(Qt::FocusPolicy(style()->styleHint(QStyle::SH_Button_FocusPolicy)));
+    setFocusPolicy(Qt::TabFocus);
+}
+
+void WaveSeekBar::setMouseFocusEnabled(bool enabled)
+{
+    setFocusPolicy(enabled ? Qt::StrongFocus : Qt::TabFocus);
 }
 
 void WaveSeekBar::processData(const WaveformData<float>& waveData)

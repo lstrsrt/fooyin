@@ -90,6 +90,7 @@ WaveBarWidget::WaveBarWidget(std::shared_ptr<AudioLoader> audioLoader, DbConnect
     m_seekbar->setPlayState(m_playerController->playState());
     m_seekbar->setSeekable(m_playerController->currentTrackSeekable());
     m_seekbar->setPosition(m_playerController->currentPosition());
+    m_seekbar->setMouseFocusEnabled(m_settings->value<Settings::Gui::SeekBarMouseFocus>());
 
     m_config = defaultConfig();
     applyConfig(m_config);
@@ -130,6 +131,7 @@ WaveBarWidget::WaveBarWidget(std::shared_ptr<AudioLoader> audioLoader, DbConnect
     };
     m_settings->subscribe<Settings::Gui::Theme>(this, updateColours);
     m_settings->subscribe<Settings::Gui::Style>(this, updateColours);
+    m_settings->subscribe<Settings::Gui::SeekBarMouseFocus>(m_seekbar, &WaveSeekBar::setMouseFocusEnabled);
 }
 
 QString WaveBarWidget::name() const

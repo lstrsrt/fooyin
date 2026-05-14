@@ -68,6 +68,7 @@ enum GuiSettings : uint32_t
     RatingFullStarSymbol       = 28 | Type::String,
     RatingHalfStarSymbol       = 29 | Type::String,
     RatingEmptyStarSymbol      = 30 | Type::String,
+    SeekBarMouseFocus          = 31 | Type::Bool,
 };
 Q_ENUM_NS(GuiSettings)
 } // namespace Fooyin::Settings::Gui

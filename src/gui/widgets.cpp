@@ -102,6 +102,7 @@
 #include <core/playlist/playlisthandler.h>
 #include <gui/coverprovider.h>
 #include <gui/guiconstants.h>
+#include <gui/guisettings.h>
 #include <gui/settings/context/staticcontextmenupage.h>
 #include <gui/theme/themeregistry.h>
 #include <gui/widgetprovider.h>
@@ -424,6 +425,13 @@ void Widgets::registerAdvancedSettings()
          .label       = tr("Menu levels"),
          .description = tr("Number of widget levels shown in the layout editing context menu."),
          .editor      = AdvancedSettingSpinBox{.minimum = 1, .maximum = 4, .singleStep = 1, .suffix = {}},
+         .normalise   = {},
+         .validate    = {}});
+    advancedSettingsRegistry->add<Settings::Gui::SeekBarMouseFocus>(
+        {.category    = {tr("Interface"), tr("Seeking")},
+         .label       = tr("Focus seekbars when clicked"),
+         .description = tr("Give seekbars keyboard focus after clicking them."),
+         .editor      = AdvancedSettingCheckBox{},
          .normalise   = {},
          .validate    = {}});
     advancedSettingsRegistry->add<Settings::Core::Internal::VBRUpdateInterval>(

@@ -110,6 +110,7 @@ GuiSettings::GuiSettings(SettingsManager* settingsManager)
     m_settings->createSetting<RatingHalfStarSymbol>(defaultRatingHalfStarSymbol(), u"Interface/RatingHalfStarSymbol"_s);
     m_settings->createSetting<RatingEmptyStarSymbol>(defaultRatingEmptyStarSymbol(),
                                                      u"Interface/RatingEmptyStarSymbol"_s);
+    m_settings->createSetting<SeekBarMouseFocus>(false, u"Interface/SeekBarMouseFocus"_s);
 
     m_settings->createSetting<Internal::EditingMenuLevels>(2, u"Interface/EditingMenuLevels"_s);
     m_settings->createSetting<Internal::PlaylistAltColours>(true, u"PlaylistWidget/AlternatingColours"_s);

@@ -56,6 +56,8 @@ public:
     [[nodiscard]] bool isSeeking() const;
     void stopSeeking();
 
+    void setMouseFocusEnabled(bool enabled);
+
 Q_SIGNALS:
     void sliderDropped(uint64_t pos);
     void seekForward();
@@ -81,7 +83,14 @@ private:
 
 TrackSlider::TrackSlider(QWidget* parent)
     : QSlider{Qt::Horizontal, parent}
-{ }
+{
+    setFocusPolicy(Qt::TabFocus);
+}
+
+void TrackSlider::setMouseFocusEnabled(bool enabled)
+{
+    setFocusPolicy(enabled ? Qt::StrongFocus : Qt::TabFocus);
+}
 
 uint64_t TrackSlider::valueFromPosition(int pos)
 {
@@ -309,6 +318,7 @@ SeekBar::SeekBar(PlayerController* playerController, SettingsManager* settings, 
 
     trackChanged(playerController->currentTrack());
     updateSeekEnabled();
+    m_slider->setMouseFocusEnabled(m_settings->value<Settings::Gui::SeekBarMouseFocus>());
 
     QObject::connect(m_slider, &TrackSlider::sliderDropped, playerController, &PlayerController::seek);
     QObject::connect(m_slider, &TrackSlider::seekForward, this,
@@ -322,6 +332,7 @@ SeekBar::SeekBar(PlayerController* playerController, SettingsManager* settings, 
                      &SeekBar::updateSeekEnabled);
     QObject::connect(m_playerController, &PlayerController::positionChanged, this, &SeekBar::setCurrentPosition);
     QObject::connect(m_playerController, &PlayerController::positionMoved, this, &SeekBar::setCurrentPosition);
+    m_settings->subscribe<Settings::Gui::SeekBarMouseFocus>(m_slider, &TrackSlider::setMouseFocusEnabled);
 }
 
 QString SeekBar::name() const

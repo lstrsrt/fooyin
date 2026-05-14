@@ -53,6 +53,7 @@ public:
     void setMode(WaveModes mode);
     void setColours(const Colours& colours);
     void setSupersampleFactor(int factor);
+    void setMouseFocusEnabled(bool enabled);
 
     [[nodiscard]] bool isSeeking() const;
     void stopSeeking();
