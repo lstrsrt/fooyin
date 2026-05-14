@@ -94,7 +94,7 @@ jobs:
       matrix:
         runner:
           - { os: ubuntu-latest, arch: amd64 }
-          - { os: ubuntu-26.04-arm, arch: arm64 }
+          - { os: ubuntu-24.04-arm, arch: arm64 }
         debian_version: ['bookworm', 'trixie', 'forky']
     container:
       image: debian:${{matrix.debian_version}}
@@ -146,7 +146,7 @@ jobs:
       matrix:
         runner:
           - { os: ubuntu-latest, arch: amd64 }
-          - { os: ubuntu-26.04-arm, arch: arm64 }
+          - { os: ubuntu-24.04-arm, arch: arm64 }
         ubuntu_version: ['noble', 'questing', 'resolute']
     container:
       image: ubuntu:${{matrix.ubuntu_version}}
