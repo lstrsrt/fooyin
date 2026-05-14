@@ -52,6 +52,13 @@ enum class DownmixOption
     Mono,
 };
 
+enum class PeakDisplayMode
+{
+    Maximum = 0,
+    Average,
+    SmoothedAverage,
+};
+
 class WaveBarSettings
 {
 public:

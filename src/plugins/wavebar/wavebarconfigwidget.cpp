@@ -55,6 +55,7 @@ WaveBarConfigDialog::WaveBarConfigDialog(WaveBarWidget* waveBar, QWidget* parent
     , m_barWidth{new QSpinBox(this)}
     , m_barGap{new QSpinBox(this)}
     , m_supersampleFactor{new QComboBox(this)}
+    , m_peakDisplayMode{new QComboBox(this)}
     , m_normaliseToPeak{new QCheckBox(tr("Normalise waveform"), this)}
     , m_decibelScale{new QCheckBox(tr("dB scale"), this)}
     , m_maxScale{new QDoubleSpinBox(this)}
@@ -125,8 +126,8 @@ WaveBarConfigDialog::WaveBarConfigDialog(WaveBarWidget* waveBar, QWidget* parent
     cursorGroupLayout->addWidget(m_cursorWidth, 1, 1);
     cursorGroupLayout->setColumnStretch(2, 1);
 
-    auto* scaleGroup       = new QGroupBox(tr("Scale"), displayPage);
-    auto* scaleGroupLayout = new QGridLayout(scaleGroup);
+    auto* amplitudeGroup       = new QGroupBox(tr("Amplitude"), displayPage);
+    auto* amplitudeGroupLayout = new QGridLayout(amplitudeGroup);
 
     m_channelScale->setRange(0.0, 1.0);
     m_channelScale->setSingleStep(0.1);
@@ -148,21 +149,29 @@ WaveBarConfigDialog::WaveBarConfigDialog(WaveBarWidget* waveBar, QWidget* parent
     m_supersampleFactor->addItem(tr("8x"), 8);
     m_supersampleFactor->setToolTip(supersampleTip);
 
+    m_peakDisplayMode->addItem(tr("Maximum"), static_cast<int>(PeakDisplayMode::Maximum));
+    m_peakDisplayMode->addItem(tr("Average"), static_cast<int>(PeakDisplayMode::Average));
+    m_peakDisplayMode->addItem(tr("Smoothed average"), static_cast<int>(PeakDisplayMode::SmoothedAverage));
+    m_peakDisplayMode->setToolTip(tr("How peaks are combined when waveform data is scaled to the current width"));
+
     auto* supersampleLabel = new QLabel(tr("Supersampling") + u":"_s, this);
     supersampleLabel->setToolTip(supersampleTip);
+    auto* peakDisplayLabel = new QLabel(tr("Peak display") + u":"_s, this);
+    peakDisplayLabel->setToolTip(m_peakDisplayMode->toolTip());
 
-    scaleGroupLayout->addWidget(new QLabel(tr("Channel scale") + u":"_s, this), 0, 0);
-    scaleGroupLayout->addWidget(m_channelScale, 0, 1);
-    scaleGroupLayout->addWidget(new QLabel(tr("Max scale") + u":"_s, this), 1, 0);
-    scaleGroupLayout->addWidget(m_maxScale, 1, 1);
-    scaleGroupLayout->addWidget(supersampleLabel, 2, 0);
-    scaleGroupLayout->addWidget(m_supersampleFactor, 2, 1);
-    scaleGroupLayout->addWidget(m_normaliseToPeak, 3, 0, 1, 2);
-    scaleGroupLayout->addWidget(m_decibelScale, 4, 0, 1, 2);
-    scaleGroupLayout->setColumnStretch(2, 1);
+    int row{0};
+    amplitudeGroupLayout->addWidget(new QLabel(tr("Channel scale") + u":"_s, this), row, 0);
+    amplitudeGroupLayout->addWidget(m_channelScale, row++, 1);
+    amplitudeGroupLayout->addWidget(new QLabel(tr("Max scale") + u":"_s, this), row, 0);
+    amplitudeGroupLayout->addWidget(m_maxScale, row++, 1);
+    amplitudeGroupLayout->addWidget(peakDisplayLabel, row, 0);
+    amplitudeGroupLayout->addWidget(m_peakDisplayMode, row++, 1);
+    amplitudeGroupLayout->addWidget(m_normaliseToPeak, row++, 0, 1, 2);
+    amplitudeGroupLayout->addWidget(m_decibelScale, row++, 0, 1, 2);
+    amplitudeGroupLayout->setColumnStretch(2, 1);
 
-    auto* dimensionGroup       = new QGroupBox(tr("Dimension"), displayPage);
-    auto* dimensionGroupLayout = new QGridLayout(dimensionGroup);
+    auto* renderingGroup       = new QGroupBox(tr("Rendering"), displayPage);
+    auto* renderingGroupLayout = new QGridLayout(renderingGroup);
 
     m_barWidth->setRange(1, 50);
     m_barWidth->setSuffix(u" px"_s);
@@ -171,18 +180,21 @@ WaveBarConfigDialog::WaveBarConfigDialog(WaveBarWidget* waveBar, QWidget* parent
     m_centreGap->setRange(0, 10);
     m_centreGap->setSuffix(u" px"_s);
 
-    dimensionGroupLayout->addWidget(new QLabel(tr("Bar width") + u":"_s, this), 0, 0);
-    dimensionGroupLayout->addWidget(m_barWidth, 0, 1);
-    dimensionGroupLayout->addWidget(new QLabel(tr("Bar gap") + u":"_s, this), 1, 0);
-    dimensionGroupLayout->addWidget(m_barGap, 1, 1);
-    dimensionGroupLayout->addWidget(new QLabel(tr("Centre gap") + u":"_s, this), 2, 0);
-    dimensionGroupLayout->addWidget(m_centreGap, 2, 1);
-    dimensionGroupLayout->setColumnStretch(2, 1);
+    row = 0;
+    renderingGroupLayout->addWidget(new QLabel(tr("Bar width") + u":"_s, this), row, 0);
+    renderingGroupLayout->addWidget(m_barWidth, row++, 1);
+    renderingGroupLayout->addWidget(new QLabel(tr("Bar gap") + u":"_s, this), row, 0);
+    renderingGroupLayout->addWidget(m_barGap, row++, 1);
+    renderingGroupLayout->addWidget(new QLabel(tr("Centre gap") + u":"_s, this), row, 0);
+    renderingGroupLayout->addWidget(m_centreGap, row++, 1);
+    renderingGroupLayout->addWidget(supersampleLabel, row, 0);
+    renderingGroupLayout->addWidget(m_supersampleFactor, row++, 1);
+    renderingGroupLayout->setColumnStretch(2, 1);
 
     m_colourGroup->setCheckable(true);
     auto* coloursLayout = new QGridLayout(m_colourGroup);
 
-    int row{0};
+    row = 0;
     coloursLayout->addWidget(new QLabel(tr("Unplayed"), this), row, 1, Qt::AlignCenter);
     coloursLayout->addWidget(new QLabel(tr("Played"), this), row, 2, Qt::AlignCenter);
     coloursLayout->addWidget(new QLabel(tr("Border"), this), row++, 3, Qt::AlignCenter);
@@ -229,19 +241,22 @@ WaveBarConfigDialog::WaveBarConfigDialog(WaveBarWidget* waveBar, QWidget* parent
     numSamplesLabel->setToolTip(numSamplesTip);
     m_numSamples->setToolTip(numSamplesTip);
 
-    cacheGroupLayout->addWidget(numSamplesLabel, 1, 0);
-    cacheGroupLayout->addWidget(m_numSamples, 1, 1);
-    cacheGroupLayout->addWidget(m_cacheSizeLabel, 2, 0);
-    cacheGroupLayout->addWidget(m_clearCacheButton, 2, 1);
+    row = 0;
+    cacheGroupLayout->addWidget(numSamplesLabel, row, 0);
+    cacheGroupLayout->addWidget(m_numSamples, row++, 1);
+    cacheGroupLayout->addWidget(m_cacheSizeLabel, row, 0);
+    cacheGroupLayout->addWidget(m_clearCacheButton, row++, 1);
     cacheGroupLayout->setColumnStretch(2, 1);
 
     auto* displayLayout = new QGridLayout(displayPage);
-    displayLayout->addWidget(appearanceGroup, 0, 0);
-    displayLayout->addWidget(modeGroup, 0, 1);
-    displayLayout->addWidget(downmixGroupBox, 1, 0);
-    displayLayout->addWidget(cursorGroup, 1, 1);
-    displayLayout->addWidget(dimensionGroup, 2, 0);
-    displayLayout->addWidget(scaleGroup, 2, 1);
+
+    row = 0;
+    displayLayout->addWidget(appearanceGroup, row, 0);
+    displayLayout->addWidget(modeGroup, row++, 1);
+    displayLayout->addWidget(downmixGroupBox, row, 0);
+    displayLayout->addWidget(cursorGroup, row++, 1);
+    displayLayout->addWidget(renderingGroup, row, 0);
+    displayLayout->addWidget(amplitudeGroup, row++, 1);
     displayLayout->setColumnStretch(0, 1);
     displayLayout->setColumnStretch(1, 1);
     displayLayout->setRowStretch(3, 1);
@@ -254,8 +269,10 @@ WaveBarConfigDialog::WaveBarConfigDialog(WaveBarWidget* waveBar, QWidget* parent
     globalLayout->addWidget(cacheGroup);
     globalLayout->addStretch();
 
-    auto* layout = contentLayout();
-    layout->addWidget(tabs, 0, 0);
+    auto* layout{contentLayout()};
+
+    row = 0;
+    layout->addWidget(tabs, row++, 0);
     layout->setColumnStretch(0, 1);
     layout->setRowStretch(0, 1);
 
@@ -295,6 +312,7 @@ WaveBarWidget::ConfigData WaveBarConfigDialog::config() const
         .barWidth = m_barWidth->value(),
         .barGap   = m_barGap->value(),
         .supersampleFactor = m_supersampleFactor->currentData().toInt(),
+        .peakDisplayMode   = m_peakDisplayMode->currentData().toInt(),
         .normaliseToPeak   = m_normaliseToPeak->isChecked(),
         .decibelScale      = m_decibelScale->isChecked(),
         .maxScale          = m_maxScale->value(),
@@ -338,6 +356,8 @@ void WaveBarConfigDialog::setConfig(const WaveBarWidget::ConfigData& config)
     m_barGap->setValue(config.barGap);
     const int supersampleIndex = m_supersampleFactor->findData(config.supersampleFactor);
     m_supersampleFactor->setCurrentIndex(supersampleIndex >= 0 ? supersampleIndex : 0);
+    const int peakDisplayIndex = m_peakDisplayMode->findData(config.peakDisplayMode);
+    m_peakDisplayMode->setCurrentIndex(peakDisplayIndex >= 0 ? peakDisplayIndex : 0);
     m_normaliseToPeak->setChecked(config.normaliseToPeak);
     m_decibelScale->setChecked(config.decibelScale);
     m_maxScale->setValue(config.maxScale);

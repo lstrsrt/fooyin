@@ -43,18 +43,21 @@ public Q_SLOTS:
     void changeSampleWidth(int width);
     void changeDownmix(DownmixOption option);
     void changeSupersampleFactor(int factor);
+    void changePeakDisplayMode(PeakDisplayMode mode);
     void changeNormaliseToPeak(bool normalise);
     void changeDecibelScale(bool decibelScale);
 
 private:
     void normaliseToPeak(WaveformData<float>& data) const;
     void applyDecibelScale(WaveformData<float>& data) const;
+    void smoothAverage(WaveformData<float>& data) const;
 
     WaveformData<float> m_data;
     int m_width;
     int m_sampleWidth;
     int m_supersampleFactor;
     DownmixOption m_downMix;
+    PeakDisplayMode m_peakDisplayMode;
     bool m_normaliseToPeak;
     bool m_decibelScale;
 };

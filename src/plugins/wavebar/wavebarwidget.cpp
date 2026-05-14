@@ -19,7 +19,6 @@
 
 #include "wavebarwidget.h"
 
-#include "settings/wavebarsettings.h"
 #include "wavebarcolours.h"
 #include "wavebarconfigwidget.h"
 #include "wavebarconstants.h"
@@ -57,6 +56,7 @@ constexpr auto DownmixKey            = u"WaveBar/Downmix";
 constexpr auto BarWidthKey           = u"WaveBar/BarWidth";
 constexpr auto BarGapKey             = u"WaveBar/BarGap";
 constexpr auto SupersampleFactorKey  = u"WaveBar/SupersampleFactor";
+constexpr auto PeakDisplayModeKey    = u"WaveBar/PeakDisplayMode";
 constexpr auto NormaliseToPeakKey    = u"WaveBar/NormaliseToPeak";
 constexpr auto DecibelScaleKey       = u"WaveBar/DecibelScale";
 constexpr auto MaxScaleKey           = u"WaveBar/MaxScale";
@@ -173,6 +173,7 @@ WaveBarWidget::ConfigData WaveBarWidget::defaultConfig() const
     config.barWidth          = m_settings->fileValue(BarWidthKey, config.barWidth).toInt();
     config.barGap            = m_settings->fileValue(BarGapKey, config.barGap).toInt();
     config.supersampleFactor = m_settings->fileValue(SupersampleFactorKey, config.supersampleFactor).toInt();
+    config.peakDisplayMode   = m_settings->fileValue(PeakDisplayModeKey, config.peakDisplayMode).toInt();
     config.normaliseToPeak   = m_settings->fileValue(NormaliseToPeakKey, config.normaliseToPeak).toBool();
     config.decibelScale      = m_settings->fileValue(DecibelScaleKey, config.decibelScale).toBool();
     config.maxScale          = m_settings->fileValue(MaxScaleKey, config.maxScale).toDouble();
@@ -195,6 +196,7 @@ WaveBarWidget::ConfigData WaveBarWidget::factoryConfig() const
         .barWidth          = 1,
         .barGap            = 0,
         .supersampleFactor = 1,
+        .peakDisplayMode   = static_cast<int>(PeakDisplayMode::Maximum),
         .normaliseToPeak   = false,
         .decibelScale      = false,
         .maxScale          = 1.0,
@@ -238,6 +240,8 @@ void WaveBarWidget::saveDefaults(const ConfigData& config) const
     validated.barWidth          = std::clamp(validated.barWidth, 1, 50);
     validated.barGap            = std::clamp(validated.barGap, 0, 50);
     validated.supersampleFactor = normaliseSupersampleFactor(validated.supersampleFactor);
+    validated.peakDisplayMode   = std::clamp(validated.peakDisplayMode, static_cast<int>(PeakDisplayMode::Maximum),
+                                             static_cast<int>(PeakDisplayMode::SmoothedAverage));
     validated.maxScale          = std::clamp(validated.maxScale, 0.0, 2.0);
     validated.centreGap         = std::clamp(validated.centreGap, 0, 10);
     validated.channelScale      = std::clamp(validated.channelScale, 0.0, 1.0);
@@ -260,6 +264,7 @@ void WaveBarWidget::saveDefaults(const ConfigData& config) const
     m_settings->fileSet(BarWidthKey, validated.barWidth);
     m_settings->fileSet(BarGapKey, validated.barGap);
     m_settings->fileSet(SupersampleFactorKey, validated.supersampleFactor);
+    m_settings->fileSet(PeakDisplayModeKey, validated.peakDisplayMode);
     m_settings->fileSet(NormaliseToPeakKey, validated.normaliseToPeak);
     m_settings->fileSet(DecibelScaleKey, validated.decibelScale);
     m_settings->fileSet(MaxScaleKey, validated.maxScale);
@@ -280,6 +285,7 @@ void WaveBarWidget::clearSavedDefaults() const
     m_settings->fileRemove(BarWidthKey);
     m_settings->fileRemove(BarGapKey);
     m_settings->fileRemove(SupersampleFactorKey);
+    m_settings->fileRemove(PeakDisplayModeKey);
     m_settings->fileRemove(NormaliseToPeakKey);
     m_settings->fileRemove(DecibelScaleKey);
     m_settings->fileRemove(MaxScaleKey);
@@ -297,6 +303,8 @@ void WaveBarWidget::applyConfig(const ConfigData& config)
     validated.barWidth          = std::clamp(validated.barWidth, 1, 50);
     validated.barGap            = std::clamp(validated.barGap, 0, 50);
     validated.supersampleFactor = normaliseSupersampleFactor(validated.supersampleFactor);
+    validated.peakDisplayMode   = std::clamp(validated.peakDisplayMode, static_cast<int>(PeakDisplayMode::Maximum),
+                                             static_cast<int>(PeakDisplayMode::SmoothedAverage));
     validated.maxScale          = std::clamp(validated.maxScale, 0.0, 2.0);
     validated.centreGap         = std::clamp(validated.centreGap, 0, 10);
     validated.channelScale      = std::clamp(validated.channelScale, 0.0, 1.0);
@@ -328,6 +336,7 @@ void WaveBarWidget::applyConfig(const ConfigData& config)
     m_builder->setSampleWidth(m_config.barWidth + m_config.barGap);
     m_builder->setDownmix(static_cast<DownmixOption>(m_config.downmix));
     m_builder->setSupersampleFactor(m_config.supersampleFactor);
+    m_builder->setPeakDisplayMode(static_cast<PeakDisplayMode>(m_config.peakDisplayMode));
     m_builder->setNormaliseToPeak(m_config.normaliseToPeak);
     m_builder->setDecibelScale(m_config.decibelScale);
 
@@ -365,6 +374,9 @@ WaveBarWidget::ConfigData WaveBarWidget::configFromLayout(const QJsonObject& lay
     }
     if(layout.contains("SupersampleFactor"_L1)) {
         config.supersampleFactor = layout.value("SupersampleFactor"_L1).toInt();
+    }
+    if(layout.contains("PeakDisplayMode"_L1)) {
+        config.peakDisplayMode = layout.value("PeakDisplayMode"_L1).toInt();
     }
     if(layout.contains("NormaliseToPeak"_L1)) {
         config.normaliseToPeak = layout.value("NormaliseToPeak"_L1).toBool();
@@ -438,6 +450,7 @@ void WaveBarWidget::saveConfigToLayout(const ConfigData& config, QJsonObject& la
     layout["BarWidth"_L1]          = config.barWidth;
     layout["BarGap"_L1]            = config.barGap;
     layout["SupersampleFactor"_L1] = config.supersampleFactor;
+    layout["PeakDisplayMode"_L1]   = config.peakDisplayMode;
     layout["NormaliseToPeak"_L1]   = config.normaliseToPeak;
     layout["DecibelScale"_L1]      = config.decibelScale;
     layout["MaxScale"_L1]          = config.maxScale;
@@ -575,6 +588,45 @@ void WaveBarWidget::contextMenuEvent(QContextMenuEvent* event)
         applyConfig(config);
     });
 
+    auto* peakDisplayMenu  = new QMenu(tr("Peak display"), menu);
+    auto* peakDisplayGroup = new QActionGroup(peakDisplayMenu);
+
+    auto* maximumPeaks    = new QAction(tr("Maximum"), peakDisplayGroup);
+    auto* averagePeaks    = new QAction(tr("Average"), peakDisplayGroup);
+    auto* smoothedAverage = new QAction(tr("Smoothed average"), peakDisplayGroup);
+
+    maximumPeaks->setCheckable(true);
+    averagePeaks->setCheckable(true);
+    smoothedAverage->setCheckable(true);
+
+    const auto peakDisplayMode = static_cast<PeakDisplayMode>(m_config.peakDisplayMode);
+    if(peakDisplayMode == PeakDisplayMode::SmoothedAverage) {
+        smoothedAverage->setChecked(true);
+    }
+    else if(peakDisplayMode == PeakDisplayMode::Average) {
+        averagePeaks->setChecked(true);
+    }
+    else {
+        maximumPeaks->setChecked(true);
+    }
+
+    const auto updatePeakConfig = [this](PeakDisplayMode peakMode) {
+        auto config{m_config};
+        config.peakDisplayMode = static_cast<int>(peakMode);
+        applyConfig(config);
+    };
+
+    QObject::connect(maximumPeaks, &QAction::triggered, this,
+                     [updatePeakConfig]() { updatePeakConfig(PeakDisplayMode::Maximum); });
+    QObject::connect(averagePeaks, &QAction::triggered, this,
+                     [updatePeakConfig]() { updatePeakConfig(PeakDisplayMode::Average); });
+    QObject::connect(smoothedAverage, &QAction::triggered, this,
+                     [updatePeakConfig]() { updatePeakConfig(PeakDisplayMode::SmoothedAverage); });
+
+    peakDisplayMenu->addAction(maximumPeaks);
+    peakDisplayMenu->addAction(averagePeaks);
+    peakDisplayMenu->addAction(smoothedAverage);
+
     auto* modeMenu = new QMenu(tr("Display"), menu);
 
     auto* minMaxMode  = new QAction(tr("Min/Max"), modeMenu);
@@ -662,6 +714,7 @@ void WaveBarWidget::contextMenuEvent(QContextMenuEvent* event)
     menu->addAction(normaliseToPeak);
     menu->addAction(decibelScale);
     menu->addSeparator();
+    menu->addMenu(peakDisplayMenu);
     menu->addMenu(modeMenu);
     menu->addMenu(downmixMenu);
     addConfigureAction(menu);

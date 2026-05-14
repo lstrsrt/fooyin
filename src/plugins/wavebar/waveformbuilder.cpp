@@ -33,6 +33,7 @@ WaveformBuilder::WaveformBuilder(std::shared_ptr<AudioLoader> decoderProvider, D
     , m_sampleWidth{1}
     , m_supersampleFactor{1}
     , m_downmix{false}
+    , m_peakDisplayMode{PeakDisplayMode::Maximum}
     , m_normaliseToPeak{false}
     , m_decibelScale{false}
     , m_rescale{false}
@@ -121,6 +122,13 @@ void WaveformBuilder::setSupersampleFactor(int factor)
     }
 }
 
+void WaveformBuilder::setPeakDisplayMode(PeakDisplayMode mode)
+{
+    if(std::exchange(m_peakDisplayMode, mode) != mode) {
+        updateRescaler();
+    }
+}
+
 void WaveformBuilder::setNormaliseToPeak(bool normalise)
 {
     if(std::exchange(m_normaliseToPeak, normalise) != normalise) {
@@ -142,6 +150,7 @@ void WaveformBuilder::updateRescaler()
         m_rescaler.changeSampleWidth(m_sampleWidth);
         m_rescaler.changeDownmix(m_downmix);
         m_rescaler.changeSupersampleFactor(m_supersampleFactor);
+        m_rescaler.changePeakDisplayMode(m_peakDisplayMode);
         m_rescaler.changeNormaliseToPeak(m_normaliseToPeak);
         m_rescaler.changeDecibelScale(m_decibelScale);
     });

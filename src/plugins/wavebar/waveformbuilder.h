@@ -50,6 +50,7 @@ public:
     void setSampleWidth(int width);
     void setDownmix(DownmixOption option);
     void setSupersampleFactor(int factor);
+    void setPeakDisplayMode(PeakDisplayMode mode);
     void setNormaliseToPeak(bool normalise);
     void setDecibelScale(bool decibelScale);
 
@@ -74,6 +75,7 @@ private:
     int m_sampleWidth;
     int m_supersampleFactor;
     DownmixOption m_downmix;
+    PeakDisplayMode m_peakDisplayMode;
     bool m_normaliseToPeak;
     bool m_decibelScale;
     bool m_rescale;

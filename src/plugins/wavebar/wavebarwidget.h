@@ -19,6 +19,8 @@
 
 #pragma once
 
+#include "settings/wavebarsettings.h"
+
 #include <gui/fywidget.h>
 #include <utils/database/dbconnectionpool.h>
 
@@ -58,11 +60,12 @@ public:
         bool showRemainingTime{false};
         bool showCursor{true};
         int cursorWidth{3};
-        int mode{3};
+        int mode{WaveMode::Default};
         int downmix{0};
         int barWidth{1};
         int barGap{0};
         int supersampleFactor{1};
+        int peakDisplayMode{static_cast<int>(PeakDisplayMode::Maximum)};
         bool normaliseToPeak{false};
         bool decibelScale{false};
         double maxScale{1.0};

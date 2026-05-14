@@ -22,6 +22,7 @@
 #include <utils/settings/settingsmanager.h>
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <utility>
 
@@ -42,7 +43,7 @@ float toDecibelScale(float sample)
 }
 
 double buildSample(Fooyin::WaveBar::WaveformSample& sample, const Fooyin::WaveBar::WaveformData<float>& data,
-                   int channel, double start, double end)
+                   int channel, double start, double end, Fooyin::WaveBar::PeakDisplayMode peakMode)
 {
     double sampleWeight{0.0};
 
@@ -72,8 +73,16 @@ double buildSample(Fooyin::WaveBar::WaveformSample& sample, const Fooyin::WaveBa
         const float sampleMin  = inMin[sampleIndex];
         const float sampleRms  = inRms[sampleIndex];
 
-        sample.max = std::max(sample.max, sampleMax);
-        sample.min = std::min(sample.min, sampleMin);
+        if(peakMode == Fooyin::WaveBar::PeakDisplayMode::Average
+           || peakMode == Fooyin::WaveBar::PeakDisplayMode::SmoothedAverage) {
+            sample.max += sampleMax * static_cast<float>(overlap);
+            sample.min += sampleMin * static_cast<float>(overlap);
+        }
+        else {
+            sample.max = std::max(sample.max, sampleMax);
+            sample.min = std::min(sample.min, sampleMin);
+        }
+
         sample.rms += sampleRms * sampleRms * static_cast<float>(overlap);
 
         sampleWeight += overlap;
@@ -90,6 +99,7 @@ WaveformRescaler::WaveformRescaler(QObject* parent)
     , m_sampleWidth{1}
     , m_supersampleFactor{1}
     , m_downMix{DownmixOption::Off}
+    , m_peakDisplayMode{PeakDisplayMode::Maximum}
     , m_normaliseToPeak{false}
     , m_decibelScale{false}
 { }
@@ -102,7 +112,7 @@ void WaveformRescaler::rescale()
 
     setState(Running);
 
-    WaveformData<float> data{m_data};
+    WaveformData data{m_data};
     data.channelData.clear();
 
     if(m_downMix == DownmixOption::Stereo && data.channels > 2) {
@@ -120,7 +130,7 @@ void WaveformRescaler::rescale()
     const double samplesPerOutput = sampleSpan / outputSampleCount;
 
     for(int ch{0}; ch < data.channels; ++ch) {
-        if(ch < 0 || ch >= static_cast<int>(data.channelData.size())) {
+        if(ch < 0 || std::cmp_greater_equal(ch, data.channelData.size())) {
             continue;
         }
 
@@ -138,16 +148,27 @@ void WaveformRescaler::rescale()
             double sampleWeight{0.0};
             WaveformSample sample;
 
+            if(m_peakDisplayMode == PeakDisplayMode::Average || m_peakDisplayMode == PeakDisplayMode::SmoothedAverage) {
+                sample.max = 0.0F;
+                sample.min = 0.0F;
+            }
+
             if(m_downMix == DownmixOption::Mono || (m_downMix == DownmixOption::Stereo && m_data.channels > 2)) {
                 for(int mixCh{0}; mixCh < m_data.channels; ++mixCh) {
-                    sampleWeight += buildSample(sample, m_data, mixCh, start, end);
+                    sampleWeight += buildSample(sample, m_data, mixCh, start, end, m_peakDisplayMode);
                 }
             }
             else {
-                sampleWeight += buildSample(sample, m_data, ch, start, end);
+                sampleWeight += buildSample(sample, m_data, ch, start, end, m_peakDisplayMode);
             }
 
             if(sampleWeight > 0.0) {
+                if(m_peakDisplayMode == PeakDisplayMode::Average
+                   || m_peakDisplayMode == PeakDisplayMode::SmoothedAverage) {
+                    sample.max /= static_cast<float>(sampleWeight);
+                    sample.min /= static_cast<float>(sampleWeight);
+                }
+
                 sample.rms /= static_cast<float>(sampleWeight);
                 sample.rms = std::sqrt(sample.rms);
 
@@ -160,6 +181,7 @@ void WaveformRescaler::rescale()
         }
     }
 
+    smoothAverage(data);
     normaliseToPeak(data);
     applyDecibelScale(data);
 
@@ -198,6 +220,50 @@ void WaveformRescaler::normaliseToPeak(WaveformData<float>& data) const
         for(float& sample : rms) {
             sample *= scale;
         }
+    }
+}
+
+void WaveformRescaler::smoothAverage(WaveformData<float>& data) const
+{
+    if(m_peakDisplayMode != PeakDisplayMode::SmoothedAverage) {
+        return;
+    }
+
+    static constexpr std::array kernel{1.0F, 2.0F, 3.0F, 2.0F, 1.0F};
+    static constexpr int radius = kernel.size() / 2;
+
+    const auto smooth = [](std::vector<float>& samples) {
+        if(samples.size() < 3) {
+            return;
+        }
+
+        const auto input{samples};
+
+        for(size_t index{0}; index < samples.size(); ++index) {
+            float weightedSum{0.0F};
+            float weightSum{0.0F};
+
+            for(int offset{-radius}; offset <= radius; ++offset) {
+                const auto inputIndex = static_cast<int>(index) + offset;
+                if(inputIndex < 0 || std::cmp_greater_equal(inputIndex, input.size())) {
+                    continue;
+                }
+
+                const float weight = kernel[offset + radius];
+                weightedSum += input[inputIndex] * weight;
+                weightSum += weight;
+            }
+
+            if(weightSum > 0.0F) {
+                samples[index] = weightedSum / weightSum;
+            }
+        }
+    };
+
+    for(auto& [max, min, rms] : data.channelData) {
+        smooth(max);
+        smooth(min);
+        smooth(rms);
     }
 }
 
@@ -256,6 +322,13 @@ void WaveformRescaler::changeSupersampleFactor(int factor)
 {
     factor = std::max(1, factor);
     if(std::exchange(m_supersampleFactor, factor) != factor) {
+        rescale(m_width);
+    }
+}
+
+void WaveformRescaler::changePeakDisplayMode(PeakDisplayMode mode)
+{
+    if(std::exchange(m_peakDisplayMode, mode) != mode) {
         rescale(m_width);
     }
 }
