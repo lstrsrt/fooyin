@@ -44,9 +44,11 @@ public Q_SLOTS:
     void changeDownmix(DownmixOption option);
     void changeSupersampleFactor(int factor);
     void changeNormaliseToPeak(bool normalise);
+    void changeDecibelScale(bool decibelScale);
 
 private:
     void normaliseToPeak(WaveformData<float>& data) const;
+    void applyDecibelScale(WaveformData<float>& data) const;
 
     WaveformData<float> m_data;
     int m_width;
@@ -54,5 +56,6 @@ private:
     int m_supersampleFactor;
     DownmixOption m_downMix;
     bool m_normaliseToPeak;
+    bool m_decibelScale;
 };
 } // namespace Fooyin::WaveBar

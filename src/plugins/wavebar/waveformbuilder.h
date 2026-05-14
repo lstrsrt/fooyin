@@ -51,6 +51,7 @@ public:
     void setDownmix(DownmixOption option);
     void setSupersampleFactor(int factor);
     void setNormaliseToPeak(bool normalise);
+    void setDecibelScale(bool decibelScale);
 
 Q_SIGNALS:
     void generatingWaveform();
@@ -74,6 +75,7 @@ private:
     int m_supersampleFactor;
     DownmixOption m_downmix;
     bool m_normaliseToPeak;
+    bool m_decibelScale;
     bool m_rescale;
 };
 } // namespace WaveBar

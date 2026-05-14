@@ -64,6 +64,7 @@ public:
         int barGap{0};
         int supersampleFactor{1};
         bool normaliseToPeak{false};
+        bool decibelScale{false};
         double maxScale{1.0};
         int centreGap{0};
         double channelScale{0.9};

@@ -58,6 +58,7 @@ constexpr auto BarWidthKey           = u"WaveBar/BarWidth";
 constexpr auto BarGapKey             = u"WaveBar/BarGap";
 constexpr auto SupersampleFactorKey  = u"WaveBar/SupersampleFactor";
 constexpr auto NormaliseToPeakKey    = u"WaveBar/NormaliseToPeak";
+constexpr auto DecibelScaleKey       = u"WaveBar/DecibelScale";
 constexpr auto MaxScaleKey           = u"WaveBar/MaxScale";
 constexpr auto CentreGapKey          = u"WaveBar/CentreGap";
 constexpr auto ChannelScaleKey       = u"WaveBar/ChannelScale";
@@ -173,6 +174,7 @@ WaveBarWidget::ConfigData WaveBarWidget::defaultConfig() const
     config.barGap            = m_settings->fileValue(BarGapKey, config.barGap).toInt();
     config.supersampleFactor = m_settings->fileValue(SupersampleFactorKey, config.supersampleFactor).toInt();
     config.normaliseToPeak   = m_settings->fileValue(NormaliseToPeakKey, config.normaliseToPeak).toBool();
+    config.decibelScale      = m_settings->fileValue(DecibelScaleKey, config.decibelScale).toBool();
     config.maxScale          = m_settings->fileValue(MaxScaleKey, config.maxScale).toDouble();
     config.centreGap         = m_settings->fileValue(CentreGapKey, config.centreGap).toInt();
     config.channelScale      = m_settings->fileValue(ChannelScaleKey, config.channelScale).toDouble();
@@ -194,6 +196,7 @@ WaveBarWidget::ConfigData WaveBarWidget::factoryConfig() const
         .barGap            = 0,
         .supersampleFactor = 1,
         .normaliseToPeak   = false,
+        .decibelScale      = false,
         .maxScale          = 1.0,
         .centreGap         = 0,
         .channelScale      = 0.9,
@@ -258,6 +261,7 @@ void WaveBarWidget::saveDefaults(const ConfigData& config) const
     m_settings->fileSet(BarGapKey, validated.barGap);
     m_settings->fileSet(SupersampleFactorKey, validated.supersampleFactor);
     m_settings->fileSet(NormaliseToPeakKey, validated.normaliseToPeak);
+    m_settings->fileSet(DecibelScaleKey, validated.decibelScale);
     m_settings->fileSet(MaxScaleKey, validated.maxScale);
     m_settings->fileSet(CentreGapKey, validated.centreGap);
     m_settings->fileSet(ChannelScaleKey, validated.channelScale);
@@ -277,6 +281,7 @@ void WaveBarWidget::clearSavedDefaults() const
     m_settings->fileRemove(BarGapKey);
     m_settings->fileRemove(SupersampleFactorKey);
     m_settings->fileRemove(NormaliseToPeakKey);
+    m_settings->fileRemove(DecibelScaleKey);
     m_settings->fileRemove(MaxScaleKey);
     m_settings->fileRemove(CentreGapKey);
     m_settings->fileRemove(ChannelScaleKey);
@@ -324,6 +329,7 @@ void WaveBarWidget::applyConfig(const ConfigData& config)
     m_builder->setDownmix(static_cast<DownmixOption>(m_config.downmix));
     m_builder->setSupersampleFactor(m_config.supersampleFactor);
     m_builder->setNormaliseToPeak(m_config.normaliseToPeak);
+    m_builder->setDecibelScale(m_config.decibelScale);
 
     QMetaObject::invokeMethod(m_container, [this]() { rescaleWaveform(); }, Qt::QueuedConnection);
 }
@@ -362,6 +368,9 @@ WaveBarWidget::ConfigData WaveBarWidget::configFromLayout(const QJsonObject& lay
     }
     if(layout.contains("NormaliseToPeak"_L1)) {
         config.normaliseToPeak = layout.value("NormaliseToPeak"_L1).toBool();
+    }
+    if(layout.contains("DecibelScale"_L1)) {
+        config.decibelScale = layout.value("DecibelScale"_L1).toBool();
     }
     if(layout.contains("MaxScale"_L1)) {
         config.maxScale = layout.value("MaxScale"_L1).toDouble();
@@ -430,6 +439,7 @@ void WaveBarWidget::saveConfigToLayout(const ConfigData& config, QJsonObject& la
     layout["BarGap"_L1]            = config.barGap;
     layout["SupersampleFactor"_L1] = config.supersampleFactor;
     layout["NormaliseToPeak"_L1]   = config.normaliseToPeak;
+    layout["DecibelScale"_L1]      = config.decibelScale;
     layout["MaxScale"_L1]          = config.maxScale;
     layout["CentreGap"_L1]         = config.centreGap;
     layout["ChannelScale"_L1]      = config.channelScale;
@@ -556,6 +566,15 @@ void WaveBarWidget::contextMenuEvent(QContextMenuEvent* event)
         applyConfig(config);
     });
 
+    auto* decibelScale = new QAction(tr("dB scale"), menu);
+    decibelScale->setCheckable(true);
+    decibelScale->setChecked(m_config.decibelScale);
+    QObject::connect(decibelScale, &QAction::triggered, this, [this](bool checked) {
+        auto config{m_config};
+        config.decibelScale = checked;
+        applyConfig(config);
+    });
+
     auto* modeMenu = new QMenu(tr("Display"), menu);
 
     auto* minMaxMode  = new QAction(tr("Min/Max"), modeMenu);
@@ -641,6 +660,7 @@ void WaveBarWidget::contextMenuEvent(QContextMenuEvent* event)
     menu->addAction(showLabels);
     menu->addAction(showRemainingTime);
     menu->addAction(normaliseToPeak);
+    menu->addAction(decibelScale);
     menu->addSeparator();
     menu->addMenu(modeMenu);
     menu->addMenu(downmixMenu);

@@ -56,6 +56,7 @@ WaveBarConfigDialog::WaveBarConfigDialog(WaveBarWidget* waveBar, QWidget* parent
     , m_barGap{new QSpinBox(this)}
     , m_supersampleFactor{new QComboBox(this)}
     , m_normaliseToPeak{new QCheckBox(tr("Normalise waveform"), this)}
+    , m_decibelScale{new QCheckBox(tr("dB scale"), this)}
     , m_maxScale{new QDoubleSpinBox(this)}
     , m_centreGap{new QSpinBox(this)}
     , m_colourGroup{new QGroupBox(tr("Custom colours"), this)}
@@ -134,6 +135,7 @@ WaveBarConfigDialog::WaveBarConfigDialog(WaveBarWidget* waveBar, QWidget* parent
     m_maxScale->setSingleStep(0.25);
     m_maxScale->setPrefix(u"x"_s);
     m_normaliseToPeak->setToolTip(tr("Scale the displayed waveform so the loudest peak reaches full height"));
+    m_decibelScale->setToolTip(tr("Use a decibel scale to make quieter waveform details more visible"));
 
     const QString supersampleTip{
         tr("Internal horizontal render scale for the waveform.\n"
@@ -156,6 +158,7 @@ WaveBarConfigDialog::WaveBarConfigDialog(WaveBarWidget* waveBar, QWidget* parent
     scaleGroupLayout->addWidget(supersampleLabel, 2, 0);
     scaleGroupLayout->addWidget(m_supersampleFactor, 2, 1);
     scaleGroupLayout->addWidget(m_normaliseToPeak, 3, 0, 1, 2);
+    scaleGroupLayout->addWidget(m_decibelScale, 4, 0, 1, 2);
     scaleGroupLayout->setColumnStretch(2, 1);
 
     auto* dimensionGroup       = new QGroupBox(tr("Dimension"), displayPage);
@@ -293,6 +296,7 @@ WaveBarWidget::ConfigData WaveBarConfigDialog::config() const
         .barGap   = m_barGap->value(),
         .supersampleFactor = m_supersampleFactor->currentData().toInt(),
         .normaliseToPeak   = m_normaliseToPeak->isChecked(),
+        .decibelScale      = m_decibelScale->isChecked(),
         .maxScale          = m_maxScale->value(),
         .centreGap         = m_centreGap->value(),
         .channelScale      = m_channelScale->value(),
@@ -335,6 +339,7 @@ void WaveBarConfigDialog::setConfig(const WaveBarWidget::ConfigData& config)
     const int supersampleIndex = m_supersampleFactor->findData(config.supersampleFactor);
     m_supersampleFactor->setCurrentIndex(supersampleIndex >= 0 ? supersampleIndex : 0);
     m_normaliseToPeak->setChecked(config.normaliseToPeak);
+    m_decibelScale->setChecked(config.decibelScale);
     m_maxScale->setValue(config.maxScale);
     m_centreGap->setValue(config.centreGap);
 

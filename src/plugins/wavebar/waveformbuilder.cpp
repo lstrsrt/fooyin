@@ -34,6 +34,7 @@ WaveformBuilder::WaveformBuilder(std::shared_ptr<AudioLoader> decoderProvider, D
     , m_supersampleFactor{1}
     , m_downmix{false}
     , m_normaliseToPeak{false}
+    , m_decibelScale{false}
     , m_rescale{false}
 {
     updateRescaler();
@@ -127,6 +128,13 @@ void WaveformBuilder::setNormaliseToPeak(bool normalise)
     }
 }
 
+void WaveformBuilder::setDecibelScale(bool decibelScale)
+{
+    if(std::exchange(m_decibelScale, decibelScale) != decibelScale) {
+        updateRescaler();
+    }
+}
+
 void WaveformBuilder::updateRescaler()
 {
     m_rescaler.stopThread();
@@ -135,6 +143,7 @@ void WaveformBuilder::updateRescaler()
         m_rescaler.changeDownmix(m_downmix);
         m_rescaler.changeSupersampleFactor(m_supersampleFactor);
         m_rescaler.changeNormaliseToPeak(m_normaliseToPeak);
+        m_rescaler.changeDecibelScale(m_decibelScale);
     });
 }
 } // namespace Fooyin::WaveBar

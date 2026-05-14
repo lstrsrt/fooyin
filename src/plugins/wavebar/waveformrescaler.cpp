@@ -23,14 +23,30 @@
 
 #include <algorithm>
 #include <cmath>
+#include <utility>
+
+constexpr auto DecibelFloor = -60.0F;
 
 namespace {
+float toDecibelScale(float sample)
+{
+    const float amplitude = std::abs(sample);
+    if(amplitude <= 0.0F) {
+        return 0.0F;
+    }
+
+    const float db     = std::max(DecibelFloor, 20.0F * std::log10(amplitude));
+    const float scaled = std::clamp((db - DecibelFloor) / -DecibelFloor, 0.0F, 1.0F);
+
+    return std::copysign(scaled, sample);
+}
+
 double buildSample(Fooyin::WaveBar::WaveformSample& sample, const Fooyin::WaveBar::WaveformData<float>& data,
                    int channel, double start, double end)
 {
     double sampleWeight{0.0};
 
-    if(channel < 0 || channel >= static_cast<int>(data.channelData.size())) {
+    if(channel < 0 || std::cmp_greater_equal(channel, data.channelData.size())) {
         return sampleWeight;
     }
 
@@ -75,6 +91,7 @@ WaveformRescaler::WaveformRescaler(QObject* parent)
     , m_supersampleFactor{1}
     , m_downMix{DownmixOption::Off}
     , m_normaliseToPeak{false}
+    , m_decibelScale{false}
 { }
 
 void WaveformRescaler::rescale()
@@ -144,6 +161,7 @@ void WaveformRescaler::rescale()
     }
 
     normaliseToPeak(data);
+    applyDecibelScale(data);
 
     setState(Idle);
     Q_EMIT waveformRescaled(data);
@@ -179,6 +197,25 @@ void WaveformRescaler::normaliseToPeak(WaveformData<float>& data) const
         }
         for(float& sample : rms) {
             sample *= scale;
+        }
+    }
+}
+
+void WaveformRescaler::applyDecibelScale(WaveformData<float>& data) const
+{
+    if(!m_decibelScale) {
+        return;
+    }
+
+    for(auto& [max, min, rms] : data.channelData) {
+        for(float& sample : max) {
+            sample = toDecibelScale(sample);
+        }
+        for(float& sample : min) {
+            sample = toDecibelScale(sample);
+        }
+        for(float& sample : rms) {
+            sample = toDecibelScale(sample);
         }
     }
 }
@@ -226,6 +263,13 @@ void WaveformRescaler::changeSupersampleFactor(int factor)
 void WaveformRescaler::changeNormaliseToPeak(bool normalise)
 {
     if(std::exchange(m_normaliseToPeak, normalise) != normalise) {
+        rescale(m_width);
+    }
+}
+
+void WaveformRescaler::changeDecibelScale(bool decibelScale)
+{
+    if(std::exchange(m_decibelScale, decibelScale) != decibelScale) {
         rescale(m_width);
     }
 }
