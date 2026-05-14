@@ -39,6 +39,17 @@
 using namespace Qt::StringLiterals;
 
 namespace Fooyin::Lyrics {
+namespace {
+QLabel* sectionLabel(const QString& text, QWidget* parent)
+{
+    auto* label = new QLabel(text, parent);
+    QFont font{label->font()};
+    font.setBold(true);
+    label->setFont(font);
+    return label;
+}
+} // namespace
+
 LyricsConfigDialog::LyricsConfigDialog(LyricsWidget* lyricsWidget, QWidget* parent)
     : WidgetConfigDialog{lyricsWidget, LyricsWidget::tr("Lyrics Settings"), parent}
     , m_tabs{new QTabWidget(this)}
@@ -202,62 +213,44 @@ LyricsConfigDialog::LyricsConfigDialog(LyricsWidget* lyricsWidget, QWidget* pare
     layoutPageLayout->addWidget(marginsGroup);
     layoutPageLayout->addStretch();
 
-    auto* stylePage              = new QWidget(this);
-    auto* fontsGroup             = new QGroupBox(tr("Fonts"), stylePage);
-    auto* fontsGroupLayout       = new QGridLayout(fontsGroup);
-    auto* syncedFontsGroup       = new QGroupBox(tr("Synced"), stylePage);
-    auto* syncedFontsLayout      = new QGridLayout(syncedFontsGroup);
-    auto* syncedWordsFontsGroup  = new QGroupBox(tr("Synced Words"), stylePage);
-    auto* syncedWordsFontsLayout = new QGridLayout(syncedWordsFontsGroup);
+    auto* stylePage        = new QWidget(this);
+    auto* fontsGroup       = new QGroupBox(tr("Fonts"), stylePage);
+    auto* fontsGroupLayout = new QGridLayout(fontsGroup);
 
     row = 0;
+    fontsGroupLayout->addWidget(sectionLabel(tr("General"), stylePage), row++, 0, 1, 2);
     fontsGroupLayout->addWidget(m_baseFont, row, 0);
     fontsGroupLayout->addWidget(m_baseFontBtn, row++, 1);
-    fontsGroupLayout->addWidget(syncedFontsGroup, row++, 0, 1, 2);
-    fontsGroupLayout->addWidget(syncedWordsFontsGroup, row++, 0, 1, 2);
+    fontsGroupLayout->addWidget(sectionLabel(tr("Synced"), stylePage), row++, 0, 1, 2);
+    fontsGroupLayout->addWidget(m_lineFont, row, 0);
+    fontsGroupLayout->addWidget(m_lineFontBtn, row++, 1);
+    fontsGroupLayout->addWidget(sectionLabel(tr("Synced Words"), stylePage), row++, 0, 1, 2);
+    fontsGroupLayout->addWidget(m_wordLineFont, row, 0);
+    fontsGroupLayout->addWidget(m_wordLineFontBtn, row++, 1);
+    fontsGroupLayout->addWidget(m_wordFont, row, 0);
+    fontsGroupLayout->addWidget(m_wordFontBtn, row++, 1);
     fontsGroupLayout->setColumnStretch(1, 1);
 
-    row = 0;
-    syncedFontsLayout->addWidget(m_lineFont, row, 0);
-    syncedFontsLayout->addWidget(m_lineFontBtn, row++, 1);
-    syncedFontsLayout->setColumnStretch(1, 1);
+    auto* coloursLayout = new QGridLayout(m_coloursGroup);
 
     row = 0;
-    syncedWordsFontsLayout->addWidget(m_wordLineFont, row, 0);
-    syncedWordsFontsLayout->addWidget(m_wordLineFontBtn, row++, 1);
-    syncedWordsFontsLayout->addWidget(m_wordFont, row, 0);
-    syncedWordsFontsLayout->addWidget(m_wordFontBtn, row++, 1);
-    syncedWordsFontsLayout->setColumnStretch(1, 1);
-
-    auto* coloursLayout    = new QGridLayout(m_coloursGroup);
-    auto* syncedLineGroup  = new QGroupBox(tr("Synced"), stylePage);
-    auto* syncedLineLayout = new QGridLayout(syncedLineGroup);
-    auto* syncedWordGroup  = new QGroupBox(tr("Synced Words"), stylePage);
-    auto* syncedWordLayout = new QGridLayout(syncedWordGroup);
-
-    row = 0;
-    syncedLineLayout->addWidget(m_unplayedColour, row, 0);
-    syncedLineLayout->addWidget(m_unplayedColourBtn, row++, 1);
-    syncedLineLayout->addWidget(m_playedColour, row, 0);
-    syncedLineLayout->addWidget(m_playedColourBtn, row++, 1);
-    syncedLineLayout->addWidget(m_syncedLineColour, row, 0);
-    syncedLineLayout->addWidget(m_syncedLineColourBtn, row++, 1);
-    syncedLineLayout->setColumnStretch(1, 1);
-
-    row = 0;
-    syncedWordLayout->addWidget(m_wordLineColour, row, 0);
-    syncedWordLayout->addWidget(m_wordLineColourBtn, row++, 1);
-    syncedWordLayout->addWidget(m_wordColour, row, 0);
-    syncedWordLayout->addWidget(m_wordColourBtn, row++, 1);
-    syncedWordLayout->setColumnStretch(1, 1);
-
-    row = 0;
+    coloursLayout->addWidget(sectionLabel(tr("General"), stylePage), row++, 0, 1, 2);
     coloursLayout->addWidget(m_bgColour, row, 0);
     coloursLayout->addWidget(m_bgColourBtn, row++, 1);
     coloursLayout->addWidget(m_lineColour, row, 0);
     coloursLayout->addWidget(m_lineColourBtn, row++, 1);
-    coloursLayout->addWidget(syncedLineGroup, row++, 0, 1, 2);
-    coloursLayout->addWidget(syncedWordGroup, row++, 0, 1, 2);
+    coloursLayout->addWidget(sectionLabel(tr("Synced"), stylePage), row++, 0, 1, 2);
+    coloursLayout->addWidget(m_unplayedColour, row, 0);
+    coloursLayout->addWidget(m_unplayedColourBtn, row++, 1);
+    coloursLayout->addWidget(m_playedColour, row, 0);
+    coloursLayout->addWidget(m_playedColourBtn, row++, 1);
+    coloursLayout->addWidget(m_syncedLineColour, row, 0);
+    coloursLayout->addWidget(m_syncedLineColourBtn, row++, 1);
+    coloursLayout->addWidget(sectionLabel(tr("Synced Words"), stylePage), row++, 0, 1, 2);
+    coloursLayout->addWidget(m_wordLineColour, row, 0);
+    coloursLayout->addWidget(m_wordLineColourBtn, row++, 1);
+    coloursLayout->addWidget(m_wordColour, row, 0);
+    coloursLayout->addWidget(m_wordColourBtn, row++, 1);
     coloursLayout->setColumnStretch(1, 1);
 
     auto* stylePageLayout = new QVBoxLayout(stylePage);
