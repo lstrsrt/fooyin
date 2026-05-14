@@ -88,6 +88,52 @@ void restoreTreeViewExpansionState(QTreeView* view, const QStringList& expandedI
         restoreTreeViewExpansionState(view, expandedIndexes, keyForIndex, index);
     }
 }
+
+void updateTreeViewCollapsedExpansionState(const QTreeView* view, const ModelIndexKey& keyForIndex,
+                                           QStringList* collapsedIndexes, const QModelIndex& parent = {})
+{
+    const auto* model = view->model();
+    if(!model) {
+        return;
+    }
+
+    const int rows = model->rowCount(parent);
+    for(int row{0}; row < rows; ++row) {
+        const QModelIndex index = model->index(row, 0, parent);
+        if(!model->hasChildren(index)) {
+            continue;
+        }
+
+        const QString key = keyForIndex(index);
+        if(!key.isEmpty()) {
+            collapsedIndexes->removeOne(key);
+            if(!view->isExpanded(index)) {
+                collapsedIndexes->append(key);
+                continue;
+            }
+        }
+
+        updateTreeViewCollapsedExpansionState(view, keyForIndex, collapsedIndexes, index);
+    }
+}
+
+void restoreTreeViewCollapsedExpansionState(QTreeView* view, const QStringList& collapsedIndexes,
+                                            const ModelIndexKey& keyForIndex, const QModelIndex& parent = {})
+{
+    const auto* model = view->model();
+    if(!model) {
+        return;
+    }
+
+    const int rows = model->rowCount(parent);
+    for(int row{0}; row < rows; ++row) {
+        const QModelIndex index = model->index(row, 0, parent);
+        if(collapsedIndexes.contains(keyForIndex(index))) {
+            view->setExpanded(index, false);
+        }
+        restoreTreeViewCollapsedExpansionState(view, collapsedIndexes, keyForIndex, index);
+    }
+}
 } // namespace
 
 IndexRangeList getIndexRanges(const QModelIndexList& indexes)
@@ -223,6 +269,56 @@ void restoreExpansionState(QTreeView* view, const QStringList& expandedIndexes, 
     view->setUpdatesEnabled(false);
     view->collapseAll();
     restoreTreeViewExpansionState(view, expandedIndexes, keyForIndex);
+    view->setUpdatesEnabled(updatesEnabled);
+}
+
+QStringList saveCollapsedExpansionState(const QTreeView* view)
+{
+    return saveCollapsedExpansionState(view, modelIndexPath);
+}
+
+QStringList saveCollapsedExpansionState(const QTreeView* view, const ModelIndexKey& keyForIndex)
+{
+    return updateCollapsedExpansionState(view, {}, keyForIndex);
+}
+
+QStringList updateCollapsedExpansionState(const QTreeView* view, const QStringList& currentState)
+{
+    return updateCollapsedExpansionState(view, currentState, modelIndexPath);
+}
+
+QStringList updateCollapsedExpansionState(const QTreeView* view, const QStringList& currentState,
+                                          const ModelIndexKey& keyForIndex)
+{
+    if(!view) {
+        return currentState;
+    }
+
+    QStringList updatedState{currentState};
+
+    updateTreeViewCollapsedExpansionState(view, keyForIndex, &updatedState);
+    updatedState.removeDuplicates();
+    updatedState.sort();
+
+    return updatedState;
+}
+
+void restoreCollapsedExpansionState(QTreeView* view, const QStringList& collapsedIndexes)
+{
+    restoreCollapsedExpansionState(view, collapsedIndexes, modelIndexPath);
+}
+
+void restoreCollapsedExpansionState(QTreeView* view, const QStringList& collapsedIndexes,
+                                    const ModelIndexKey& keyForIndex)
+{
+    if(!view) {
+        return;
+    }
+
+    const bool updatesEnabled = view->updatesEnabled();
+    view->setUpdatesEnabled(false);
+    view->expandAll();
+    restoreTreeViewCollapsedExpansionState(view, collapsedIndexes, keyForIndex);
     view->setUpdatesEnabled(updatesEnabled);
 }
 } // namespace Fooyin::Utils

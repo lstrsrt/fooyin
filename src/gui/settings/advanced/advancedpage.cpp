@@ -36,6 +36,8 @@
 
 using namespace Qt::StringLiterals;
 
+constexpr auto CollapsedStateMarker = "collapsed-v1"_L1;
+
 namespace Fooyin {
 class AdvancedPageWidget : public SettingsPageWidget
 {
@@ -62,8 +64,8 @@ private:
     AdvancedSettingsModel* m_model;
     QSortFilterProxyModel* m_proxyModel;
     QTreeView* m_tree;
-    QStringList m_expandedState;
-    bool m_hasExpandedState{false};
+    QStringList m_collapsedState;
+    bool m_hasCollapsedState{false};
 };
 
 AdvancedPageWidget::AdvancedPageWidget(AdvancedSettingsRegistry* registry)
@@ -102,13 +104,13 @@ void AdvancedPageWidget::load()
         return sourceIndexPath(index);
     };
 
-    if(!m_hasExpandedState) {
+    if(!m_hasCollapsedState) {
         m_tree->expandAll();
-        m_expandedState    = Utils::saveExpansionState(m_tree, keyForIndex);
-        m_hasExpandedState = true;
+        m_collapsedState    = Utils::saveCollapsedExpansionState(m_tree, keyForIndex);
+        m_hasCollapsedState = true;
     }
     else {
-        Utils::restoreExpansionState(m_tree, m_expandedState, keyForIndex);
+        Utils::restoreCollapsedExpansionState(m_tree, m_collapsedState, keyForIndex);
     }
 }
 
@@ -119,9 +121,9 @@ void AdvancedPageWidget::apply()
 
 void AdvancedPageWidget::finish()
 {
-    m_expandedState = Utils::updateExpansionState(m_tree, m_expandedState,
-                                                  [this](const QModelIndex& index) { return sourceIndexPath(index); });
-    m_hasExpandedState = true;
+    m_collapsedState = Utils::updateCollapsedExpansionState(
+        m_tree, m_collapsedState, [this](const QModelIndex& index) { return sourceIndexPath(index); });
+    m_hasCollapsedState = true;
 }
 
 void AdvancedPageWidget::reset()
@@ -135,8 +137,11 @@ QByteArray AdvancedPageWidget::saveState() const
     QDataStream stream{&stateData, QIODeviceBase::WriteOnly};
     stream.setVersion(QDataStream::Qt_6_0);
 
-    stream << m_hasExpandedState;
-    stream << m_expandedState;
+    QStringList state{m_collapsedState};
+    state.prepend(CollapsedStateMarker);
+
+    stream << m_hasCollapsedState;
+    stream << state;
 
     return qCompress(stateData, 9);
 }
@@ -151,12 +156,17 @@ void AdvancedPageWidget::restoreState(const QByteArray& state)
     QDataStream stream{&stateData, QIODeviceBase::ReadOnly};
     stream.setVersion(QDataStream::Qt_6_0);
 
-    stream >> m_hasExpandedState;
-    stream >> m_expandedState;
+    stream >> m_hasCollapsedState;
+    stream >> m_collapsedState;
 
-    if(m_hasExpandedState && m_model->rowCount({}) > 0) {
-        Utils::restoreExpansionState(m_tree, m_expandedState,
-                                     [this](const QModelIndex& index) { return sourceIndexPath(index); });
+    if(m_collapsedState.isEmpty() || m_collapsedState.takeFirst() != CollapsedStateMarker) {
+        m_hasCollapsedState = false;
+        m_collapsedState.clear();
+    }
+
+    if(m_hasCollapsedState && m_model->rowCount({}) > 0) {
+        Utils::restoreCollapsedExpansionState(m_tree, m_collapsedState,
+                                              [this](const QModelIndex& index) { return sourceIndexPath(index); });
     }
 }
 
@@ -171,15 +181,29 @@ void AdvancedPageWidget::applyFilter(const QString& filter)
         return sourceIndexPath(index);
     };
 
-    m_expandedState    = Utils::updateExpansionState(m_tree, m_expandedState, keyForIndex);
-    m_hasExpandedState = true;
+    m_collapsedState    = Utils::updateCollapsedExpansionState(m_tree, m_collapsedState, keyForIndex);
+    m_hasCollapsedState = true;
     m_proxyModel->setFilterFixedString(filter);
-    Utils::restoreExpansionState(m_tree, m_expandedState, keyForIndex);
+    Utils::restoreCollapsedExpansionState(m_tree, m_collapsedState, keyForIndex);
 }
 
 QString AdvancedPageWidget::sourceIndexPath(const QModelIndex& index) const
 {
-    return Utils::modelIndexPath(m_proxyModel->mapToSource(index));
+    const QModelIndex sourceIndex = m_proxyModel->mapToSource(index);
+    if(!sourceIndex.isValid()) {
+        return {};
+    }
+
+    QStringList pathParts;
+    for(QModelIndex current = sourceIndex; current.isValid(); current = current.parent()) {
+        const QString key = current.data(AdvancedSettingsModel::StableKey).toString();
+        if(key.isEmpty()) {
+            return {};
+        }
+        pathParts.prepend(key);
+    }
+
+    return pathParts.join('/'_L1);
 }
 
 AdvancedPage::AdvancedPage(AdvancedSettingsRegistry* registry, SettingsDialogController* controller, QObject* parent)

@@ -55,6 +55,7 @@ public:
         MaximumValue,
         SingleStep,
         Suffix,
+        StableKey,
     };
 
     explicit AdvancedSettingsModel(AdvancedSettingsRegistry* registry, QObject* parent = nullptr);

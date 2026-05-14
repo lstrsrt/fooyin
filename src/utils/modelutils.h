@@ -49,4 +49,13 @@ FYUTILS_EXPORT QStringList updateExpansionState(const QTreeView* view, const QSt
 FYUTILS_EXPORT void restoreExpansionState(QTreeView* view, const QStringList& expandedIndexes);
 FYUTILS_EXPORT void restoreExpansionState(QTreeView* view, const QStringList& expandedIndexes,
                                           const ModelIndexKey& keyForIndex);
+
+FYUTILS_EXPORT QStringList saveCollapsedExpansionState(const QTreeView* view);
+FYUTILS_EXPORT QStringList saveCollapsedExpansionState(const QTreeView* view, const ModelIndexKey& keyForIndex);
+FYUTILS_EXPORT QStringList updateCollapsedExpansionState(const QTreeView* view, const QStringList& currentState);
+FYUTILS_EXPORT QStringList updateCollapsedExpansionState(const QTreeView* view, const QStringList& currentState,
+                                                         const ModelIndexKey& keyForIndex);
+FYUTILS_EXPORT void restoreCollapsedExpansionState(QTreeView* view, const QStringList& collapsedIndexes);
+FYUTILS_EXPORT void restoreCollapsedExpansionState(QTreeView* view, const QStringList& collapsedIndexes,
+                                                   const ModelIndexKey& keyForIndex);
 } // namespace Fooyin::Utils

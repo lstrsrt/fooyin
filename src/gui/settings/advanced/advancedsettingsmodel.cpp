@@ -142,6 +142,17 @@ QVariant AdvancedSettingsModel::data(const QModelIndex& index, int role) const
                 return spinBox->suffix;
             }
             return {};
+        case StableKey:
+            if(node->type == AdvancedItemType::Category) {
+                return u"c:%1"_s.arg(node->label);
+            }
+            if(node->type == AdvancedItemType::Setting) {
+                return u"s:%1"_s.arg(node->descriptor.id);
+            }
+            if(node->type == AdvancedItemType::RadioOption) {
+                return u"o:%1"_s.arg(node->value.toString());
+            }
+            return {};
         default:
             return {};
     }
