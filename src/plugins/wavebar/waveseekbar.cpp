@@ -480,17 +480,19 @@ void WaveSeekBar::drawCachedWaveform(QPainter& painter, const QRect& dirtyRect)
     const double targetLeft  = targetRect.left();
     const double targetRight = targetRect.right() + 1;
 
-    if(positionX > targetLeft && positionX < targetRight) {
-        drawCachedSlice(painter, m_playedWaveformCache,
-                        QRectF{targetLeft, static_cast<double>(targetRect.top()), positionX - targetLeft,
-                               static_cast<double>(targetRect.height())});
-        drawCachedSlice(painter, m_unplayedWaveformCache,
-                        QRectF{positionX, static_cast<double>(targetRect.top()), targetRight - positionX,
-                               static_cast<double>(targetRect.height())});
-    }
-    else {
+    if(positionX <= targetLeft || positionX >= targetRight) {
         const bool played = positionX >= targetRight;
         drawCachedSlice(painter, played ? m_playedWaveformCache : m_unplayedWaveformCache, QRectF{targetRect});
+    }
+    else {
+        drawCachedSlice(painter, m_unplayedWaveformCache, QRectF{targetRect});
+
+        painter.save();
+        painter.setClipRect(QRectF{targetLeft, static_cast<double>(targetRect.top()), positionX - targetLeft,
+                                   static_cast<double>(targetRect.height())},
+                            Qt::IntersectClip);
+        drawCachedSlice(painter, m_playedWaveformCache, QRectF{targetRect});
+        painter.restore();
     }
 
     if(m_barGap == 0) {
@@ -530,7 +532,7 @@ void WaveSeekBar::drawCachedTransition(QPainter& painter, double positionX, cons
 
     const QPointF offset{-static_cast<double>(overlayRect.left()), -static_cast<double>(overlayRect.top())};
     overlayPainter.translate(offset);
-    drawCachedSlice(overlayPainter, m_playedWaveformCache, QRectF{overlayRect});
+    drawCachedSlice(overlayPainter, m_playedWaveformCache, QRectF{targetRect});
 
     overlayPainter.setCompositionMode(QPainter::CompositionMode_DestinationIn);
     QLinearGradient alphaGradient{QPointF{positionX, 0.0}, QPointF{positionX + radius, 0.0}};
