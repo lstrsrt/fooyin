@@ -169,7 +169,8 @@ GuiSettings::GuiSettings(SettingsManager* settingsManager)
                     QString::fromLatin1(Constants::Actions::CopyDirectoryPath)},
         u"Interface/ContextMenuTrackDisabledSections"_s);
     m_settings->createSetting<Internal::ContextMenuPlaylistDisabledSections>(
-        QStringList{}, u"Interface/ContextMenuPlaylistDisabledSections"_s);
+        QStringList{QString::fromLatin1(Constants::Actions::AddToPlaylist)},
+        u"Interface/ContextMenuPlaylistDisabledSections"_s);
     m_settings->createSetting<Internal::ContextMenuTrackLayout>(QStringList{}, u"Interface/ContextMenuTrackLayout"_s);
     m_settings->createSetting<Internal::ContextMenuPlaylistLayout>(QStringList{},
                                                                    u"Interface/ContextMenuPlaylistLayout"_s);

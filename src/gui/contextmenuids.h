@@ -125,6 +125,10 @@ constexpr auto DefaultItems = std::to_array<Item>({
      .title       = {.context = "PlaylistWidget", .sourceText = QT_TRANSLATE_NOOP("PlaylistWidget", "Presets")},
      .isSeparator = false},
     {.id = PresetsSeparator, .title = {}, .isSeparator = true},
+    {.id = Constants::Actions::AddToPlaylist,
+     .title
+     = {.context = "PlaylistWidget", .sourceText = QT_TRANSLATE_NOOP("PlaylistWidget", "Add to another playlist")},
+     .isSeparator = false},
     {.id    = Constants::Actions::AddToQueue,
      .title = {.context = "PlaylistWidget", .sourceText = QT_TRANSLATE_NOOP("PlaylistWidget", "Add to playback queue")},
      .isSeparator = false},

@@ -121,6 +121,7 @@ public:
     void addTrackQueueContextMenu(QMenu* menu) const;
     void addTrackPlaylistContextMenu(QMenu* menu) const;
     void addTrackAddToPlaylistContextMenu(QMenu* menu) const;
+    void addTrackAddToOtherPlaylistContextMenu(QMenu* menu) const;
 
     bool registerTrackContextSubmenu(QObject* owner, TrackContextMenuArea area, const Id& parentId, const Id& id,
                                      const QString& title, const Id& beforeId = {});

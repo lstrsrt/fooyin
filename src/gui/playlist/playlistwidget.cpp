@@ -518,6 +518,19 @@ void PlaylistWidget::populateTrackContextMenu(QMenu* menu, const QModelIndexList
                 }
                 return;
             }
+            if(id == QLatin1StringView{Constants::Actions::AddToPlaylist}) {
+                if(state.hasSelection && sectionEnabled(Constants::Actions::AddToPlaylist)) {
+                    auto* playlistMenu = new QMenu(tr("Add to another playlist"), targetMenu);
+                    m_selectionController->addTrackAddToOtherPlaylistContextMenu(playlistMenu);
+                    if(!playlistMenu->actions().empty()) {
+                        targetMenu->addMenu(playlistMenu);
+                    }
+                    else {
+                        playlistMenu->deleteLater();
+                    }
+                }
+                return;
+            }
             if(id == QLatin1StringView{Constants::Actions::AddToQueue}) {
                 if(!state.hasSelection || !sectionEnabled(Constants::Actions::AddToQueue)) {
                     return;

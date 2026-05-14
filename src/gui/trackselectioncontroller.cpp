@@ -141,7 +141,8 @@ public:
     void addToCurrentPlaylist() const;
     void addToActivePlaylist() const;
     void addToPlaylist(const UId& playlistId, const TrackList& tracks) const;
-    void addPlaylistTargets(QMenu* menu, const TrackSelection& selection) const;
+    void addPlaylistTargets(QMenu* menu, const TrackSelection& selection,
+                            const std::optional<UId>& excludedPlaylistId = {}) const;
     void startPlayback(PlaylistAction::ActionOptions options);
     void addToQueue() const;
     void queueNext() const;
@@ -998,7 +999,8 @@ void TrackSelectionControllerPrivate::addToPlaylist(const UId& playlistId, const
     }
 }
 
-void TrackSelectionControllerPrivate::addPlaylistTargets(QMenu* menu, const TrackSelection& selection) const
+void TrackSelectionControllerPrivate::addPlaylistTargets(QMenu* menu, const TrackSelection& selection,
+                                                         const std::optional<UId>& excludedPlaylistId) const
 {
     if(!menu || selection.tracks.empty()) {
         return;
@@ -1013,8 +1015,11 @@ void TrackSelectionControllerPrivate::addPlaylistTargets(QMenu* menu, const Trac
         if(!playlist || playlist->isAutoPlaylist() || playlist->isTemporary()) {
             continue;
         }
+        if(excludedPlaylistId && playlist->id() == *excludedPlaylistId) {
+            continue;
+        }
 
-        auto* action = menu->addAction(playlist->name());
+        const auto* action = menu->addAction(playlist->name());
         QObject::connect(
             action, &QAction::triggered, m_self,
             [this, playlistId = playlist->id(), tracks = selection.tracks]() { addToPlaylist(playlistId, tracks); });
@@ -1466,6 +1471,16 @@ void TrackSelectionController::addTrackPlaylistContextMenu(QMenu* menu) const
 void TrackSelectionController::addTrackAddToPlaylistContextMenu(QMenu* menu) const
 {
     p->addPlaylistTargets(menu, selectedSelection() ? *selectedSelection() : TrackSelection{});
+}
+
+void TrackSelectionController::addTrackAddToOtherPlaylistContextMenu(QMenu* menu) const
+{
+    const auto* selection = selectedSelection();
+    if(!selection || !selection->playlistId) {
+        return;
+    }
+
+    p->addPlaylistTargets(menu, *selection, selection->playlistId);
 }
 
 bool TrackSelectionController::registerTrackContextSubmenu(QObject* owner, TrackContextMenuArea area,
