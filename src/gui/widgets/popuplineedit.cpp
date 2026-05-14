@@ -29,6 +29,7 @@ PopupLineEdit::PopupLineEdit(QWidget* parent)
 
 PopupLineEdit::PopupLineEdit(const QString& contents, QWidget* parent)
     : QLineEdit{contents, parent}
+    , m_initialString{contents}
 { }
 
 void PopupLineEdit::paintEvent(QPaintEvent* event)
@@ -54,6 +55,10 @@ void PopupLineEdit::keyPressEvent(QKeyEvent* event)
 
 void PopupLineEdit::focusOutEvent(QFocusEvent* event)
 {
+    if(m_initialString == text()) {
+        Q_EMIT editingCancelled();
+    }
+
     if(!m_cancelled) {
         // Allow our base widget to emit editingFinished.
         QLineEdit::focusOutEvent(event);

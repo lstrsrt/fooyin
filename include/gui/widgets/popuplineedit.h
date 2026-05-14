@@ -42,5 +42,6 @@ protected:
 
 private:
     bool m_cancelled{};
+    QString m_initialString;
 };
 } // namespace Fooyin
