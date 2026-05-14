@@ -19,7 +19,6 @@
 
 #include "fileopsplugin.h"
 
-#include "fileopsconfigdialog.h"
 #include "fileopsdefs.h"
 #include "fileopsdeletedialog.h"
 #include "fileopsdialog.h"
@@ -27,15 +26,15 @@
 
 #include <core/engine/audioloader.h>
 #include <gui/guiconstants.h>
+#include <gui/plugins/guiplugincontext.h>
 #include <gui/statusevent.h>
 #include <gui/trackselectioncontroller.h>
 #include <utils/actions/actionmanager.h>
 #include <utils/actions/command.h>
+#include <utils/settings/advancedsettingsregistry.h>
 #include <utils/utils.h>
 
 #include "fileopsworker.h"
-
-#include <utils/settings/settingsmanager.h>
 
 #include <QMainWindow>
 #include <QMenu>
@@ -55,24 +54,6 @@ bool canExtractTracks(const Fooyin::TrackList& tracks)
     return !tracks.empty()
         && std::ranges::all_of(tracks, [](const Fooyin::Track& track) { return track.isInArchive(); });
 }
-
-class FileOpsPluginSettingsProvider : public Fooyin::PluginSettingsProvider
-{
-public:
-    explicit FileOpsPluginSettingsProvider(Fooyin::SettingsManager* settings)
-        : m_settings{settings}
-    { }
-
-    void showSettings(QWidget* parent) override
-    {
-        auto* dialog = new Fooyin::FileOps::FileOpsConfigDialog(m_settings, parent);
-        dialog->setAttribute(Qt::WA_DeleteOnClose);
-        dialog->show();
-    }
-
-private:
-    Fooyin::SettingsManager* m_settings;
-};
 } // namespace
 
 namespace Fooyin::FileOps {
@@ -96,12 +77,20 @@ void FileOpsPlugin::initialise(const GuiPluginContext& context)
     m_actionManager            = context.actionManager;
     m_trackSelectionController = context.trackSelection;
 
-    setupMenu();
-}
+    context.advancedSettingsRegistry->add(
+        {.id           = QString::fromLatin1(Settings::ConfirmDelete),
+         .category     = {tr("File Operations")},
+         .label        = tr("Confirm before deleting tracks"),
+         .description  = {},
+         .defaultValue = true,
+         .editor       = AdvancedSettingCheckBox{},
+         .read         = [this] { return m_settings->fileValue(Settings::ConfirmDelete, true).toBool(); },
+         .write
+         = [this](const QVariant& value) { return m_settings->fileSet(Settings::ConfirmDelete, value.toBool()); },
+         .normalise = {},
+         .validate  = {}});
 
-std::unique_ptr<PluginSettingsProvider> FileOpsPlugin::settingsProvider() const
-{
-    return std::make_unique<FileOpsPluginSettingsProvider>(m_settings);
+    setupMenu();
 }
 
 void FileOpsPlugin::setupMenu()

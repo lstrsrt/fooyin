@@ -22,7 +22,6 @@
 #include <core/plugins/coreplugin.h>
 #include <core/plugins/plugin.h>
 #include <gui/plugins/guiplugin.h>
-#include <gui/plugins/pluginconfigguiplugin.h>
 
 #include <memory>
 
@@ -32,19 +31,17 @@ namespace FileOps {
 class FileOpsPlugin : public QObject,
                       public Plugin,
                       public CorePlugin,
-                      public GuiPlugin,
-                      public PluginConfigGuiPlugin
+                      public GuiPlugin
 {
     Q_OBJECT
     Q_PLUGIN_METADATA(IID "org.fooyin.fooyin.plugin/1.0" FILE "fileops.json")
-    Q_INTERFACES(Fooyin::Plugin Fooyin::CorePlugin Fooyin::GuiPlugin Fooyin::PluginConfigGuiPlugin)
+    Q_INTERFACES(Fooyin::Plugin Fooyin::CorePlugin Fooyin::GuiPlugin)
 
 public:
     FileOpsPlugin();
 
     void initialise(const CorePluginContext& context) override;
     void initialise(const GuiPluginContext& context) override;
-    [[nodiscard]] std::unique_ptr<PluginSettingsProvider> settingsProvider() const override;
 
 private:
     void setupMenu();
