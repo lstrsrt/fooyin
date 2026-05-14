@@ -193,13 +193,14 @@ public:
 
     void setEvaluationState(TrackListContextPolicy policy, QString placeholder = {}, bool escapeRichText = false,
                             bool useVariousArtists = false, QString fullStarSymbol = {}, QString halfStarSymbol = {},
-                            QString emptyStarSymbol = {})
+                            QString emptyStarSymbol = {}, bool replacePathSeparators = false)
     {
         m_trackListContextPolicy = policy;
         m_trackListPlaceholder   = std::move(placeholder);
         m_escapeRichText         = escapeRichText;
         m_useVariousArtists      = useVariousArtists;
         m_ratingSymbols          = {std::move(fullStarSymbol), std::move(halfStarSymbol), std::move(emptyStarSymbol)};
+        m_replacePathSeparators  = replacePathSeparators;
     }
 
     [[nodiscard]] const ScriptPlaylistEnvironment* playlistEnvironment() const override
@@ -312,6 +313,11 @@ public:
         return m_useVariousArtists;
     }
 
+    [[nodiscard]] bool replacePathSeparators() const override
+    {
+        return m_replacePathSeparators;
+    }
+
     [[nodiscard]] RatingStarSymbols ratingStarSymbols() const override
     {
         RatingStarSymbols symbols{m_ratingSymbols};
@@ -347,6 +353,7 @@ private:
     QString m_trackListPlaceholder;
     bool m_escapeRichText{false};
     bool m_useVariousArtists{false};
+    bool m_replacePathSeparators{false};
     RatingStarSymbols m_ratingSymbols;
 };
 
@@ -765,6 +772,26 @@ TEST_F(ScriptParserTest, ContextEvaluationEnvironmentControlsPolicyAndEscaping)
 
     EXPECT_EQ(u"|Loading|", parser.evaluate(u"%trackcount%"_s, track, context));
     EXPECT_EQ(u"A \\< B", parser.evaluate(u"%title%"_s, track, context));
+}
+
+TEST_F(ScriptParserTest, ContextEvaluationEnvironmentPreservesPathVariableSeparators)
+{
+    ScriptParser parser;
+
+    TestPlaylistEnvironment environment;
+    environment.setEvaluationState(TrackListContextPolicy::Unresolved, {}, false, false, {}, {}, {}, true);
+    environment.setLibraryState({}, u"/tmp/music"_s);
+
+    ScriptContext context;
+    context.environment = &environment;
+    Track track;
+    track.setFilePath(u"/tmp/music/foo/bar.mp3"_s);
+    track.setTitle(u"foo/bar"_s);
+
+    EXPECT_EQ(u"/tmp/music/foo", parser.evaluate(u"%path%"_s, track, context));
+    EXPECT_EQ(u"/tmp/music/foo/bar.mp3", parser.evaluate(u"%filepath%"_s, track, context));
+    EXPECT_EQ(u"foo/bar.mp3", parser.evaluate(u"%relativepath%"_s, track, context));
+    EXPECT_EQ(u"foo-bar", parser.evaluate(u"%title%"_s, track, context));
 }
 
 TEST_F(ScriptParserTest, ContextTrackListEnvironmentProvidesFallbackData)

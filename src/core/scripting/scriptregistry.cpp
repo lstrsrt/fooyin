@@ -243,6 +243,34 @@ void applyOutputPolicy(const Fooyin::ScriptContext& context, Fooyin::ScriptResul
     }
 }
 
+bool preservesPathSeparators(const Fooyin::VariableKind kind)
+{
+    switch(kind) {
+        case Fooyin::VariableKind::FilePath:
+        case Fooyin::VariableKind::Directory:
+        case Fooyin::VariableKind::Path:
+        case Fooyin::VariableKind::LibraryPath:
+        case Fooyin::VariableKind::RelativePath:
+            return true;
+        default:
+            return false;
+    }
+}
+
+void applyVariableOutputPolicy(const Fooyin::ScriptContext& context, const Fooyin::VariableKind kind,
+                               Fooyin::ScriptResult& result)
+{
+    if(preservesPathSeparators(kind)) {
+        const auto* environment = context.environment ? context.environment->evaluationEnvironment() : nullptr;
+        if(environment && environment->escapeRichText() && !result.value.isEmpty()) {
+            result.value.replace(u'<', u"\\<"_s);
+        }
+        return;
+    }
+
+    applyOutputPolicy(context, result);
+}
+
 Fooyin::TrackListContextPolicy trackListContextPolicy(const Fooyin::ScriptContext& context)
 {
     if(const auto* environment = context.environment ? context.environment->evaluationEnvironment() : nullptr) {
@@ -785,7 +813,7 @@ ScriptResult ScriptRegistry::valueInternal(const QString& var, const ScriptSubje
     return value(resolveVariableInternal(var), var, subject);
 }
 
-ScriptResult ScriptRegistry::calculateResult(const ScriptRegistry::FuncRet& funcRet) const
+ScriptResult ScriptRegistry::calculateResult(const FuncRet& funcRet) const
 {
     ScriptResult result;
 
@@ -810,7 +838,6 @@ ScriptResult ScriptRegistry::calculateResult(const ScriptRegistry::FuncRet& func
         result.cond  = !result.value.isEmpty();
     }
 
-    applyOutputPolicy(m_context, result);
     return result;
 }
 
@@ -851,16 +878,24 @@ ScriptResult ScriptRegistry::valueForTrack(VariableKind kind, const QString& var
     }
 
     if(const auto value = trackMetadataValue(kind, track, *this, m_context); value.has_value()) {
-        return calculateResult(*value);
+        ScriptResult result = calculateResult(*value);
+        applyVariableOutputPolicy(m_context, kind, result);
+        return result;
     }
     if(const auto value = playbackVariableValue(kind, *this, track); value.has_value()) {
-        return calculateResult(*value);
+        ScriptResult result = calculateResult(*value);
+        applyVariableOutputPolicy(m_context, kind, result);
+        return result;
     }
     if(const auto value = libraryVariableValue(kind, track, *this); value.has_value()) {
-        return calculateResult(*value);
+        ScriptResult result = calculateResult(*value);
+        applyVariableOutputPolicy(m_context, kind, result);
+        return result;
     }
 
-    return calculateResult(track.extraTag(var));
+    ScriptResult result = calculateResult(track.extraTag(var));
+    applyOutputPolicy(m_context, result);
+    return result;
 }
 
 ScriptResult ScriptRegistry::valueForTrackList(VariableKind kind, const QString& var, const TrackList& tracks,
@@ -871,7 +906,9 @@ ScriptResult ScriptRegistry::valueForTrackList(VariableKind kind, const QString&
     }
 
     if(const auto value = trackListValue(kind, tracks, *this); value.has_value()) {
-        return calculateResult(*value);
+        ScriptResult result = calculateResult(*value);
+        applyVariableOutputPolicy(m_context, kind, result);
+        return result;
     }
 
     if(tracks.empty()) {
