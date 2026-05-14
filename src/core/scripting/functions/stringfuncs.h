@@ -40,10 +40,6 @@ QString stristrLast(const QStringList& vec);
 QString split(const QStringList& vec);
 QString len(const QStringList& vec);
 QString longest(const QStringList& vec);
-ScriptResult strcmp(const QStringList& vec);
-ScriptResult stricmp(const QStringList& vec);
-ScriptResult longer(const QStringList& vec);
-QString sep();
 QString crlf(const QStringList& vec);
 QString tab(const QStringList& vec);
 QString swapPrefix(const QStringList& vec);
@@ -67,6 +63,12 @@ QString progress2(const QStringList& vec);
 QString doclink(const QStringList& vec);
 QString cmdlink(const QStringList& vec);
 QString urlencode(const QStringList& vec);
+
+QString sep();
+
+ScriptResult strcmp(const QStringList& vec);
+ScriptResult stricmp(const QStringList& vec);
+ScriptResult longer(const QStringList& vec);
 ScriptResult isalpha(const QStringList& vec);
 ScriptResult isalnum(const QStringList& vec);
 ScriptResult isnum(const QStringList& vec);

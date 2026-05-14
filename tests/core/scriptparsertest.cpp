@@ -424,6 +424,13 @@ TEST_F(ScriptParserTest, StringTest)
     EXPECT_EQ(u"b", m_parser.evaluate(u"$split(a;b;c,;,2)"_s));
     EXPECT_EQ(u"c", m_parser.evaluate(u"$split(a;b;c,;,3)"_s));
     EXPECT_EQ(u"", m_parser.evaluate(u"$split(a;b;c,;,4)"_s));
+
+    EXPECT_EQ(u"true", m_parser.evaluate(u"$if($isalpha(abcXYZ),true,false)"_s));
+    EXPECT_EQ(u"false", m_parser.evaluate(u"$if($isalpha(abc123),true,false)"_s));
+    EXPECT_EQ(u"true", m_parser.evaluate(u"$if($isalnum(abc123),true,false)"_s));
+    EXPECT_EQ(u"false", m_parser.evaluate(u"$if($isalnum(abc_123),true,false)"_s));
+    EXPECT_EQ(u"true", m_parser.evaluate(u"$if($isnum(12345),true,false)"_s));
+    EXPECT_EQ(u"false", m_parser.evaluate(u"$if($isnum(12a45),true,false)"_s));
 }
 
 TEST_F(ScriptParserTest, MathTest)

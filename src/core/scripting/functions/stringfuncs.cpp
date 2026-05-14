@@ -18,8 +18,8 @@
  */
 
 #include "stringfuncs.h"
-#include "core/constants.h"
 
+#include <core/constants.h>
 #include <utils/stringutils.h>
 
 #include <QDir>
@@ -48,8 +48,10 @@ QString strstrHelper(const QStringList& vec, bool reverse, Qt::CaseSensitivity c
 
     const QStringView str = vec.at(0);
     const auto ret        = reverse ? str.lastIndexOf(vec.at(1), from, cs) : str.indexOf(vec.at(1), from, cs);
-    if(ret == -1)
+    if(ret == -1) {
         return {};
+    }
+
     return QString::number(ret);
 }
 } // namespace
@@ -339,38 +341,6 @@ QString longest(const QStringList& vec)
     }
 
     return *std::max_element(vec.cbegin(), vec.cend());
-}
-
-ScriptResult strcmp(const QStringList& vec)
-{
-    if(vec.size() != 2) {
-        return {};
-    }
-
-    return {.value = {}, .cond = QString::compare(vec.at(0), vec.at(1), Qt::CaseSensitive) == 0};
-}
-
-ScriptResult stricmp(const QStringList& vec)
-{
-    if(vec.size() != 2) {
-        return {};
-    }
-
-    return {.value = {}, .cond = QString::compare(vec.at(0), vec.at(1), Qt::CaseInsensitive) == 0};
-}
-
-ScriptResult longer(const QStringList& vec)
-{
-    if(vec.size() != 2) {
-        return {};
-    }
-
-    return {.value = {}, .cond = vec.at(0).length() > vec.at(1).length()};
-}
-
-QString sep()
-{
-    return QDir::separator();
 }
 
 QString crlf(const QStringList& vec)
@@ -788,6 +758,38 @@ QString urlencode(const QStringList& vec)
     return QString::fromUtf8(QUrl::toPercentEncoding(vec.front()));
 }
 
+QString sep()
+{
+    return QDir::separator();
+}
+
+ScriptResult strcmp(const QStringList& vec)
+{
+    if(vec.size() != 2) {
+        return {};
+    }
+
+    return {.value = {}, .cond = QString::compare(vec.at(0), vec.at(1), Qt::CaseSensitive) == 0};
+}
+
+ScriptResult stricmp(const QStringList& vec)
+{
+    if(vec.size() != 2) {
+        return {};
+    }
+
+    return {.value = {}, .cond = QString::compare(vec.at(0), vec.at(1), Qt::CaseInsensitive) == 0};
+}
+
+ScriptResult longer(const QStringList& vec)
+{
+    if(vec.size() != 2) {
+        return {};
+    }
+
+    return {.value = {}, .cond = vec.at(0).length() > vec.at(1).length()};
+}
+
 ScriptResult isalpha(const QStringList& vec)
 {
     if(vec.size() != 1 || vec.front().isEmpty()) {
@@ -801,7 +803,7 @@ ScriptResult isalpha(const QStringList& vec)
         }
     }
 
-    return {.value = u"1"_s, .cond = true};
+    return {.value = {}, .cond = true};
 }
 
 ScriptResult isalnum(const QStringList& vec)
@@ -817,7 +819,7 @@ ScriptResult isalnum(const QStringList& vec)
         }
     }
 
-    return {.value = u"1"_s, .cond = true};
+    return {.value = {}, .cond = true};
 }
 
 ScriptResult isnum(const QStringList& vec)
@@ -833,6 +835,6 @@ ScriptResult isnum(const QStringList& vec)
         }
     }
 
-    return {.value = u"1"_s, .cond = true};
+    return {.value = {}, .cond = true};
 }
 } // namespace Fooyin::Scripting
