@@ -102,6 +102,7 @@ public:
     void apply() override
     {
         m_widget->applyConfig(config());
+        setConfig(m_widget->currentConfig());
     }
 
     void saveDefaults() override
