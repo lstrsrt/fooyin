@@ -55,6 +55,7 @@ WaveBarConfigDialog::WaveBarConfigDialog(WaveBarWidget* waveBar, QWidget* parent
     , m_barWidth{new QSpinBox(this)}
     , m_barGap{new QSpinBox(this)}
     , m_supersampleFactor{new QComboBox(this)}
+    , m_normaliseToPeak{new QCheckBox(tr("Normalise waveform"), this)}
     , m_maxScale{new QDoubleSpinBox(this)}
     , m_centreGap{new QSpinBox(this)}
     , m_colourGroup{new QGroupBox(tr("Custom colours"), this)}
@@ -132,6 +133,7 @@ WaveBarConfigDialog::WaveBarConfigDialog(WaveBarWidget* waveBar, QWidget* parent
     m_maxScale->setRange(0.0, 2.0);
     m_maxScale->setSingleStep(0.25);
     m_maxScale->setPrefix(u"x"_s);
+    m_normaliseToPeak->setToolTip(tr("Scale the displayed waveform so the loudest peak reaches full height"));
 
     const QString supersampleTip{
         tr("Internal horizontal render scale for the waveform.\n"
@@ -153,6 +155,7 @@ WaveBarConfigDialog::WaveBarConfigDialog(WaveBarWidget* waveBar, QWidget* parent
     scaleGroupLayout->addWidget(m_maxScale, 1, 1);
     scaleGroupLayout->addWidget(supersampleLabel, 2, 0);
     scaleGroupLayout->addWidget(m_supersampleFactor, 2, 1);
+    scaleGroupLayout->addWidget(m_normaliseToPeak, 3, 0, 1, 2);
     scaleGroupLayout->setColumnStretch(2, 1);
 
     auto* dimensionGroup       = new QGroupBox(tr("Dimension"), displayPage);
@@ -289,6 +292,7 @@ WaveBarWidget::ConfigData WaveBarConfigDialog::config() const
         .barWidth = m_barWidth->value(),
         .barGap   = m_barGap->value(),
         .supersampleFactor = m_supersampleFactor->currentData().toInt(),
+        .normaliseToPeak   = m_normaliseToPeak->isChecked(),
         .maxScale          = m_maxScale->value(),
         .centreGap         = m_centreGap->value(),
         .channelScale      = m_channelScale->value(),
@@ -330,6 +334,7 @@ void WaveBarConfigDialog::setConfig(const WaveBarWidget::ConfigData& config)
     m_barGap->setValue(config.barGap);
     const int supersampleIndex = m_supersampleFactor->findData(config.supersampleFactor);
     m_supersampleFactor->setCurrentIndex(supersampleIndex >= 0 ? supersampleIndex : 0);
+    m_normaliseToPeak->setChecked(config.normaliseToPeak);
     m_maxScale->setValue(config.maxScale);
     m_centreGap->setValue(config.centreGap);
 

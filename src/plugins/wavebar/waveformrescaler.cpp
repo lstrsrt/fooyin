@@ -21,6 +21,9 @@
 
 #include <utils/settings/settingsmanager.h>
 
+#include <algorithm>
+#include <cmath>
+
 namespace {
 double buildSample(Fooyin::WaveBar::WaveformSample& sample, const Fooyin::WaveBar::WaveformData<float>& data,
                    int channel, double start, double end)
@@ -71,6 +74,7 @@ WaveformRescaler::WaveformRescaler(QObject* parent)
     , m_sampleWidth{1}
     , m_supersampleFactor{1}
     , m_downMix{DownmixOption::Off}
+    , m_normaliseToPeak{false}
 { }
 
 void WaveformRescaler::rescale()
@@ -139,8 +143,44 @@ void WaveformRescaler::rescale()
         }
     }
 
+    normaliseToPeak(data);
+
     setState(Idle);
     Q_EMIT waveformRescaled(data);
+}
+
+void WaveformRescaler::normaliseToPeak(WaveformData<float>& data) const
+{
+    if(!m_normaliseToPeak) {
+        return;
+    }
+
+    float peak{0.0F};
+    for(const auto& [max, min, rms] : data.channelData) {
+        for(const float sample : max) {
+            peak = std::max(peak, std::abs(sample));
+        }
+        for(const float sample : min) {
+            peak = std::max(peak, std::abs(sample));
+        }
+    }
+
+    if(peak <= 0.0F) {
+        return;
+    }
+
+    const float scale = 1.0F / peak;
+    for(auto& [max, min, rms] : data.channelData) {
+        for(float& sample : max) {
+            sample *= scale;
+        }
+        for(float& sample : min) {
+            sample *= scale;
+        }
+        for(float& sample : rms) {
+            sample *= scale;
+        }
+    }
 }
 
 void WaveformRescaler::rescale(int width)
@@ -179,6 +219,13 @@ void WaveformRescaler::changeSupersampleFactor(int factor)
 {
     factor = std::max(1, factor);
     if(std::exchange(m_supersampleFactor, factor) != factor) {
+        rescale(m_width);
+    }
+}
+
+void WaveformRescaler::changeNormaliseToPeak(bool normalise)
+{
+    if(std::exchange(m_normaliseToPeak, normalise) != normalise) {
         rescale(m_width);
     }
 }

@@ -57,6 +57,7 @@ constexpr auto DownmixKey            = u"WaveBar/Downmix";
 constexpr auto BarWidthKey           = u"WaveBar/BarWidth";
 constexpr auto BarGapKey             = u"WaveBar/BarGap";
 constexpr auto SupersampleFactorKey  = u"WaveBar/SupersampleFactor";
+constexpr auto NormaliseToPeakKey    = u"WaveBar/NormaliseToPeak";
 constexpr auto MaxScaleKey           = u"WaveBar/MaxScale";
 constexpr auto CentreGapKey          = u"WaveBar/CentreGap";
 constexpr auto ChannelScaleKey       = u"WaveBar/ChannelScale";
@@ -171,6 +172,7 @@ WaveBarWidget::ConfigData WaveBarWidget::defaultConfig() const
     config.barWidth          = m_settings->fileValue(BarWidthKey, config.barWidth).toInt();
     config.barGap            = m_settings->fileValue(BarGapKey, config.barGap).toInt();
     config.supersampleFactor = m_settings->fileValue(SupersampleFactorKey, config.supersampleFactor).toInt();
+    config.normaliseToPeak   = m_settings->fileValue(NormaliseToPeakKey, config.normaliseToPeak).toBool();
     config.maxScale          = m_settings->fileValue(MaxScaleKey, config.maxScale).toDouble();
     config.centreGap         = m_settings->fileValue(CentreGapKey, config.centreGap).toInt();
     config.channelScale      = m_settings->fileValue(ChannelScaleKey, config.channelScale).toDouble();
@@ -191,6 +193,7 @@ WaveBarWidget::ConfigData WaveBarWidget::factoryConfig() const
         .barWidth          = 1,
         .barGap            = 0,
         .supersampleFactor = 1,
+        .normaliseToPeak   = false,
         .maxScale          = 1.0,
         .centreGap         = 0,
         .channelScale      = 0.9,
@@ -254,6 +257,7 @@ void WaveBarWidget::saveDefaults(const ConfigData& config) const
     m_settings->fileSet(BarWidthKey, validated.barWidth);
     m_settings->fileSet(BarGapKey, validated.barGap);
     m_settings->fileSet(SupersampleFactorKey, validated.supersampleFactor);
+    m_settings->fileSet(NormaliseToPeakKey, validated.normaliseToPeak);
     m_settings->fileSet(MaxScaleKey, validated.maxScale);
     m_settings->fileSet(CentreGapKey, validated.centreGap);
     m_settings->fileSet(ChannelScaleKey, validated.channelScale);
@@ -272,6 +276,7 @@ void WaveBarWidget::clearSavedDefaults() const
     m_settings->fileRemove(BarWidthKey);
     m_settings->fileRemove(BarGapKey);
     m_settings->fileRemove(SupersampleFactorKey);
+    m_settings->fileRemove(NormaliseToPeakKey);
     m_settings->fileRemove(MaxScaleKey);
     m_settings->fileRemove(CentreGapKey);
     m_settings->fileRemove(ChannelScaleKey);
@@ -318,6 +323,7 @@ void WaveBarWidget::applyConfig(const ConfigData& config)
     m_builder->setSampleWidth(m_config.barWidth + m_config.barGap);
     m_builder->setDownmix(static_cast<DownmixOption>(m_config.downmix));
     m_builder->setSupersampleFactor(m_config.supersampleFactor);
+    m_builder->setNormaliseToPeak(m_config.normaliseToPeak);
 
     QMetaObject::invokeMethod(m_container, [this]() { rescaleWaveform(); }, Qt::QueuedConnection);
 }
@@ -353,6 +359,9 @@ WaveBarWidget::ConfigData WaveBarWidget::configFromLayout(const QJsonObject& lay
     }
     if(layout.contains("SupersampleFactor"_L1)) {
         config.supersampleFactor = layout.value("SupersampleFactor"_L1).toInt();
+    }
+    if(layout.contains("NormaliseToPeak"_L1)) {
+        config.normaliseToPeak = layout.value("NormaliseToPeak"_L1).toBool();
     }
     if(layout.contains("MaxScale"_L1)) {
         config.maxScale = layout.value("MaxScale"_L1).toDouble();
@@ -420,6 +429,7 @@ void WaveBarWidget::saveConfigToLayout(const ConfigData& config, QJsonObject& la
     layout["BarWidth"_L1]          = config.barWidth;
     layout["BarGap"_L1]            = config.barGap;
     layout["SupersampleFactor"_L1] = config.supersampleFactor;
+    layout["NormaliseToPeak"_L1]   = config.normaliseToPeak;
     layout["MaxScale"_L1]          = config.maxScale;
     layout["CentreGap"_L1]         = config.centreGap;
     layout["ChannelScale"_L1]      = config.channelScale;
@@ -514,7 +524,7 @@ void WaveBarWidget::contextMenuEvent(QContextMenuEvent* event)
     showCursor->setCheckable(true);
     showCursor->setChecked(m_config.showCursor);
     QObject::connect(showCursor, &QAction::triggered, this, [this](bool checked) {
-        auto config       = m_config;
+        auto config{m_config};
         config.showCursor = checked;
         applyConfig(config);
     });
@@ -523,7 +533,7 @@ void WaveBarWidget::contextMenuEvent(QContextMenuEvent* event)
     showLabels->setCheckable(true);
     showLabels->setChecked(m_config.showLabels);
     QObject::connect(showLabels, &QAction::triggered, this, [this](bool checked) {
-        auto config       = m_config;
+        auto config{m_config};
         config.showLabels = checked;
         applyConfig(config);
     });
@@ -532,8 +542,17 @@ void WaveBarWidget::contextMenuEvent(QContextMenuEvent* event)
     showRemainingTime->setCheckable(true);
     showRemainingTime->setChecked(m_config.showRemainingTime);
     QObject::connect(showRemainingTime, &QAction::triggered, this, [this](bool checked) {
-        auto config              = m_config;
+        auto config{m_config};
         config.showRemainingTime = checked;
+        applyConfig(config);
+    });
+
+    auto* normaliseToPeak = new QAction(tr("Normalise waveform"), menu);
+    normaliseToPeak->setCheckable(true);
+    normaliseToPeak->setChecked(m_config.normaliseToPeak);
+    QObject::connect(normaliseToPeak, &QAction::triggered, this, [this](bool checked) {
+        auto config{m_config};
+        config.normaliseToPeak = checked;
         applyConfig(config);
     });
 
@@ -621,6 +640,7 @@ void WaveBarWidget::contextMenuEvent(QContextMenuEvent* event)
     menu->addAction(showCursor);
     menu->addAction(showLabels);
     menu->addAction(showRemainingTime);
+    menu->addAction(normaliseToPeak);
     menu->addSeparator();
     menu->addMenu(modeMenu);
     menu->addMenu(downmixMenu);

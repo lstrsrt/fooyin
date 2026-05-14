@@ -73,6 +73,7 @@ private:
     QSpinBox* m_barWidth;
     QSpinBox* m_barGap;
     QComboBox* m_supersampleFactor;
+    QCheckBox* m_normaliseToPeak;
     QDoubleSpinBox* m_maxScale;
     QSpinBox* m_centreGap;
 

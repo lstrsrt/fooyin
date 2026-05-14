@@ -63,6 +63,7 @@ public:
         int barWidth{1};
         int barGap{0};
         int supersampleFactor{1};
+        bool normaliseToPeak{false};
         double maxScale{1.0};
         int centreGap{0};
         double channelScale{0.9};
