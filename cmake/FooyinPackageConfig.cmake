@@ -17,12 +17,6 @@ if(CPACK_GENERATOR STREQUAL "DEB")
     endif()
 
     execute_process(
-            COMMAND "${LSB_RELEASE} -is | tr '[:upper:]' '[:lower:]' | cut -d' ' -f1"
-            OUTPUT_VARIABLE DIST_NAME
-            OUTPUT_STRIP_TRAILING_WHITESPACE
-    )
-
-    execute_process(
             COMMAND ${LSB_RELEASE} --short --codename
             OUTPUT_VARIABLE DIST_RELEASE
             OUTPUT_STRIP_TRAILING_WHITESPACE
@@ -57,6 +51,15 @@ if(CPACK_GENERATOR STREQUAL "DEB")
         resolute libtag2
     )
 
+    set(DISTRO_QT_PACKAGE_MAP
+        bookworm "libqt6core6 (>= 6.4.0), libqt6gui6 (>= 6.4.0), libqt6widgets6 (>= 6.4.0), libqt6network6 (>= 6.4.0), libqt6concurrent6 (>= 6.4.0), libqt6sql6 (>= 6.4.0)"
+        noble    "libqt6core6t64 (>= 6.4.0), libqt6gui6t64 (>= 6.4.0), libqt6widgets6t64 (>= 6.4.0), libqt6network6t64 (>= 6.4.0), libqt6concurrent6t64 (>= 6.4.0), libqt6sql6t64 (>= 6.4.0)"
+        trixie   "libqt6core6t64 (>= 6.4.0), libqt6gui6 (>= 6.4.0), libqt6widgets6 (>= 6.4.0), libqt6network6 (>= 6.4.0), libqt6concurrent6 (>= 6.4.0), libqt6sql6 (>= 6.4.0)"
+        questing "libqt6core6t64 (>= 6.4.0), libqt6gui6 (>= 6.4.0), libqt6widgets6 (>= 6.4.0), libqt6network6 (>= 6.4.0), libqt6concurrent6 (>= 6.4.0), libqt6sql6 (>= 6.4.0)"
+        forky    "libqt6core6t64 (>= 6.4.0), libqt6gui6 (>= 6.4.0), libqt6widgets6 (>= 6.4.0), libqt6network6 (>= 6.4.0), libqt6concurrent6 (>= 6.4.0), libqt6sql6 (>= 6.4.0)"
+        resolute "libqt6core6t64 (>= 6.4.0), libqt6gui6 (>= 6.4.0), libqt6widgets6 (>= 6.4.0), libqt6network6 (>= 6.4.0), libqt6concurrent6 (>= 6.4.0), libqt6sql6 (>= 6.4.0)"
+    )
+
     function(get_distro_package map_name distro out_var)
         list(FIND ${map_name} "${distro}" idx)
         if(idx GREATER_EQUAL 0)
@@ -70,8 +73,13 @@ if(CPACK_GENERATOR STREQUAL "DEB")
 
     get_distro_package(DISTRO_ICU_PACKAGE_MAP "${DIST_RELEASE}" ICU_PKG)
     get_distro_package(DISTRO_TAGLIB_PACKAGE_MAP "${DIST_RELEASE}" TAGLIB_PKG)
+    get_distro_package(DISTRO_QT_PACKAGE_MAP "${DIST_RELEASE}" QT_PKGS)
 
-    foreach(pkg IN ITEMS ${ICU_PKG} ${TAGLIB_PKG})
+    if(NOT QT_PKGS)
+        message(FATAL_ERROR "Unsupported distribution '${DIST_RELEASE}', update Qt runtime dependencies for cpack -G DEB")
+    endif()
+
+    foreach(pkg IN ITEMS "${ICU_PKG}" "${TAGLIB_PKG}" "${QT_PKGS}")
         if(pkg)
             string(APPEND CPACK_DEBIAN_PACKAGE_DEPENDS ", ${pkg}")
         endif()
@@ -82,6 +90,40 @@ if(CPACK_GENERATOR STREQUAL "DEB")
                 ", libqcoro6core0t64, libqcoro6network0t64"
         )
     endif()
+
+    function(validate_deb_runtime_dependencies dependencies)
+        find_program(APT_CACHE apt-cache)
+        if(NOT APT_CACHE)
+            message(STATUS "apt-cache not found, skipping DEB runtime dependency validation")
+            return()
+        endif()
+
+        string(REGEX REPLACE "[\r\n]+" " " dependency_list "${dependencies}")
+        string(REPLACE "," ";" dependency_list "${dependency_list}")
+
+        foreach(dependency IN LISTS dependency_list)
+            string(STRIP "${dependency}" dependency)
+            string(REGEX REPLACE " *\\(.*\\)$" "" dependency "${dependency}")
+            string(REGEX REPLACE " *\\[.*\\]$" "" dependency "${dependency}")
+            string(REGEX REPLACE " *\\|.*$" "" dependency "${dependency}")
+            string(STRIP "${dependency}" dependency)
+
+            if(dependency)
+                execute_process(
+                        COMMAND "${APT_CACHE}" show "${dependency}"
+                        RESULT_VARIABLE dependency_result
+                        OUTPUT_QUIET
+                        ERROR_QUIET
+                )
+
+                if(NOT dependency_result EQUAL 0)
+                    message(FATAL_ERROR "DEB runtime dependency '${dependency}' not found for ${DIST_RELEASE}/${CPACK_SYSTEM_NAME}")
+                endif()
+            endif()
+        endforeach()
+    endfunction()
+
+    validate_deb_runtime_dependencies("${CPACK_DEBIAN_PACKAGE_DEPENDS}")
 endif()
 
 if(CPACK_GENERATOR STREQUAL "RPM")
