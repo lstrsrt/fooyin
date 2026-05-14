@@ -714,8 +714,8 @@ void WaveBarWidget::contextMenuEvent(QContextMenuEvent* event)
     menu->addAction(normaliseToPeak);
     menu->addAction(decibelScale);
     menu->addSeparator();
-    menu->addMenu(peakDisplayMenu);
     menu->addMenu(modeMenu);
+    menu->addMenu(peakDisplayMenu);
     menu->addMenu(downmixMenu);
     addConfigureAction(menu);
 
