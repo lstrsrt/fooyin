@@ -38,45 +38,48 @@ if(CPACK_GENERATOR STREQUAL "DEB")
             "fooyin_${CPACK_PACKAGE_VERSION}-${DIST_RELEASE}_${CPACK_SYSTEM_NAME}.deb"
     )
 
-    # Distro specific packages
-    set(ICU_VERSIONS
-        jammy    libicu70
-        mantic   libicu72
+    # Distro specific runtime dependencies
+    set(DISTRO_ICU_PACKAGE_MAP
+        bookworm libicu72
         noble    libicu74
-        plucky   libicu76
-        questing libicu76
         trixie   libicu76
+        questing libicu76
         forky    libicu76
+        resolute libicu78
     )
 
-    set(TAGLIB_VERSIONS
+    set(DISTRO_TAGLIB_PACKAGE_MAP
         bookworm libtag1v5
         noble    libtag1v5
-        plucky   libtag2
-        questing libtag2
         trixie   libtag2
+        questing libtag2
         forky    libtag2
+        resolute libtag2
     )
 
-    list(FIND ICU_VERSIONS "${DIST_RELEASE}" idx)
-    if(idx GREATER -1)
-        math(EXPR idx "${idx} + 1")
-        list(GET ICU_VERSIONS ${idx} ICU_VERSION)
-        set(CPACK_DEBIAN_PACKAGE_DEPENDS "${CPACK_DEBIAN_PACKAGE_DEPENDS}, ${ICU_VERSION}")
-    endif()
+    function(get_distro_package map_name distro out_var)
+        list(FIND ${map_name} "${distro}" idx)
+        if(idx GREATER_EQUAL 0)
+            math(EXPR pkg_idx "${idx} + 1")
+            list(GET ${map_name} ${pkg_idx} pkg)
+            set(${out_var} "${pkg}" PARENT_SCOPE)
+        else()
+            set(${out_var} "" PARENT_SCOPE)
+        endif()
+    endfunction()
 
-    list(FIND TAGLIB_VERSIONS "${DIST_RELEASE}" idx)
-    if(idx GREATER -1)
-        math(EXPR idx "${idx} + 1")
-        list(GET TAGLIB_VERSIONS ${idx} TAGLIB_VERSION)
-        set(CPACK_DEBIAN_PACKAGE_DEPENDS "${CPACK_DEBIAN_PACKAGE_DEPENDS}, ${TAGLIB_VERSION}")
-    endif()
+    get_distro_package(DISTRO_ICU_PACKAGE_MAP "${DIST_RELEASE}" ICU_PKG)
+    get_distro_package(DISTRO_TAGLIB_PACKAGE_MAP "${DIST_RELEASE}" TAGLIB_PKG)
+
+    foreach(pkg IN ITEMS ${ICU_PKG} ${TAGLIB_PKG})
+        if(pkg)
+            string(APPEND CPACK_DEBIAN_PACKAGE_DEPENDS ", ${pkg}")
+        endif()
+    endforeach()
 
     if(NOT "${DIST_RELEASE}" STREQUAL "bookworm")
-        set(CPACK_DEBIAN_PACKAGE_DEPENDS
-            "${CPACK_DEBIAN_PACKAGE_DEPENDS},
-            libqcoro6core0t64,
-            libqcoro6network0t64"
+        string(APPEND CPACK_DEBIAN_PACKAGE_DEPENDS
+                ", libqcoro6core0t64, libqcoro6network0t64"
         )
     endif()
 endif()
