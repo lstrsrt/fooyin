@@ -1,5 +1,33 @@
 # Changelog
 
+## Unreleased
+
+### Improvements
+
+* Interface
+  - Move the Preserve timestamps option to Advanced settings
+  - Command Button: Highlight toggleable actions and add checkable states for mute and menu bar actions
+  - Playlist: Select the next track after removing or cutting a track ([#1177](https://github.com/fooyin/fooyin/issues/1177))
+
+### Fixes
+
+* Audio/Playback
+  - Fix DSP manager re-adding removed pending DSPs when applying changes ([#1176](https://github.com/fooyin/fooyin/issues/1176))
+* Interface
+  - Fix themed playback icons after restart ([#1174](https://github.com/fooyin/fooyin/issues/1174))
+  - Refresh playlist controls and highlight icons after palette changes
+  - Fix scrobbler toggle icon colours after theme refresh
+* Library/Metadata
+  - Improve artist slash detection when reading metadata ([#1181](https://github.com/fooyin/fooyin/pull/1181))
+  - Fix automatic rating scale detection for custom tags ([#1175](https://github.com/fooyin/fooyin/pull/1175))
+* Playlist
+  - Fix `Stop after this` when playback is stopped ([#1182](https://github.com/fooyin/fooyin/pull/1182))
+  - Fix unique playlist name generation after playlists have been removed ([#1180](https://github.com/fooyin/fooyin/issues/1180))
+  - Fix a potential crash when switching layouts from throttled signal emission during teardown
+* PipeWire
+  - Preserve PipeWire volume when recreating streams after sample rate changes ([#1178](https://github.com/fooyin/fooyin/issues/1178))
+
+
 ## [0.10.7](https://github.com/fooyin/fooyin/releases/tag/v0.10.7) (2026-05-15)
 
 ### New Features
@@ -17,7 +45,6 @@
   - Reorganise settings page categories and start categories collapsed by default
   - Show a placeholder for empty settings categories and simplify single-page category display
   - Replace Tab Stack cardinal direction labels with standard directions ([#1156](https://github.com/fooyin/fooyin/pull/1156))
-  - Add an Advanced settings page
   - Add a seekbar and WaveBar setting for whether mouse interaction takes focus ([#769](https://github.com/fooyin/fooyin/issues/769))
 * Playlist
   - Add settings to ignore playlist files when adding folders and prevent duplicate entries when loading playlists ([#1160](https://github.com/fooyin/fooyin/issues/1160))
