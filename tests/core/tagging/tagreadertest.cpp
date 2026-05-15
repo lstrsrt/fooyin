@@ -52,6 +52,7 @@ constexpr auto Mp4TrackGain    = "----:com.apple.iTunes:replaygain_track_gain";
 constexpr auto Mp4TrackGainAlt = "----:com.apple.iTunes:REPLAYGAIN_TRACK_GAIN";
 constexpr auto Mp4TrackPeak    = "----:com.apple.iTunes:replaygain_track_peak";
 constexpr auto Mp4TrackPeakAlt = "----:com.apple.iTunes:REPLAYGAIN_TRACK_PEAK";
+constexpr auto Mp4CustomRating = "----:com.apple.iTunes:MY_RATING";
 
 void clearMp4ReplayGainItems(TagLib::MP4::Tag* tag)
 {
@@ -208,6 +209,35 @@ TEST_F(TagReaderTest, M4aRead)
     const auto testTag = track.extraTag(u"TEST"_s);
     ASSERT_TRUE(!testTag.isEmpty());
     EXPECT_EQ(testTag.front(), u"A custom tag"_s);
+}
+
+TEST_F(TagReaderTest, M4aReadCustomAutomaticRatingScale)
+{
+    resetTagReaderRatingSettings();
+
+    const QString filepath = u":/audio/audiotest.m4a"_s;
+    TempResource file{filepath};
+    file.checkValid();
+
+    {
+        const QByteArray localPath = file.fileName().toLocal8Bit();
+        TagLib::MP4::File mp4File(localPath.constData());
+        ASSERT_TRUE(mp4File.isValid());
+        ASSERT_NE(mp4File.tag(), nullptr);
+
+        setMp4StringItem(mp4File.tag(), Mp4CustomRating, u"7"_s);
+        ASSERT_TRUE(mp4File.save());
+    }
+
+    setRatingReadPolicy(u"MY_RATING"_s, u"Automatic"_s);
+
+    Track track{file.fileName()};
+    ASSERT_TRUE(m_parser.readTrack({filepath, &file, nullptr}, track));
+
+    EXPECT_FLOAT_EQ(track.rating(), 0.7F);
+    EXPECT_EQ(track.rawRatingTag(u"MY_RATING"_s), u"7"_s);
+
+    resetTagReaderRatingSettings();
 }
 
 TEST_F(TagReaderTest, M4aReadLowercaseReplayGain)
@@ -447,6 +477,35 @@ TEST_F(TagReaderTest, OggAutomaticRatingReadDetectsTenPointRating)
 
     EXPECT_FLOAT_EQ(track.rating(), 0.7F);
     EXPECT_EQ(track.rawRatingTag(u"RATING"_s), u"7"_s);
+
+    resetTagReaderRatingSettings();
+}
+
+TEST_F(TagReaderTest, OggReadCustomAutomaticRatingScale)
+{
+    resetTagReaderRatingSettings();
+
+    const QString filepath = u":/audio/audiotest.ogg"_s;
+    TempResource file{filepath};
+    file.checkValid();
+
+    {
+        const QByteArray localPath = file.fileName().toLocal8Bit();
+        TagLib::Ogg::Vorbis::File oggFile{localPath.constData()};
+        ASSERT_TRUE(oggFile.isValid());
+        ASSERT_NE(oggFile.tag(), nullptr);
+
+        oggFile.tag()->addField("MY_RATING", TagLib::String{"7", TagLib::String::UTF8}, true);
+        ASSERT_TRUE(oggFile.save());
+    }
+
+    setRatingReadPolicy(u"MY_RATING"_s, u"Automatic"_s);
+
+    Track track{file.fileName()};
+    ASSERT_TRUE(m_parser.readTrack({filepath, &file, nullptr}, track));
+
+    EXPECT_FLOAT_EQ(track.rating(), 0.7F);
+    EXPECT_EQ(track.rawRatingTag(u"MY_RATING"_s), u"7"_s);
 
     resetTagReaderRatingSettings();
 }

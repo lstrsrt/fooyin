@@ -775,6 +775,11 @@ bool hasPopulatedValue(const TagLib::StringList& value)
     return std::ranges::any_of(value, [](const TagLib::String& entry) { return !entry.stripWhiteSpace().isEmpty(); });
 }
 
+bool useRatingTagFallback(const RatingTagPolicy& policy)
+{
+    return policy.readScale == RatingScale::Automatic;
+}
+
 void readTextRatingTag(Track& track, const RatingTagPolicy& policy, const QString& policyTag, const QString& rawTag,
                        const QString& rawRating, bool ratingTagFallback)
 {
@@ -897,9 +902,8 @@ void readGeneralProperties(const TagLib::PropertyMap& props, Track& track, bool 
         else {
             const auto tagEntry = convertString(field);
             if(!policy.rating.automaticRead() && tagEntry == policy.rating.readTag && !value.isEmpty()) {
-                const bool ratingTagFallback = policy.rating.readScale == RatingScale::Automatic;
                 readTextRatingTag(track, policy.rating, policy.rating.readTag, tagEntry, convertString(value.front()),
-                                  ratingTagFallback);
+                                  useRatingTagFallback(policy.rating));
             }
             else {
                 for(const auto& tagValue : value) {
@@ -1742,7 +1746,8 @@ void readMp4Tags(const TagLib::MP4::Tag* mp4Tags, Track& track, const TagPolicy&
                 }
                 const auto values = convertStringList(item.toStringList());
                 if(!policy.rating.automaticRead() && tagName == policy.rating.readTag && !values.isEmpty()) {
-                    readTextRatingTag(track, policy.rating, policy.rating.readTag, tagName, values.front(), false);
+                    readTextRatingTag(track, policy.rating, policy.rating.readTag, tagName, values.front(),
+                                      useRatingTagFallback(policy.rating));
                 }
                 else {
                     for(const auto& value : values) {
@@ -2390,7 +2395,8 @@ void readAsfTags(const TagLib::ASF::Tag* asfTags, Fooyin::Track& track, const Ta
         const auto ratingIt      = map.find(tag);
         if(ratingIt != map.end() && !ratingIt->second.isEmpty()) {
             const QString rawRating = convertString(ratingIt->second.front().toString());
-            readTextRatingTag(track, policy.rating, policy.rating.readTag, rawRating, false);
+            readTextRatingTag(track, policy.rating, policy.rating.readTag, rawRating,
+                              useRatingTagFallback(policy.rating));
         }
     }
 
