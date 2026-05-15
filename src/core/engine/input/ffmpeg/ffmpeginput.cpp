@@ -309,9 +309,9 @@ void parseTag(Fooyin::Track& track, TagType tagType, const AVDictionaryEntry* ta
     const auto splitArtists = [tagType](const QString& artist) {
         const bool isId3Slash    = tagType == ID3v1_1 || tagType == ID3v1_2 || tagType == ID3v2_2 || tagType == ID3v2_3;
         const bool containsSlash = artist.contains("/"_L1);
-        const bool isCommonSlashArtist = artist == "AC/DC"_L1 || artist == "AC / DC"_L1;
+        const bool hasCommonSlashArtist = artist.contains("AC/DC"_L1) || artist.contains("AC / DC"_L1);
 
-        return splitMetadata(artist, isId3Slash && containsSlash && !isCommonSlashArtist ? u'/' : u';');
+        return splitMetadata(artist, isId3Slash && containsSlash && !hasCommonSlashArtist ? u'/' : u';');
     };
 
     if(strcasecmp(tag->key, "album") == 0) {
