@@ -31,7 +31,8 @@ SignalThrottler::SignalThrottler(QObject* parent)
 
 SignalThrottler::~SignalThrottler()
 {
-    maybeEmitTriggered();
+    m_timer.stop();
+    m_pendingEmit = false;
 }
 
 bool SignalThrottler::isActive() const
