@@ -95,6 +95,16 @@ QIcon themeIcon(const QString& iconName)
     const QIcon icon = Fooyin::Gui::iconFromTheme(trimmed);
     return icon.isNull() ? QIcon{} : icon;
 }
+
+QIcon highlightedIcon(const QIcon& icon, const QPalette& palette)
+{
+    if(icon.isNull()) {
+        return {};
+    }
+
+    const QColor iconColour = palette.color(QPalette::Active, QPalette::Highlight);
+    return Fooyin::Utils::changePixmapColour(icon.pixmap({128, 128}), iconColour);
+}
 } // namespace
 
 namespace Fooyin {
@@ -120,8 +130,9 @@ CommandButton::CommandButton(ActionManager* actionManager, PlayerController* pla
     m_button->setFocusPolicy(Qt::NoFocus);
 
     QObject::connect(m_button, &QAbstractButton::clicked, this, [this]() {
-        if(!m_boundCommand && m_commandHandler && m_commandHandler->canExecute(m_config.commandId)) {
+        if(m_commandHandler->canExecute(m_config.commandId)) {
             m_commandHandler->execute(m_config.commandId);
+            QMetaObject::invokeMethod(this, &CommandButton::updateButton, Qt::QueuedConnection);
         }
     });
     QObject::connect(m_button, &QWidget::customContextMenuRequested, this,
@@ -317,17 +328,16 @@ void CommandButton::rebindAction()
 
     m_boundCommand = m_actionManager->command(Id{resolved->id});
     if(m_boundCommand && m_boundCommand->action()) {
-        m_button->setDefaultAction(m_boundCommand->action());
-        m_button->setContextMenuPolicy(Qt::CustomContextMenu);
-        m_button->setFocusPolicy(Qt::NoFocus);
-        m_actionChangedConnection
-            = QObject::connect(m_boundCommand->action(), &QAction::changed, this, [this]() { updateButton(); });
+        m_actionChangedConnection = QObject::connect(m_boundCommand->action(), &QAction::changed, this, [this]() {
+            QMetaObject::invokeMethod(this, &CommandButton::updateButton, Qt::QueuedConnection);
+        });
     }
 }
 
 void CommandButton::updateButton()
 {
     QIcon configuredIcon              = themeIcon(m_config.iconName);
+    const bool usingThemeIcon         = !configuredIcon.isNull();
     const bool themeIconRequested     = !m_config.iconName.isEmpty();
     const bool usingThemeIconFallback = themeIconRequested && configuredIcon.isNull();
 
@@ -337,9 +347,16 @@ void CommandButton::updateButton()
 
     const bool customIconRequested = !m_config.iconPath.isEmpty();
     const bool usingCustomFallback = customIconRequested && configuredIcon.isNull();
+    const bool usingCustomIcon     = customIconRequested && !usingThemeIcon && !configuredIcon.isNull();
     const bool canExecute          = m_commandHandler && m_commandHandler->canExecute(m_config.commandId);
 
-    m_button->setIcon(configuredIcon.isNull() ? fallbackIcon(m_config.commandId) : configuredIcon);
+    QIcon buttonIcon = configuredIcon.isNull() ? fallbackIcon(m_config.commandId) : configuredIcon;
+    if(m_boundCommand && m_boundCommand->action() && m_boundCommand->action()->isCheckable()
+       && m_boundCommand->action()->isChecked() && !usingCustomIcon) {
+        buttonIcon = highlightedIcon(buttonIcon, palette());
+    }
+
+    m_button->setIcon(buttonIcon);
     m_button->setEnabled(true);
 
     const QString description = currentDescription(m_config.commandId, m_config.text);
