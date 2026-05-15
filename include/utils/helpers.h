@@ -128,18 +128,22 @@ QString findUniqueString(const QString& name, const T& elements, StringExtractor
         return name;
     }
 
-    auto findCount = [&existingNames](const QString& str) -> int {
-        const QString regexName    = QRegularExpression::escape(str);
-        const QString regexPattern = QString::fromUtf8(R"(^%1\s*(\(\d+\))?\s*$)").arg(regexName);
+    auto containsCandidate = [&existingNames, &name](int index) {
+        const QString regexPattern
+            = QString::fromUtf8(R"(^%1\s*\(%2\)\s*$)").arg(QRegularExpression::escape(name)).arg(index);
         const QRegularExpression pattern{regexPattern};
 
-        return static_cast<int>(std::ranges::count_if(
-            existingNames, [&pattern](const auto& element) { return pattern.match(element).hasMatch(); }));
+        return std::ranges::any_of(existingNames,
+                                   [&pattern](const auto& element) { return pattern.match(element).hasMatch(); });
     };
 
-    const int count = findCount(name);
+    for(int index{1}; index > 0; ++index) {
+        if(!containsCandidate(index)) {
+            return QStringLiteral("%1 (%2)").arg(name).arg(index);
+        }
+    }
 
-    return count > 0 ? QStringLiteral("%1 (%2)").arg(name).arg(count) : name;
+    return {};
 }
 
 template <typename T>

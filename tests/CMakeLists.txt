@@ -67,6 +67,8 @@ fooyin_add_test(test_tagwriter core/tagging/tagwritertest.cpp data/audio.qrc)
 fooyin_add_test(test_guiutils gui/guiutilstest.cpp)
 fooyin_add_test(test_scriptformatter gui/scriptformattertest.cpp)
 
+fooyin_add_test(test_helpers utils/helperstest.cpp)
+
 fooyin_add_test(test_filtercontroller plugins/filters/filtercontrollertest.cpp)
 target_link_libraries(test_filtercontroller PRIVATE Fooyin::FiltersInternal)
 fooyin_add_test(test_filterpipeline plugins/filters/filterpipelinetest.cpp)
