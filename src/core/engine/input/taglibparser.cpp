@@ -1139,7 +1139,7 @@ void readId3Tags(const TagLib::ID3v2::Tag* id3Tags, Track& track, const TagPolic
             if(!artistsFrame.isEmpty()) {
                 const QString artist = convertString(artistsFrame.front()->toString());
                 // Ignore common artist names
-                if(artist.contains("/"_L1) && artist != "AC/DC"_L1 && artist != "AC / DC"_L1) {
+                if(artist.contains("/"_L1) && !artist.contains("AC/DC"_L1) && !artist.contains("AC / DC"_L1)) {
                     QStringList artists = artist.split(u'/', Qt::SkipEmptyParts);
                     std::ranges::transform(artists, artists.begin(), [](QString& entry) { return entry.trimmed(); });
                     track.setArtists(artists);
