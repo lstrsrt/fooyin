@@ -682,9 +682,13 @@ void GuiApplicationPrivate::registerActions()
 
     auto* muteAction = new QAction(GuiApplication::tr("Mute"), m_mainWindow.get());
     Gui::setThemeIcon(muteAction, Constants::Icons::VolumeMute);
+    muteAction->setCheckable(true);
+    muteAction->setChecked(m_settings->value<Settings::Core::OutputVolume>() <= 0.0);
     auto* muteCmd = m_actionManager->registerAction(muteAction, Constants::Actions::Mute);
     muteCmd->setCategories(volumeCategory);
     QObject::connect(muteAction, &QAction::triggered, m_mainWindow.get(), [this]() { mute(); });
+    m_settings->subscribe<Settings::Core::OutputVolume>(
+        muteAction, [muteAction](double volume) { muteAction->setChecked(volume <= 0.0); });
 
     auto* clearPlaylistAction = new QAction(GuiApplication::tr("Clear Current Playlist"), m_mainWindow.get());
     clearPlaylistAction->setStatusTip(GuiApplication::tr("Remove all tracks from the current playlist"));
@@ -773,12 +777,15 @@ void GuiApplicationPrivate::registerActions()
     });
 
     auto* toggleMenubar    = new QAction(GuiApplication::tr("Toggle Menubar"), m_mainWindow.get());
+    toggleMenubar->setCheckable(true);
+    toggleMenubar->setChecked(m_settings->value<Settings::Gui::ShowMenuBar>());
     auto* toggleMenubarCmd = m_actionManager->registerAction(toggleMenubar, Constants::Actions::ToggleMenubar);
     toggleMenubarCmd->setCategories({GuiApplication::tr("View")});
     toggleMenubarCmd->setDefaultShortcut(QKeySequence{Qt::CTRL | Qt::Key_M});
-    QObject::connect(toggleMenubar, &QAction::triggered, m_mainWindow.get(), [this]() {
-        m_settings->set<Settings::Gui::ShowMenuBar>(!m_settings->value<Settings::Gui::ShowMenuBar>());
-    });
+    QObject::connect(toggleMenubar, &QAction::triggered, m_mainWindow.get(),
+                     [this](bool visible) { m_settings->set<Settings::Gui::ShowMenuBar>(visible); });
+    m_settings->subscribe<Settings::Gui::ShowMenuBar>(
+        toggleMenubar, [toggleMenubar](bool visible) { toggleMenubar->setChecked(visible); });
 }
 
 void GuiApplicationPrivate::rescanTracks(const TrackList& tracks, bool onlyModified) const
