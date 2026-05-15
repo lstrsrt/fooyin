@@ -98,6 +98,7 @@ private:
     void applyPlaylistChangeSet(PlaylistWidgetSessionHost& host, const PlaylistChangeset& changeSet);
     void handlePlaylistTracksRemoved(PlaylistWidgetSessionHost& host, const std::vector<int>& indexes);
     void refreshActionState(PlaylistWidget* widget);
+    static void selectTrackAfterRemoval(PlaylistWidgetSessionHost& host, const std::vector<int>& removedIndexes);
     void syncTrackChangeState(EditablePlaylistSessionHost& host, int playingIndex);
     void handleTrackIndexesChanged(PlaylistWidget* widget, int playingIndex);
     void stopAfterTrack(PlaylistWidget* widget) const;

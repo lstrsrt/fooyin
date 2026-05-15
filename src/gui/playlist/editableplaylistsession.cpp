@@ -417,7 +417,10 @@ void EditablePlaylistSession::setupActions(PlaylistWidgetSessionHost& sessionHos
     removeCmd->setAttribute(ProxyAction::UpdateText);
     removeCmd->setDefaultShortcut(QKeySequence::Delete);
     QObject::connect(m_removeTrackAction, &QAction::triggered, widget, [widget, this]() {
-        tracksRemoved(widgetSessionHost(widget), selectedPlaylistIndexes(widgetSessionHost(widget)));
+        auto& removeHost   = widgetSessionHost(widget);
+        const auto indexes = selectedPlaylistIndexes(removeHost);
+        tracksRemoved(removeHost, indexes);
+        selectTrackAfterRemoval(removeHost, indexes);
     });
 
     m_addToQueueAction->setStatusTip(PlaylistWidget::tr("Add the selected tracks to the playback queue"));
@@ -1012,7 +1015,9 @@ void EditablePlaylistSession::clearTracks(PlaylistWidgetSessionHost& sessionHost
 void EditablePlaylistSession::cutTracks(PlaylistWidgetSessionHost& sessionHost)
 {
     copyTracks(sessionHost);
-    tracksRemoved(sessionHost, selectedPlaylistIndexes(editableHost(sessionHost.sessionWidget())));
+    const auto indexes = selectedPlaylistIndexes(editableHost(sessionHost.sessionWidget()));
+    tracksRemoved(sessionHost, indexes);
+    selectTrackAfterRemoval(sessionHost, indexes);
 }
 
 void EditablePlaylistSession::copyTracks(PlaylistWidgetSessionHost& sessionHost)
@@ -1188,6 +1193,32 @@ void EditablePlaylistSession::sortColumn(PlaylistWidgetSessionHost& sessionHost,
                                             sortedTracks);
             hostPtr->playlistController()->addToHistory(sortCmd);
         });
+}
+
+void EditablePlaylistSession::selectTrackAfterRemoval(PlaylistWidgetSessionHost& sessionHost,
+                                                      const std::vector<int>& removedIndexes)
+{
+    auto& host            = editableHost(sessionHost.sessionWidget());
+    auto* currentPlaylist = host.playlistController()->currentPlaylist();
+    if(!currentPlaylist || removedIndexes.empty() || currentPlaylist->trackCount() <= 0) {
+        return;
+    }
+
+    auto validIndexes   = removedIndexes | std::views::filter([](int index) { return index >= 0; });
+    const auto targetIt = std::ranges::min_element(validIndexes);
+    if(targetIt == std::ranges::end(validIndexes)) {
+        return;
+    }
+
+    const int targetPlaylistIndex = std::min(*targetIt, currentPlaylist->trackCount() - 1);
+    const QModelIndex targetIndex = host.playlistModel()->indexAtPlaylistIndex(targetPlaylistIndex, false);
+    if(!targetIndex.isValid()) {
+        return;
+    }
+
+    host.playlistView()->selectionModel()->setCurrentIndex(targetIndex, QItemSelectionModel::ClearAndSelect
+                                                                            | QItemSelectionModel::Rows);
+    host.playlistView()->scrollTo(targetIndex, QAbstractItemView::EnsureVisible);
 }
 
 QAction* EditablePlaylistSession::cropAction() const
