@@ -158,9 +158,8 @@ int startupPrefillFromOutputQueueMs(const Fooyin::AudioPipeline::OutputQueueSnap
     const int freeFrames      = std::max(0, snapshot.state.freeFrames);
     const int queuedFrames    = std::max(0, snapshot.state.queuedFrames);
     const int bufferFrames    = std::max(0, snapshot.bufferFrames);
-    const int delayFrames     = std::max(0, static_cast<int>(std::llround(delaySeconds * outputSampleRate)));
 
-    const int queueDemandFrames = std::max({freeFrames, bufferFrames, 0, queuedFrames + std::max(0, delayFrames)});
+    const int queueDemandFrames = std::max({freeFrames, bufferFrames, queuedFrames});
     const int delayDemandMs     = std::max(0, static_cast<int>(std::llround(delaySeconds * 1000.0)));
 
     return std::max(framesToMs(queueDemandFrames), delayDemandMs);
@@ -217,10 +216,6 @@ bool audiblePauseDrainComplete(const Fooyin::AudioPipeline::OutputQueueSnapshot&
     const double delaySeconds = std::isfinite(snapshot.state.delay) ? std::max(0.0, snapshot.state.delay) : 0.0;
     const int queuedFrames    = std::max(0, snapshot.state.queuedFrames);
     const int outputRate      = outputFormat.sampleRate();
-
-    if(queuedFrames == 0) {
-        return true;
-    }
 
     if(outputRate <= 0) {
         return queuedFrames == 0 && delaySeconds <= (static_cast<double>(AudiblePauseDrainThresholdMs) / 1000.0);
@@ -1078,7 +1073,6 @@ void AudioEngine::beginAudiblePauseCompletion(const uint64_t transportTransition
     m_decoder.stopDecodeTimer();
     m_pipeline.beginPauseDrain();
     clearPendingAnalysisData();
-    m_audioClock.stop();
     updatePlaybackState(Engine::PlaybackState::Paused);
 
     m_pendingAudiblePause.active       = true;
@@ -1110,6 +1104,8 @@ void AudioEngine::maybeCompletePendingAudiblePause(const uint64_t serial)
                                     .count();
     const bool watchdogExpired = m_pendingAudiblePause.watchdogMs > 0 && elapsedMs >= m_pendingAudiblePause.watchdogMs;
 
+    updatePosition();
+
     if(!drainComplete && !watchdogExpired) {
         QTimer::singleShot(std::chrono::milliseconds{AudiblePauseDrainPollMs}, this,
                            [this, serial]() { maybeCompletePendingAudiblePause(serial); });
@@ -1132,10 +1128,13 @@ void AudioEngine::maybeCompletePendingAudiblePause(const uint64_t serial)
 
 void AudioEngine::finalisePausedState()
 {
+    updatePosition();
     clearTransportTransition();
     m_pipeline.pause();
     m_fadeController.setState(FadeState::Idle);
     m_fadeController.setFadeOnNext(false);
+    m_audioClock.setPaused();
+    m_audioClock.stop();
     setPhase(Playback::Phase::Paused, PhaseChangeReason::PlaybackStatePaused);
 }
 
