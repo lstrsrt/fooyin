@@ -30,6 +30,7 @@
 
 #include <QAction>
 #include <QActionGroup>
+#include <QEvent>
 #include <QHBoxLayout>
 #include <QJsonObject>
 #include <QMenu>
@@ -43,7 +44,6 @@ PlaylistControl::PlaylistControl(PlayerController* playerController, SettingsMan
     , m_settings{settings}
     , m_repeat{new ToolButton(this)}
     , m_shuffle{new ToolButton(this)}
-    , m_iconColour{palette().highlight().color()}
 
 {
     auto* layout = new QHBoxLayout(this);
@@ -83,6 +83,20 @@ QString PlaylistControl::name() const
 QString PlaylistControl::layoutName() const
 {
     return u"PlaylistControls"_s;
+}
+
+void PlaylistControl::changeEvent(QEvent* event)
+{
+    FyWidget::changeEvent(event);
+
+    switch(event->type()) {
+        case QEvent::PaletteChange:
+        case QEvent::StyleChange:
+            setMode(m_playerController->playMode());
+            break;
+        default:
+            break;
+    }
 }
 
 void PlaylistControl::updateButtonStyle() const
@@ -213,11 +227,11 @@ void PlaylistControl::setMode(Playlist::PlayModes mode) const
 {
     if(mode & (Playlist::RepeatPlaylist | Playlist::RepeatAlbum)) {
         m_repeat->setIcon(
-            Utils::changePixmapColour(Gui::iconFromTheme(Constants::Icons::Repeat).pixmap({128, 128}), m_iconColour));
+            Utils::changePixmapColour(Gui::iconFromTheme(Constants::Icons::Repeat).pixmap({128, 128}), iconColour()));
     }
     else if(mode & Playlist::RepeatTrack) {
         m_repeat->setIcon(Utils::changePixmapColour(
-            Gui::iconFromTheme(Constants::Icons::RepeatTrack).pixmap({128, 128}), m_iconColour));
+            Gui::iconFromTheme(Constants::Icons::RepeatTrack).pixmap({128, 128}), iconColour()));
     }
     else {
         m_repeat->setIcon(Gui::iconFromTheme(Constants::Icons::Repeat));
@@ -225,11 +239,16 @@ void PlaylistControl::setMode(Playlist::PlayModes mode) const
 
     if(mode & (Playlist::ShuffleTracks | Playlist::ShuffleAlbums | Playlist::Random)) {
         m_shuffle->setIcon(
-            Utils::changePixmapColour(Gui::iconFromTheme(Constants::Icons::Shuffle).pixmap({128, 128}), m_iconColour));
+            Utils::changePixmapColour(Gui::iconFromTheme(Constants::Icons::Shuffle).pixmap({128, 128}), iconColour()));
     }
     else {
         m_shuffle->setIcon(Gui::iconFromTheme(Constants::Icons::Shuffle));
     }
+}
+
+QColor PlaylistControl::iconColour() const
+{
+    return palette().color(QPalette::Active, QPalette::Highlight);
 }
 } // namespace Fooyin
 

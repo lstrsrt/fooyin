@@ -39,17 +39,19 @@ public:
     [[nodiscard]] QString name() const override;
     [[nodiscard]] QString layoutName() const override;
 
+protected:
+    void changeEvent(QEvent* event) override;
+
 private:
     void updateButtonStyle() const;
     void setupMenus();
     void setMode(Playlist::PlayModes mode) const;
+    [[nodiscard]] QColor iconColour() const;
 
     PlayerController* m_playerController;
     SettingsManager* m_settings;
 
     ToolButton* m_repeat;
     ToolButton* m_shuffle;
-
-    QColor m_iconColour;
 };
 } // namespace Fooyin
