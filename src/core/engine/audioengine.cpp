@@ -414,6 +414,16 @@ AudioEngine::~AudioEngine()
 {
     beginShutdown();
 
+    if(QThread::currentThread() == thread()) {
+        stopImmediate();
+        m_engineTaskQueue.drain();
+    }
+    else {
+        qCWarning(ENGINE) << "AudioEngine destroyed off-thread; performing non-blocking shutdown";
+        m_decoder.stopDecoding();
+        m_pipeline.stop();
+    }
+
     if(m_analysisBus) {
         m_analysisBus->setSubscriptions(Engine::AnalysisDataTypes{});
         m_analysisBus->setLevelReadyHandler({});
@@ -425,17 +435,6 @@ AudioEngine::~AudioEngine()
     m_analysisBus.reset();
     m_nextTrackPrepareWorker.stop();
     m_engineTaskQueue.clear();
-
-    if(QThread::currentThread() == thread()) {
-        stopImmediate();
-        m_engineTaskQueue.drain();
-    }
-    else {
-        qCWarning(ENGINE) << "AudioEngine destroyed off-thread; performing non-blocking shutdown";
-    }
-
-    m_decoder.stopDecoding();
-    m_pipeline.stop();
 }
 
 bool AudioEngine::ensureCrossfadePrepared(const Engine::PlaybackItem& item, bool isManualChange)
