@@ -256,6 +256,7 @@ void ShortcutsPageWidget::repopulateShortcuts()
 void ShortcutsPageWidget::apply()
 {
     m_model->processQueue();
+    m_actionManager->saveSettings();
 }
 
 void ShortcutsPageWidget::reset()
