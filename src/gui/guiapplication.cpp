@@ -199,6 +199,7 @@ public:
     void setStyle() const;
     void setTheme() const;
     bool setIconTheme() const;
+    void refreshThemeIcons() const;
     void refreshAutoDetectedIconTheme() const;
     void registerLayouts();
 
@@ -485,22 +486,10 @@ void GuiApplicationPrivate::setupConnections()
 
     m_settings->subscribe<Settings::Gui::LayoutEditing>(m_self, [this]() { updateWindowTitle(); });
 
-    const auto refreshThemedActions = [this]() {
-        Gui::refreshThemeIcons(m_actionManager);
-        for(const Command* command : m_actionManager->commands()) {
-            Gui::refreshThemeIcon(command ? command->action() : nullptr);
-        }
-        Gui::refreshThemeIcons(m_self);
-        const auto widgets = QApplication::topLevelWidgets();
-        for(QWidget* widget : widgets) {
-            Gui::refreshThemeIcons(widget);
-        }
-    };
-
-    m_settings->subscribe<Settings::Gui::IconTheme>(m_self, [this, refreshThemedActions]() {
+    m_settings->subscribe<Settings::Gui::IconTheme>(m_self, [this]() {
         setIconTheme();
         QPixmapCache::clear();
-        refreshThemedActions();
+        refreshThemeIcons();
     });
     m_settings->subscribe<Settings::Gui::Theme>(m_self, [this]() {
         setTheme();
@@ -971,6 +960,22 @@ bool GuiApplicationPrivate::setIconTheme() const
 {
     const auto [primaryTheme, fallbackTheme] = resolveIconThemes(m_settings);
     return Gui::setThemeIconOverrides(primaryTheme, fallbackTheme);
+}
+
+void GuiApplicationPrivate::refreshThemeIcons() const
+{
+    Gui::refreshThemeIcons(m_actionManager);
+
+    for(const Command* command : m_actionManager->commands()) {
+        Gui::refreshThemeIcon(command ? command->action() : nullptr);
+    }
+
+    Gui::refreshThemeIcons(m_self);
+
+    const auto widgets = QApplication::topLevelWidgets();
+    for(QWidget* widget : widgets) {
+        Gui::refreshThemeIcons(widget);
+    }
 }
 
 void GuiApplicationPrivate::refreshAutoDetectedIconTheme() const

@@ -71,6 +71,7 @@ PlayerControl::PlayerControl(ActionManager* actionManager, PlayerController* pla
     }
 
     updateButtonStyle();
+    updateIcons();
 
     QObject::connect(m_playerController, &PlayerController::playStateChanged, this, &PlayerControl::stateChanged);
 
