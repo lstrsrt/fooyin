@@ -776,7 +776,7 @@ void GuiApplicationPrivate::registerActions()
         }
     });
 
-    auto* toggleMenubar    = new QAction(GuiApplication::tr("Toggle Menubar"), m_mainWindow.get());
+    auto* toggleMenubar = new QAction(GuiApplication::tr("Toggle Menubar"), m_mainWindow.get());
     toggleMenubar->setCheckable(true);
     toggleMenubar->setChecked(m_settings->value<Settings::Gui::ShowMenuBar>());
     auto* toggleMenubarCmd = m_actionManager->registerAction(toggleMenubar, Constants::Actions::ToggleMenubar);
