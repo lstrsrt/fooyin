@@ -78,7 +78,6 @@ Engine::DspChain mergeVisibleAndPending(const Engine::DspChain& previousChain, c
     }
 
     merged.insert(merged.end(), visibleIt, visibleChain.cend());
-    merged.insert(merged.end(), pendingRemaining.cbegin(), pendingRemaining.cend());
 
     return merged;
 }
@@ -295,23 +294,21 @@ DspManagerPageWidget::DspManagerPageWidget(DspChainStore* chainStore, DspPresetR
     QObject::connect(m_masterDelegate, &DspDelegate::configureClicked, this,
                      [this](const QModelIndex& index) { configureActiveDsp(m_masterModel, index); });
     QObject::connect(m_perTrackModel, &QAbstractItemModel::rowsInserted, this,
-                     [this](const QModelIndex&, int, int) { resolveActiveModelDisplayNames(m_perTrackModel); });
+                     [this]() { resolveActiveModelDisplayNames(m_perTrackModel); });
     QObject::connect(m_masterModel, &QAbstractItemModel::rowsInserted, this,
-                     [this](const QModelIndex&, int, int) { resolveActiveModelDisplayNames(m_masterModel); });
-    QObject::connect(m_perTrackModel, &QAbstractItemModel::dataChanged, this,
-                     [this](const QModelIndex&, const QModelIndex&, const QList<int>&) {
-                         if(!m_updating) {
-                             syncChainFromActiveList();
-                             refreshAvailable();
-                         }
-                     });
-    QObject::connect(m_masterModel, &QAbstractItemModel::dataChanged, this,
-                     [this](const QModelIndex&, const QModelIndex&, const QList<int>&) {
-                         if(!m_updating) {
-                             syncChainFromActiveList();
-                             refreshAvailable();
-                         }
-                     });
+                     [this]() { resolveActiveModelDisplayNames(m_masterModel); });
+    QObject::connect(m_perTrackModel, &QAbstractItemModel::dataChanged, this, [this]() {
+        if(!m_updating) {
+            syncChainFromActiveList();
+            refreshAvailable();
+        }
+    });
+    QObject::connect(m_masterModel, &QAbstractItemModel::dataChanged, this, [this]() {
+        if(!m_updating) {
+            syncChainFromActiveList();
+            refreshAvailable();
+        }
+    });
 
     m_perTrackList->setContextMenuPolicy(Qt::CustomContextMenu);
     m_masterList->setContextMenuPolicy(Qt::CustomContextMenu);
@@ -416,11 +413,19 @@ void DspManagerPageWidget::resolveActiveModelDisplayNames(DspModel* model)
     }
 
     auto dsps = model->dsps();
+    for(auto& dsp : dsps) {
+        if(dsp.instanceId == 0) {
+            dsp.instanceId = nextDialogInstanceId();
+        }
+    }
     resolveDisplayNames(dsps);
 
     m_updating = true;
     model->setup(dsps);
     m_updating = false;
+
+    syncChainFromActiveList();
+    refreshAvailable();
 }
 
 void DspManagerPageWidget::refreshPresets()
