@@ -96,6 +96,7 @@
 #include "widgets/statuswidget.h"
 
 #include <core/application.h>
+#include <core/coresettings.h>
 #include <core/internalcoresettings.h>
 #include <core/library/musiclibrary.h>
 #include <core/player/playercontroller.h>
@@ -439,6 +440,13 @@ void Widgets::registerAdvancedSettings()
          .label       = tr("VBR update interval"),
          .description = tr("Interval used to refresh VBR playback information. Set to 0 to disable."),
          .editor      = AdvancedSettingSpinBox{.minimum = 0, .maximum = 300000, .singleStep = 100, .suffix = u" ms"_s},
+         .normalise   = {},
+         .validate    = {}});
+    advancedSettingsRegistry->add<Settings::Core::PreserveTimestamps>(
+        {.category    = {tr("Tagging")},
+         .label       = tr("Preserve timestamps"),
+         .description = tr("Preserve file access and modification timestamps when updating tags."),
+         .editor      = AdvancedSettingCheckBox{},
          .normalise   = {},
          .validate    = {}});
     advancedSettingsRegistry->add(
