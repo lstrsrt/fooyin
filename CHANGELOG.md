@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## [0.10.7](https://github.com/fooyin/fooyin/releases/tag/v0.10.7) (2026-05-15)
 
 ### New Features
 
@@ -64,7 +64,7 @@
 * Packaging
   - Target Ubuntu 26.04 and update distro-specific dependencies ([#1171](https://github.com/fooyin/fooyin/issues/1171))
 * Translations
-  - Update translations and translation sources ([#1164](https://github.com/fooyin/fooyin/pull/1164), [#1165](https://github.com/fooyin/fooyin/pull/1165))
+  - Update translations and translation sources ([#1164](https://github.com/fooyin/fooyin/pull/1164), [#1165](https://github.com/fooyin/fooyin/pull/1165), [#1172](https://github.com/fooyin/fooyin/pull/1172), [#1173](https://github.com/fooyin/fooyin/pull/1173))
 
 
 ## [0.10.6](https://github.com/fooyin/fooyin/releases/tag/v0.10.6) (2026-05-11)
