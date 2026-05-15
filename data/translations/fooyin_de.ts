@@ -1417,7 +1417,7 @@
     <message>
         <location filename="../../src/gui/settings/artwork/artworkdownloadpage.cpp" line="179"/>
         <source>Cover type</source>
-        <translation type="unfinished">Albumcover-Typ</translation>
+        <translation>Albumcover-Typ</translation>
     </message>
     <message>
         <location filename="../../src/gui/settings/artwork/artworkdownloadpage.cpp" line="240"/>
@@ -2745,7 +2745,7 @@ Wenn deaktiviert, wird die bestehende Titelreihenfolge erhalten und nur neu hinz
     <message>
         <location filename="../../src/plugins/discord/settings/discordpage.cpp" line="133"/>
         <source>Integrations</source>
-        <translation type="unfinished"></translation>
+        <translation>Integrationen</translation>
     </message>
 </context>
 <context>
@@ -2960,43 +2960,43 @@ Die Effekte hier beeinflussen die finale, zusammengeführte Ausgabe.</translatio
         <location filename="../../src/gui/dsp/dspsettingscontroller.cpp" line="46"/>
         <location filename="../../src/gui/dsp/dspsettingslayoutwidget.cpp" line="37"/>
         <source>Enabled</source>
-        <translation type="unfinished">Aktiviert</translation>
+        <translation>Aktiviert</translation>
     </message>
     <message>
         <location filename="../../src/gui/dsp/dspsettingscontroller.cpp" line="63"/>
         <source>Master</source>
-        <translation type="unfinished"></translation>
+        <translation>Master</translation>
     </message>
     <message>
         <location filename="../../src/gui/dsp/dspsettingscontroller.cpp" line="64"/>
         <source>Per-track</source>
-        <translation type="unfinished"></translation>
+        <translation>Pro Titel</translation>
     </message>
     <message>
         <location filename="../../src/gui/dsp/dspsettingscontroller.cpp" line="304"/>
         <location filename="../../src/gui/dsp/dspsettingscontroller.cpp" line="311"/>
         <source>DSP Settings</source>
-        <translation type="unfinished">DSP-Einstellungen</translation>
+        <translation>DSP-Einstellungen</translation>
     </message>
     <message>
         <location filename="../../src/gui/dsp/dspsettingscontroller.cpp" line="304"/>
         <source>Unable to open settings for DSP &quot;%1&quot;.</source>
-        <translation type="unfinished">Einstellungen für DSP „%1“ konnten nicht geöffnet werden.</translation>
+        <translation>Einstellungen für DSP „%1“ konnten nicht geöffnet werden.</translation>
     </message>
     <message>
         <location filename="../../src/gui/dsp/dspsettingscontroller.cpp" line="311"/>
         <source>Unable to find DSP &quot;%1&quot;.</source>
-        <translation type="unfinished"></translation>
+        <translation>DSP „%1“ konnte nicht gefunden werden.</translation>
     </message>
     <message>
         <location filename="../../src/gui/dsp/dspsettingscontroller.cpp" line="353"/>
         <source>%1: %2</source>
-        <translation type="unfinished"></translation>
+        <translation>%1: %2</translation>
     </message>
     <message>
         <location filename="../../src/gui/dsp/dspsettingscontroller.cpp" line="354"/>
         <source>%1: %2 (%3)</source>
-        <translation type="unfinished"></translation>
+        <translation>%1: %2 (%3)</translation>
     </message>
 </context>
 <context>
@@ -3233,12 +3233,12 @@ Die Effekte hier beeinflussen die finale, zusammengeführte Ausgabe.</translatio
         <location filename="../../src/plugins/equaliser/equalisersettingswidget.cpp" line="903"/>
         <location filename="../../src/plugins/equaliser/equalisersettingswidget.cpp" line="908"/>
         <source>Equaliser</source>
-        <translation type="unfinished"></translation>
+        <translation>Equalizer</translation>
     </message>
     <message>
         <location filename="../../src/plugins/equaliser/equalisersettingswidget.cpp" line="913"/>
         <source>Open Equaliser settings</source>
-        <translation type="unfinished"></translation>
+        <translation>Equalizer-Einstellungen öffnen</translation>
     </message>
 </context>
 <context>
@@ -6260,7 +6260,7 @@ Diese Einstellung verbessert die Kompatibilität mit anderen Abspielprogrammen, 
     <message>
         <location filename="../../src/gui/settings/library/libraryratingspage.cpp" line="208"/>
         <source>Owner</source>
-        <translation>Eigentümer</translation>
+        <translation>Besitzer</translation>
     </message>
     <message>
         <location filename="../../src/gui/settings/library/libraryratingspage.cpp" line="210"/>
@@ -7392,7 +7392,7 @@ Original entfernen: löscht die ursprüngliche Datei oder Metadaten nach dem Spe
     <message>
         <location filename="../../src/plugins/lyrics/settings/lyricssearchingpage.cpp" line="73"/>
         <source>Behaviour</source>
-        <translation type="unfinished">Verhalten</translation>
+        <translation>Verhalten</translation>
     </message>
     <message>
         <location filename="../../src/plugins/lyrics/settings/lyricssearchingpage.cpp" line="81"/>
@@ -7649,7 +7649,7 @@ Original entfernen: löscht die ursprüngliche Datei oder Metadaten nach dem Spe
     <message>
         <location filename="../../src/plugins/notify/settings/notifypage.cpp" line="208"/>
         <source>Integrations</source>
-        <translation type="unfinished"></translation>
+        <translation>Integrationen</translation>
     </message>
 </context>
 <context>
@@ -8869,12 +8869,12 @@ Original entfernen: löscht die ursprüngliche Datei oder Metadaten nach dem Spe
     <message>
         <location filename="../../src/gui/settings/playlist/playlistgeneralpage.cpp" line="78"/>
         <source>Ignore playlist files when adding folders</source>
-        <translation type="unfinished"></translation>
+        <translation>Ignoriere Wiedergabelisten-Dateien beim Hinzufügen von Ordnern</translation>
     </message>
     <message>
         <location filename="../../src/gui/settings/playlist/playlistgeneralpage.cpp" line="79"/>
         <source>Prevent duplicate tracks when loading playlists</source>
-        <translation type="unfinished"></translation>
+        <translation>Verhindere doppelte Titel beim Laden von Wiedergabelisten</translation>
     </message>
     <message>
         <location filename="../../src/gui/settings/playlist/playlistgeneralpage.cpp" line="81"/>
@@ -8914,12 +8914,12 @@ Original entfernen: löscht die ursprüngliche Datei oder Metadaten nach dem Spe
     <message>
         <location filename="../../src/gui/settings/playlist/playlistgeneralpage.cpp" line="111"/>
         <source>Only add media files from folders, without loading playlist files found inside</source>
-        <translation type="unfinished"></translation>
+        <translation>Füge nur Mediendateien aus Ordnern hinzu, ohne Wiedergabelisten-Dateien zu laden</translation>
     </message>
     <message>
         <location filename="../../src/gui/settings/playlist/playlistgeneralpage.cpp" line="112"/>
         <source>Skip playlist entries that are already present in the target playlist</source>
-        <translation type="unfinished"></translation>
+        <translation>Überspringe Wiedergabelisten-Einträge, die bereits in der Zielwiedergabeliste vorhanden sind</translation>
     </message>
     <message>
         <location filename="../../src/gui/settings/playlist/playlistgeneralpage.cpp" line="114"/>
@@ -10245,12 +10245,12 @@ Original entfernen: löscht die ursprüngliche Datei oder Metadaten nach dem Spe
     <message>
         <location filename="../../src/plugins/quicktagger/quicktaggerplugin.cpp" line="74"/>
         <source>Tagging</source>
-        <translation type="unfinished">Tagging</translation>
+        <translation>Tagging</translation>
     </message>
     <message>
         <location filename="../../src/plugins/quicktagger/quicktaggerplugin.cpp" line="74"/>
         <source>Quick Tagger</source>
-        <translation type="unfinished"></translation>
+        <translation>Schnell-Tagger</translation>
     </message>
 </context>
 <context>
@@ -10258,52 +10258,52 @@ Original entfernen: löscht die ursprüngliche Datei oder Metadaten nach dem Spe
     <message>
         <location filename="../../src/plugins/quicktagger/quicktaggermodel.cpp" line="57"/>
         <source>Enter field</source>
-        <translation type="unfinished"></translation>
+        <translation>Feld eingeben</translation>
     </message>
     <message>
         <location filename="../../src/plugins/quicktagger/quicktaggermodel.cpp" line="62"/>
         <source>Enter values</source>
-        <translation type="unfinished"></translation>
+        <translation>Werte eingeben</translation>
     </message>
     <message>
         <location filename="../../src/plugins/quicktagger/quicktaggermodel.cpp" line="127"/>
         <source>Row %1: Field is required.</source>
-        <translation type="unfinished"></translation>
+        <translation>Zeile %1: Feld wird benötigt.</translation>
     </message>
     <message>
         <location filename="../../src/plugins/quicktagger/quicktaggermodel.cpp" line="130"/>
         <source>Row %1: At least one value is required.</source>
-        <translation type="unfinished"></translation>
+        <translation>Zeile %1: Es wird mindestens ein Wert benötigt.</translation>
     </message>
     <message>
         <location filename="../../src/plugins/quicktagger/quicktaggermodel.cpp" line="155"/>
         <source>Display name shown in menus and shortcut actions.</source>
-        <translation type="unfinished"></translation>
+        <translation>Anzeigename, der in Menü- und Tastenkürzel-Aktionen angezeigt wird.</translation>
     </message>
     <message>
         <location filename="../../src/plugins/quicktagger/quicktaggermodel.cpp" line="157"/>
         <source>Metadata field to write.</source>
-        <translation type="unfinished"></translation>
+        <translation>Metadatenfeld in das geschrieben werden soll.</translation>
     </message>
     <message>
         <location filename="../../src/plugins/quicktagger/quicktaggermodel.cpp" line="159"/>
         <source>Literal values separated by semicolons.</source>
-        <translation type="unfinished"></translation>
+        <translation>Einzelne Werte werden durch Semikola getrennt.</translation>
     </message>
     <message>
         <location filename="../../src/plugins/quicktagger/quicktaggermodel.cpp" line="170"/>
         <source>Name</source>
-        <translation type="unfinished">Name</translation>
+        <translation>Name</translation>
     </message>
     <message>
         <location filename="../../src/plugins/quicktagger/quicktaggermodel.cpp" line="172"/>
         <source>Field</source>
-        <translation type="unfinished">Bereich</translation>
+        <translation>Feld</translation>
     </message>
     <message>
         <location filename="../../src/plugins/quicktagger/quicktaggermodel.cpp" line="174"/>
         <source>Values</source>
-        <translation type="unfinished"></translation>
+        <translation>Werte</translation>
     </message>
 </context>
 <context>
@@ -10311,17 +10311,17 @@ Original entfernen: löscht die ursprüngliche Datei oder Metadaten nach dem Spe
     <message>
         <location filename="../../src/plugins/quicktagger/quicktaggerpage.cpp" line="62"/>
         <source>Separate multiple values with semicolons.</source>
-        <translation type="unfinished"></translation>
+        <translation>Trenne mehrere Werte mit Semikola.</translation>
     </message>
     <message>
         <location filename="../../src/plugins/quicktagger/quicktaggerpage.cpp" line="66"/>
         <source>Confirmation threshold</source>
-        <translation type="unfinished"></translation>
+        <translation>Bestätigungs-Schwellenwert</translation>
     </message>
     <message>
         <location filename="../../src/plugins/quicktagger/quicktaggerpage.cpp" line="67"/>
         <source>Ask for confirmation when changing more than this many tracks. Set to 0 to disable confirmation.</source>
-        <translation type="unfinished"></translation>
+        <translation>Frage nach Bestätigung wenn mehr als die angegebene Anzahl an Titeln geändert werden. Zum Deaktivieren auf 0 setzen.</translation>
     </message>
 </context>
 <context>
@@ -10329,41 +10329,41 @@ Original entfernen: löscht die ursprüngliche Datei oder Metadaten nach dem Spe
     <message>
         <location filename="../../src/plugins/quicktagger/quicktaggerplugin.cpp" line="103"/>
         <source>Tagging</source>
-        <translation type="unfinished">Tagging</translation>
+        <translation>Tagging</translation>
     </message>
     <message>
         <location filename="../../src/plugins/quicktagger/quicktaggerplugin.cpp" line="108"/>
         <location filename="../../src/plugins/quicktagger/quicktaggerplugin.cpp" line="293"/>
         <source>Quick Tagger</source>
-        <translation type="unfinished"></translation>
+        <translation>Schnell-Tagger</translation>
     </message>
     <message>
         <location filename="../../src/plugins/quicktagger/quicktaggerplugin.cpp" line="127"/>
         <location filename="../../src/plugins/quicktagger/quicktaggerplugin.cpp" line="137"/>
         <source>Set %1 to %2</source>
         <extracomment>%1 is a tag field name, %2 is the new tag value.</extracomment>
-        <translation type="unfinished"></translation>
+        <translation>Setze %1 auf %2</translation>
     </message>
     <message>
         <location filename="../../src/plugins/quicktagger/quicktaggerplugin.cpp" line="148"/>
         <location filename="../../src/plugins/quicktagger/quicktaggerplugin.cpp" line="155"/>
         <source>Remove %1</source>
         <extracomment>%1 is a tag field name.</extracomment>
-        <translation type="unfinished"></translation>
+        <translation>Entferne %1</translation>
     </message>
     <message>
         <location filename="../../src/plugins/quicktagger/quicktaggerplugin.cpp" line="187"/>
         <source>Set %1 to</source>
         <extracomment>%1 represents the name or field e.g. Set Rating to</extracomment>
-        <translation type="unfinished"></translation>
+        <translation>Setze %1 auf</translation>
     </message>
     <message numerus="yes">
         <location filename="../../src/plugins/quicktagger/quicktaggerplugin.cpp" line="295"/>
         <source>Set &quot;%1&quot; on %Ln track(s)?</source>
         <extracomment>%1 is the Quick Tagger entry name, for example &quot;Rating&quot;.</extracomment>
-        <translation type="unfinished">
-            <numerusform></numerusform>
-            <numerusform></numerusform>
+        <translation>
+            <numerusform>Wende „%1“ auf %Ln Titel an?</numerusform>
+            <numerusform>Wende „%1“ auf %Ln Titel an?</numerusform>
         </translation>
     </message>
 </context>
@@ -11113,7 +11113,7 @@ Original entfernen: löscht die ursprüngliche Datei oder Metadaten nach dem Spe
     <message>
         <location filename="../../src/plugins/scrobbler/settings/scrobblerpage.cpp" line="184"/>
         <source>Integrations</source>
-        <translation type="unfinished"></translation>
+        <translation>Integrationen</translation>
     </message>
     <message>
         <location filename="../../src/plugins/scrobbler/settings/scrobblerpage.cpp" line="184"/>
@@ -11236,7 +11236,7 @@ Original entfernen: löscht die ursprüngliche Datei oder Metadaten nach dem Spe
     <message>
         <location filename="../../src/plugins/scrobbler/settings/scrobblerservicespage.cpp" line="366"/>
         <source>Integrations</source>
-        <translation type="unfinished"></translation>
+        <translation>Integrationen</translation>
     </message>
     <message>
         <location filename="../../src/plugins/scrobbler/settings/scrobblerservicespage.cpp" line="366"/>
@@ -11665,7 +11665,7 @@ Original entfernen: löscht die ursprüngliche Datei oder Metadaten nach dem Spe
     <message>
         <location filename="../../src/utils/settings/settingsdialog.cpp" line="387"/>
         <source>Select a page from this category.</source>
-        <translation type="unfinished"></translation>
+        <translation>Wähle eine Seite dieser Kategorie aus.</translation>
     </message>
     <message>
         <location filename="../../src/utils/settings/settingsdialog.cpp" line="182"/>
@@ -11685,12 +11685,12 @@ Original entfernen: löscht die ursprüngliche Datei oder Metadaten nach dem Spe
     <message>
         <location filename="../../src/gui/settings/shellintegrationpage.cpp" line="151"/>
         <source>Integrations</source>
-        <translation type="unfinished"></translation>
+        <translation>Integrationen</translation>
     </message>
     <message>
         <location filename="../../src/gui/settings/shellintegrationpage.cpp" line="151"/>
         <source>System</source>
-        <translation type="unfinished"></translation>
+        <translation>System</translation>
     </message>
 </context>
 <context>
@@ -11703,7 +11703,7 @@ Original entfernen: löscht die ursprüngliche Datei oder Metadaten nach dem Spe
     <message>
         <location filename="../../src/gui/settings/shellintegrationpage.cpp" line="65"/>
         <source>Load files from the same folder when opening one file</source>
-        <translation type="unfinished"></translation>
+        <translation>Lade Dateien aus demselben Ordner, wenn eine einer Datei geöffnet wird</translation>
     </message>
     <message>
         <location filename="../../src/gui/settings/shellintegrationpage.cpp" line="68"/>
@@ -11739,7 +11739,7 @@ Original entfernen: löscht die ursprüngliche Datei oder Metadaten nach dem Spe
     <message>
         <location filename="../../src/gui/settings/shellintegrationpage.cpp" line="86"/>
         <source>When opening one file from the file manager, add all supported files from the same folder and play the opened file</source>
-        <translation type="unfinished"></translation>
+        <translation>Wenn eine Datei durch den Dateimanager geöffnet wird, füge alle unterstützten Dateien aus dem Ordner der ausgewählten Datei hinzu und spiele die ausgewählte Datei ab</translation>
     </message>
     <message>
         <location filename="../../src/gui/settings/shellintegrationpage.cpp" line="92"/>
@@ -12073,7 +12073,7 @@ Original entfernen: löscht die ursprüngliche Datei oder Metadaten nach dem Spe
     <message>
         <location filename="../../src/gui/settings/widgets/statuswidgetpage.cpp" line="140"/>
         <source>Interface</source>
-        <translation type="unfinished">Benutzeroberfläche</translation>
+        <translation>Benutzeroberfläche</translation>
     </message>
 </context>
 <context>
@@ -12162,22 +12162,22 @@ Original entfernen: löscht die ursprüngliche Datei oder Metadaten nach dem Spe
     <message>
         <location filename="../../src/gui/splitters/tabstackwidget.cpp" line="289"/>
         <source>&amp;Above</source>
-        <translation type="unfinished"></translation>
+        <translation>&amp;Oben</translation>
     </message>
     <message>
         <location filename="../../src/gui/splitters/tabstackwidget.cpp" line="290"/>
         <source>&amp;Right</source>
-        <translation type="unfinished"></translation>
+        <translation>&amp;Rechts</translation>
     </message>
     <message>
         <location filename="../../src/gui/splitters/tabstackwidget.cpp" line="291"/>
         <source>&amp;Below</source>
-        <translation type="unfinished"></translation>
+        <translation>&amp;Unten</translation>
     </message>
     <message>
         <location filename="../../src/gui/splitters/tabstackwidget.cpp" line="292"/>
         <source>&amp;Left</source>
-        <translation type="unfinished"></translation>
+        <translation>&amp;Links</translation>
     </message>
     <message>
         <location filename="../../src/gui/splitters/tabstackwidget.cpp" line="331"/>
@@ -12428,7 +12428,7 @@ Hier wird kein vollständiges Skripten unterstützt.</translation>
     <message>
         <location filename="../../src/plugins/tageditor/settings/tageditorfieldsmodel.cpp" line="204"/>
         <source>Enabled</source>
-        <translation type="unfinished">Aktiviert</translation>
+        <translation>Aktiviert</translation>
     </message>
     <message>
         <location filename="../../src/plugins/tageditor/settings/tageditorfieldsmodel.cpp" line="206"/>
@@ -12443,12 +12443,12 @@ Hier wird kein vollständiges Skripten unterstützt.</translation>
     <message>
         <location filename="../../src/plugins/tageditor/settings/tageditorfieldsmodel.cpp" line="210"/>
         <source>Multi-line</source>
-        <translation type="unfinished"></translation>
+        <translation>Mehrzeilig</translation>
     </message>
     <message>
         <location filename="../../src/plugins/tageditor/settings/tageditorfieldsmodel.cpp" line="212"/>
         <source>Multi-value</source>
-        <translation type="unfinished"></translation>
+        <translation>Mehrere Werte</translation>
     </message>
 </context>
 <context>
@@ -12466,7 +12466,7 @@ Hier wird kein vollständiges Skripten unterstützt.</translation>
     <message>
         <location filename="../../src/plugins/tageditor/settings/tageditorpage.cpp" line="146"/>
         <source>Tagging</source>
-        <translation type="unfinished">Tagging</translation>
+        <translation>Tagging</translation>
     </message>
 </context>
 <context>
@@ -12939,7 +12939,7 @@ Hier wird kein vollständiges Skripten unterstützt.</translation>
     <message>
         <location filename="../../src/gui/menubar/viewmenu.cpp" line="118"/>
         <source>DSP</source>
-        <translation type="unfinished">DSP</translation>
+        <translation>DSP</translation>
     </message>
 </context>
 <context>
@@ -13623,17 +13623,17 @@ Höhere Supersampling-Werte funktionieren am besten mit höherer Sampleanzahl.</
     <message>
         <location filename="../../src/gui/widgets.cpp" line="423"/>
         <source>Layout Editing</source>
-        <translation type="unfinished">Layout-Bearbeitung</translation>
+        <translation>Layout-Bearbeitung</translation>
     </message>
     <message>
         <location filename="../../src/gui/widgets.cpp" line="424"/>
         <source>Menu levels</source>
-        <translation type="unfinished"></translation>
+        <translation>Menü-Ebenen</translation>
     </message>
     <message>
         <location filename="../../src/gui/widgets.cpp" line="425"/>
         <source>Number of widget levels shown in the layout editing context menu.</source>
-        <translation type="unfinished"></translation>
+        <translation>Anzahl der Widget-Ebenen, die im Kontextmenü der Layout-Bearbeitung angezeigt werden.</translation>
     </message>
     <message>
         <location filename="../../src/gui/widgets.cpp" line="430"/>
@@ -13708,7 +13708,7 @@ Höhere Supersampling-Werte funktionieren am besten mit höherer Sampleanzahl.</
     <message>
         <location filename="../../src/gui/widgets.cpp" line="516"/>
         <source>DSP</source>
-        <translation type="unfinished">DSP</translation>
+        <translation>DSP</translation>
     </message>
     <message>
         <location filename="../../src/gui/widgets.cpp" line="523"/>
@@ -14187,12 +14187,12 @@ Zwischenwert-Bewertungen werden auf eins, zwei, drei, vier oder fünf Sterne ger
         <location filename="../../src/plugins/quicktagger/quicktaggerpage.cpp" line="112"/>
         <location filename="../../src/plugins/quicktagger/quicktaggerpage.cpp" line="113"/>
         <source>Quick Tagger</source>
-        <translation type="unfinished"></translation>
+        <translation>Schnell-Tagger</translation>
     </message>
     <message>
         <location filename="../../src/plugins/quicktagger/quicktaggerpage.cpp" line="113"/>
         <source>Tagging</source>
-        <translation type="unfinished">Tagging</translation>
+        <translation>Tagging</translation>
     </message>
 </context>
 <context>
@@ -14200,7 +14200,7 @@ Zwischenwert-Bewertungen werden auf eins, zwei, drei, vier oder fünf Sterne ger
     <message>
         <location filename="../../src/plugins/quicktagger/quicktagger.cpp" line="135"/>
         <source>Rating</source>
-        <translation type="unfinished">Bewertung</translation>
+        <translation>Bewertung</translation>
     </message>
 </context>
 <context>
