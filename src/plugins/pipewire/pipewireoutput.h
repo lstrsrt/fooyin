@@ -76,6 +76,7 @@ private:
     QString m_device;
     float m_volume;
     float m_unmutedVolume;
+    bool m_ignoreInitialVolume;
     bool m_muted;
     AudioFormat m_format;
 

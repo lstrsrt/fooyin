@@ -85,6 +85,11 @@ int64_t framesToMs(const uint64_t frames, const int sampleRate)
     return static_cast<int64_t>(frames) * 1000LL / static_cast<int64_t>(sampleRate);
 }
 
+bool isFullVolume(float volume)
+{
+    return qFuzzyCompare(volume + 1.0F, 2.0F);
+}
+
 void ensurePipeWireInitialised()
 {
     static std::once_flag initOnce;
@@ -309,6 +314,7 @@ namespace Fooyin::Pipewire {
 PipeWireOutput::PipeWireOutput()
     : m_volume{1.0}
     , m_unmutedVolume{1.0}
+    , m_ignoreInitialVolume{false}
     , m_muted{false}
     , m_lastPwWriteBytes{0}
     , m_targetBufferFrames{0}
@@ -545,6 +551,9 @@ void PipeWireOutput::setVolume(double volume)
     if(m_volume > 0.0F) {
         m_unmutedVolume = m_volume;
     }
+    if(isFullVolume(m_volume)) {
+        m_ignoreInitialVolume = false;
+    }
 
     if(!initialised()) {
         return;
@@ -658,6 +667,7 @@ bool PipeWireOutput::initStream()
 
     m_stream = std::make_unique<PipewireStream>(m_core.get(), m_format, m_targetBufferFrames, dev);
     m_stream->addListener(streamEvents, this);
+    m_ignoreInitialVolume = !isFullVolume(m_volume);
 
     qCDebug(PIPEWIRE) << "Requesting stream latency:" << m_targetBufferFrames << "/" << m_format.sampleRate()
                       << "frames/rate";
@@ -922,6 +932,16 @@ void PipeWireOutput::drained(void* userdata)
 void PipeWireOutput::applyExternalVolume(float volume, bool updateUnmutedVolume)
 {
     volume = std::clamp(volume, 0.0F, 1.0F);
+
+    if(m_ignoreInitialVolume) {
+        const bool isInitialDefault       = isFullVolume(volume);
+        const bool hasLowerInternalVolume = !isFullVolume(m_volume);
+        m_ignoreInitialVolume             = false;
+        if(isInitialDefault && hasLowerInternalVolume) {
+            return;
+        }
+    }
+
     if(updateUnmutedVolume && volume > 0.0F) {
         m_unmutedVolume = volume;
     }
