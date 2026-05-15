@@ -349,15 +349,18 @@ void CommandButton::updateButton()
     const bool usingCustomFallback = customIconRequested && configuredIcon.isNull();
     const bool usingCustomIcon     = customIconRequested && !usingThemeIcon && !configuredIcon.isNull();
     const bool canExecute          = m_commandHandler && m_commandHandler->canExecute(m_config.commandId);
+    const bool isCheckable = m_boundCommand && m_boundCommand->action() && m_boundCommand->action()->isCheckable();
+    const bool isChecked   = isCheckable && m_boundCommand->action()->isChecked();
 
     QIcon buttonIcon = configuredIcon.isNull() ? fallbackIcon(m_config.commandId) : configuredIcon;
-    if(m_boundCommand && m_boundCommand->action() && m_boundCommand->action()->isCheckable()
-       && m_boundCommand->action()->isChecked() && !usingCustomIcon) {
+    if(isChecked && !usingCustomIcon) {
         buttonIcon = highlightedIcon(buttonIcon, palette());
     }
 
     m_button->setIcon(buttonIcon);
     m_button->setEnabled(true);
+    m_button->setCheckable(isCheckable);
+    m_button->setChecked(isChecked);
 
     const QString description = currentDescription(m_config.commandId, m_config.text);
     m_button->setText(description);
