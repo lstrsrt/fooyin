@@ -136,6 +136,20 @@ GuiSettings::GuiSettings(SettingsManager* settingsManager)
         u"[%date%|][%albumartist%|][%artist%|]$if2(%album%,%path%)"_s, u"Artwork/ThumbnailGroupScript"_s);
     m_settings->createSetting<Internal::PlaylistImagePadding>(5, u"PlaylistWidget/ImagePadding"_s);
     m_settings->createSetting<Internal::PlaylistImagePaddingTop>(0, u"PlaylistWidget/ImagePaddingTop"_s);
+    m_settings->createSetting<Internal::PlaylistBackgroundImageMode>(static_cast<int>(PlaylistBgImage::None),
+                                                                     u"PlaylistWidget/BackgroundImage"_s);
+    m_settings->createSetting<Internal::PlaylistBackgroundCustomImage>(QString{},
+                                                                       u"PlaylistWidget/BackgroundCustomImage"_s);
+    m_settings->createSetting<Internal::PlaylistBackgroundScaling>(
+        static_cast<int>(PlaylistBgScaling::ScaledAndCropped), u"PlaylistWidget/BackgroundScaling"_s);
+    m_settings->createSetting<Internal::PlaylistBackgroundPosition>(static_cast<int>(PlaylistBgImagePosition::Middle),
+                                                                    u"PlaylistWidget/BackgroundPosition"_s);
+    m_settings->createSetting<Internal::PlaylistBackgroundMaxSize>(0, u"PlaylistWidget/BackgroundMaxSize"_s);
+    m_settings->createSetting<Internal::PlaylistBackgroundBlur>(0, u"PlaylistWidget/BackgroundBlur"_s);
+    m_settings->createSetting<Internal::PlaylistBackgroundOpacity>(40, u"PlaylistWidget/BackgroundOpacity"_s);
+    m_settings->createSetting<Internal::PlaylistBackgroundFadeDuration>(0, u"PlaylistWidget/BackgroundFadeDuration"_s);
+    m_settings->createSetting<Internal::PlaylistBackgroundCoverType>(static_cast<int>(Track::Cover::Front),
+                                                                     u"PlaylistWidget/BackgroundCoverType"_s);
     m_settings->createSetting<Internal::PixmapCacheSize>(
         static_cast<int>(PixmapCacheSize * std::pow(qApp->devicePixelRatio(), 2)), u"Interface/PixmapCacheSize"_s);
     m_settings->createSetting<Internal::EditableLayoutMargin>(-1, u"Interface/EditableLayoutMargin"_s);

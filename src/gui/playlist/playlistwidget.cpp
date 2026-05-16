@@ -38,6 +38,7 @@
 #include <core/playlist/playlisthandler.h>
 #include <core/track.h>
 #include <gui/contextmenuutils.h>
+#include <gui/coverprovider.h>
 #include <gui/guiconstants.h>
 #include <gui/guisettings.h>
 #include <gui/iconloader.h>
@@ -64,6 +65,7 @@
 #include <QJsonObject>
 #include <QKeyEvent>
 #include <QMenu>
+#include <QPixmap>
 #include <QScrollBar>
 #include <QSortFilterProxyModel>
 #include <QStringList>
@@ -220,6 +222,7 @@ PlaylistWidget::PlaylistWidget(ActionManager* actionManager, PlaylistInteractor*
     , m_actionManager{actionManager}
     , m_playlistInteractor{playlistInteractor}
     , m_playlistController{m_playlistInteractor->playlistController()}
+    , m_coverProvider{coverProvider}
     , m_playerController{playlistInteractor->playerController()}
     , m_libraryManager{core->libraryManager()}
     , m_selectionController{m_playlistController->selectionController()}
@@ -242,6 +245,9 @@ PlaylistWidget::PlaylistWidget(ActionManager* actionManager, PlaylistInteractor*
           this)}
     , m_middleClickAction{static_cast<TrackAction>(m_settings->value<PlaylistMiddleClick>())}
     , m_playAction{new QAction(tr("&Play"), this)}
+    , m_bgCoverRequestId{0}
+    , m_bgImageMode{PlaylistBgImage::None}
+    , m_bgCoverType{Track::Cover::Front}
     , m_host{std::make_unique<PlaylistWidgetHost>(this)}
 {
     Gui::setThemeIcon(m_playAction, Constants::Icons::Play);
@@ -266,6 +272,7 @@ PlaylistWidget::PlaylistWidget(ActionManager* actionManager, PlaylistInteractor*
     m_layout->addWidget(m_playlistView);
 
     applyInitialViewSettings();
+    applyBackgroundSettings();
 
     m_model->playingTrackChanged(m_playerController->currentPlaylistTrack());
     m_model->playStateChanged(m_playlistController->playState());
@@ -631,6 +638,7 @@ void PlaylistWidget::setupConnections()
     QObject::connect(m_playlistView, &PlaylistView::bulkWriteRequested, this, &PlaylistWidget::handleBulkWriteRequested);
     QObject::connect(m_playlistController, &PlaylistController::currentPlaylistTracksUpdated, m_model, [this](const std::vector<int>& indexes) { m_model->refreshTracks(indexes); });
     QObject::connect(m_playlistController, &PlaylistController::currentPlaylistUpdated, this, &PlaylistWidget::resetModelThrottled);
+    QObject::connect(m_playerController, &PlayerController::currentTrackChanged, this, &PlaylistWidget::reloadBackgroundCover);
 
     QObject::connect(m_columnRegistry, &PlaylistColumnRegistry::itemRemoved, this, &PlaylistWidget::handleColumnRemoved);
     QObject::connect(m_columnRegistry, &PlaylistColumnRegistry::columnChanged, this, &PlaylistWidget::handleColumnChanged);
@@ -656,6 +664,16 @@ void PlaylistWidget::setupConnections()
 
         updateMetadataEditTriggers(m_session->hasSearch() || forceSortedAutoPlaylist);
     });
+
+    m_settings->subscribe<PlaylistBackgroundImageMode>(this, &PlaylistWidget::applyBackgroundSettings);
+    m_settings->subscribe<PlaylistBackgroundCustomImage>(this, &PlaylistWidget::applyBackgroundSettings);
+    m_settings->subscribe<PlaylistBackgroundCoverType>(this, &PlaylistWidget::applyBackgroundSettings);
+    m_settings->subscribe<PlaylistBackgroundScaling>(this, &PlaylistWidget::applyBackgroundSettings);
+    m_settings->subscribe<PlaylistBackgroundPosition>(this, &PlaylistWidget::applyBackgroundSettings);
+    m_settings->subscribe<PlaylistBackgroundMaxSize>(this, &PlaylistWidget::applyBackgroundSettings);
+    m_settings->subscribe<PlaylistBackgroundBlur>(this, &PlaylistWidget::applyBackgroundSettings);
+    m_settings->subscribe<PlaylistBackgroundOpacity>(this, &PlaylistWidget::applyBackgroundSettings);
+    m_settings->subscribe<PlaylistBackgroundFadeDuration>(this, &PlaylistWidget::applyBackgroundSettings);
 }
 
 void PlaylistWidget::handleMetadataWriteRequested(const TrackList& tracks)
@@ -952,6 +970,80 @@ void PlaylistWidget::updateSpans()
         m_starDelegate->deleteLater();
         m_starDelegate = nullptr;
     }
+}
+
+void PlaylistWidget::applyBackgroundSettings()
+{
+    if(!m_session->capabilities().editablePlaylist) {
+        return;
+    }
+
+    PlaylistView::BackgroundOptions options;
+    options.imageMode      = static_cast<PlaylistBgImage>(m_settings->value<PlaylistBackgroundImageMode>());
+    options.scaling        = static_cast<PlaylistBgScaling>(m_settings->value<PlaylistBackgroundScaling>());
+    options.position       = static_cast<PlaylistBgImagePosition>(m_settings->value<PlaylistBackgroundPosition>());
+    options.maxSize        = m_settings->value<PlaylistBackgroundMaxSize>();
+    options.blur           = m_settings->value<PlaylistBackgroundBlur>();
+    options.opacity        = m_settings->value<PlaylistBackgroundOpacity>();
+    options.fadeDurationMs = m_settings->value<PlaylistBackgroundFadeDuration>();
+    options.fadeChanges    = options.fadeDurationMs > 0;
+
+    m_playlistView->setBackgroundOptions(options);
+
+    const bool modeChanged      = std::exchange(m_bgImageMode, options.imageMode) != options.imageMode;
+    const auto coverType        = static_cast<Track::Cover>(m_settings->value<PlaylistBackgroundCoverType>());
+    const bool coverTypeChanged = std::exchange(m_bgCoverType, coverType) != coverType;
+
+    switch(options.imageMode) {
+        case PlaylistBgImage::AlbumCover:
+            if(modeChanged || coverTypeChanged || !m_bgCoverTrack.isValid()) {
+                reloadBackgroundCover();
+            }
+            break;
+        case PlaylistBgImage::Custom: {
+            const QString customImage = m_settings->value<PlaylistBackgroundCustomImage>();
+            if(!modeChanged && std::exchange(m_bgCustomImage, customImage) == customImage) {
+                break;
+            }
+            ++m_bgCoverRequestId;
+            m_bgCoverTrack = {};
+            m_playlistView->setBackgroundPixmap(QPixmap{customImage});
+            break;
+        }
+        case PlaylistBgImage::None:
+            if(modeChanged) {
+                ++m_bgCoverRequestId;
+                m_bgCoverTrack = {};
+                m_playlistView->setBackgroundPixmap({});
+            }
+            break;
+    }
+}
+
+void PlaylistWidget::reloadBackgroundCover(const Track& track)
+{
+    if(!m_session->capabilities().editablePlaylist) {
+        return;
+    }
+
+    if(static_cast<PlaylistBgImage>(m_settings->value<PlaylistBackgroundImageMode>()) != PlaylistBgImage::AlbumCover) {
+        return;
+    }
+
+    const int requestId{++m_bgCoverRequestId};
+    const Track coverTrack = track.isValid() ? track : m_playerController->currentTrack();
+    if(!coverTrack.isValid()) {
+        m_bgCoverTrack = {};
+        m_playlistView->setBackgroundPixmap({});
+        return;
+    }
+
+    m_bgCoverTrack = coverTrack;
+    m_coverProvider->trackCoverFull(coverTrack, m_bgCoverType).then(this, [this, requestId](const QPixmap& cover) {
+        if(requestId == m_bgCoverRequestId) {
+            m_playlistView->setBackgroundPixmap(cover);
+        }
+    });
 }
 
 void PlaylistWidget::applyInitialViewSettings()

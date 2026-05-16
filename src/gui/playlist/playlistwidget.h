@@ -20,6 +20,7 @@
 #pragma once
 
 #include "editableplaylistsessionhost.h"
+#include "internalguisettings.h"
 #include "playlistcolumn.h"
 #include "playlistcontroller.h"
 #include "playlistmodel.h"
@@ -140,6 +141,8 @@ private:
     void setColumnVisible(int columnId, bool visible);
     void setSingleMode(bool enabled);
     void updateSpans();
+    void applyBackgroundSettings();
+    void reloadBackgroundCover(const Track& track = {});
 
     void handleMetadataWriteRequested(const TrackList& tracks);
     void handleBulkWriteRequested(const TrackList& tracks);
@@ -187,6 +190,7 @@ private:
     ActionManager* m_actionManager;
     PlaylistInteractor* m_playlistInteractor;
     PlaylistController* m_playlistController;
+    CoverProvider* m_coverProvider;
     PlayerController* m_playerController;
     LibraryManager* m_libraryManager;
     TrackSelectionController* m_selectionController;
@@ -212,8 +216,14 @@ private:
 
     WidgetContext* m_playlistContext;
     TrackAction m_middleClickAction;
-
     QAction* m_playAction;
+
+    int m_bgCoverRequestId;
+    PlaylistBgImage m_bgImageMode;
+    Track::Cover m_bgCoverType;
+    QString m_bgCustomImage;
+    Track m_bgCoverTrack;
+
     std::unique_ptr<EditablePlaylistSessionHost> m_host;
 };
 } // namespace Fooyin

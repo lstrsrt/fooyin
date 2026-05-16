@@ -38,9 +38,11 @@
 
 using namespace Qt::StringLiterals;
 
-constexpr auto MinItemSpacing    = 10;
-constexpr auto IconRowSpacing    = 10;
-constexpr auto RightCaptionWidth = 180;
+constexpr auto MinItemSpacing          = 10;
+constexpr auto IconRowSpacing          = 10;
+constexpr auto RightCaptionWidth       = 180;
+constexpr auto OpaqueAltAlphaThreshold = 185;
+constexpr auto TransparentAltAlpha     = 80;
 
 namespace {
 void selectChildren(QAbstractItemModel* model, const QModelIndex& parentIndex, QItemSelection& selection)
@@ -1273,14 +1275,30 @@ void TreeView::drawRow(QPainter* painter, const QStyleOptionViewItem& option, co
 void TreeView::drawRowBackground(QPainter* painter, const QStyleOptionViewItem& option, const QModelIndex& index,
                                  int y) const
 {
-    QStyleOptionViewItem opt{option};
-
-    const auto bg = index.data(Qt::BackgroundRole).value<QBrush>();
+    const auto bg                      = index.data(Qt::BackgroundRole).value<QBrush>();
+    const bool transparentBase         = m_view->property("transparent_base_rows").toBool();
+    const bool preserveStyleBackground = option.state.testFlag(QStyle::State_Selected)
+                                      || option.state.testFlag(QStyle::State_MouseOver) || bg.style() != Qt::NoBrush;
 
     const auto paintRects = m_p->rectsToPaint(index, option, y);
     for(const auto& rect : paintRects) {
         if(rect.width() > 0) {
+            QStyleOptionViewItem opt{option};
             opt.rect = rect;
+
+            if(transparentBase && !preserveStyleBackground) {
+                QColor base = opt.palette.color(QPalette::Base);
+                base.setAlpha(base.alpha() >= OpaqueAltAlphaThreshold ? 0 : base.alpha());
+                opt.palette.setColor(QPalette::Base, base);
+
+                if(opt.features.testFlag(QStyleOptionViewItem::Alternate)) {
+                    QColor alternate = opt.palette.color(QPalette::AlternateBase);
+                    alternate.setAlpha(alternate.alpha() >= OpaqueAltAlphaThreshold ? TransparentAltAlpha
+                                                                                    : alternate.alpha());
+                    opt.palette.setColor(QPalette::AlternateBase, alternate);
+                }
+            }
+
             m_view->style()->drawPrimitive(QStyle::PE_PanelItemViewRow, &opt, painter, m_view);
             m_view->style()->drawControl(QStyle::CE_ItemViewItem, &opt, painter, m_view);
             painter->fillRect(opt.rect, bg);

@@ -71,6 +71,34 @@ enum class ArtworkSaveMethod : uint8_t
     Directory
 };
 
+enum class PlaylistBgImage : uint8_t
+{
+    None = 0,
+    AlbumCover,
+    Custom
+};
+
+enum class PlaylistBgImagePosition : uint8_t
+{
+    TopLeft = 0,
+    Top,
+    TopRight,
+    Left,
+    Middle,
+    Right,
+    BottomLeft,
+    Bottom,
+    BottomRight
+};
+
+enum class PlaylistBgScaling : uint8_t
+{
+    ScaledAndCropped = 0,
+    Scaled,
+    ScaledKeepProportions,
+    OriginalSize
+};
+
 struct ArtworkSaveOptions
 {
     ArtworkSaveMethod method{ArtworkSaveMethod::Embedded};
@@ -176,6 +204,15 @@ enum GuiInternalSettings : uint32_t
     ContextMenuDirBrowserLayout              = 52 | Type::StringList,
     ContextMenuLayoutEditingDisabledSections = 53 | Type::StringList,
     ContextMenuLayoutEditingLayout           = 54 | Type::StringList,
+    PlaylistBackgroundImageMode              = 55 | Type::Int,
+    PlaylistBackgroundCustomImage            = 56 | Type::String,
+    PlaylistBackgroundScaling                = 57 | Type::Int,
+    PlaylistBackgroundPosition               = 58 | Type::Int,
+    PlaylistBackgroundMaxSize                = 59 | Type::Int,
+    PlaylistBackgroundBlur                   = 60 | Type::Int,
+    PlaylistBackgroundOpacity                = 61 | Type::Int,
+    PlaylistBackgroundFadeDuration           = 62 | Type::Int,
+    PlaylistBackgroundCoverType              = 63 | Type::Int,
 };
 Q_ENUM_NS(GuiInternalSettings)
 } // namespace Settings::Gui::Internal

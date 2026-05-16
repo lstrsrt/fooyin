@@ -20,6 +20,7 @@
 #include "playlistview.h"
 
 #include "playlistmodel.h"
+#include "widgets/pixmapfadecontroller.h"
 
 #include <utils/stardelegate.h>
 #include <utils/stareditor.h>
@@ -41,6 +42,11 @@ using namespace Qt::StringLiterals;
 constexpr auto EditorDelay          = 600;
 constexpr auto MultipleValuesPrefix = "<<multiple values>>"_L1;
 
+QT_BEGIN_NAMESPACE
+// Exported by qimageeffects.cpp
+void qt_blurImage(QImage& blurImage, qreal radius, bool quality, int transposed = 0);
+QT_END_NAMESPACE
+
 namespace {
 bool sameRow(const QModelIndex& lhs, const QModelIndex& rhs)
 {
@@ -56,6 +62,16 @@ QString normaliseBulkEditorValue(QString value)
     return value.trimmed();
 }
 
+QPixmap blurredPixmap(const QPixmap& pixmap, qreal radius)
+{
+    if(pixmap.isNull() || radius <= 0) {
+        return pixmap;
+    }
+
+    QImage blurred = pixmap.toImage().convertToFormat(QImage::Format_ARGB32_Premultiplied);
+    qt_blurImage(blurred, radius, true, false);
+    return QPixmap::fromImage(blurred);
+}
 } // namespace
 
 namespace Fooyin {
@@ -64,6 +80,7 @@ PlaylistView::PlaylistView(QWidget* parent)
     , m_playlistLoaded{false}
     , m_starDelegate{nullptr}
     , m_ratingColumn{-1}
+    , m_bgFadeController{new PixmapFadeController(this)}
     , m_bulkEditor{nullptr}
     , m_bulkEditColumnIndex{-1}
     , m_cancelledPendingEditClick{false}
@@ -85,6 +102,8 @@ PlaylistView::PlaylistView(QWidget* parent)
     setUniformHeightRole(PlaylistItem::UniformHeightKey);
     viewport()->setAcceptDrops(true);
     setSelectIgnoreParents(true);
+
+    m_bgFadeController->setUpdateCallback([this] { viewport()->update(); });
 }
 
 void PlaylistView::setEmptyText(const QString& text)
@@ -114,6 +133,25 @@ void PlaylistView::setupRatingDelegate()
     m_starDelegate = nullptr;
     m_ratingColumn = -1;
     setMouseTracking(false);
+}
+
+void PlaylistView::setBackgroundOptions(const BackgroundOptions& options)
+{
+    m_bgOptions = options;
+    m_bgFadeController->setDurationMs(m_bgOptions.fadeDurationMs);
+    m_bgFadeController->setEnabled(m_bgOptions.fadeChanges);
+    updateBackgroundTransparency();
+
+    invalidateScaledBackground();
+    viewport()->update();
+}
+
+void PlaylistView::setBackgroundPixmap(const QPixmap& pixmap)
+{
+    m_bgFadeController->setPixmap(pixmap);
+    updateBackgroundTransparency();
+    invalidateScaledBackground();
+    viewport()->update();
 }
 
 void PlaylistView::playlistAboutToBeReset()
@@ -346,6 +384,7 @@ void PlaylistView::mouseReleaseEvent(QMouseEvent* event)
 void PlaylistView::resizeEvent(QResizeEvent* event)
 {
     ExpandedTreeView::resizeEvent(event);
+    invalidateScaledBackground();
     updateBulkEditorGeometry();
 }
 
@@ -390,7 +429,9 @@ void PlaylistView::paintEvent(QPaintEvent* event)
 {
     QPainter painter{viewport()};
 
-    auto drawCentreText = [this, &painter](const QString& text) {
+    const auto drawCentreText = [this, &painter](const QString& text) {
+        drawBackground(painter);
+
         if(!text.isEmpty()) {
             QRect textRect = painter.fontMetrics().boundingRect(text);
             textRect.moveCenter(viewport()->rect().center());
@@ -404,6 +445,7 @@ void PlaylistView::paintEvent(QPaintEvent* event)
                 drawCentreText(m_loadingText);
             }
             else {
+                drawBackground(painter);
                 ExpandedTreeView::paintEvent(event);
             }
         }
@@ -411,6 +453,156 @@ void PlaylistView::paintEvent(QPaintEvent* event)
             drawCentreText(m_emptyText);
         }
     }
+}
+
+void PlaylistView::drawBackground(QPainter& painter)
+{
+    painter.fillRect(viewport()->rect(), palette().brush(QPalette::Base));
+
+    const QPixmap& currentPixmap = m_bgFadeController->pixmap();
+    if(m_bgOptions.imageMode == PlaylistBgImage::None || currentPixmap.isNull() || m_bgOptions.opacity <= 0) {
+        return;
+    }
+
+    const QPixmap pixmap = preparedBackgroundPixmap(currentPixmap, m_cachedBg);
+    if(pixmap.isNull()) {
+        return;
+    }
+
+    painter.save();
+
+    const double opacity = std::clamp(m_bgOptions.opacity, 0, 100) / 100.0;
+
+    if(m_bgFadeController->progress() < 1.0) {
+        const QPixmap& prevPixmap = m_bgFadeController->previousPixmap();
+        const QPixmap prev        = preparedBackgroundPixmap(prevPixmap, m_cachedPreviousBg);
+
+        if(!prev.isNull()) {
+            painter.setOpacity(opacity * (1.0 - m_bgFadeController->progress()));
+            drawBackgroundPixmap(painter, prev);
+        }
+        painter.setOpacity(opacity * m_bgFadeController->progress());
+    }
+    else {
+        painter.setOpacity(opacity);
+    }
+
+    drawBackgroundPixmap(painter, pixmap);
+
+    painter.restore();
+}
+
+void PlaylistView::updateBackgroundTransparency()
+{
+    const bool transparentRows = m_bgOptions.imageMode != PlaylistBgImage::None && m_bgOptions.opacity > 0
+                              && !m_bgFadeController->pixmap().isNull();
+    setProperty("transparent_base_rows", transparentRows);
+}
+
+void PlaylistView::invalidateScaledBackground()
+{
+    m_cachedBg         = {};
+    m_cachedPreviousBg = {};
+}
+
+QPixmap PlaylistView::preparedBackgroundPixmap(const QPixmap& source, BackgroundPixmapCache& cache) const
+{
+    const QSize viewportSize = viewport()->size();
+    if(viewportSize.isEmpty() || source.isNull()) {
+        return {};
+    }
+
+    if(cache.sourceKey == source.cacheKey() && cache.viewportSize == viewportSize && !cache.pixmap.isNull()) {
+        return cache.pixmap;
+    }
+
+    QSize targetSize = source.size();
+
+    switch(m_bgOptions.scaling) {
+        case PlaylistBgScaling::ScaledAndCropped:
+            targetSize.scale(viewportSize, Qt::KeepAspectRatioByExpanding);
+            break;
+        case PlaylistBgScaling::Scaled:
+            targetSize = viewportSize;
+            break;
+        case PlaylistBgScaling::ScaledKeepProportions:
+            targetSize.scale(viewportSize, Qt::KeepAspectRatio);
+            break;
+        case PlaylistBgScaling::OriginalSize:
+            if(m_bgOptions.maxSize > 0) {
+                const QSize maxSize{m_bgOptions.maxSize, m_bgOptions.maxSize};
+                if(targetSize.width() > maxSize.width() || targetSize.height() > maxSize.height()) {
+                    targetSize.scale(maxSize, Qt::KeepAspectRatio);
+                }
+            }
+            break;
+    }
+
+    if(targetSize.isEmpty()) {
+        return {};
+    }
+
+    cache.sourceKey    = source.cacheKey();
+    cache.viewportSize = viewportSize;
+    cache.pixmap       = source.scaled(targetSize, Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
+    cache.pixmap       = blurredPixmap(cache.pixmap, m_bgOptions.blur);
+
+    return cache.pixmap;
+}
+
+QPoint PlaylistView::backgroundPixmapPosition(const QSize& pixmapSize) const
+{
+    const QSize viewportSize = viewport()->size();
+
+    if(m_bgOptions.scaling != PlaylistBgScaling::OriginalSize) {
+        return {(viewportSize.width() - pixmapSize.width()) / 2, (viewportSize.height() - pixmapSize.height()) / 2};
+    }
+
+    int x{0};
+    int y{0};
+
+    switch(m_bgOptions.position) {
+        case PlaylistBgImagePosition::TopLeft:
+        case PlaylistBgImagePosition::Left:
+        case PlaylistBgImagePosition::BottomLeft:
+            x = 0;
+            break;
+        case PlaylistBgImagePosition::Top:
+        case PlaylistBgImagePosition::Middle:
+        case PlaylistBgImagePosition::Bottom:
+            x = (viewportSize.width() - pixmapSize.width()) / 2;
+            break;
+        case PlaylistBgImagePosition::TopRight:
+        case PlaylistBgImagePosition::Right:
+        case PlaylistBgImagePosition::BottomRight:
+            x = viewportSize.width() - pixmapSize.width();
+            break;
+    }
+
+    switch(m_bgOptions.position) {
+        case PlaylistBgImagePosition::TopLeft:
+        case PlaylistBgImagePosition::Top:
+        case PlaylistBgImagePosition::TopRight:
+            y = 0;
+            break;
+        case PlaylistBgImagePosition::Left:
+        case PlaylistBgImagePosition::Middle:
+        case PlaylistBgImagePosition::Right:
+            y = (viewportSize.height() - pixmapSize.height()) / 2;
+            break;
+        case PlaylistBgImagePosition::BottomLeft:
+        case PlaylistBgImagePosition::Bottom:
+        case PlaylistBgImagePosition::BottomRight:
+            y = viewportSize.height() - pixmapSize.height();
+            break;
+    }
+
+    return {x, y};
+}
+
+void PlaylistView::drawBackgroundPixmap(QPainter& painter, const QPixmap& pixmap)
+{
+    painter.drawPixmap(backgroundPixmapPosition(pixmap.size()), pixmap);
 }
 
 QAbstractItemView::DropIndicatorPosition PlaylistView::dropPosition(const QPoint& pos, const QRect& rect,
