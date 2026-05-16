@@ -41,7 +41,7 @@ QString playtime(const TrackList& tracks)
     return Utils::msToString(total);
 }
 
-QString playlistSize(const TrackList& tracks)
+uint64_t trackListSize(const TrackList& tracks)
 {
     uint64_t total{0};
     std::set<QString> seenSegmentPaths;
@@ -64,7 +64,7 @@ QString playlistSize(const TrackList& tracks)
         }
     }
 
-    return Utils::formatFileSize(total);
+    return total;
 }
 
 QString genres(const TrackList& tracks)

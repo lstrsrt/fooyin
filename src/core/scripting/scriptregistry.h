@@ -100,9 +100,9 @@ public:
         int currentPosition{-1};
         int playlistIndex{-1};
         QString playtime;
-        QString playlistSize;
+        uint64_t size;
         QString genres;
-        QString playlistElapsed;
+        QString elapsed;
     };
 
     [[nodiscard]] ScriptContext currentContext() const;
@@ -137,7 +137,7 @@ public:
     [[nodiscard]] QString libraryPathVariable(const Track& track) const;
     [[nodiscard]] QString relativePathVariable(const Track& track) const;
     [[nodiscard]] QString getBitrate(const Track& track) const;
-    [[nodiscard]] QString playlistDuration(const TrackList& tracks) const;
+    [[nodiscard]] QString trackListDuration(const TrackList& tracks) const;
 
     void clearTrackListCache();
     [[nodiscard]] const TrackListAggregateCache& cachedTrackListValues(const TrackList& tracks) const;

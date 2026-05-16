@@ -315,6 +315,8 @@ bool isTrackListVariableKind(const VariableKind kind)
 {
     switch(kind) {
         case VariableKind::Genres:
+        case VariableKind::FileSize:
+        case VariableKind::FileSizeNatural:
         case VariableKind::TrackCount:
         case VariableKind::Playtime:
         case VariableKind::PlaylistSize:
@@ -482,10 +484,13 @@ std::optional<ScriptRegistry::FuncRet> trackListValue(const VariableKind kind, c
         case VariableKind::Playtime:
         case VariableKind::PlaylistDuration:
             return cache.playtime;
+        case VariableKind::FileSize:
         case VariableKind::PlaylistSize:
-            return cache.playlistSize;
+            return cache.size;
+        case VariableKind::FileSizeNatural:
+            return Utils::formatFileSize(cache.size);
         case VariableKind::PlaylistElapsed:
-            return cache.playlistElapsed;
+            return cache.elapsed;
         case VariableKind::Genres:
             return cache.genres;
         default:
@@ -751,7 +756,7 @@ bool ScriptRegistry::playbackValueAvailableForTrack(const Track& track) const
     return indexMatches && trackMatches;
 }
 
-QString ScriptRegistry::playlistDuration(const TrackList& tracks) const
+QString ScriptRegistry::trackListDuration(const TrackList& tracks) const
 {
     const auto* environment = playbackEnvironment(m_context);
     if(!environment || tracks.empty()) {
@@ -933,12 +938,14 @@ ScriptResult ScriptRegistry::valueForPlaylist(VariableKind kind, const QString& 
 
     if(isTrackListVariableKind(kind)) {
         switch(kind) {
+            case VariableKind::Genres:
+            case VariableKind::FileSize:
+            case VariableKind::FileSizeNatural:
             case VariableKind::TrackCount:
             case VariableKind::Playtime:
             case VariableKind::PlaylistSize:
             case VariableKind::PlaylistDuration:
             case VariableKind::PlaylistElapsed:
-            case VariableKind::Genres:
                 return value(kind, var, makeScriptSubject(playlist.tracks()));
             default:
                 break;
@@ -968,9 +975,9 @@ const ScriptRegistry::TrackListAggregateCache& ScriptRegistry::cachedTrackListVa
         m_trackListCache.currentPosition = currentPosition;
         m_trackListCache.playlistIndex   = playlistIndex;
         m_trackListCache.playtime        = Scripting::playtime(tracks);
-        m_trackListCache.playlistSize    = Scripting::playlistSize(tracks);
+        m_trackListCache.size            = Scripting::trackListSize(tracks);
         m_trackListCache.genres          = Scripting::genres(tracks);
-        m_trackListCache.playlistElapsed = playlistDuration(tracks);
+        m_trackListCache.elapsed         = trackListDuration(tracks);
     }
 
     return m_trackListCache;

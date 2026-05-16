@@ -26,6 +26,6 @@
 namespace Fooyin::Scripting {
 int trackCount(const TrackList& tracks);
 QString playtime(const TrackList& tracks);
-QString playlistSize(const TrackList& tracks);
+uint64_t trackListSize(const TrackList& tracks);
 QString genres(const TrackList& tracks);
 } // namespace Fooyin::Scripting
