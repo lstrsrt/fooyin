@@ -22,6 +22,7 @@
 #include "artwork/artworkexporter.h"
 #include "artwork/artworkviewerdialog.h"
 #include "coverwidgetconfigwidget.h"
+#include "pixmapfadecontroller.h"
 #include "statusevent.h"
 
 #include <core/engine/audioloader.h>
@@ -46,13 +47,9 @@
 #include <QStylePainter>
 #include <QTimer>
 #include <QTimerEvent>
-#include <QVariantAnimation>
 
 using namespace std::chrono_literals;
 using namespace Qt::StringLiterals;
-
-constexpr int MinCoverFadeDurationMs = 50;
-constexpr int MaxCoverFadeDurationMs = 3000;
 
 constexpr auto CoverWidgetCoverTypeKey       = u"ArtworkPanel/CoverType";
 constexpr auto CoverWidgetCoverAlignmentKey  = u"ArtworkPanel/CoverAlignment";
@@ -82,29 +79,15 @@ CoverWidget::CoverWidget(PlayerController* playerController, PlaylistHandler* pl
     , m_coverType{Track::Cover::Front}
     , m_keepAspectRatio{false}
     , m_fadeCoverChanges{false}
-    , m_fadeAnimation{new QVariantAnimation(this)}
+    , m_fadeController{new PixmapFadeController(this)}
     , m_coverRequestId{0}
-    , m_fadeProgress{1.0}
     , m_noCover{m_coverProvider->placeholderCover()}
 {
     setObjectName(CoverWidget::name());
 
     m_coverProvider->setUsePlaceholder(false);
 
-    m_fadeAnimation->setStartValue(0.0);
-    m_fadeAnimation->setEndValue(1.0);
-    m_fadeAnimation->setEasingCurve(QEasingCurve::InOutCubic);
-
-    QObject::connect(m_fadeAnimation, &QVariantAnimation::valueChanged, this, [this](const QVariant& value) {
-        m_fadeProgress = value.toReal();
-        update();
-    });
-    QObject::connect(m_fadeAnimation, &QVariantAnimation::finished, this, [this] {
-        m_previousCover       = {};
-        m_previousScaledCover = {};
-        m_fadeProgress        = 1.0;
-        update();
-    });
+    m_fadeController->setUpdateCallback([this] { update(); });
 
     QObject::connect(m_playerController, &PlayerController::currentTrackChanged, this, &CoverWidget::reloadCover);
     QObject::connect(m_playerController, &PlayerController::currentTrackChanged, this, &CoverWidget::checkTrackArtwork);
@@ -143,7 +126,8 @@ CoverWidget::ConfigData CoverWidget::defaultConfig() const
     config.keepAspectRatio  = m_settings->fileValue(CoverWidgetKeepAspectRatioKey, config.keepAspectRatio).toBool();
     config.fadeCoverChanges = m_settings->fileValue(CoverWidgetFadeEnabledKey, config.fadeCoverChanges).toBool();
     config.fadeDurationMs   = m_settings->fileValue(CoverWidgetFadeDurationKey, config.fadeDurationMs).toInt();
-    config.fadeDurationMs   = std::clamp(config.fadeDurationMs, MinCoverFadeDurationMs, MaxCoverFadeDurationMs);
+    config.fadeDurationMs
+        = std::clamp(config.fadeDurationMs, PixmapFadeController::MinDurationMs, PixmapFadeController::MaxDurationMs);
 
     return config;
 }
@@ -159,7 +143,8 @@ void CoverWidget::applyConfig(const ConfigData& config)
     const bool keepAspectChanged  = m_keepAspectRatio != config.keepAspectRatio;
     const bool alignmentChanged   = m_coverAlignment != config.coverAlignment;
     const bool fadeEnabledChanged = m_fadeCoverChanges != config.fadeCoverChanges;
-    const int fadeDurationMs      = std::clamp(config.fadeDurationMs, MinCoverFadeDurationMs, MaxCoverFadeDurationMs);
+    const int fadeDurationMs
+        = std::clamp(config.fadeDurationMs, PixmapFadeController::MinDurationMs, PixmapFadeController::MaxDurationMs);
 
     m_config = {
         .coverType        = config.coverType,
@@ -174,7 +159,8 @@ void CoverWidget::applyConfig(const ConfigData& config)
     m_keepAspectRatio  = m_config.keepAspectRatio;
     m_fadeCoverChanges = m_config.fadeCoverChanges;
 
-    m_fadeAnimation->setDuration(m_config.fadeDurationMs);
+    m_fadeController->setDurationMs(m_config.fadeDurationMs);
+    m_fadeController->setEnabled(m_config.fadeCoverChanges);
 
     if(!m_fadeCoverChanges) {
         stopCoverFade();
@@ -201,8 +187,9 @@ void CoverWidget::saveDefaults(const ConfigData& config) const
     m_settings->fileSet(CoverWidgetCoverAlignmentKey, static_cast<int>(config.coverAlignment));
     m_settings->fileSet(CoverWidgetKeepAspectRatioKey, config.keepAspectRatio);
     m_settings->fileSet(CoverWidgetFadeEnabledKey, config.fadeCoverChanges);
-    m_settings->fileSet(CoverWidgetFadeDurationKey,
-                        std::clamp(config.fadeDurationMs, MinCoverFadeDurationMs, MaxCoverFadeDurationMs));
+    m_settings->fileSet(
+        CoverWidgetFadeDurationKey,
+        std::clamp(config.fadeDurationMs, PixmapFadeController::MinDurationMs, PixmapFadeController::MaxDurationMs));
 }
 
 void CoverWidget::clearSavedDefaults() const
@@ -224,16 +211,7 @@ bool CoverWidget::coversMatch(const QPixmap& lhs, const QPixmap& rhs) const
     const QPixmap effectiveLhs = effectiveCover(lhs);
     const QPixmap effectiveRhs = effectiveCover(rhs);
 
-    if(effectiveLhs.cacheKey() == effectiveRhs.cacheKey()) {
-        return true;
-    }
-
-    if(effectiveLhs.size() != effectiveRhs.size()
-       || !qFuzzyCompare(effectiveLhs.devicePixelRatio(), effectiveRhs.devicePixelRatio())) {
-        return false;
-    }
-
-    return effectiveLhs.toImage() == effectiveRhs.toImage();
+    return PixmapFadeController::pixmapsMatch(effectiveLhs, effectiveRhs);
 }
 
 QPixmap CoverWidget::scaledCover(const QPixmap& cover) const
@@ -276,10 +254,10 @@ bool CoverWidget::sameDisplayTrack(const Track& lhs, const Track& rhs)
 
 void CoverWidget::rescaleCover()
 {
-    m_scaledCover = scaledCover(m_cover);
+    m_scaledCover = scaledCover(m_fadeController->pixmap());
 
-    if(!m_previousCover.isNull()) {
-        m_previousScaledCover = scaledCover(m_previousCover);
+    if(!m_fadeController->previousPixmap().isNull()) {
+        m_previousScaledCover = scaledCover(m_fadeController->previousPixmap());
     }
     else {
         m_previousScaledCover = {};
@@ -291,45 +269,30 @@ void CoverWidget::rescaleCover()
 void CoverWidget::setFadeCoverChanges(const bool enabled)
 {
     m_fadeCoverChanges = enabled;
-
-    if(!m_fadeCoverChanges) {
-        stopCoverFade();
-    }
+    m_fadeController->setEnabled(enabled);
 }
 
 void CoverWidget::stopCoverFade()
 {
-    m_fadeAnimation->stop();
-    m_previousCover       = {};
-    m_previousScaledCover = {};
-    m_fadeProgress        = 1.0;
-    update();
+    m_fadeController->stop();
 }
 
 void CoverWidget::setCoverPixmap(const QPixmap& cover)
 {
-    const QPixmap currentCover = effectiveCover(m_cover);
-
     if(coversMatch(m_cover, cover)) {
         m_cover = cover;
-        stopCoverFade();
+        if(m_fadeController->progress() < 1.0
+           && PixmapFadeController::pixmapsMatch(m_fadeController->pixmap(), effectiveCover(cover))) {
+            return;
+        }
+        m_fadeController->setPixmap(effectiveCover(cover));
         rescaleCover();
         return;
     }
 
     m_cover = cover;
-
-    if(!m_fadeCoverChanges || currentCover.isNull()) {
-        stopCoverFade();
-        rescaleCover();
-        return;
-    }
-
-    m_previousCover = currentCover;
-    m_fadeAnimation->stop();
-    m_fadeProgress = 0.0;
+    m_fadeController->setPixmap(effectiveCover(cover));
     rescaleCover();
-    m_fadeAnimation->start();
 }
 
 void CoverWidget::reloadCover()
@@ -398,7 +361,8 @@ CoverWidget::ConfigData CoverWidget::configFromLayout(const QJsonObject& layout)
         config.fadeDurationMs = layout.value("FadeDurationMs"_L1).toInt();
     }
 
-    config.fadeDurationMs = std::clamp(config.fadeDurationMs, MinCoverFadeDurationMs, MaxCoverFadeDurationMs);
+    config.fadeDurationMs
+        = std::clamp(config.fadeDurationMs, PixmapFadeController::MinDurationMs, PixmapFadeController::MaxDurationMs);
 
     return config;
 }
@@ -621,10 +585,12 @@ void CoverWidget::paintEvent(QPaintEvent* /*event*/)
 {
     QStylePainter painter{this};
 
-    if(!m_previousScaledCover.isNull() && m_fadeProgress < 1.0) {
-        painter.setOpacity(1.0 - m_fadeProgress);
-        painter.drawItemPixmap(contentsRect(), Qt::AlignVCenter | m_coverAlignment, m_previousScaledCover);
-        painter.setOpacity(m_fadeProgress);
+    if(m_fadeController->progress() < 1.0) {
+        if(!m_previousScaledCover.isNull()) {
+            painter.setOpacity(1.0 - m_fadeController->progress());
+            painter.drawItemPixmap(contentsRect(), Qt::AlignVCenter | m_coverAlignment, m_previousScaledCover);
+        }
+        painter.setOpacity(m_fadeController->progress());
     }
 
     painter.drawItemPixmap(contentsRect(), Qt::AlignVCenter | m_coverAlignment, m_scaledCover);

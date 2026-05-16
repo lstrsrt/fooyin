@@ -27,11 +27,10 @@
 #include <QBasicTimer>
 #include <QPixmap>
 
-class QVariantAnimation;
-
 namespace Fooyin {
-class CoverProvider;
 class AudioLoader;
+class CoverProvider;
+class PixmapFadeController;
 class PlaylistHandler;
 class PlayerController;
 class SettingsManager;
@@ -118,13 +117,11 @@ private:
     QBasicTimer m_resizeTimer;
 
     bool m_fadeCoverChanges;
-    QVariantAnimation* m_fadeAnimation;
+    PixmapFadeController* m_fadeController;
     int m_coverRequestId;
-    qreal m_fadeProgress;
 
     Track m_track;
     QPixmap m_cover;
-    QPixmap m_previousCover;
     QPixmap m_scaledCover;
     QPixmap m_previousScaledCover;
     QPixmap m_noCover;

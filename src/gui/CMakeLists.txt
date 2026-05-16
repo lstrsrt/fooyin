@@ -477,16 +477,18 @@ set(SOURCES
     widgets/expandingcombobox.cpp
     widgets/extendabletableview.cpp
     widgets/fontbutton.cpp
-    widgets/lineediteditor.cpp
-    widgets/metadatacompleter.cpp
     widgets/hovermenu.cpp
     widgets/hovermenu.h
+    widgets/lineediteditor.cpp
     widgets/logslider.cpp
     widgets/logslider.h
     widgets/menuheader.cpp
     widgets/menuheader.h
+    widgets/metadatacompleter.cpp
     widgets/multilinedelegate.cpp
     widgets/overlaywidget.cpp
+    widgets/pixmapfadecontroller.cpp
+    widgets/pixmapfadecontroller.h
     widgets/popuplineedit.cpp
     widgets/scriptlineedit.cpp
     widgets/seekcontainer.cpp
