@@ -463,6 +463,12 @@ void PlaylistWidget::contextMenuEvent(QContextMenuEvent* event)
     const auto selected = selectedRows(m_playlistView);
     populateTrackContextMenu(menu, selected);
 
+    const QPoint viewportPos = m_playlistView->viewport()->mapFromGlobal(event->globalPos());
+    if(!m_playlistView->indexAt(viewportPos).isValid()) {
+        menu->addSeparator();
+        addSettingsAction(menu);
+    }
+
     menu->popup(event->globalPos());
 }
 
@@ -583,6 +589,7 @@ void PlaylistWidget::populateTrackContextMenu(QMenu* menu, const QModelIndexList
                 if(state.hasSelection && sectionEnabled(ContextMenuIds::Playlist::TrackActions)) {
                     m_selectionController->addTrackContextMenu(targetMenu);
                 }
+                return;
             }
         });
 }
@@ -1084,6 +1091,8 @@ void PlaylistWidget::showHeaderMenu(const QPoint& pos)
 
     menu->addSeparator();
     addPresetMenu(menu);
+    menu->addSeparator();
+    addSettingsAction(menu);
 
     menu->popup(mapToGlobal(pos));
 }
@@ -1221,6 +1230,18 @@ void PlaylistWidget::addColumnsMenu(QMenu* parent)
     columnsMenu->addAction(moreSettings);
 
     parent->addMenu(columnsMenu);
+}
+
+void PlaylistWidget::addSettingsAction(QMenu* menu)
+{
+    if(!menu) {
+        return;
+    }
+
+    auto* settings = new QAction(tr("Playlist settings…"), menu);
+    QObject::connect(settings, &QAction::triggered, this,
+                     [this]() { m_settingsDialog->openAtPage(Constants::Page::PlaylistAppearance); });
+    menu->addAction(settings);
 }
 
 const PlaylistWidgetLayoutState& PlaylistWidget::layoutState() const

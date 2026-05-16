@@ -130,6 +130,7 @@ private:
     void addSingleModeAction(QMenu* parent);
     void addPresetMenu(QMenu* parent);
     void addColumnsMenu(QMenu* parent);
+    void addSettingsAction(QMenu* menu);
     void applyInitialViewSettings();
     void applySessionTexts();
     void refreshViewStyle();
